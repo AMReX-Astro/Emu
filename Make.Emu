@@ -1,4 +1,4 @@
-TOP := $(FLAVOR_HOME)
+TOP := $(EMU_HOME)
 
 EBASE := main
 

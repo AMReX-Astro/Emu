@@ -43,4 +43,8 @@ addons:
     - OMP_NUM_THREADS=4
 
 install:
+- cd Exec; make -j
+- echo "blank script"
+
+script:
 - echo "blank script"

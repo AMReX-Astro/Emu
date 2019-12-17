@@ -1,5 +1,5 @@
-FLAVOR_HOME ?= ../
-AMREX_HOME ?= ../../../../..
+EMU_HOME ?= ../
+AMREX_HOME ?= ../../amrex
 
 DEBUG	= FALSE
 
