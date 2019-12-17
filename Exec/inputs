@@ -1,0 +1,11 @@
+# Domain size in 3D index space
+ncell = (128, 128, 128)
+
+# Number of particles per cell
+nppc  = (4, 4, 4)
+
+# Maximum size of each grid in the domain
+max_grid_size = 64
+
+# Number of steps to run
+nsteps = 10
