@@ -1,5 +1,5 @@
 EMU_HOME ?= ../
-AMREX_HOME ?= ../../amrex
+AMREX_HOME ?= ../amrex
 
 DEBUG	= FALSE
 

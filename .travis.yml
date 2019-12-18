@@ -43,6 +43,7 @@ addons:
     - OMP_NUM_THREADS=4
 
 install:
+- git submodule init; git submodule update
 - cd Exec; make -j
 - echo "blank script"
 
