@@ -1,46 +1,33 @@
-language: c++
+dist: xenial
 
-os:
-- linux
-
-dist: trusty
+language: python
 
 python:
-- 3.6
+  - "3.7-dev"
 
-notifications:
-  email:
-    recipients:
-      - sricher@ncsu.edu
-      - dewillcox@lbl.gov
-    on_success: change
-    on_failure: always
+before_install:
+  - export PATH=$(echo $PATH | tr ':' "\n" | sed '/\/opt\/python/d' | tr "\n" ":" | sed "s|::|:|g")
 
 addons:
-  apt:
-    sources:
-    - ubuntu-toolchain-r-test
-    packages:
-    - g++-5
-    - gfortran-5
-    - mpich2
-    - libmpich-dev
-    - gsl-bin
-    - libgsl0-dev
-    - libgsl0ldbl
-    - zlib1g-dev
-    - python3
-    - python3-numpy
-    - python3-scipy
-    - python3-h5py
-    - python3-matplotlib
-    - gnuplot
-    - bzip2
-    env:
-    - CC=gcc-5
-    - CXX=g++-5
-    - F90=gfortran-5
-    - OMP_NUM_THREADS=4
+   apt: 
+      packages:
+      - mpich
+      - libmpich-dev
+      - g++
+      - gfortran
+      - libgmp-dev
+      - libmpfr-dev
+      - pandoc
+      - doxygen
+      - texlive
+      - texlive-latex-extra
+      - texlive-lang-cjk
+      - latexmk
 
 install:
+- git submodule init; git submodule update
+- cd Exec; make -j2
+- echo "blank script"
+
+script:
 - echo "blank script"
