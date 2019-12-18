@@ -12,10 +12,10 @@ struct PIdx
 };
 
 class FNParIter
-    : public amrex::ParIter<0,PIdx::nattribs,0,0>
+    : public amrex::ParIter<PIdx::nattribs,0,0,0>
 {
 public:
-    using amrex::ParIter<0,PIdx::nattribs,0,0>::ParIter;
+    using amrex::ParIter<PIdx::nattribs,0,0,0>::ParIter;
 
     const RealVector& GetAttribs (int comp) const { 
         return GetStructOfArrays().GetRealData(comp);
@@ -27,7 +27,7 @@ public:
 };
 
 class FlavoredNeutrinoContainer
-    : public amrex::ParticleContainer<0, PIdx::nattribs, 0, 0>
+    : public amrex::ParticleContainer<PIdx::nattribs, 0, 0, 0>
 {
 
 public:

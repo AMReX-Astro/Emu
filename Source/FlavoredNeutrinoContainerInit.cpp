@@ -37,7 +37,7 @@ FlavoredNeutrinoContainer::
 FlavoredNeutrinoContainer(const Geometry            & a_geom,
                           const DistributionMapping & a_dmap,
                           const BoxArray            & a_ba)
-    : ParticleContainer<0, PIdx::nattribs, 0, 0>(a_geom, a_dmap, a_ba)
+    : ParticleContainer<PIdx::nattribs, 0, 0, 0>(a_geom, a_dmap, a_ba)
 {}
 
 void
