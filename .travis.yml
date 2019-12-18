@@ -21,8 +21,8 @@ addons:
     sources:
     - ubuntu-toolchain-r-test
     packages:
-    - g++-5
-    - gfortran-5
+    - g++
+    - gfortran
     - mpich2
     - libmpich-dev
     - gsl-bin
