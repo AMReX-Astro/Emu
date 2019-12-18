@@ -27,7 +27,6 @@ addons:
 install:
 - git submodule init; git submodule update
 - cd Exec; make -j2
-- echo "blank script"
 
 script:
-- echo "blank script"
+- cd Exec; mpirun -np 2 ./main3d.gnu.TPROF.MPI.ex inputs

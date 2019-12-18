@@ -1,5 +1,5 @@
 # Domain size in 3D index space
-ncell = (128, 128, 128)
+ncell = (16, 16, 16)
 
 # Number of particles per cell
 nppc  = (4, 4, 4)
