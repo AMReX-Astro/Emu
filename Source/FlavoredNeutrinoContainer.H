@@ -6,7 +6,11 @@
 struct PIdx
 {
     enum {
-        ux = 0, uy, uz, f, 
+        ux = 0, uy, uz,
+        fee, fuu, feu,
+#if (NUM_FLAVORS >= 3)
+        ftt, fet, fut,
+#endif
         nattribs
     };
 };
@@ -17,11 +21,11 @@ class FNParIter
 public:
     using amrex::ParIter<PIdx::nattribs,0,0,0>::ParIter;
 
-    const RealVector& GetAttribs (int comp) const { 
+    const RealVector& GetAttribs (int comp) const {
         return GetStructOfArrays().GetRealData(comp);
     }
 
-    RealVector& GetAttribs (int comp) { 
+    RealVector& GetAttribs (int comp) {
         return GetStructOfArrays().GetRealData(comp);
     }
 };

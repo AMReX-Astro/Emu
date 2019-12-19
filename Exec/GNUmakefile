@@ -1,21 +1,23 @@
 EMU_HOME ?= ../
 AMREX_HOME ?= ../amrex
 
-DEBUG	= FALSE
-
 DIM	= 3
+
+NUM_FLAVORS = 2
 
 COMP = gnu
 
-TINY_PROFILE  = TRUE
-USE_PARTICLES = TRUE
-
-PRECISION     = DOUBLE
+DEBUG	= FALSE
 
 USE_MPI       = TRUE
 USE_OMP       = FALSE
 USE_ACC       = FALSE
 USE_CUDA      = FALSE
+
+TINY_PROFILE  = TRUE
+USE_PARTICLES = TRUE
+
+PRECISION     = DOUBLE
 
 Bpack   :=
 Blocs   := . 

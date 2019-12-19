@@ -1,3 +1,5 @@
+NUM_FLAVORS ?= 2
+
 TOP := $(EMU_HOME)
 
 EBASE := main
@@ -17,6 +19,8 @@ Pdirs             := Base Particle
 Ppack             += $(foreach dir, $(Pdirs), $(AMREX_HOME)/Src/$(dir)/Make.package)
 
 include $(Ppack)
+
+DEFINES += -DNUM_FLAVORS=$(NUM_FLAVORS)
 
 all: $(executable)
 	@echo SUCCESS

@@ -31,7 +31,7 @@ void evolve_flavor(const TestParams& parms)
     Vector<int> domain_lo_bc_types(AMREX_SPACEDIM, BCType::int_dir);
     Vector<int> domain_hi_bc_types(AMREX_SPACEDIM, BCType::int_dir);
 
-    // Define the index space of the domain 
+    // Define the index space of the domain
     const IntVect domain_lo(AMREX_D_DECL(0, 0, 0));
     const IntVect domain_hi(AMREX_D_DECL(parms.ncell[0]-1,parms.ncell[1]-1,parms.ncell[2]-1));
     const Box domain(domain_lo, domain_hi);
@@ -51,12 +51,12 @@ void evolve_flavor(const TestParams& parms)
 
     // Create the DistributionMapping from the BoxArray
     DistributionMapping dm(ba);
-    
+
     // We want 1 ghost cells (grids are "grown" by ngrow ghost cells in each direction)
     const int ngrow = 1;
 
     // We want 1 component (this is one real scalar field on the domain)
-    const int ncomp = 1;
+    const int ncomp = GIdx::ncomp;
 
     // Create a MultiFab to hold our grid state data and initialize to 0.0
     MultiFab state(ba, dm, ncomp, ngrow);
@@ -96,9 +96,9 @@ void evolve_flavor(const TestParams& parms)
 
         time += dt;
     }
-    
+
     amrex::Print() << "Done. " << std::endl;
-    
+
     // Deposit Particle Data to Mesh
     deposit_to_mesh(neutrinos, state, geom);
 
