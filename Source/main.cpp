@@ -52,7 +52,7 @@ void evolve_flavor(const TestParams& parms)
     // Create the DistributionMapping from the BoxArray
     DistributionMapping dm(ba);
     
-    // We want 1 ghost cell (grids are "grown" by 1 ghost cell in each direction)
+    // We want 1 ghost cells (grids are "grown" by ngrow ghost cells in each direction)
     const int ngrow = 1;
 
     // We want 1 component (this is one real scalar field on the domain)
@@ -60,7 +60,9 @@ void evolve_flavor(const TestParams& parms)
 
     // Create a MultiFab to hold our grid state data and initialize to 0.0
     MultiFab state(ba, dm, ncomp, ngrow);
-    state.setVal(0.0);
+
+    // initialize with NaNs ...
+    state.setVal(std::numeric_limits<Real>::quiet_NaN());
 
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... ";
