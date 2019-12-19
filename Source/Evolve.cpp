@@ -6,7 +6,9 @@ using namespace amrex;
 
 Real compute_dt(const Geometry& geom)
 {
-    return 1.0;
+    const auto dxi = geom.CellSizeArray();
+    Real dt = min(min(dxi[0],dxi[1]), dxi[2]) / PhysConst::c * 0.4;
+    return dt;
 }
 
 void deposit_to_mesh(FlavoredNeutrinoContainer& neutrinos, MultiFab& state, Geometry& geom)
