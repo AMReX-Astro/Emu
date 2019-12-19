@@ -92,7 +92,7 @@ void evolve_flavor(const TestParams& parms)
         neutrinos.IntegrateParticles(dt);
 
         // Redistribute Particles to MPI ranks
-        neutrinos.Redistribute();
+        neutrinos.RedistributeLocal();
 
         time += dt;
     }
