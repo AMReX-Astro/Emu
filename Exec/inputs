@@ -9,3 +9,6 @@ max_grid_size = 64
 
 # Number of steps to run
 nsteps = 10
+
+# Make FPE signal errors so we get a Backtrace
+amrex.fpe_trap_invalid=1
