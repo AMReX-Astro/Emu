@@ -15,14 +15,14 @@ struct GIdx
     enum {
 #if (NUM_FLAVORS == 2)
         Nee=0, Nuu, Neu,
-	Fxee, Fxuu, Fxeu,
-	Fyee, Fyuu, Fyeu,
-	Fzee, Fzuu, Fzeu,
+	Fxee, Fxuu, FxeuR, FxeuI,
+	Fyee, Fyuu, FyeuR, FyeuI,
+	Fzee, Fzuu, FzeuR, FzeuI,
 #elif (NUM_FLAVORS >= 3)
         Ntt, Net, Nut,
-	Fxtt, Fxet, Fxut,
-	Fytt, Fyet, Fyut,
-	Fztt, Fzet, Fzut,
+	Fxtt, FxetR, FxetI, FxutR, FxutI,
+	Fytt, FyetR, FyetI, FyutR, FyutI,
+	Fztt, FzetR, FzetI, FzutR, FzutI,
 #endif
         ncomp
     };
