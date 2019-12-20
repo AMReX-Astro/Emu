@@ -13,12 +13,13 @@ struct GIdx
   // x/y/z - direction of flux vector
   // e/u/t = electron/muon/tauon
     enum {
-#if (NUM_FLAVORS == 2)
+#if (NUM_FLAVORS >= 2)
         Nee=0, Nuu, Neu,
 	Fxee, Fxuu, FxeuR, FxeuI,
 	Fyee, Fyuu, FyeuR, FyeuI,
 	Fzee, Fzuu, FzeuR, FzeuI,
-#elif (NUM_FLAVORS >= 3)
+#endif
+#if (NUM_FLAVORS >= 3)
         Ntt, Net, Nut,
 	Fxtt, FxetR, FxetI, FxutR, FxutI,
 	Fytt, FyetR, FyetI, FyutR, FyutI,
