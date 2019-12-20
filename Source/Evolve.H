@@ -10,10 +10,19 @@
 
 struct GIdx
 {
+  // x/y/z - direction of flux vector
+  // e/u/t = electron/muon/tauon
     enum {
-        fee=0, fuu, feu,
-#if (NUM_FLAVORS >= 3)
-        ftt, fet, fut,
+#if (NUM_FLAVORS == 2)
+        Nee=0, Nuu, Neu,
+	Fxee, Fxuu, Fxeu,
+	Fyee, Fyuu, Fyeu,
+	Fzee, Fzuu, Fzeu,
+#elif (NUM_FLAVORS >= 3)
+        Ntt, Net, Nut,
+	Fxtt, Fxet, Fxut,
+	Fytt, Fyet, Fyut,
+	Fztt, Fzet, Fzut,
 #endif
         ncomp
     };

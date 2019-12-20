@@ -171,9 +171,10 @@ InitParticles(const IntVect& a_num_particles_per_cell)
                 p.pos(2) = z;
                 
                 // Set particle velocity to c in a random direction
-                p.rdata(PIdx::ux) = u[0] * PhysConst::c;
-                p.rdata(PIdx::uy) = u[1] * PhysConst::c;
-                p.rdata(PIdx::uz) = u[2] * PhysConst::c;
+		p.rdata(PIdx::pupt) = PhysConst::c;
+                p.rdata(PIdx::pupx) = u[0] * PhysConst::c;
+                p.rdata(PIdx::pupy) = u[1] * PhysConst::c;
+                p.rdata(PIdx::pupz) = u[2] * PhysConst::c;
 
                 // Set particle flavor
                 p.rdata(PIdx::fee) = 1.0;

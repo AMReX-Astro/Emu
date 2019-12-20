@@ -39,8 +39,9 @@ void deposit_to_mesh(FlavoredNeutrinoContainer& neutrinos, MultiFab& state, Geom
         for (int kk = 0; kk <= 1; ++kk) { 
             for (int jj = 0; jj <= 1; ++jj) { 
                 for (int ii = 0; ii <= 1; ++ii) {
-                    amrex::Gpu::Atomic::Add(&sarr(i+ii-1, j+jj-1, k+kk-1, GIdx::fee),
-                                            sx[ii]*sy[jj]*sz[kk]*p.rdata(PIdx::fee));
+                    amrex::Gpu::Atomic::Add(&sarr(i+ii-1, j+jj-1, k+kk-1, GIdx::Nee),
+                                            sx[ii]*sy[jj]*sz[kk]*
+					    p.rdata(PIdx::fee)*p.rdata(PIdx::N));
                 }
             }
         }
@@ -75,7 +76,7 @@ void interpolate_from_mesh(FlavoredNeutrinoContainer& neutrinos, MultiFab& state
         for (int kk = 0; kk <= 1; ++kk) { 
             for (int jj = 0; jj <= 1; ++jj) { 
                 for (int ii = 0; ii <= 1; ++ii) {
-                    p.rdata(PIdx::fee) += sx[ii]*sy[jj]*sz[kk]*sarr(i+ii-1,j+jj-1,k+kk-1,GIdx::fee);
+                    p.rdata(PIdx::Vee) += sx[ii]*sy[jj]*sz[kk]*sarr(i+ii-1,j+jj-1,k+kk-1,GIdx::Nee);
                 }
             }
         }

@@ -5,11 +5,16 @@
 
 struct PIdx
 {
+  // pup = four-momentum (up index)
+  // f = distribution function
+  // V = potential
     enum {
-        ux = 0, uy, uz,
+        N=0, pupt, pupx, pupy, pupz,
         fee, fuu, feu,
+	Vee, Vuu, Veu,
 #if (NUM_FLAVORS >= 3)
         ftt, fet, fut,
+	Vtt, Vet, Vut,
 #endif
         nattribs
     };

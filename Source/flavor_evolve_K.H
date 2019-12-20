@@ -11,8 +11,8 @@ void integrate_particle(FlavoredNeutrinoContainer::ParticleType& p,
                         amrex::Real dt)
 {
     // evolve flavor and position for this particle over the timestep dt
-    p.pos(0) += p.rdata(PIdx::ux) * dt;
-    p.pos(1) += p.rdata(PIdx::uy) * dt;
-    p.pos(2) += p.rdata(PIdx::uz) * dt;
+    p.pos(0) += p.rdata(PIdx::pupx) * dt;
+    p.pos(1) += p.rdata(PIdx::pupy) * dt;
+    p.pos(2) += p.rdata(PIdx::pupz) * dt;
 }
 #endif
