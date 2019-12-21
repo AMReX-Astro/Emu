@@ -57,8 +57,10 @@ def write_code(code, output_file, template=None):
         fo.write(l)
 
     # Write generated code
-    for line in code:
-        fo.write("{}{}\n\n".format(indent, line))
+    for i, line in enumerate(code):
+        fo.write("{}{}\n".format(indent, line))
+        if i<len(code)-1:
+            fo.write("\n")
 
     # Write footer
     for l in footer:
