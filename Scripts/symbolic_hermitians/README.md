@@ -28,5 +28,19 @@ $ python3 IAntiCommutator.py -h
 To generate sample code with indexing into real Particle data:
 
 ```
-$ python3 IAntiCommutator.py 3 -o code.cpp -a "p.rdata(PIdx::H{}{}_{})" -b "p.rdata(PIdx::f{}{}_{})" -c "p.rdata(PIdx::dfdt{}{}_{})"
+$ python3 IAntiCommutator.py 2 -o code.cpp -a "p.rdata(PIdx::H{}{}_{})" -b "p.rdata(PIdx::f{}{}_{})" -c "p.rdata(PIdx::dfdt{}{}_{})"
+```
+
+And the file `code.cpp` will contain:
+
+```
+{
+p.rdata(PIdx::dfdt00_Re) = -2*p.rdata(PIdx::H01_Im)*p.rdata(PIdx::f01_Re) + 2*p.rdata(PIdx::H01_Re)*p.rdata(PIdx::f01_Im);
+
+p.rdata(PIdx::dfdt01_Re) = -p.rdata(PIdx::H00_Re)*p.rdata(PIdx::f01_Im) + p.rdata(PIdx::H01_Im)*p.rdata(PIdx::f00_Re) - p.rdata(PIdx::H01_Im)*p.rdata(PIdx::f11_Re) + p.rdata(PIdx::H11_Re)*p.rdata(PIdx::f01_Im);
+
+p.rdata(PIdx::dfdt01_Im) = p.rdata(PIdx::H00_Re)*p.rdata(PIdx::f01_Re) - p.rdata(PIdx::H01_Re)*p.rdata(PIdx::f00_Re) + p.rdata(PIdx::H01_Re)*p.rdata(PIdx::f11_Re) - p.rdata(PIdx::H11_Re)*p.rdata(PIdx::f01_Re);
+
+p.rdata(PIdx::dfdt11_Re) = 2*p.rdata(PIdx::H01_Im)*p.rdata(PIdx::f01_Re) - 2*p.rdata(PIdx::H01_Re)*p.rdata(PIdx::f01_Im);
+}
 ```
