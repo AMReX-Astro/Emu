@@ -1,10 +1,14 @@
+#!/usr/bin/env python
+
 import argparse
+import os
 import sympy
 from HermitianUtils import HermitianMatrix
 
 parser = argparse.ArgumentParser(description="Generates code for calculating C = i * [A,B] for symbolic NxN Hermitian matrices A, B, C, using real-valued Real and Imaginary components.")
 parser.add_argument("N", type=int, help="Size of NxN Hermitian matrices.")
 parser.add_argument("-ot", "--output_template", type=str, default=None, help="Template output file to fill in at the location of the string '<>code<>'.")
+parser.add_argument("-eh", "--emu_home", type=str, default=".", help="Path to Emu home directory.")
 
 args = parser.parse_args()
 
@@ -65,7 +69,7 @@ def write_code(code, output_file, template=None):
     fo.close()
 
 if __name__ == "__main__":
-    basedir = "../../Source/"
+    basedir = args.emu_home+"/Source/"
     
     vars = ["f","V"]
     tails = ["","bar"]
@@ -90,5 +94,5 @@ if __name__ == "__main__":
     code = C.code()
 
     # Write code to output file, using a template if one is provided
-    write_code(code, "code.cpp", args.output_template)
+    # write_code(code, "code.cpp", args.output_template)
 
