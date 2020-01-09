@@ -14,16 +14,16 @@ struct GIdx
   // e/u/t = electron/muon/tauon
     enum {
 #if (NUM_FLAVORS >= 2)
-        Nee=0, Nuu, Neu,
-	Fxee, Fxuu, FxeuR, FxeuI,
-	Fyee, Fyuu, FyeuR, FyeuI,
-	Fzee, Fzuu, FzeuR, FzeuI,
+        N00=0, N11, N01,
+	Fx00, Fx11, Fx01R, Fx01I,
+	Fy00, Fy11, Fy01R, Fy01I,
+	Fz00, Fz11, Fz01R, Fz01I,
 #endif
 #if (NUM_FLAVORS >= 3)
-        Ntt, Net, Nut,
-	Fxtt, FxetR, FxetI, FxutR, FxutI,
-	Fytt, FyetR, FyetI, FyutR, FyutI,
-	Fztt, FzetR, FzetI, FzutR, FzutI,
+        N22, N02, N12,
+	Fx22, Fx02R, Fx02I, Fx12R, Fx12I,
+	Fy22, Fy02R, Fy02I, Fy12R, Fy12I,
+	Fz22, Fz02R, Fz02I, Fz12R, Fz12I,
 #endif
         ncomp
     };

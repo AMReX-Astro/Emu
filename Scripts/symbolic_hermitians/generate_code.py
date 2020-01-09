@@ -44,9 +44,9 @@ def write_code(code, output_file, template=None):
                 else:
                     header.append(l)
         ft.close()
-    else:
-        header.append('{\n')
-        footer.append('}\n')
+    #else:
+        #header.append('\n')
+        #footer.append('\n')
 
     # Write header
     for l in header:
@@ -67,9 +67,14 @@ def write_code(code, output_file, template=None):
 if __name__ == "__main__":
     basedir = "../../Source/"
     
-    A = HermitianMatrix(args.N, "H{}{}_{}")
-    code = A.header()
-    code = ["amrex::Real "+code[i]+";" for i in range(len(code))]
+    vars = ["f","V"]
+    tails = ["","bar"]
+    code = []
+    for v in vars:
+        for t in tails:
+            A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
+            code += A.header()
+    code = [code[i]+"," for i in range(len(code))]
     write_code(code, basedir+"FlavoredNeutrinoContainer.H_fill")
 
 

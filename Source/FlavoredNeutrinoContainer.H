@@ -10,18 +10,7 @@ struct PIdx
   // V = potential
     enum {
         N=0, pupt, pupx, pupy, pupz,
-#if (NUM_FLAVORS >= 2)
-        fee, fuu, feuR, FeuI,
-	Vee, Vuu, VeuR, VeuI,
-        feebar, fuubar, feuRbar, FeuIbar,
-	Veebar, Vuubar, VeuRbar, VeuIbar,
-#endif
-#if (NUM_FLAVORS >= 3)
-        ftt, fetR, fetI, futR, futI,
-	Vtt, VetR, VetI, VutR, VutI,
-        fttbar, fetRbar, fetIbar, futRbar, futIbar,
-	Vttbar, VetRbar, VetIbar, VutRbar, VutIbar,
-#endif
+	#include "FlavoredNeutrinoContainer.H_fill"
         nattribs
     };
 };
