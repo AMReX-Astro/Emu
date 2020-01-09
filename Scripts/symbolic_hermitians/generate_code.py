@@ -55,8 +55,8 @@ def write_code(code, output_file, template=None):
     # Write generated code
     for i, line in enumerate(code):
         fo.write("{}{}\n".format(indent, line))
-        if i<len(code)-1:
-            fo.write("\n")
+        #if i<len(code)-1:
+        #    fo.write("\n")
 
     # Write footer
     for l in footer:
@@ -65,8 +65,13 @@ def write_code(code, output_file, template=None):
     fo.close()
 
 if __name__ == "__main__":
-    # set up format strings
+    basedir = "../../Source/"
     
+    A = HermitianMatrix(args.N, "H{}{}_{}")
+    code = A.header()
+    code = ["amrex::Real "+code[i]+";" for i in range(len(code))]
+    write_code(code, basedir+"FlavoredNeutrinoContainer.H_fill")
+
 
     # Set up Hermitian matrices A, B, C
     A = HermitianMatrix(args.N, "p.rdata(PIdx::H{}{}_{})")
@@ -81,3 +86,4 @@ if __name__ == "__main__":
 
     # Write code to output file, using a template if one is provided
     write_code(code, "code.cpp", args.output_template)
+
