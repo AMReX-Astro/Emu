@@ -9,6 +9,7 @@ parser = argparse.ArgumentParser(description="Generates code for calculating C =
 parser.add_argument("N", type=int, help="Size of NxN Hermitian matrices.")
 parser.add_argument("-ot", "--output_template", type=str, default=None, help="Template output file to fill in at the location of the string '<>code<>'.")
 parser.add_argument("-eh", "--emu_home", type=str, default=".", help="Path to Emu home directory.")
+parser.add_argument("-c", "--clean", action="store_true", help="Clean up any previously generated files.")
 
 args = parser.parse_args()
 
@@ -68,7 +69,21 @@ def write_code(code, output_file, template=None):
 
     fo.close()
 
+def delete_generated_files():
+    generated_files = []
+    generated_files.append(os.path.join(args.emu_home, "Source", "FlavoredNeutrinoContainer.H_fill"))
+
+    for f in generated_files:
+        try:
+            os.remove(f)
+        except FileNotFoundError:
+            pass
+
 if __name__ == "__main__":
+    if args.clean:
+        delete_generated_files()
+        exit()
+
     A = HermitianMatrix(args.N, "H{}{}_{}")
     code = A.header()
     code = ["amrex::Real "+code[i]+";" for i in range(len(code))]
