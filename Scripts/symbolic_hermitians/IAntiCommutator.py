@@ -4,9 +4,6 @@ from HermitianUtils import HermitianMatrix
 
 parser = argparse.ArgumentParser(description="Generates code for calculating C = i * [A,B] for symbolic NxN Hermitian matrices A, B, C, using real-valued Real and Imaginary components.")
 parser.add_argument("N", type=int, help="Size of NxN Hermitian matrices.")
-parser.add_argument("-a", "--format_string_a", type=str, default="A{}{}_{}", help="Format string for entries in matrix A. Should contain three empty braces '{}' for i, j, and Re/Im.")
-parser.add_argument("-b", "--format_string_b", type=str, default="B{}{}_{}", help="Format string for entries in matrix B. Should contain three empty braces '{}' for i, j, and Re/Im.")
-parser.add_argument("-c", "--format_string_c", type=str, default="C{}{}_{}", help="Format string for entries in matrix C. Should contain three empty braces '{}' for i, j, and Re/Im.")
 parser.add_argument("-o", "--output", type=str, default="code.cpp", help="Output file to write containing the code.")
 parser.add_argument("-ot", "--output_template", type=str, default=None, help="Template output file to fill in at the location of the string '<>code<>'.")
 
@@ -69,10 +66,13 @@ def write_code(code, output_file, template=None):
     fo.close()
 
 if __name__ == "__main__":
+    # set up format strings
+    
+
     # Set up Hermitian matrices A, B, C
-    A = HermitianMatrix(args.N, args.format_string_a)
-    B = HermitianMatrix(args.N, args.format_string_b)
-    C = HermitianMatrix(args.N, args.format_string_c)
+    A = HermitianMatrix(args.N, "p.rdata(PIdx::H{}{}_{})")
+    B = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{})")
+    C = HermitianMatrix(args.N, "p.rdata(PIdx::dfdt{}{}_{})")
     
     # Calculate C = i * [A,B]
     C.anticommutator(A,B).times(sympy.I);
