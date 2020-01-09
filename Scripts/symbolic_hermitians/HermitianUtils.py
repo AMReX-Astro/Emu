@@ -10,8 +10,8 @@ class HermitianMatrix(object):
         # Size is the number of elements along the diagonal
         # i.e. the matrix is Size x Size
         #
-        # The entry_template is a string of the form "...{}...{}..."
-        # and must have two sets of braces "{}" where the indices 
+        # The entry_template is a string of the form "...{}...{}...{}..."
+        # and must have three sets of braces "{}" where the two indices
         # and the real/imaginary notations ("Re" or "Im") go.
         # e.g. "f{}{}_{}" -> "f00_Re", "f01_Re", "f01_Im", etc.
 
@@ -58,10 +58,10 @@ class HermitianMatrix(object):
         return self
         
     def expressions(self):
-        # The entry_template is a string of the form "...{}...{}..."
-        # and must have two sets of braces "{}" where the indices 
-        # and the real/imaginary notations ("R" or "I") go.
-        # e.g. "f{}{}_{}" -> "f00_R", "f01_R", "f01_I", etc.
+        # The entry_template is a string of the form "...{}...{}...{}..."
+        # and must have three sets of braces "{}" where the two indices
+        # and the real/imaginary notations ("Re" or "Im") go.
+        # e.g. "f{}{}_{}" -> "f00_Re", "f01_Re", "f01_Im", etc.
         #
         # Returns a list of variable assignment expressions
         # for real values matching entry_template that compose
