@@ -77,9 +77,27 @@ class HermitianMatrix(object):
                     expressions.append(Assignment(assign_to, sympy.im(self.H[i,j])))
         return expressions
 
+    def declarations(self):
+        declarations = []
+        for i in range(self.size):
+            for j in range(i, self.size):
+                declarations.append(sympy.re(self.H[i,j]))
+                if j > i:
+                    declarations.append(sympy.im(self.H[i,j]))
+        return declarations
+        
+
     def code(self):
         # Returns a list of strings of C++11 code with expressions for 
         # each real value that constitutes the Hermitian matrix
 
         lines = [sympy.cxxcode(e) for e in self.expressions()]
         return lines
+
+    def header(self):
+        # Returns a list of strings of C++11 code with expressions for 
+        # each real value that constitutes the Hermitian matrix
+
+        lines = [sympy.cxxcode(e) for e in self.declarations()]
+        return lines
+        
