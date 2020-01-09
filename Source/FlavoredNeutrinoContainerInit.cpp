@@ -177,7 +177,7 @@ InitParticles(const IntVect& a_num_particles_per_cell)
                 p.rdata(PIdx::pupz) = u[2] * PhysConst::c;
 
                 // Set particle flavor
-                p.rdata(PIdx::fee) = 1.0;
+                p.rdata(PIdx::f00_Re) = 1.0;
 
                 ++pidx;
             }
