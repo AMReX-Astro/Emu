@@ -22,7 +22,10 @@ include $(Ppack)
 
 DEFINES += -DNUM_FLAVORS=$(NUM_FLAVORS)
 
-all: $(executable)
+all: generate $(executable)
 	@echo SUCCESS
+
+generate:
+	$(EMU_HOME)/Scripts/symbolic_hermitians/generate_code.py $(NUM_FLAVORS) --emu_home $(EMU_HOME)
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules
