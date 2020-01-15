@@ -39,9 +39,7 @@ void deposit_to_mesh(FlavoredNeutrinoContainer& neutrinos, MultiFab& state, Geom
         for (int kk = 0; kk <= 1; ++kk) { 
             for (int jj = 0; jj <= 1; ++jj) { 
                 for (int ii = 0; ii <= 1; ++ii) {
-                    amrex::Gpu::Atomic::Add(&sarr(i+ii-1, j+jj-1, k+kk-1, GIdx::N00_Re),
-                                            sx[ii]*sy[jj]*sz[kk]*
-					    p.rdata(PIdx::f00_Re)*p.rdata(PIdx::N));
+		    #include "Evolve.cpp_deposit_to_mesh_fill"
                 }
             }
         }

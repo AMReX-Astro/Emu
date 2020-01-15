@@ -72,6 +72,8 @@ def write_code(code, output_file, template=None):
 def delete_generated_files():
     generated_files = []
     generated_files.append(os.path.join(args.emu_home, "Source", "FlavoredNeutrinoContainer.H_fill"))
+    generated_files.append(os.path.join(args.emu_home, "Source", "Evolve.H_fill"))
+    generated_files.append(os.path.join(args.emu_home, "Source", "Evolve.cpp_deposit_to_mesh_fill"))
 
     for f in generated_files:
         try:
@@ -109,6 +111,27 @@ if __name__ == "__main__":
             code += A.header()
     code = [code[i]+"," for i in range(len(code))]
     write_code(code, os.path.join(args.emu_home, "Source", "Evolve.H_fill"))
+
+    #=================================#
+    # Evolve.cpp_deposit_to_mesh_fill #
+    #=================================#
+    tails = ["","bar"]
+    string1 = "amrex::Gpu::Atomic::Add(&sarr(i+ii-1, j+jj-1, k+kk-1, GIdx::"
+    string2 = "), sx[ii]*sy[jj]*sz[kk] * p.rdata(PIdx::"
+    string3 = ")*p.rdata(PIdx::N)"
+    string4 = [");",
+               "*p.rdata(PIdx::pupx));",#/p.rdata(PIdx::pupt));",
+               "*p.rdata(PIdx::pupy));",#/p.rdata(PIdx::pupt));",
+               "*p.rdata(PIdx::pupz));"]#/p.rdata(PIdx::pupt));"]
+    deposit_vars = ["N","Fx","Fy","Fz"]
+    code = []
+    for t in tails:
+        flist = HermitianMatrix(args.N, "f{}{}_{}"+t).header()
+        for ivar in range(len(deposit_vars)):
+            deplist = HermitianMatrix(args.N, deposit_vars[ivar]+"{}{}_{}"+t).header()
+            for icomp in range(len(flist)):
+                code.append(string1+deplist[icomp]+string2+flist[icomp]+string3+string4[ivar])
+    write_code(code, os.path.join(args.emu_home, "Source", "Evolve.cpp_deposit_to_mesh_fill"))
     
     # Set up Hermitian matrices A, B, C
     A = HermitianMatrix(args.N, "p.rdata(PIdx::H{}{}_{})")
