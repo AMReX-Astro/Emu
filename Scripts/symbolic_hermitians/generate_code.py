@@ -74,6 +74,7 @@ def delete_generated_files():
     generated_files.append(os.path.join(args.emu_home, "Source", "FlavoredNeutrinoContainer.H_fill"))
     generated_files.append(os.path.join(args.emu_home, "Source", "Evolve.H_fill"))
     generated_files.append(os.path.join(args.emu_home, "Source", "Evolve.cpp_deposit_to_mesh_fill"))
+    generated_files.append(os.path.join(args.emu_home, "Source", "Evolve.cpp_interpolate_from_mesh_fill"))
 
     for f in generated_files:
         try:
@@ -133,6 +134,33 @@ if __name__ == "__main__":
                 code.append(string1+deplist[icomp]+string2+flist[icomp]+string3+string4[ivar])
     write_code(code, os.path.join(args.emu_home, "Source", "Evolve.cpp_deposit_to_mesh_fill"))
     
+    #=======================================#
+    # Evolve.cpp_interpolate_from_mesh_fill #
+    #=======================================#
+    tails = ["","bar"]
+    string1 = "p.rdata(PIdx::"
+    string2 = ") +=  sqrt(2.) * PhysConst::GF * sx[ii]*sy[jj]*sz[kk] * ("
+    string_interp = "sarr(i+ii-1,j+jj-1,k+kk-1,GIdx::"
+    direction = ["x","y","z"]
+    string3 = ["*p.rdata(PIdx::pupx)"]
+    string4 = "/p.rdata(PIdx::pupt)"
+    code = []
+    for t in tails:
+        Vlist = HermitianMatrix(args.N, "V{}{}_{}"+t).header()
+        Nlist = HermitianMatrix(args.N, "N{}{}_{}"+t).header()
+        Flist = [HermitianMatrix(args.N, "F"+d+"{}{}_{}"+t).header() for d in direction]
+        for icomp in range(len(Vlist)):
+            line = "p.rdata(PIdx::"+Vlist[icomp]+") +=  sqrt(2.) * PhysConst::GF * sx[ii]*sy[jj]*sz[kk] * ("
+            line = line + string_interp+Nlist[icomp]+")"
+            for i in range(len(direction)):
+                line = line + " - "+string_interp+Flist[i][icomp]+")*p.rdata(PIdx::pup"+direction[i]+")/p.rdata(PIdx::pupt)"
+            line = line + ");"
+            code.append(line)
+    write_code(code, os.path.join(args.emu_home, "Source", "Evolve.cpp_interpolate_from_mesh_fill"))
+
+
+
+
     # Set up Hermitian matrices A, B, C
     A = HermitianMatrix(args.N, "p.rdata(PIdx::H{}{}_{})")
     B = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{})")
