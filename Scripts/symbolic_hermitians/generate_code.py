@@ -84,6 +84,9 @@ if __name__ == "__main__":
         delete_generated_files()
         exit()
 
+    #==================================#
+    # FlavoredNeutrinoContainer.H_fill #
+    #==================================#
     vars = ["f","V"]
     tails = ["","bar"]
     code = []
@@ -94,6 +97,19 @@ if __name__ == "__main__":
     code = [code[i]+"," for i in range(len(code))]
     write_code(code, os.path.join(args.emu_home, "Source", "FlavoredNeutrinoContainer.H_fill"))
 
+    #===============#
+    # Evolve.H_fill #
+    #===============#
+    vars = ["N","Fx","Fy","Fz"]
+    tails = ["","bar"]
+    code = []
+    for v in vars:
+        for t in tails:
+            A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
+            code += A.header()
+    code = [code[i]+"," for i in range(len(code))]
+    write_code(code, os.path.join(args.emu_home, "Source", "Evolve.H_fill"))
+    
     # Set up Hermitian matrices A, B, C
     A = HermitianMatrix(args.N, "p.rdata(PIdx::H{}{}_{})")
     B = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{})")
