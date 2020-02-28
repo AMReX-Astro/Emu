@@ -63,8 +63,6 @@ InitParticles(const IntVect& a_num_particles_per_cell)
         const auto lo = amrex::lbound(tile_box);
         const auto hi = amrex::ubound(tile_box);
 
-        // amrex::CheckSeedArraySizeAndResize(tile_box.numPts());
-
         Gpu::ManagedVector<unsigned int> counts(tile_box.numPts(), 0);
         unsigned int* pcount = counts.dataPtr();
         
@@ -171,7 +169,7 @@ InitParticles(const IntVect& a_num_particles_per_cell)
                 p.pos(2) = z;
                 
                 // Set particle velocity to c in a random direction
-		p.rdata(PIdx::pupt) = PhysConst::c;
+                p.rdata(PIdx::pupt) = PhysConst::c;
                 p.rdata(PIdx::pupx) = u[0] * PhysConst::c;
                 p.rdata(PIdx::pupy) = u[1] * PhysConst::c;
                 p.rdata(PIdx::pupz) = u[2] * PhysConst::c;
