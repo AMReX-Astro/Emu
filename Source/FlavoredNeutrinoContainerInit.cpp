@@ -137,8 +137,6 @@ InitParticles(const IntVect& a_num_particles_per_cell)
             unsigned int uiz = amrex::min(nz-1,amrex::max(0,iz));
             unsigned int cellid = (uix * ny + uiy) * nz + uiz;
 
-            int pidx = poffset[cellid] - poffset[0];
-
             for (int i_part=0; i_part<num_ppc;i_part++)
             {
                 Real r[3];
@@ -157,10 +155,11 @@ InitParticles(const IntVect& a_num_particles_per_cell)
                     z >= a_bounds.hi(2) || z < a_bounds.lo(2) ) continue;
                 
                 // Get the Particle data corresponding to our particle index in pidx
+		int pidx = poffset[cellid] - poffset[0] + i_part;
                 ParticleType& p = pstruct[pidx];
 
                 // Set particle ID and CPU ID
-                p.id()   = 0;
+                p.id()   = pidx;
                 p.cpu()  = procID;
 
                 // Set particle position
