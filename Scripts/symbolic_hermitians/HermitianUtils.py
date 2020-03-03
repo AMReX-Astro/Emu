@@ -42,7 +42,11 @@ class HermitianMatrix(object):
         
         self.H = A * B - B * A
         return self
-        
+
+    def conjugate(self):
+        self.H = Conjugate(self.H)
+        return self
+    
     def times(self, x):
         # Apply self.H = self.H * x
         # where x is a Sympy expression
