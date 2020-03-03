@@ -30,3 +30,8 @@
 *.exe
 *.out
 *.app
+
+# Other
+Exec
+Scripts/symbolic_hermitians/*.pyc
+Scripts/symbolic_hermitians/__pycache__
