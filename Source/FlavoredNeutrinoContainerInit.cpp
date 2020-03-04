@@ -155,7 +155,7 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
                     z >= a_bounds.hi(2) || z < a_bounds.lo(2) ) continue;
                 
                 // Get the Particle data corresponding to our particle index in pidx
-		int pidx = poffset[cellid] - poffset[0] + i_part;
+                const int pidx = poffset[cellid] - poffset[0] + i_part;
                 ParticleType& p = pstruct[pidx];
 
                 // Set particle ID and CPU ID
@@ -174,15 +174,13 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
                 p.rdata(PIdx::pupz) = u[2] * PhysConst::c;
 
                 // Set particle flavor
-		if(simulation_type==0){
-		  p.rdata(PIdx::f00_Re) = 1.0;
-		}
-		else{
-		  std::cout << "Invalid simulation type" << std::endl;
-		  exit(1);
-		}
-
-                ++pidx;
+                if(simulation_type==0){
+                  p.rdata(PIdx::f00_Re) = 1.0;
+                }
+                else{
+                  std::cout << "Invalid simulation type" << std::endl;
+                  exit(1);
+                }
             }
         });
     }
