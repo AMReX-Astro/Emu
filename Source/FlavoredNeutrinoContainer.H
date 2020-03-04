@@ -9,7 +9,7 @@ struct PIdx
   // f = distribution function (Real/Imaginary, neutrino/antineutrino)
   // V = potential
     enum {
-        N=0, pupt, pupx, pupy, pupz,
+        N=0, pupt, pupx, pupy, pupz, time,
 	#include "FlavoredNeutrinoContainer.H_fill"
         nattribs
     };
