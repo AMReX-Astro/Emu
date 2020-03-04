@@ -1,6 +1,7 @@
 import sympy
 from sympy.functions import conjugate
 from sympy.codegen.ast import Assignment
+import copy
 
 class HermitianMatrix(object):
     # Stores a symbolic matrix Hermitian by construction
@@ -25,6 +26,21 @@ class HermitianMatrix(object):
 
         self.construct()
     
+    def __mul__(self, other):
+        result = copy.deepcopy(other)
+        result.H = self.H * other.H
+        return result
+
+    def __add__(self, other):
+        result = copy.deepcopy(other)
+        result.H = self.H + other.H
+        return result
+
+    def __sub__(self, other):
+        result = copy.deepcopy(other)
+        result.H = self.H - other.H
+        return result
+
     def construct(self):
         for i in range(self.size):
             for j in range(i, self.size):
