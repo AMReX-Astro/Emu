@@ -7,6 +7,7 @@ python:
 
 before_install:
   - export PATH=$(echo $PATH | tr ':' "\n" | sed '/\/opt\/python/d' | tr "\n" ":" | sed "s|::|:|g")
+  - pip install sympy
 
 addons:
    apt: 
