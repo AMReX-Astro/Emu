@@ -63,6 +63,9 @@ void evolve_flavor(const TestParams& parms)
 
     // initialize with NaNs ...
     state.setVal(std::numeric_limits<Real>::quiet_NaN());
+    state.setVal(1e3,GIdx::rho,1); // g/ccm
+    state.setVal(0.3,GIdx::Ye,1);
+    state.setVal(10,GIdx::T,1); // MeV
 
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... ";

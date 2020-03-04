@@ -13,6 +13,7 @@ struct GIdx
   // x/y/z - direction of flux vector
   // e/u/t = electron/muon/tauon
     enum {
+        rho, T, Ye, // g/ccm, MeV, unitless
         #include "Evolve.H_fill"
         ncomp
     };
