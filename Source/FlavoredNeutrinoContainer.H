@@ -35,6 +35,8 @@ class FlavoredNeutrinoContainer
     : public amrex::ParticleContainer<PIdx::nattribs, 0, 0, 0>
 {
 
+    Vector<std::string> attribute_names;
+
 public:
 
     FlavoredNeutrinoContainer(const amrex::Geometry            & a_geom,
