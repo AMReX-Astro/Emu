@@ -151,9 +151,19 @@ if __name__ == "__main__":
         Flist = [HermitianMatrix(args.N, "F"+d+"{}{}_{}"+t).header() for d in direction]
         for icomp in range(len(Vlist)):
             line = "p.rdata(PIdx::"+Vlist[icomp]+") +=  sqrt(2.) * PhysConst::GF * sx[ii]*sy[jj]*sz[kk] * ("
+
+            # self-interaction potential
             line = line + string_interp+Nlist[icomp]+")"
             for i in range(len(direction)):
                 line = line + " - "+string_interp+Flist[i][icomp]+")*p.rdata(PIdx::pup"+direction[i]+")/p.rdata(PIdx::pupt)"
+
+            # matter potential
+            rhoye = string_interp+"rho)*"+string_interp+"Ye)"
+            if(Vlist[icomp]=="V00_Re"):
+                line = line + " + " + rhoye
+            if(Vlist[icomp]=="V00_Rebar"):
+                line = line + " - " + rhoye
+
             line = line + ");"
             code.append(line)
     write_code(code, os.path.join(args.emu_home, "Source", "Evolve.cpp_interpolate_from_mesh_fill"))
