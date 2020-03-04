@@ -158,19 +158,23 @@ if __name__ == "__main__":
             code.append(line)
     write_code(code, os.path.join(args.emu_home, "Source", "Evolve.cpp_interpolate_from_mesh_fill"))
 
-
-
+    #========================#
+    # flavor_evolve_K.H_fill #
+    #========================#
 
     # Set up Hermitian matrices A, B, C
-    A = HermitianMatrix(args.N, "p.rdata(PIdx::H{}{}_{})")
-    B = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{})")
-    C = HermitianMatrix(args.N, "p.rdata(PIdx::dfdt{}{}_{})")
+    dt = sympy.symbols('dt',real=True)
+    H = HermitianMatrix(args.N, "p.rdata(PIdx::V{}{}_{})")
+    F = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{})")
+    Fnew = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{})")
     
     # Calculate C = i * [A,B]
-    C.anticommutator(A,B).times(sympy.I);
+    #Fnew.anticommutator(H,F).times(sympy.I * dt);
+    Fnew.H = (F + (H*F - F*H).times(-sympy.I * dt)).H
     
     # Get generated code for the components of C
-    code = C.code()
+    code = Fnew.code()
+    write_code(code, os.path.join(args.emu_home, "Source", "flavor_evolve_K.H_fill"))
 
     # Write code to output file, using a template if one is provided
     # write_code(code, "code.cpp", args.output_template)
