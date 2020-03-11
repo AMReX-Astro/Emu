@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from sympy.physics.quantum.dagger import Dagger
 import argparse
 import os
 import sympy
@@ -137,6 +138,73 @@ if __name__ == "__main__":
     #=======================================#
     # Evolve.cpp_interpolate_from_mesh_fill #
     #=======================================#
+    # PMNS matrix from https://arxiv.org/pdf/1710.00715.pdf
+    # using first index as row, second as column. Have to check convention.
+    U = sympy.zeros(args.N,args.N)
+    P = sympy.zeros(args.N,args.N)
+    for i in range(args.N):
+        P[i,i] = 1
+        U[i,i] = 1
+    if(args.N>=2):
+        theta12 = sympy.symbols('PhysConst\:\:theta12',real=True)
+        U12 = sympy.zeros(args.N,args.N)
+        for i in range(args.N):
+            U12[i,i] = 1
+        U12[0,0] =  sympy.cos(theta12)
+        U12[0,1] =  sympy.sin(theta12)
+        U12[1,0] = -sympy.sin(theta12)
+        U12[1,1] =  sympy.cos(theta12)
+        alpha1 = sympy.symbols('PhysConst\:\:alpha1',real=True)
+        P[0,0] = sympy.exp(sympy.I * alpha1)
+    if(args.N>=3):
+        deltaCP = sympy.symbols('PhysConst\:\:deltaCP',real=True)
+        theta13 = sympy.symbols('PhysConst\:\:theta13',real=True)
+        U13 = sympy.zeros(args.N,args.N)
+        for i in range(args.N):
+            U13[i,i] = 1
+        U13[0,0] =  sympy.cos(theta13)
+        U13[0,2] =  sympy.sin(theta13) * sympy.exp(-sympy.I*deltaCP)
+        U13[2,0] = -sympy.sin(theta13) * sympy.exp( sympy.I*deltaCP)
+        U13[2,2] =  sympy.cos(theta13)
+        theta23 = sympy.symbols('PhysConst\:\:theta23',real=True)
+        U23 = sympy.zeros(args.N,args.N)
+        for i in range(args.N):
+            U23[i,i] = 1
+        U23[0,0] =  sympy.cos(theta13)
+        U23[0,2] =  sympy.sin(theta13)
+        U23[2,0] = -sympy.sin(theta13)
+        U23[2,2] =  sympy.cos(theta13)
+        alpha2 = sympy.symbols('PhysConst\:\:alpha2',real=True)
+        P[1,1] = sympy.exp(sympy.I * alpha2)
+            
+    if(args.N==2):
+        U = U12*P
+    if(args.N==3):
+        U = U23*U13*U12*P
+
+    # create M2 matrix in Evolve.H
+    M2 = sympy.zeros(args.N,args.N)
+    for i in range(args.N):
+        M2[i] = sympy.symbols('PhysConst\:\:mass'+str(i+1),real=True)**2
+    M2 = U*M2*Dagger(U)
+    massmatrix = HermitianMatrix(args.N, "M2matrix{}{}_{}")
+    massmatrix.H = M2
+    code = massmatrix.code()
+    code = ["double "+code[i] for i in range(len(code))]
+    write_code(code, os.path.join(args.emu_home, "Source","Evolve.H_M2_fill"))
+
+    # create the flavor-basis mass-squared matrix
+    # masses are assumed given in g
+    M2list = massmatrix.header()
+    code = []
+    for t in tails:
+        Vlist = HermitianMatrix(args.N, "V{}{}_{}"+t).header()
+        for icomp in range(len(Vlist)):
+            line = "p.rdata(PIdx::"+Vlist[icomp]+") = "+M2list[icomp] + "/(2.*p.rdata(PIdx::pupt)*PhysConst::c);"
+            code.append(line)
+    write_code(code, os.path.join(args.emu_home,"Source","Evolve.cpp_Vvac_fill"))
+
+    # matter and SI potentials require interpolating from grid
     tails = ["","bar"]
     string1 = "p.rdata(PIdx::"
     string2 = ") +=  sqrt(2.) * PhysConst::GF * sx[ii]*sy[jj]*sz[kk] * ("

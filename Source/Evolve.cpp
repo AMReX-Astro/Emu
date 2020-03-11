@@ -55,6 +55,8 @@ void interpolate_from_mesh(FlavoredNeutrinoContainer& neutrinos, MultiFab& state
     [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
                             amrex::Array4<const amrex::Real> const& sarr)
     {
+        #include "Evolve.cpp_Vvac_fill"
+
         amrex::Real lx = (p.pos(0) - plo[0]) * dxi[0] + 0.5;
         amrex::Real ly = (p.pos(1) - plo[1]) * dxi[1] + 0.5;
         amrex::Real lz = (p.pos(2) - plo[2]) * dxi[2] + 0.5;
