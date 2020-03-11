@@ -12,3 +12,8 @@ nsteps = 10
 
 # Make FPE signal errors so we get a Backtrace
 amrex.fpe_trap_invalid=1
+
+# give background fluid conditions
+rho = 1e3
+T = 10
+Ye = 0.3

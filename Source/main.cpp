@@ -21,6 +21,7 @@ struct TestParams
     int max_grid_size;
     int nsteps;
     bool write_plot;
+    double rho_in, Ye_in, T_in; // g/ccm, 1, MeV
 };
 
 void evolve_flavor(const TestParams& parms)
@@ -63,9 +64,9 @@ void evolve_flavor(const TestParams& parms)
 
     // initialize with NaNs ...
     state.setVal(std::numeric_limits<Real>::quiet_NaN());
-    state.setVal(1e3,GIdx::rho,1); // g/ccm
-    state.setVal(0.3,GIdx::Ye,1);
-    state.setVal(10,GIdx::T,1); // MeV
+    state.setVal(parms.rho_in,GIdx::rho,1); // g/ccm
+    state.setVal(parms.Ye_in,GIdx::Ye,1);
+    state.setVal(parms.T_in,GIdx::T,1); // MeV
 
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... ";
@@ -124,6 +125,9 @@ int main(int argc, char* argv[])
     pp.get("nppc",  parms.nppc);
     pp.get("max_grid_size", parms.max_grid_size);
     pp.get("nsteps", parms.nsteps);
+    pp.get("rho", parms.rho_in);
+    pp.get("Ye", parms.Ye_in);
+    pp.get("T", parms.T_in);
 
     evolve_flavor(parms);
 
