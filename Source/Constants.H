@@ -17,9 +17,17 @@ namespace PhysConst
     static constexpr amrex::Real hbarc = hbar*c; // erg cm
     static constexpr amrex::Real GF = 1.1663787e-5/*GeV^-2*//(1e9*1e9*CGSUnitsConst::eV*CGSUnitsConst::eV) * hbarc*hbarc*hbarc; //erg cm^3
     static constexpr amrex::Real Mp = 1.6726219e-24; // g
-    static constexpr amrex::Real dm21 = 2.43e-3/*eV^2*/ *CGSUnitsConst::eV*CGSUnitsConst::eV/c4; // g^2, delta m2^2-m1^2
-    static constexpr amrex::Real theta12V = 9. * M_PI/180.; // rad
     static constexpr amrex::Real sin2thetaW = 0.23122;
+    // neutrino parameters from first column of table 14.7 in http://pdg.lbl.gov/2019/reviews/rpp2019-rev-neutrino-mixing.pdf
+    static constexpr amrex::Real mass1 = -sqrt(7.39e-5)*CGSUnitsConst::eV; // erg NO/IO:7.39e-5 eV^2
+    static constexpr amrex::Real mass2 = 0; // define arbitrarily
+    static constexpr amrex::Real mass3 = sqrt(2.449e-3)*CGSUnitsConst::eV; // erg NO:2.449e-3 eV^2 IO:-2.509e-3 eV^2
+    static constexpr amrex::Real theta12 = 33.82 * M_PI/180; // NO/IO:33.82
+    static constexpr amrex::Real theta13 = 8.61  * M_PI/180; // NO:8.61 IO:8.65
+    static constexpr amrex::Real theta23 = 48.3  * M_PI/180; // NO:48.3 IO:48.6
+    static constexpr amrex::Real alpha1 = 0;
+    static constexpr amrex::Real alpha2 = 0;
+    static constexpr amrex::Real deltaCP = 222 * M_PI/180; // NO:222 IO:285
 }
 
 namespace MathConst
