@@ -4,6 +4,7 @@
 #include <AMReX_REAL.H>
 #include <AMReX_Geometry.H>
 #include <AMReX_MultiFab.H>
+#include <AMReX_Vector.H>
 
 void
 WritePlotFile (const amrex::MultiFab& state,
