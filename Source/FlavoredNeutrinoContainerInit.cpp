@@ -175,11 +175,10 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
 
                 // Set particle flavor
                 if(simulation_type==0){
-                  p.rdata(PIdx::f00_Re) = 1.0;
+                    p.rdata(PIdx::f00_Re) = 1.0;
                 }
                 else{
-                  std::cout << "Invalid simulation type" << std::endl;
-                  exit(1);
+                    amrex::Abort("Invalid simulation type");
                 }
             }
         });
