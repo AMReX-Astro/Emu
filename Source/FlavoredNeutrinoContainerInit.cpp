@@ -175,7 +175,7 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
 
                 // Set particle flavor
 		if(simulation_type==0){
-		  assert(PIdx::nattribs=14); // hack for nflavors==2
+		  AMREX_ASSERT(PIdx::nattribs==22); // hack for nflavors==2
 		  p.rdata(PIdx::N) = 1.0;
 		  p.rdata(PIdx::f00_Re)    = 1.0;
 		  p.rdata(PIdx::f01_Im)    = 0.0;
