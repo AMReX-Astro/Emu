@@ -19,7 +19,7 @@ struct GIdx
     };
 };
 
-amrex::Real compute_dt(const amrex::Geometry& geom);
+amrex::Real compute_dt(const amrex::Geometry& geom, const double cfl_factor);
 
 void deposit_to_mesh(FlavoredNeutrinoContainer& neutrinos, amrex::MultiFab& state, amrex::Geometry& geom);
 

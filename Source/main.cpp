@@ -23,6 +23,7 @@ struct TestParams
     bool write_plot;
     double rho_in, Ye_in, T_in; // g/ccm, 1, MeV
     int simulation_type;
+    double cfl_factor;
 };
 
 void evolve_flavor(const TestParams& parms)
@@ -80,7 +81,7 @@ void evolve_flavor(const TestParams& parms)
     amrex::Print() << "Starting timestepping loop... " << std::endl;
 
     int nsteps = parms.nsteps;
-    const Real dt = compute_dt(geom);
+    const Real dt = compute_dt(geom,parms.cfl_factor);
 
     Real time = 0.0;
     for (int step = 0; step < nsteps; ++step)
@@ -130,6 +131,7 @@ int main(int argc, char* argv[])
     pp.get("rho", parms.rho_in);
     pp.get("Ye", parms.Ye_in);
     pp.get("T", parms.T_in);
+    pp.get("cfl_factor", parms.cfl_factor);
 
     evolve_flavor(parms);
 

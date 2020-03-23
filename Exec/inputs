@@ -1,4 +1,5 @@
 simulation_type = 0
+cfl_factor = 0.4
 
 # Domain size in 3D index space
 ncell = (16, 16, 16)
