@@ -35,7 +35,7 @@ class FlavoredNeutrinoContainer
     : public amrex::ParticleContainer<PIdx::nattribs, 0, 0, 0>
 {
 
-    Vector<std::string> attribute_names;
+    amrex::Vector<std::string> attribute_names;
 
 public:
 
@@ -54,6 +54,11 @@ public:
         const int nGrow = 0;
         const int local = 1;
         Redistribute(lev_min, lev_max, nGrow, local);
+    }
+
+    amrex::Vector<std::string> get_attribute_names() const
+    {
+        return attribute_names;
     }
 };
 
