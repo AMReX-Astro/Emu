@@ -174,12 +174,24 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
                 p.rdata(PIdx::pupz) = u[2] * PhysConst::c;
 
                 // Set particle flavor
-                if(simulation_type==0){
-                    p.rdata(PIdx::f00_Re) = 1.0;
-                }
-                else{
-                    amrex::Abort("Invalid simulation type");
-                }
+		if(simulation_type==0){
+		  assert(PIdx::nattribs=14); // hack for nflavors==2
+		  p.rdata(PIdx::N) = 1.0;
+		  p.rdata(PIdx::f00_Re)    = 1.0;
+		  p.rdata(PIdx::f01_Im)    = 0.0;
+		  p.rdata(PIdx::f01_Im)    = 0.0;
+		  p.rdata(PIdx::f11_Re)    = 0.0;
+		  p.rdata(PIdx::f00_Rebar) = 1.0;
+		  p.rdata(PIdx::f01_Imbar) = 0.0;
+		  p.rdata(PIdx::f01_Imbar) = 0.0;
+		  p.rdata(PIdx::f11_Rebar) = 0.0;
+		}
+		else{
+		  std::cout << "Invalid simulation type" << std::endl;
+		  exit(1);
+		}
+
+                ++pidx;
             }
         });
     }
