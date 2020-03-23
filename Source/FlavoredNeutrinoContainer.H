@@ -2,6 +2,7 @@
 #define FLAVORED_NEUTRINO_CONTAINER_H_
 
 #include <AMReX_Particles.H>
+#include "Parameters.H"
 
 struct PIdx
 {
@@ -40,7 +41,7 @@ public:
                               const amrex::DistributionMapping & a_dmap,
                               const amrex::BoxArray            & a_ba);
 
-    void InitParticles(const amrex::IntVect& a_num_particles_per_cell, const int simulation_type);
+    void InitParticles(const TestParams& parms);
 
     void IntegrateParticles(const amrex::Real dt);
 

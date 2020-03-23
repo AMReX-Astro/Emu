@@ -42,7 +42,7 @@ FlavoredNeutrinoContainer(const Geometry            & a_geom,
 
 void
 FlavoredNeutrinoContainer::
-InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type)
+InitParticles(const TestParams& parms)
 {
     BL_PROFILE("FlavoredNeutrinoContainer::InitParticles");
 
@@ -51,9 +51,9 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
     const auto plo = Geom(lev).ProbLoArray();
     const auto& a_bounds = Geom(lev).ProbDomain();
     
-    const int num_ppc = AMREX_D_TERM( a_num_particles_per_cell[0],
-                                     *a_num_particles_per_cell[1],
-                                     *a_num_particles_per_cell[2]);
+    const int num_ppc = AMREX_D_TERM( parms.nppc[0],
+                                     *parms.nppc[1],
+                                     *parms.nppc[2]);
     const Real scale_fac = dx[0]*dx[1]*dx[2]/num_ppc;
     
     for(MFIter mfi = MakeMFIter(lev); mfi.isValid(); ++mfi)
@@ -77,7 +77,7 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
             {
                 Real r[3];
                 
-                get_position_unit_cell(r, a_num_particles_per_cell, i_part);
+                get_position_unit_cell(r, parms.nppc, i_part);
                 
                 Real x = plo[0] + (i + r[0])*dx[0];
                 Real y = plo[1] + (j + r[1])*dx[1];
@@ -142,7 +142,7 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
                 Real r[3];
                 Real u[3];
                 
-                get_position_unit_cell(r, a_num_particles_per_cell, i_part);
+                get_position_unit_cell(r, parms.nppc, i_part);
                 
                 Real x = plo[0] + (i + r[0])*dx[0];
                 Real y = plo[1] + (j + r[1])*dx[1];
@@ -171,7 +171,7 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
 		//=========================//
 		// VACUUM OSCILLATION TEST //
 		//=========================//
-		if(simulation_type==0){
+		if(parms.simulation_type==0){
 		  // set all particles to start in electron state (and anti-state)
 		  // Set N to be small enough that self-interaction is not important
 		  // Set all particle momenta to be such that one oscillation wavelength is 1cm
@@ -200,8 +200,6 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
 		  std::cout << "Invalid simulation type" << std::endl;
 		  exit(1);
 		}
-
-                ++pidx;
             }
         });
     }

@@ -14,18 +14,6 @@
 
 using namespace amrex;
 
-struct TestParams
-{
-    IntVect ncell;      // num cells in domain
-    IntVect nppc;       // number of particles per cell in each dim
-    int max_grid_size;
-    int nsteps;
-    bool write_plot;
-    double rho_in, Ye_in, T_in; // g/ccm, 1, MeV
-    int simulation_type;
-    double cfl_factor;
-};
-
 void evolve_flavor(const TestParams& parms)
 {
     // Periodicity and Boundary Conditions
@@ -74,7 +62,7 @@ void evolve_flavor(const TestParams& parms)
     amrex::Print() << "Initializing particles... ";
 
     FlavoredNeutrinoContainer neutrinos(geom, dm, ba);
-    neutrinos.InitParticles(parms.nppc, parms.simulation_type);
+    neutrinos.InitParticles(parms);
 
     amrex::Print() << "Done. " << std::endl;
 
