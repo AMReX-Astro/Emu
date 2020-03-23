@@ -40,7 +40,7 @@ public:
                               const amrex::DistributionMapping & a_dmap,
                               const amrex::BoxArray            & a_ba);
 
-    void InitParticles(const amrex::IntVect& a_num_particles_per_cell);
+    void InitParticles(const amrex::IntVect& a_num_particles_per_cell, const int simulation_type);
 
     void IntegrateParticles(const amrex::Real dt);
 

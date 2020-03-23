@@ -42,7 +42,7 @@ FlavoredNeutrinoContainer(const Geometry            & a_geom,
 
 void
 FlavoredNeutrinoContainer::
-InitParticles(const IntVect& a_num_particles_per_cell)
+InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type)
 {
     BL_PROFILE("FlavoredNeutrinoContainer::InitParticles");
 
@@ -174,7 +174,13 @@ InitParticles(const IntVect& a_num_particles_per_cell)
                 p.rdata(PIdx::pupz) = u[2] * PhysConst::c;
 
                 // Set particle flavor
-                p.rdata(PIdx::f00_Re) = 1.0;
+		if(simulation_type==0){
+		  p.rdata(PIdx::f00_Re) = 1.0;
+		}
+		else{
+		  std::cout << "Invalid simulation type" << std::endl;
+		  exit(1);
+		}
 
                 ++pidx;
             }

@@ -22,6 +22,7 @@ struct TestParams
     int nsteps;
     bool write_plot;
     double rho_in, Ye_in, T_in; // g/ccm, 1, MeV
+    int simulation_type;
 };
 
 void evolve_flavor(const TestParams& parms)
@@ -72,7 +73,7 @@ void evolve_flavor(const TestParams& parms)
     amrex::Print() << "Initializing particles... ";
 
     FlavoredNeutrinoContainer neutrinos(geom, dm, ba);
-    neutrinos.InitParticles(parms.nppc);
+    neutrinos.InitParticles(parms.nppc, parms.simulation_type);
 
     amrex::Print() << "Done. " << std::endl;
 
@@ -121,6 +122,7 @@ int main(int argc, char* argv[])
     ParmParse pp;
     TestParams parms;
 
+    pp.get("simulation_type", parms.simulation_type);
     pp.get("ncell", parms.ncell);
     pp.get("nppc",  parms.nppc);
     pp.get("max_grid_size", parms.max_grid_size);
