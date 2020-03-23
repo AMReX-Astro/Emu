@@ -167,15 +167,17 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
                 p.pos(1) = y;
                 p.pos(2) = z;
                 
-                // Set particle velocity to c in a random direction
-                p.rdata(PIdx::pupt) = PhysConst::c;
-                p.rdata(PIdx::pupx) = u[0] * PhysConst::c;
-                p.rdata(PIdx::pupy) = u[1] * PhysConst::c;
-                p.rdata(PIdx::pupz) = u[2] * PhysConst::c;
 
-                // Set particle flavor
+		//=========================//
+		// VACUUM OSCILLATION TEST //
+		//=========================//
 		if(simulation_type==0){
+		  // set all particles to start in electron state (and anti-state)
+		  // Set N to be small enough that self-interaction is not important
+		  // Set all particle momenta to be such that one oscillation wavelength is 1cm
 		  AMREX_ASSERT(PIdx::nattribs==22); // hack for nflavors==2
+
+		  // Set particle flavor
 		  p.rdata(PIdx::N) = 1.0;
 		  p.rdata(PIdx::f00_Re)    = 1.0;
 		  p.rdata(PIdx::f01_Im)    = 0.0;
@@ -185,6 +187,14 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
+
+		  // set momentum so that a vacuum oscillation wavelength occurs over a distance of 1cm
+		  // Set particle velocity to c in a random direction
+		  double dm2 = (PhysConst::mass2-PhysConst::mass1)*(PhysConst::mass2-PhysConst::mass1); //erg^2
+		  p.rdata(PIdx::pupt) = dm2 / (8.*M_PI*PhysConst::hbarc*PhysConst::c); // *1cm for units
+		  p.rdata(PIdx::pupx) = u[0] * PhysConst::c;
+		  p.rdata(PIdx::pupy) = u[1] * PhysConst::c;
+		  p.rdata(PIdx::pupz) = u[2] * PhysConst::c;
 		}
 		else{
 		  std::cout << "Invalid simulation type" << std::endl;
