@@ -76,7 +76,7 @@ def delete_generated_files():
     generated_files.append(os.path.join(args.emu_home, "Source", "Evolve.H_fill"))
     generated_files.append(os.path.join(args.emu_home, "Source", "Evolve.cpp_deposit_to_mesh_fill"))
     generated_files.append(os.path.join(args.emu_home, "Source", "Evolve.cpp_interpolate_from_mesh_fill"))
-    generated_files.append(os.path.join(args.emu_home, "Source", "FlavoredNeutrinoContainerInit.H_fill_particle_varnames"))
+    generated_files.append(os.path.join(args.emu_home, "Source", "FlavoredNeutrinoContainerInit.H_particle_varnames_fill"))
 
     for f in generated_files:
         try:
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     write_code(code, os.path.join(args.emu_home, "Source", "FlavoredNeutrinoContainer.H_fill"))
 
     #========================================================#
-    # FlavoredNeutrinoContainerInit.H_fill_particle_varnames #
+    # FlavoredNeutrinoContainerInit.H_particle_varnames_fill #
     #========================================================#
     vars = ["f","V"]
     tails = ["","bar"]
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     code = ['"{}"'.format(c) for c in code]
     code_string = code_string + ", ".join(code) + "};"
     code = [code_string]
-    write_code(code, os.path.join(args.emu_home, "Source", "FlavoredNeutrinoContainerInit.H_fill_particle_varnames"))
+    write_code(code, os.path.join(args.emu_home, "Source", "FlavoredNeutrinoContainerInit.H_particle_varnames_fill"))
 
     #===============#
     # Evolve.H_fill #
