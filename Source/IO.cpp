@@ -1,6 +1,7 @@
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_PlotFileUtil.H>
 
+#include "FlavoredNeutrinoContainer.H"
 #include "IO.H"
 
 using namespace amrex;
@@ -9,7 +10,7 @@ void
 WritePlotFile (const amrex::MultiFab& state,
                const FlavoredNeutrinoContainer& neutrinos,
                const amrex::Geometry& geom, amrex::Real time,
-               int step, int write_plot_particles);
+               int step, int write_plot_particles)
 {
     BL_PROFILE("WritePlotFile()");
 
@@ -29,5 +30,8 @@ WritePlotFile (const amrex::MultiFab& state,
     amrex::WriteSingleLevelPlotfile(plotfilename, state, varnames, geom, time, step);
 
     if (write_plot_particles == 1)
-        neutrinos.Checkpoint(plotfilename, "neutrinos0", true, neutrinos.varnames);
+    {
+        auto neutrino_varnames = neutrinos.get_attribute_names();
+        neutrinos.Checkpoint(plotfilename, "neutrinos0", true, neutrino_varnames);
+    }
 }
