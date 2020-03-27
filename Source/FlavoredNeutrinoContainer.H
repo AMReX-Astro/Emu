@@ -10,6 +10,9 @@ struct PIdx
   // f = distribution function (Real/Imaginary, neutrino/antineutrino)
   // V = potential
     enum {
+        // NOTE: If the non-scripted variables are changed, the following section
+        // of the code generation script should be changed as well:
+        // - FlavoredNeutrinoContainerInit.H_particle_varnames_fill
         N=0, pupt, pupx, pupy, pupz, time,
 	#include "FlavoredNeutrinoContainer.H_fill"
         nattribs
@@ -35,6 +38,8 @@ class FlavoredNeutrinoContainer
     : public amrex::ParticleContainer<PIdx::nattribs, 0, 0, 0>
 {
 
+    amrex::Vector<std::string> attribute_names;
+
 public:
 
     FlavoredNeutrinoContainer(const amrex::Geometry            & a_geom,
@@ -52,6 +57,11 @@ public:
         const int nGrow = 0;
         const int local = 1;
         Redistribute(lev_min, lev_max, nGrow, local);
+    }
+
+    amrex::Vector<std::string> get_attribute_names() const
+    {
+        return attribute_names;
     }
 };
 

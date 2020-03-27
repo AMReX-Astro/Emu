@@ -20,3 +20,9 @@ amrex.fpe_trap_invalid=1
 rho = 1e3
 T = 10
 Ye = 0.3
+
+# Write plotfiles
+write_plot = 1
+
+# Write particle data in plotfiles
+write_plot_particles = 1

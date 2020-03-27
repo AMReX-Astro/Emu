@@ -76,6 +76,7 @@ def delete_generated_files():
     generated_files.append(os.path.join(args.emu_home, "Source", "Evolve.H_fill"))
     generated_files.append(os.path.join(args.emu_home, "Source", "Evolve.cpp_deposit_to_mesh_fill"))
     generated_files.append(os.path.join(args.emu_home, "Source", "Evolve.cpp_interpolate_from_mesh_fill"))
+    generated_files.append(os.path.join(args.emu_home, "Source", "FlavoredNeutrinoContainerInit.H_particle_varnames_fill"))
 
     for f in generated_files:
         try:
@@ -100,6 +101,22 @@ if __name__ == "__main__":
             code += A.header()
     code = [code[i]+"," for i in range(len(code))]
     write_code(code, os.path.join(args.emu_home, "Source", "FlavoredNeutrinoContainer.H_fill"))
+
+    #========================================================#
+    # FlavoredNeutrinoContainerInit.H_particle_varnames_fill #
+    #========================================================#
+    vars = ["f","V"]
+    tails = ["","bar"]
+    code = []
+    for v in vars:
+        for t in tails:
+            A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
+            code += A.header()
+    code_string = 'attribute_names = {"N", "pupt", "pupx", "pupy", "pupz", "time", '
+    code = ['"{}"'.format(c) for c in code]
+    code_string = code_string + ", ".join(code) + "};"
+    code = [code_string]
+    write_code(code, os.path.join(args.emu_home, "Source", "FlavoredNeutrinoContainerInit.H_particle_varnames_fill"))
 
     #===============#
     # Evolve.H_fill #

@@ -97,7 +97,8 @@ void evolve_flavor(const TestParams& parms)
     deposit_to_mesh(neutrinos, state, geom);
 
     // Write the Mesh Data to Plotfile
-    WritePlotFile(state, geom, time, nsteps);
+    if (parms.write_plot == 1)
+        WritePlotFile(state, neutrinos, geom, time, nsteps, parms.write_plot_particles);
 }
 
 int main(int argc, char* argv[])
@@ -120,6 +121,8 @@ int main(int argc, char* argv[])
     pp.get("Ye", parms.Ye_in);
     pp.get("T", parms.T_in);
     pp.get("cfl_factor", parms.cfl_factor);
+    pp.get("write_plot", parms.write_plot);
+    pp.get("write_plot_particles", parms.write_plot_particles);
 
     evolve_flavor(parms);
 
