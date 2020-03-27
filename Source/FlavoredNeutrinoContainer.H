@@ -10,6 +10,9 @@ struct PIdx
   // f = distribution function (Real/Imaginary, neutrino/antineutrino)
   // V = potential
     enum {
+        // NOTE: If the non-scripted variables are changed, the following section
+        // of the code generation script should be changed as well:
+        // - FlavoredNeutrinoContainerInit.H_particle_varnames_fill
         N=0, pupt, pupx, pupy, pupz, time,
 	#include "FlavoredNeutrinoContainer.H_fill"
         nattribs
