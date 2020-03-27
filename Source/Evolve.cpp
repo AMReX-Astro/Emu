@@ -4,7 +4,7 @@
 
 using namespace amrex;
 
-Real compute_dt(const Geometry& geom, const double cfl_factor)
+Real compute_dt(const Geometry& geom, const Real cfl_factor)
 {
     const auto dxi = geom.CellSizeArray();
     Real dt = min(min(dxi[0],dxi[1]), dxi[2]) / PhysConst::c * cfl_factor;
