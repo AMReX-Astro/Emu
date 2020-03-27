@@ -15,8 +15,8 @@ void integrate_particle(FlavoredNeutrinoContainer::ParticleType& p,
   
     // evolve position for this particle over the timestep dt
     p.rdata(PIdx::time) += dt;
-    p.pos(0) += p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt) * dt;
-    p.pos(1) += p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt) * dt;
-    p.pos(2) += p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt) * dt;
+    p.pos(0) += p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt) * PhysConst::c * dt;
+    p.pos(1) += p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt) * PhysConst::c * dt;
+    p.pos(2) += p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt) * PhysConst::c * dt;
 }
 #endif

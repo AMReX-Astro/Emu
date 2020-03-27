@@ -42,7 +42,7 @@ FlavoredNeutrinoContainer(const Geometry            & a_geom,
 
 void
 FlavoredNeutrinoContainer::
-InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type)
+InitParticles(const TestParams& parms)
 {
     BL_PROFILE("FlavoredNeutrinoContainer::InitParticles");
 
@@ -51,9 +51,9 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
     const auto plo = Geom(lev).ProbLoArray();
     const auto& a_bounds = Geom(lev).ProbDomain();
     
-    const int num_ppc = AMREX_D_TERM( a_num_particles_per_cell[0],
-                                     *a_num_particles_per_cell[1],
-                                     *a_num_particles_per_cell[2]);
+    const int num_ppc = AMREX_D_TERM( parms.nppc[0],
+                                     *parms.nppc[1],
+                                     *parms.nppc[2]);
     const Real scale_fac = dx[0]*dx[1]*dx[2]/num_ppc;
     
     for(MFIter mfi = MakeMFIter(lev); mfi.isValid(); ++mfi)
@@ -77,7 +77,7 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
             {
                 Real r[3];
                 
-                get_position_unit_cell(r, a_num_particles_per_cell, i_part);
+                get_position_unit_cell(r, parms.nppc, i_part);
                 
                 Real x = plo[0] + (i + r[0])*dx[0];
                 Real y = plo[1] + (j + r[1])*dx[1];
@@ -142,7 +142,7 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
                 Real r[3];
                 Real u[3];
                 
-                get_position_unit_cell(r, a_num_particles_per_cell, i_part);
+                get_position_unit_cell(r, parms.nppc, i_part);
                 
                 Real x = plo[0] + (i + r[0])*dx[0];
                 Real y = plo[1] + (j + r[1])*dx[1];
@@ -167,19 +167,38 @@ InitParticles(const IntVect& a_num_particles_per_cell, const int simulation_type
                 p.pos(1) = y;
                 p.pos(2) = z;
                 
-                // Set particle velocity to c in a random direction
-                p.rdata(PIdx::pupt) = PhysConst::c;
-                p.rdata(PIdx::pupx) = u[0] * PhysConst::c;
-                p.rdata(PIdx::pupy) = u[1] * PhysConst::c;
-                p.rdata(PIdx::pupz) = u[2] * PhysConst::c;
 
-                // Set particle flavor
-                if(simulation_type==0){
-                    p.rdata(PIdx::f00_Re) = 1.0;
-                }
-                else{
-                    amrex::Abort("Invalid simulation type");
-                }
+		//=========================//
+		// VACUUM OSCILLATION TEST //
+		//=========================//
+		if(parms.simulation_type==0){
+		  // set all particles to start in electron state (and anti-state)
+		  // Set N to be small enough that self-interaction is not important
+		  // Set all particle momenta to be such that one oscillation wavelength is 1cm
+		  AMREX_ASSERT(PIdx::nattribs==22); // hack for nflavors==2
+
+		  // Set particle flavor
+		  p.rdata(PIdx::N) = 1.0;
+		  p.rdata(PIdx::f00_Re)    = 1.0;
+		  p.rdata(PIdx::f01_Im)    = 0.0;
+		  p.rdata(PIdx::f01_Im)    = 0.0;
+		  p.rdata(PIdx::f11_Re)    = 0.0;
+		  p.rdata(PIdx::f00_Rebar) = 1.0;
+		  p.rdata(PIdx::f01_Imbar) = 0.0;
+		  p.rdata(PIdx::f01_Imbar) = 0.0;
+		  p.rdata(PIdx::f11_Rebar) = 0.0;
+
+		  // set momentum so that a vacuum oscillation wavelength occurs over a distance of 1cm
+		  // Set particle velocity to c in a random direction
+		  constexpr Real dm2 = (PhysConst::mass2-PhysConst::mass1)*(PhysConst::mass2-PhysConst::mass1); //erg^2
+		  p.rdata(PIdx::pupt) = dm2 / (8.*M_PI*PhysConst::hbarc*PhysConst::c); // *1cm for units
+		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
+		}
+		else{
+            amrex::Error("Invalid simulation type");
+		}
             }
         });
     }
