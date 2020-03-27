@@ -197,8 +197,7 @@ InitParticles(const TestParams& parms)
 		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
 		}
 		else{
-		  std::cout << "Invalid simulation type" << std::endl;
-		  exit(1);
+            amrex::Error("Invalid simulation type");
 		}
             }
         });
