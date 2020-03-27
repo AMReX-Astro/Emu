@@ -32,6 +32,6 @@ WritePlotFile (const amrex::MultiFab& state,
     if (write_plot_particles == 1)
     {
         auto neutrino_varnames = neutrinos.get_attribute_names();
-        neutrinos.Checkpoint(plotfilename, "neutrinos0", true, neutrino_varnames);
+        neutrinos.Checkpoint(plotfilename, "neutrinos", true, neutrino_varnames);
     }
 }
