@@ -124,7 +124,7 @@ if __name__ == "__main__":
     x0 = []
     y0 = []
 
-    idata, rdata = read_particle_data(args.plotfile, ptype="neutrinos0")
+    idata, rdata = read_particle_data(args.plotfile, ptype="neutrinos")
     for p in rdata:
         x0.append(p[0])
         y0.append(p[1])
