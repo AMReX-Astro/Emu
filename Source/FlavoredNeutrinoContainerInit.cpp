@@ -39,7 +39,7 @@ FlavoredNeutrinoContainer(const Geometry            & a_geom,
                           const BoxArray            & a_ba)
     : ParticleContainer<PIdx::nattribs, 0, 0, 0>(a_geom, a_dmap, a_ba)
 {
-    #include "FlavoredNeutrinoContainerInit.H_fill_particle_varnames"
+    #include "FlavoredNeutrinoContainerInit.H_particle_varnames_fill"
 }
 
 void
