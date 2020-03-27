@@ -190,7 +190,7 @@ InitParticles(const TestParams& parms)
 
 		  // set momentum so that a vacuum oscillation wavelength occurs over a distance of 1cm
 		  // Set particle velocity to c in a random direction
-		  double dm2 = (PhysConst::mass2-PhysConst::mass1)*(PhysConst::mass2-PhysConst::mass1); //erg^2
+		  constexpr Real dm2 = (PhysConst::mass2-PhysConst::mass1)*(PhysConst::mass2-PhysConst::mass1); //erg^2
 		  p.rdata(PIdx::pupt) = dm2 / (8.*M_PI*PhysConst::hbarc*PhysConst::c); // *1cm for units
 		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
