@@ -72,9 +72,10 @@ void evolve_flavor(const TestParams& parms)
     const Real dt = compute_dt(geom,parms.cfl_factor);
 
     Real time = 0.0;
+    WritePlotFile(state, neutrinos, geom, time, 0, parms.write_plot_particles);
     for (int step = 0; step < nsteps; ++step)
     {
-        amrex::Print() << "    Time step: " <<  step << std::endl;
+        amrex::Print() << "    Time step: " <<  step << " t="<<time << "s.  ct="<< PhysConst::c*time << "cm" << std::endl;
 
         // Deposit Particle Data to Mesh
         deposit_to_mesh(neutrinos, state, geom);
@@ -91,8 +92,8 @@ void evolve_flavor(const TestParams& parms)
         time += dt;
 
         // Write the Mesh Data to Plotfile
-	if (step % parms.write_plot_every == 0)
-	  WritePlotFile(state, neutrinos, geom, time, step, parms.write_plot_particles);
+	if ((step+1) % parms.write_plot_every == 0)
+	  WritePlotFile(state, neutrinos, geom, time, step+1, parms.write_plot_particles);
     }
 
     amrex::Print() << "Done. " << std::endl;
