@@ -89,6 +89,10 @@ void evolve_flavor(const TestParams& parms)
         neutrinos.RedistributeLocal();
 
         time += dt;
+
+        // Write the Mesh Data to Plotfile
+	if (step % parms.write_plot_every == 0)
+	  WritePlotFile(state, neutrinos, geom, time, step, parms.write_plot_particles);
     }
 
     amrex::Print() << "Done. " << std::endl;
@@ -96,9 +100,6 @@ void evolve_flavor(const TestParams& parms)
     // Deposit Particle Data to Mesh
     deposit_to_mesh(neutrinos, state, geom);
 
-    // Write the Mesh Data to Plotfile
-    if (parms.write_plot == 1)
-        WritePlotFile(state, neutrinos, geom, time, nsteps, parms.write_plot_particles);
 }
 
 int main(int argc, char* argv[])
@@ -121,7 +122,7 @@ int main(int argc, char* argv[])
     pp.get("Ye", parms.Ye_in);
     pp.get("T", parms.T_in);
     pp.get("cfl_factor", parms.cfl_factor);
-    pp.get("write_plot", parms.write_plot);
+    pp.get("write_plot_every", parms.write_plot_every);
     pp.get("write_plot_particles", parms.write_plot_particles);
 
     evolve_flavor(parms);
