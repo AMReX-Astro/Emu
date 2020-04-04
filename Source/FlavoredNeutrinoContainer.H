@@ -13,6 +13,7 @@ struct PIdx
         // NOTE: If the non-scripted variables are changed, the following section
         // of the code generation script should be changed as well:
         // - FlavoredNeutrinoContainerInit.H_particle_varnames_fill
+        // p has units of ergs (implied multiply by c)
         N=0, pupt, pupx, pupy, pupz, time,
 	#include "FlavoredNeutrinoContainer.H_fill"
         nattribs
