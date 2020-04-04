@@ -2,6 +2,7 @@ import numpy as np
 import argparse
 
 clight = 2.99792458e10 # cm/s
+theta12 = 33.82*np.pi/180. # radians
 
 class AMReXParticleHeader(object):
     '''
@@ -178,6 +179,8 @@ if __name__ == "__main__":
     plt.plot(t*clight, fxx, 'g.')
     plt.plot(t*clight, feebar, 'r.')
     plt.plot(t*clight, fxxbar, 'k.')
+    plt.plot(t*clight, np.sin(t*clight*2.*np.pi)**2 * np.sin(2.*theta12)**2, 'b-')
+    plt.plot(t*clight, 1.-np.sin(t*clight*2.*np.pi)**2 * np.sin(2.*theta12)**2, 'g-')
     #plt.axis((0., 1., 0., 1.))
     ax = plt.gca()
     ax.set_xlabel(r'$ct$ (cm)')
