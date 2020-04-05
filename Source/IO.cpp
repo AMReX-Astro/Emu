@@ -3,6 +3,7 @@
 
 #include "FlavoredNeutrinoContainer.H"
 #include "IO.H"
+#include "Evolve.H"
 
 using namespace amrex;
 
@@ -24,8 +25,8 @@ WritePlotFile (const amrex::MultiFab& state,
     amrex::Print() << "  Writing plotfile " << plotfilename << "\n";
 
     Vector<std::string> varnames;
-
-    varnames.push_back("scalar");
+    for(int i=0; i<GIdx::ncomp; i++)
+      varnames.push_back("scalar"+std::to_string(i));
 
     amrex::WriteSingleLevelPlotfile(plotfilename, state, varnames, geom, time, step);
 
