@@ -16,7 +16,12 @@ void deposit_to_mesh(FlavoredNeutrinoContainer& neutrinos, MultiFab& state, Geom
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
 
-    amrex::ParticleToMesh(neutrinos, state, 0,
+    // create a copy of the MultiFab so it only erases the quantities that will be set by the neutrinos
+    int start_comp = GIdx::N00_Re;
+    int num_comps = GIdx::ncomp - start_comp;
+    MultiFab alias_mf(state, amrex::make_alias, start_comp, num_comps);
+
+    amrex::ParticleToMesh(neutrinos, alias_mf, 0,
     [=] AMREX_GPU_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p,
                             amrex::Array4<amrex::Real> const& sarr)
     {

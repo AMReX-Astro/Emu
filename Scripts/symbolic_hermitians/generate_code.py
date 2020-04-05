@@ -136,7 +136,7 @@ if __name__ == "__main__":
     #=================================#
     tails = ["","bar"]
     string1 = "amrex::Gpu::Atomic::Add(&sarr(i+ii-1, j+jj-1, k+kk-1, GIdx::"
-    string2 = "), sx[ii]*sy[jj]*sz[kk] * p.rdata(PIdx::"
+    string2 = "-GIdx::N00_Re), sx[ii]*sy[jj]*sz[kk] * p.rdata(PIdx::"
     string3 = ")*p.rdata(PIdx::N)"
     string4 = [");",
                "*p.rdata(PIdx::pupx));",#/p.rdata(PIdx::pupt));",
@@ -243,7 +243,7 @@ if __name__ == "__main__":
                 line = line + " - "+string_interp+Flist[i][icomp]+")*p.rdata(PIdx::pup"+direction[i]+")/p.rdata(PIdx::pupt)"
 
             # matter potential
-            rhoye = string_interp+"rho)*"+string_interp+"Ye)"
+            rhoye = string_interp+"rho)*"+string_interp+"Ye)/PhysConst::Mp"
             if(Vlist[icomp]=="V00_Re"):
                 line = line + " + " + rhoye
             if(Vlist[icomp]=="V00_Rebar"):
