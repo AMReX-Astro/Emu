@@ -1,5 +1,5 @@
 simulation_type = 0
-cfl_factor = 0.1
+cfl_factor = 0.04
 
 # Domain size in 3D index space
 ncell = (4, 4, 4)
@@ -11,15 +11,15 @@ nppc  = (1, 1, 1)
 max_grid_size = 64
 
 # Number of steps to run
-nsteps = 40
+nsteps = 100
 
 # Make FPE signal errors so we get a Backtrace
 amrex.fpe_trap_invalid=1
 
 # give background fluid conditions
-rho = 628660772.6864785
+rho = 1346160134.709288
 T = 10
-Ye = 0.5
+Ye = 1
 
 # Write plotfiles
 write_plot_every = 1

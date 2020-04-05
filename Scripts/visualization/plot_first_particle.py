@@ -1,8 +1,21 @@
 import numpy as np
 import argparse
+import glob
 
+# physical constants
 clight = 2.99792458e10 # cm/s
+hbar = 1.05457266e-27 # erg s
 theta12 = 33.82*np.pi/180. # radians
+eV = 1.60218e-12 # erg
+dm21c4 = 7.39e-5 * eV**2 # erg^2
+mp = 1.6726219e-24 # g
+GF = 1.1663787e-5 / (1e9*eV)**2 * (hbar*clight)**3 #erg cm^3
+
+# E and rho*Ye that induces resonance
+E = dm21c4 * np.sin(2.*theta12)/(8.*np.pi*hbar*clight)
+rhoYe = 4.*np.pi*hbar*clight*mp / (np.tan(2.*theta12)*np.sqrt(2.)*GF)
+print("E should be ",E,"erg")
+print("rho*Ye shoud be ", rhoYe," g/cm^3")
 
 class AMReXParticleHeader(object):
     '''
@@ -158,8 +171,8 @@ if __name__ == "__main__":
     fxxbar = []
     pupt = []
 
-    iter_list = range(40+1)
-    for i in range(40+1):
+    nfiles = len(glob.glob("plt*"))
+    for i in range(nfiles):
         
         plotfile = "plt"+str(i).zfill(5)
         idata, rdata = read_particle_data(plotfile, ptype="neutrinos")
@@ -172,15 +185,37 @@ if __name__ == "__main__":
         pupt.append(p[rkey["pupt"]])
 
     t = np.array(t)
-        
+
+    # The neutrino energy we set
+    #E = dm21c4 * np.sin(2.*theta12) / (8.*np.pi*hbar*clight)
+
+    # The potential we use
+    V = np.sqrt(2.) * GF * rhoYe/mp
+    
+    # Richers(2019) B3
+    C    = np.cos(2.*theta12) + 2.*V*E/dm21c4
+    Cbar = np.cos(2.*theta12) - 2.*V*E/dm21c4
+    sin2_eff    = np.sin(2.*theta12)**2 / (np.sin(2.*theta12)**2 + C**2)
+    sin2_effbar = np.sin(2.*theta12)**2 / (np.sin(2.*theta12)**2 + Cbar**2)
+    dm2_eff    = dm21c4 * np.sqrt(np.sin(2.*theta12)**2 + C**2)
+    dm2_effbar = dm21c4 * np.sqrt(np.sin(2.*theta12)**2 + Cbar**2)
+    
     fig = plt.gcf()
     fig.set_size_inches(8, 8)
+
     plt.plot(t*clight, fee, 'b.')
+    plt.plot(t*clight, 1.-np.sin(t * dm2_eff/(4.*E*hbar))**2 * sin2_eff, 'b-')
+    
     plt.plot(t*clight, fxx, 'g.')
+    plt.plot(t*clight, np.sin(t * dm2_eff/(4.*E*hbar))**2 * sin2_eff, 'g-')
+
     plt.plot(t*clight, feebar, 'r.')
+    plt.plot(t*clight, 1.-np.sin(t * dm2_effbar/(4.*E*hbar))**2 * sin2_effbar, 'r-')
+
     plt.plot(t*clight, fxxbar, 'k.')
-    plt.plot(t*clight, np.sin(t*clight*2.*np.pi)**2 * np.sin(2.*theta12)**2, 'b-')
-    plt.plot(t*clight, 1.-np.sin(t*clight*2.*np.pi)**2 * np.sin(2.*theta12)**2, 'g-')
+    plt.plot(t*clight, np.sin(t * dm2_effbar/(4.*E*hbar))**2 * sin2_effbar, 'k-')
+
+    plt.grid()
     #plt.axis((0., 1., 0., 1.))
     ax = plt.gca()
     ax.set_xlabel(r'$ct$ (cm)')
