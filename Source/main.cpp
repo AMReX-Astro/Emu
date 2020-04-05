@@ -53,7 +53,7 @@ void evolve_flavor(const TestParams& parms)
     MultiFab state(ba, dm, ncomp, ngrow);
 
     // initialize with NaNs ...
-    state.setVal(std::numeric_limits<Real>::quiet_NaN());
+    state.setVal(0);//std::numeric_limits<Real>::quiet_NaN());
     state.setVal(parms.rho_in,GIdx::rho,1); // g/ccm
     state.setVal(parms.Ye_in,GIdx::Ye,1);
     state.setVal(parms.T_in,GIdx::T,1); // MeV
