@@ -139,9 +139,9 @@ if __name__ == "__main__":
     string2 = "-GIdx::N00_Re), sx[ii]*sy[jj]*sz[kk] * p.rdata(PIdx::"
     string3 = ")*p.rdata(PIdx::N)"
     string4 = [");",
-               "*p.rdata(PIdx::pupx));",#/p.rdata(PIdx::pupt));",
-               "*p.rdata(PIdx::pupy));",#/p.rdata(PIdx::pupt));",
-               "*p.rdata(PIdx::pupz));"]#/p.rdata(PIdx::pupt));"]
+               "*p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt));",
+               "*p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt));",
+               "*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt));"]
     deposit_vars = ["N","Fx","Fy","Fz"]
     code = []
     for t in tails:
