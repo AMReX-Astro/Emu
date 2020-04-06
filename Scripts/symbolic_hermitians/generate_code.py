@@ -136,12 +136,12 @@ if __name__ == "__main__":
     #=================================#
     tails = ["","bar"]
     string1 = "amrex::Gpu::Atomic::Add(&sarr(i+ii-1, j+jj-1, k+kk-1, GIdx::"
-    string2 = "), sx[ii]*sy[jj]*sz[kk] * p.rdata(PIdx::"
+    string2 = "-GIdx::N00_Re), sx[ii]*sy[jj]*sz[kk] * p.rdata(PIdx::"
     string3 = ")*p.rdata(PIdx::N)"
     string4 = [");",
-               "*p.rdata(PIdx::pupx));",#/p.rdata(PIdx::pupt));",
-               "*p.rdata(PIdx::pupy));",#/p.rdata(PIdx::pupt));",
-               "*p.rdata(PIdx::pupz));"]#/p.rdata(PIdx::pupt));"]
+               "*p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt));",
+               "*p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt));",
+               "*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt));"]
     deposit_vars = ["N","Fx","Fy","Fz"]
     code = []
     for t in tails:
@@ -217,7 +217,7 @@ if __name__ == "__main__":
     for t in tails:
         Vlist = HermitianMatrix(args.N, "V{}{}_{}"+t).header()
         for icomp in range(len(Vlist)):
-            line = "p.rdata(PIdx::"+Vlist[icomp]+") = "+M2list[icomp] + "/(2.*p.rdata(PIdx::pupt)*PhysConst::c);"
+            line = "p.rdata(PIdx::"+Vlist[icomp]+") = ("+M2list[icomp] + ")*PhysConst::c4/(2.*p.rdata(PIdx::pupt));"
             code.append(line)
     write_code(code, os.path.join(args.emu_home,"Source","Evolve.cpp_Vvac_fill"))
 
@@ -243,7 +243,7 @@ if __name__ == "__main__":
                 line = line + " - "+string_interp+Flist[i][icomp]+")*p.rdata(PIdx::pup"+direction[i]+")/p.rdata(PIdx::pupt)"
 
             # matter potential
-            rhoye = string_interp+"rho)*"+string_interp+"Ye)"
+            rhoye = string_interp+"rho)*"+string_interp+"Ye)/PhysConst::Mp"
             if(Vlist[icomp]=="V00_Re"):
                 line = line + " + " + rhoye
             if(Vlist[icomp]=="V00_Rebar"):
@@ -259,16 +259,20 @@ if __name__ == "__main__":
 
     # Set up Hermitian matrices A, B, C
     dt = sympy.symbols('dt',real=True)
-    H = HermitianMatrix(args.N, "p.rdata(PIdx::V{}{}_{})")
-    F = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{})")
-    Fnew = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{})")
+    hbar = sympy.symbols("PhysConst\:\:hbar",real=True)
+    code = []
+    for t in tails:
+        H = HermitianMatrix(args.N, "p.rdata(PIdx::V{}{}_{}"+t+")")
+        F = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
+        Fnew = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
     
-    # Calculate C = i * [A,B]
-    #Fnew.anticommutator(H,F).times(sympy.I * dt);
-    Fnew.H = (F + (H*F - F*H).times(-sympy.I * dt)).H
+        # Calculate C = i * [A,B]
+        #Fnew.anticommutator(H,F).times(sympy.I * dt);
+        Fnew.H = (F + (H*F - F*H).times(-sympy.I * dt/hbar)).H
     
-    # Get generated code for the components of C
-    code = Fnew.code()
+        # Get generated code for the components of C
+        code.append(Fnew.code())
+    code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source", "flavor_evolve_K.H_fill"))
 
     # Write code to output file, using a template if one is provided

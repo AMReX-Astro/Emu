@@ -53,10 +53,11 @@ void evolve_flavor(const TestParams& parms)
     MultiFab state(ba, dm, ncomp, ngrow);
 
     // initialize with NaNs ...
-    state.setVal(std::numeric_limits<Real>::quiet_NaN());
+    state.setVal(0.0);
     state.setVal(parms.rho_in,GIdx::rho,1); // g/ccm
     state.setVal(parms.Ye_in,GIdx::Ye,1);
     state.setVal(parms.T_in,GIdx::T,1); // MeV
+    state.FillBoundary(geom.periodicity());
 
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... ";
@@ -72,12 +73,14 @@ void evolve_flavor(const TestParams& parms)
     const Real dt = compute_dt(geom,parms.cfl_factor);
 
     Real time = 0.0;
+    WritePlotFile(state, neutrinos, geom, time, 0, parms.write_plot_particles);
     for (int step = 0; step < nsteps; ++step)
     {
-        amrex::Print() << "    Time step: " <<  step << std::endl;
+        amrex::Print() << "    Time step: " <<  step << " t="<<time << "s.  ct="<< PhysConst::c*time << "cm" << std::endl;
 
         // Deposit Particle Data to Mesh
         deposit_to_mesh(neutrinos, state, geom);
+	state.FillBoundary(geom.periodicity());
 
         // Interpolate Mesh Data back to Particles
         interpolate_from_mesh(neutrinos, state, geom);
@@ -89,6 +92,10 @@ void evolve_flavor(const TestParams& parms)
         neutrinos.RedistributeLocal();
 
         time += dt;
+
+        // Write the Mesh Data to Plotfile
+	if ((step+1) % parms.write_plot_every == 0)
+	  WritePlotFile(state, neutrinos, geom, time, step+1, parms.write_plot_particles);
     }
 
     amrex::Print() << "Done. " << std::endl;
@@ -96,9 +103,6 @@ void evolve_flavor(const TestParams& parms)
     // Deposit Particle Data to Mesh
     deposit_to_mesh(neutrinos, state, geom);
 
-    // Write the Mesh Data to Plotfile
-    if (parms.write_plot == 1)
-        WritePlotFile(state, neutrinos, geom, time, nsteps, parms.write_plot_particles);
 }
 
 int main(int argc, char* argv[])
@@ -121,7 +125,7 @@ int main(int argc, char* argv[])
     pp.get("Ye", parms.Ye_in);
     pp.get("T", parms.T_in);
     pp.get("cfl_factor", parms.cfl_factor);
-    pp.get("write_plot", parms.write_plot);
+    pp.get("write_plot_every", parms.write_plot_every);
     pp.get("write_plot_particles", parms.write_plot_particles);
 
     evolve_flavor(parms);

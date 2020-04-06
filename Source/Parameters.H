@@ -12,7 +12,7 @@ struct TestParams
     IntVect nppc;       // number of particles per cell in each dim
     int max_grid_size;
     int nsteps;
-    int write_plot;
+    int write_plot_every;
     int write_plot_particles;
     Real rho_in, Ye_in, T_in; // g/ccm, 1, MeV
     int simulation_type;
