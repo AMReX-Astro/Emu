@@ -53,10 +53,11 @@ void evolve_flavor(const TestParams& parms)
     MultiFab state(ba, dm, ncomp, ngrow);
 
     // initialize with NaNs ...
-    state.setVal(0);//std::numeric_limits<Real>::quiet_NaN());
+    state.setVal(0.0);
     state.setVal(parms.rho_in,GIdx::rho,1); // g/ccm
     state.setVal(parms.Ye_in,GIdx::Ye,1);
     state.setVal(parms.T_in,GIdx::T,1); // MeV
+    state.FillBoundary(geom.periodicity());
 
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... ";
@@ -79,6 +80,7 @@ void evolve_flavor(const TestParams& parms)
 
         // Deposit Particle Data to Mesh
         deposit_to_mesh(neutrinos, state, geom);
+	state.FillBoundary(geom.periodicity());
 
         // Interpolate Mesh Data back to Particles
         interpolate_from_mesh(neutrinos, state, geom);
