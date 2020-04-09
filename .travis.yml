@@ -30,4 +30,4 @@ install:
 - cd Exec; make
 
 script:
-- cd Exec; mpirun -np 2 ./main3d.gnu.TPROF.MPI.ex inputs
+- cd Exec; mpirun -np 2 ./main3d.gnu.TPROF.MPI.ex inputs_msw_test; python ../Scripts/tests/msw_test.py
