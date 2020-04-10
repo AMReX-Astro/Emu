@@ -281,8 +281,9 @@ if __name__ == "__main__":
     code = []
     for t in tails:
         code.append("sumP = 0;")
-        flist = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")").header_diagonals()
-        for fii in flist:
+        fdlist = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")").header_diagonals()
+        flist = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")").header()
+        for fii in fdlist:
             code.append("sumP += " + fii + ";")
         for fii in flist:
             code.append(fii + " /= sumP;")
