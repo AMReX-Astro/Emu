@@ -198,6 +198,36 @@ InitParticles(const TestParams& parms)
 		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
 		}
+
+		//==========================//
+		// BIPOLAR OSCILLATION TEST //
+		//==========================//
+		if(parms.simulation_type==1){
+		  AMREX_ASSERT(PIdx::nattribs==22); // hack for nflavors==2
+		  
+		  // Set particle flavor
+		  p.rdata(PIdx::f00_Re)    = 1.0;
+		  p.rdata(PIdx::f01_Im)    = 0.0;
+		  p.rdata(PIdx::f01_Im)    = 0.0;
+		  p.rdata(PIdx::f11_Re)    = 0.0;
+		  p.rdata(PIdx::f00_Rebar) = 1.0;
+		  p.rdata(PIdx::f01_Imbar) = 0.0;
+		  p.rdata(PIdx::f01_Imbar) = 0.0;
+		  p.rdata(PIdx::f11_Rebar) = 0.0;
+
+		  // set energy to 50 MeV to match Richers+(2019)
+		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
+
+		  // set particle weight such that density is
+		  // 10 dm2 c^4 / (2 sqrt(2) GF E)
+		  constexpr Real dm2 = pow(PhysConst::mass2-PhysConst::mass1, 2); //g^2
+		  double ndens = 10. * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
+		  p.rdata(PIdx::N) = ndens * scale_fac;
+		}
+
 		else{
             amrex::Error("Invalid simulation type");
 		}
