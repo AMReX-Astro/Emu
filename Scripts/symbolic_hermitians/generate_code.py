@@ -275,6 +275,18 @@ if __name__ == "__main__":
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source", "flavor_evolve_K.H_fill"))
 
+    #================================================#
+    # FlavoredNeutrinoContainer.cpp_Renormalize_fill #
+    #================================================#
+    code = []
+    for t in tails:
+        code.append("sumP = 0;")
+        flist = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")").header_diagonals()
+        for fii in flist:
+            code.append("sumP += " + fii + ";")
+        for fii in flist:
+            code.append(fii + " /= sumP;")
+    write_code(code, os.path.join(args.emu_home, "Source", "FlavoredNeutrinoContainer.cpp_Renormalize_fill"))
     # Write code to output file, using a template if one is provided
     # write_code(code, "code.cpp", args.output_template)
 

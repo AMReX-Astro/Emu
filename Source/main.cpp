@@ -93,7 +93,10 @@ void evolve_flavor(const TestParams& parms)
 
         time += dt;
 
-        // Write the Mesh Data to Plotfile
+	// Renormalize particle probabilities
+	neutrinos.Renormalize();
+
+	// Write the Mesh Data to Plotfile
 	if ((step+1) % parms.write_plot_every == 0)
 	  WritePlotFile(state, neutrinos, geom, time, step+1, parms.write_plot_particles);
     }

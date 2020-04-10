@@ -27,3 +27,28 @@ IntegrateParticles(const Real dt)
         });       
     }
 }
+
+void FlavoredNeutrinoContainer::
+Renormalize()
+{
+    BL_PROFILE("FlavoredNeutrinoContainer::Renormalize");
+
+    const int lev = 0;
+
+    const auto dxi = Geom(lev).InvCellSizeArray();
+    const auto plo = Geom(lev).ProbLoArray();
+
+    for (FNParIter pti(*this, lev); pti.isValid(); ++pti)
+    {
+        const int np  = pti.numParticles();
+        ParticleType * pstruct = &(pti.GetArrayOfStructs()[0]);
+
+        ParallelFor ( np,
+	  [=] (int i) {
+	  ParticleType& p = pstruct[i];
+	  double sumP;
+	  #include "FlavoredNeutrinoContainer.cpp_Renormalize_fill"
+	  }
+	);
+    }
+}
