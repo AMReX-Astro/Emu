@@ -121,3 +121,6 @@ class HermitianMatrix(object):
         lines = [sympy.cxxcode(e) for e in self.declarations()]
         return lines
         
+    def header_diagonals(self):
+        lines = [sympy.cxxcode(sympy.re(self.H[i,i])) for i in range(self.size)]
+        return lines
