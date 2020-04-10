@@ -34,8 +34,8 @@ void evolve_flavor(const TestParams& parms)
     ba.maxSize(parms.max_grid_size);
 
     // This defines the physical box, [0,1] in each dimension
-    RealBox real_box({AMREX_D_DECL( 0.0, 0.0, 0.0)},
-                     {AMREX_D_DECL( 1.0, 1.0, 1.0)});
+    RealBox real_box({AMREX_D_DECL(     0.0,      0.0,      0.0)},
+                     {AMREX_D_DECL(parms.Lx, parms.Ly, parms.Lz)});
 
     // This defines the domain Geometry
     Geometry geom(domain, &real_box, CoordSys::cartesian, is_periodic.data());
@@ -121,6 +121,9 @@ int main(int argc, char* argv[])
 
     pp.get("simulation_type", parms.simulation_type);
     pp.get("ncell", parms.ncell);
+    pp.get("Lx", parms.Lx);
+    pp.get("Ly", parms.Ly);
+    pp.get("Lz", parms.Lz);
     pp.get("nppc",  parms.nppc);
     pp.get("max_grid_size", parms.max_grid_size);
     pp.get("nsteps", parms.nsteps);
