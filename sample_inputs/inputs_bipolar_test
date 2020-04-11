@@ -1,0 +1,31 @@
+simulation_type = 1
+cfl_factor = 0.04
+
+# Domain size in 3D index space
+ncell = (4, 4, 4)
+Lx = 1.0
+Ly = 1.0
+Lz = 1.0
+
+# Number of particles per cell
+nppc  = (1, 1, 1)
+
+# Maximum size of each grid in the domain
+max_grid_size = 64
+
+# Number of steps to run
+nsteps = 100
+
+# Make FPE signal errors so we get a Backtrace
+amrex.fpe_trap_invalid=1
+
+# give background fluid conditions
+rho = 0
+T = 10
+Ye = 1
+
+# Write plotfiles
+write_plot_every = 1
+
+# Write particle data in plotfiles
+write_plot_particles = 1

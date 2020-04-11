@@ -31,3 +31,4 @@ install:
 
 script:
 - cd Exec; mpirun -np 2 ./main3d.gnu.DEBUG.TPROF.MPI.ex ../sample_inputs/inputs_msw_test; python ../Scripts/tests/msw_test.py
+- cd Exec; mpirun -np 2 ./main3d.gnu.DEBUG.TPROF.MPI.ex ../sample_inputs/inputs_bipolar_test
