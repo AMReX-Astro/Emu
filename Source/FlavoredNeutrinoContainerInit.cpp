@@ -202,7 +202,7 @@ InitParticles(const TestParams& parms)
 		//==========================//
 		// BIPOLAR OSCILLATION TEST //
 		//==========================//
-		if(parms.simulation_type==1){
+		else if(parms.simulation_type==1){
 		  AMREX_ASSERT(PIdx::nattribs==22); // hack for nflavors==2
 		  
 		  // Set particle flavor
