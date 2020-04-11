@@ -1,0 +1,7 @@
+GNUmakefile
+plt*
+*~
+*.ex
+tmp_build_dir
+Backtrace.*
+*.png
