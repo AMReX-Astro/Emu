@@ -171,17 +171,18 @@ if __name__ == "__main__":
     fxxbar = []
     pupt = []
 
-    nfiles = len(glob.glob("plt*"))
-    for i in range(nfiles):
+    files = sorted(glob.glob("plt*"))
+
+    for f in files:
         
-        plotfile = "plt"+str(i).zfill(5)
+        plotfile = f #"plt"+str(i).zfill(5)
         idata, rdata = read_particle_data(plotfile, ptype="neutrinos")
         p = rdata[0]
         t.append(p[rkey["time"]])
-        fee.append(p[rkey["f00_Re"]])
-        fxx.append(p[rkey["f11_Re"]])
-        feebar.append(p[rkey["f00_Rebar"]])
-        fxxbar.append(p[rkey["f11_Rebar"]])
+        fee.append(p[rkey["f01_Re"]])
+        fxx.append(p[rkey["f01_Im"]])
+        feebar.append(p[rkey["f01_Rebar"]])
+        fxxbar.append(p[rkey["f01_Imbar"]])
         pupt.append(p[rkey["pupt"]])
 
     t = np.array(t)
@@ -203,17 +204,13 @@ if __name__ == "__main__":
     fig = plt.gcf()
     fig.set_size_inches(8, 8)
 
-    plt.plot(t*clight, fee, 'b.')
-    plt.plot(t*clight, 1.-np.sin(t * dm2_eff/(4.*E*hbar))**2 * sin2_eff, 'b-')
+    plt.plot(t*clight, fee, 'b-',linewidth=0.5)
     
-    plt.plot(t*clight, fxx, 'g.')
-    plt.plot(t*clight, np.sin(t * dm2_eff/(4.*E*hbar))**2 * sin2_eff, 'g-')
+    plt.plot(t*clight, fxx, 'g-',linewidth=0.5)
 
-    plt.plot(t*clight, feebar, 'r.')
-    plt.plot(t*clight, 1.-np.sin(t * dm2_effbar/(4.*E*hbar))**2 * sin2_effbar, 'r-')
+    #plt.plot(t*clight, feebar, 'r-',linewidth=0.5)
 
-    plt.plot(t*clight, fxxbar, 'k.')
-    plt.plot(t*clight, np.sin(t * dm2_effbar/(4.*E*hbar))**2 * sin2_effbar, 'k-')
+    #plt.plot(t*clight, fxxbar, 'k-',linewidth=0.5)
 
     plt.grid()
     #plt.axis((0., 1., 0., 1.))
