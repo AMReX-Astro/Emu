@@ -161,7 +161,9 @@ InitParticles(const TestParams& parms)
                 ParticleType& p = pstruct[pidx];
 
                 // Set particle ID and CPU ID
-                p.id()   = pidx;
+                // the +1 is because amrex uses negative indices to indicate invalid, so
+                // they have to not use an index of 0
+                p.id()   = pidx+1;
                 p.cpu()  = procID;
 
                 // Set particle position
