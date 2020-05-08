@@ -217,7 +217,11 @@ if __name__ == "__main__":
     for t in tails:
         Vlist = HermitianMatrix(args.N, "V{}{}_{}"+t).header()
         for icomp in range(len(Vlist)):
-            line = "p.rdata(PIdx::"+Vlist[icomp]+") = ("+M2list[icomp] + ")*PhysConst::c4/(2.*p.rdata(PIdx::pupt));"
+            if t=="bar" and "Im" in Vlist[icomp]:
+                sgn = -1 # complex conjugation for anti-neutrinos
+            else:
+                sgn =  1
+            line = "p.rdata(PIdx::"+Vlist[icomp]+") = "+str(sgn)+"*("+M2list[icomp] + ")*PhysConst::c4/(2.*p.rdata(PIdx::pupt));"
             code.append(line)
     write_code(code, os.path.join(args.emu_home,"Source","Evolve.cpp_Vvac_fill"))
 
@@ -237,10 +241,21 @@ if __name__ == "__main__":
     rhoye = string_interp+"rho)*"+string_interp+"Ye)/PhysConst::Mp"
     code.append("double SI_partial, SI_partialbar, inside_parentheses;")
     code.append("")
+    
+    # term is negative and complex conjugate for antineutrinos
+    def sgn(t,var):
+        sgn = 1
+        if(t=="bar"):
+            sgn *= -1
+            if("Im" in var):
+                sgn *= -1
+        return sgn
+    
     for icomp in range(len(Vlist)):
         # self-interaction potential
         for t in tails:
-            line = "SI_partial"+t+" = (" + string_interp+Nlist[icomp]+t+")";
+            line = "SI_partial"+t+" = "+str(sgn(t,Vlist[icomp]))+"*(" 
+            line = line + string_interp+Nlist[icomp]+t+")";
             for i in range(len(direction)):
                 line = line + " - "+string_interp+Flist[i][icomp]+t+")*p.rdata(PIdx::pup"+direction[i]+")/p.rdata(PIdx::pupt)"
             line = line + ");"
@@ -260,13 +275,7 @@ if __name__ == "__main__":
         for t in tails:
             line = "p.rdata(PIdx::"+Vlist[icomp]+t+")"
             
-            sgn = 1
-            if t=="bar":
-                sgn *= -1 # negate for anti-neutrinos
-                if "Im" in Vlist[icomp]:
-                    sgn *= -1 # complex conjugation
-            
-            if sgn==1:
+            if sgn(t,Vlist[icomp])==1:
                 line += " += "
             else:
                 line += " -= "
