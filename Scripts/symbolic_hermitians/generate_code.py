@@ -230,27 +230,50 @@ if __name__ == "__main__":
     string3 = ["*p.rdata(PIdx::pupx)"]
     string4 = "/p.rdata(PIdx::pupt)"
     code = []
-    for t in tails:
-        Vlist = HermitianMatrix(args.N, "V{}{}_{}"+t).header()
-        Nlist = HermitianMatrix(args.N, "N{}{}_{}"+t).header()
-        Flist = [HermitianMatrix(args.N, "F"+d+"{}{}_{}"+t).header() for d in direction]
-        for icomp in range(len(Vlist)):
-            line = "p.rdata(PIdx::"+Vlist[icomp]+") +=  sqrt(2.) * PhysConst::GF * sx[ii]*sy[jj]*sz[kk] * ("
-
-            # self-interaction potential
-            line = line + string_interp+Nlist[icomp]+")"
+    
+    Vlist = HermitianMatrix(args.N, "V{}{}_{}").header()
+    Nlist = HermitianMatrix(args.N, "N{}{}_{}").header()
+    Flist = [HermitianMatrix(args.N, "F"+d+"{}{}_{}").header() for d in direction]
+    rhoye = string_interp+"rho)*"+string_interp+"Ye)/PhysConst::Mp"
+    code.append("double SI_partial, SI_partialbar, inside_parentheses;")
+    code.append("")
+    for icomp in range(len(Vlist)):
+        # self-interaction potential
+        for t in tails:
+            line = "SI_partial"+t+" = (" + string_interp+Nlist[icomp]+t+")";
             for i in range(len(direction)):
-                line = line + " - "+string_interp+Flist[i][icomp]+")*p.rdata(PIdx::pup"+direction[i]+")/p.rdata(PIdx::pupt)"
-
-            # matter potential
-            rhoye = string_interp+"rho)*"+string_interp+"Ye)/PhysConst::Mp"
-            if(Vlist[icomp]=="V00_Re"):
-                line = line + " + " + rhoye
-            if(Vlist[icomp]=="V00_Rebar"):
-                line = line + " - " + rhoye
-
+                line = line + " - "+string_interp+Flist[i][icomp]+t+")*p.rdata(PIdx::pup"+direction[i]+")/p.rdata(PIdx::pupt)"
             line = line + ");"
             code.append(line)
+            code.append("")
+        line = "inside_parentheses = SI_partial - SI_partialbar"
+
+        # matter potential
+        if("V00" in Vlist[icomp]):
+            line = line + " + " + rhoye
+        
+        line = line + ";"
+        code.append(line)
+        code.append("")
+
+        # add/subtract the potential as appropriate
+        for t in tails:
+            line = "p.rdata(PIdx::"+Vlist[icomp]+t+")"
+            
+            sgn = 1
+            if t=="bar":
+                sgn *= -1 # negate for anti-neutrinos
+                if "Im" in Vlist[icomp]:
+                    sgn *= -1 # complex conjugation
+            
+            if sgn==1:
+                line += " += "
+            else:
+                line += " -= "
+
+            line += "sqrt(2.) * PhysConst::GF * sx[ii]*sy[jj]*sz[kk] * (inside_parentheses);"
+            code.append(line)
+            code.append("")
     write_code(code, os.path.join(args.emu_home, "Source", "Evolve.cpp_interpolate_from_mesh_fill"))
 
     #========================#
