@@ -70,7 +70,6 @@ void evolve_flavor(const TestParams& parms)
     amrex::Print() << "Starting timestepping loop... " << std::endl;
 
     int nsteps = parms.nsteps;
-    const Real dt = compute_dt(geom,parms.cfl_factor);
 
     Real time = 0.0;
     WritePlotFile(state, neutrinos, geom, time, 0, parms.write_plot_particles);
@@ -86,12 +85,13 @@ void evolve_flavor(const TestParams& parms)
         interpolate_from_mesh(neutrinos, state, geom);
 
         // Integrate Particles
+        const Real dt = compute_dt(geom,parms.cfl_factor,state,parms.flavor_cfl_factor);
         neutrinos.IntegrateParticles(dt);
+        time += dt;
 
         // Redistribute Particles to MPI ranks
         neutrinos.RedistributeLocal();
 
-        time += dt;
 
 	// Renormalize particle probabilities
 	neutrinos.Renormalize();
@@ -131,6 +131,7 @@ int main(int argc, char* argv[])
     pp.get("Ye", parms.Ye_in);
     pp.get("T", parms.T_in);
     pp.get("cfl_factor", parms.cfl_factor);
+    pp.get("flavor_cfl_factor", parms.flavor_cfl_factor);
     pp.get("write_plot_every", parms.write_plot_every);
     pp.get("write_plot_particles", parms.write_plot_particles);
 

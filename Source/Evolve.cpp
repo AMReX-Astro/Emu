@@ -4,10 +4,25 @@
 
 using namespace amrex;
 
-Real compute_dt(const Geometry& geom, const Real cfl_factor)
+Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& state, const Real flavor_cfl_factor)
 {
+    const auto dx = geom.CellSizeArray();
+    const Real cell_volume = dx[0]*dx[1]*dx[2];
+
+	// translation part of timestep limit
     const auto dxi = geom.CellSizeArray();
     Real dt = min(min(dxi[0],dxi[1]), dxi[2]) / PhysConst::c * cfl_factor;
+    std::cout << "dt1 = " << dt << std::endl;
+
+    // self-interaction and matter part of timestep limit
+    // NOTE: these currently over-estimate both potentials, but avoid reduction over all particles
+    // NOTE: the vacuum potential is currently ignored. This requires a min reduction over particle energies
+    Real N_diag_max = 0;
+	#include "generated_files/Evolve.cpp_compute_dt_fill"
+    Real Vmax = sqrt(2.) * PhysConst::GF * max(N_diag_max/cell_volume, state.max(GIdx::rho)/PhysConst::Mp);
+    if(Vmax>0) dt = min(dt, PhysConst::hbar/Vmax*flavor_cfl_factor);
+    std::cout << "dt2 = " << PhysConst::hbar/Vmax*flavor_cfl_factor << std::endl;
+
     return dt;
 }
 

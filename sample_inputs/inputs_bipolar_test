@@ -1,20 +1,21 @@
 simulation_type = 1
-cfl_factor = 0.04
+cfl_factor = 1e5
+flavor_cfl_factor = 0.1
 
 # Domain size in 3D index space
-ncell = (4, 4, 4)
-Lx = 1.0
-Ly = 1.0
-Lz = 1.0
+ncell = (1, 1, 1)
+Lx = 1
+Ly = 1
+Lz = 1
 
 # Number of particles per cell
-nppc  = (1, 1, 1)
+nppc  = (10, 10, 10)
 
 # Maximum size of each grid in the domain
 max_grid_size = 64
 
 # Number of steps to run
-nsteps = 100
+nsteps = 5000
 
 # Make FPE signal errors so we get a Backtrace
 amrex.fpe_trap_invalid=1

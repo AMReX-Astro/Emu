@@ -147,9 +147,9 @@ if __name__ == "__main__":
                 code.append(string1+deplist[icomp]+string2+flist[icomp]+string3+string4[ivar])
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_deposit_to_mesh_fill"))
     
-    #=======================================#
-    # Evolve.cpp_interpolate_from_mesh_fill #
-    #=======================================#
+    #==================#
+    # Evolve.H_M2_fill #
+    #==================#
     # PMNS matrix from https://arxiv.org/pdf/1710.00715.pdf
     # using first index as row, second as column. Have to check convention.
     U = sympy.zeros(args.N,args.N)
@@ -205,6 +205,9 @@ if __name__ == "__main__":
     code = ["double "+code[i] for i in range(len(code))]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files","Evolve.H_M2_fill"))
 
+    #======================#
+    # Evolve.cpp_Vvac_fill #
+    #======================#
     # create the flavor-basis mass-squared matrix
     # masses are assumed given in g
     M2list = massmatrix.header()
@@ -220,6 +223,20 @@ if __name__ == "__main__":
             code.append(line)
     write_code(code, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_Vvac_fill"))
 
+    #============================#
+    # Evolve.cpp_compute_dt_fill #
+    #============================#
+    code = []
+    for t in tails:
+        for i in range(args.N):
+            line = "N_diag_max = max(N_diag_max, state.max(GIdx::N"+str(i)+str(i)+"_Re"+t+"));"
+            code.append(line)
+    code.append("N_diag_max *= 2*"+str(args.N)+";") # overestimate of net neutrino+antineutrino number density
+    write_code(code, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_compute_dt_fill"))
+
+    #=======================================#
+    # Evolve.cpp_interpolate_from_mesh_fill #
+    #=======================================#
     # matter and SI potentials require interpolating from grid
     tails = ["","bar"]
     string1 = "p.rdata(PIdx::"

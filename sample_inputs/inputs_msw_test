@@ -1,5 +1,6 @@
 simulation_type = 0
 cfl_factor = 0.04
+flavor_cfl_factor = 0.1
 
 # Domain size in 3D index space
 ncell = (4, 4, 4)
