@@ -47,7 +47,7 @@ Renormalize()
 	  [=] (int i) {
 	  ParticleType& p = pstruct[i];
 	  double sumP;
-	  #include "FlavoredNeutrinoContainer.cpp_Renormalize_fill"
+	  #include "generated_files/FlavoredNeutrinoContainer.cpp_Renormalize_fill"
 	  }
 	);
     }

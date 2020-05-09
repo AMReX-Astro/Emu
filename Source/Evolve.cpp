@@ -44,7 +44,7 @@ void deposit_to_mesh(FlavoredNeutrinoContainer& neutrinos, MultiFab& state, Geom
         for (int kk = 0; kk <= 1; ++kk) { 
             for (int jj = 0; jj <= 1; ++jj) { 
                 for (int ii = 0; ii <= 1; ++ii) {
-		    #include "Evolve.cpp_deposit_to_mesh_fill"
+		    #include "generated_files/Evolve.cpp_deposit_to_mesh_fill"
                 }
             }
         }
@@ -60,7 +60,7 @@ void interpolate_from_mesh(FlavoredNeutrinoContainer& neutrinos, MultiFab& state
     [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
                             amrex::Array4<const amrex::Real> const& sarr)
     {
-        #include "Evolve.cpp_Vvac_fill"
+        #include "generated_files/Evolve.cpp_Vvac_fill"
 
         amrex::Real lx = (p.pos(0) - plo[0]) * dxi[0] + 0.5;
         amrex::Real ly = (p.pos(1) - plo[1]) * dxi[1] + 0.5;
@@ -81,7 +81,7 @@ void interpolate_from_mesh(FlavoredNeutrinoContainer& neutrinos, MultiFab& state
         for (int kk = 0; kk <= 1; ++kk) { 
             for (int jj = 0; jj <= 1; ++jj) { 
                 for (int ii = 0; ii <= 1; ++ii) {
-		  #include "Evolve.cpp_interpolate_from_mesh_fill"
+		  #include "generated_files/Evolve.cpp_interpolate_from_mesh_fill"
                 }
             }
         }

@@ -15,7 +15,7 @@ struct PIdx
         // - FlavoredNeutrinoContainerInit.H_particle_varnames_fill
         // p has units of ergs (implied multiply by c)
         N=0, pupt, pupx, pupy, pupz, time,
-	#include "FlavoredNeutrinoContainer.H_fill"
+	#include "generated_files/FlavoredNeutrinoContainer.H_fill"
         nattribs
     };
 };

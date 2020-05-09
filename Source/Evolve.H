@@ -14,7 +14,7 @@ struct GIdx
   // e/u/t = electron/muon/tauon
     enum {
         rho, T, Ye, // g/ccm, MeV, unitless
-        #include "Evolve.H_fill"
+        #include "generated_files/Evolve.H_fill"
         ncomp
     };
 };
