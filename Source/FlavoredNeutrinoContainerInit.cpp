@@ -225,7 +225,7 @@ InitParticles(const TestParams& parms)
 
 		  // set particle weight such that density is
 		  // 10 dm2 c^4 / (2 sqrt(2) GF E)
-		  constexpr Real dm2 = pow(PhysConst::mass2-PhysConst::mass1, 2); //g^2
+		  constexpr Real dm2 = (PhysConst::mass2-PhysConst::mass1)*(PhysConst::mass2-PhysConst::mass1); //g^2
 		  double ndens = 10. * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
 		  p.rdata(PIdx::N) = ndens * scale_fac;
 		}
