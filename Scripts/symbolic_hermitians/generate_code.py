@@ -136,7 +136,7 @@ if __name__ == "__main__":
     #=================================#
     tails = ["","bar"]
     string1 = "amrex::Gpu::Atomic::Add(&sarr(i+ii-1, j+jj-1, k+kk-1, GIdx::"
-    string2 = "-GIdx::N00_Re), sx[ii]*sy[jj]*sz[kk] * p.rdata(PIdx::"
+    string2 = "-start_comp), sx[ii]*sy[jj]*sz[kk] * p.rdata(PIdx::"
     string3 = ")*p.rdata(PIdx::N)"
     string4 = [");",
                "*p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt));",
