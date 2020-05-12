@@ -12,7 +12,6 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
 	// translation part of timestep limit
     const auto dxi = geom.CellSizeArray();
     Real dt = min(min(dxi[0],dxi[1]), dxi[2]) / PhysConst::c * cfl_factor;
-    std::cout << "dt1 = " << dt << std::endl;
 
     // self-interaction and matter part of timestep limit
     // NOTE: these currently over-estimate both potentials, but avoid reduction over all particles
@@ -21,7 +20,6 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
 	#include "generated_files/Evolve.cpp_compute_dt_fill"
     Real Vmax = sqrt(2.) * PhysConst::GF * max(N_diag_max/cell_volume, state.max(GIdx::rho)/PhysConst::Mp);
     if(Vmax>0) dt = min(dt, PhysConst::hbar/Vmax*flavor_cfl_factor);
-    std::cout << "dt2 = " << PhysConst::hbar/Vmax*flavor_cfl_factor << std::endl;
 
     return dt;
 }
