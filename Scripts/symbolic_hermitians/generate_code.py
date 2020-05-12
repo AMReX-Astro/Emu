@@ -87,7 +87,7 @@ if __name__ == "__main__":
     #==================================#
     # FlavoredNeutrinoContainer.H_fill #
     #==================================#
-    vars = ["f","V"]
+    vars = ["f","dfdt"]
     tails = ["","bar"]
     code = []
     for v in vars:
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     #========================================================#
     # FlavoredNeutrinoContainerInit.H_particle_varnames_fill #
     #========================================================#
-    vars = ["f","V"]
+    vars = ["f","dfdt"]
     tails = ["","bar"]
     code = []
     for v in vars:
@@ -219,7 +219,7 @@ if __name__ == "__main__":
                 sgn = -1 # complex conjugation for anti-neutrinos
             else:
                 sgn =  1
-            line = "p.rdata(PIdx::"+Vlist[icomp]+") = "+str(sgn)+"*("+M2list[icomp] + ")*PhysConst::c4/(2.*p.rdata(PIdx::pupt));"
+            line = "Real "+Vlist[icomp]+" = "+str(sgn)+"*("+M2list[icomp] + ")*PhysConst::c4/(2.*p.rdata(PIdx::pupt));"
             code.append(line)
     write_code(code, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_Vvac_fill"))
 
@@ -285,7 +285,7 @@ if __name__ == "__main__":
 
         # add/subtract the potential as appropriate
         for t in tails:
-            line = "p.rdata(PIdx::"+Vlist[icomp]+t+")"
+            line = Vlist[icomp]+t
             
             if sgn(t,Vlist[icomp])==1:
                 line += " += "
@@ -298,27 +298,44 @@ if __name__ == "__main__":
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_interpolate_from_mesh_fill"))
 
     #========================#
-    # flavor_evolve_K.H_fill #
+    # Evolve.cpp_dfdt_fill #
     #========================#
 
     # Set up Hermitian matrices A, B, C
-    dt = sympy.symbols('dt',real=True)
     hbar = sympy.symbols("PhysConst\:\:hbar",real=True)
     code = []
     for t in tails:
-        H = HermitianMatrix(args.N, "p.rdata(PIdx::V{}{}_{}"+t+")")
+        H = HermitianMatrix(args.N, "V{}{}_{}"+t)
         F = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
-        Fnew = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
+        dFdt = HermitianMatrix(args.N, "p.rdata(PIdx::dfdt{}{}_{}"+t+")")
     
         # Calculate C = i * [A,B]
         #Fnew.anticommutator(H,F).times(sympy.I * dt);
-        Fnew.H = (F + (H*F - F*H).times(-sympy.I * dt/hbar)).H
+        dFdt.H = ((H*F - F*H).times(-sympy.I/hbar)).H
+    
+        # Get generated code for the components of C
+        code.append(dFdt.code())
+    code = [line for sublist in code for line in sublist]
+    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))
+
+    #========================#
+    # flavor_evolve_K.H_fill #
+    #========================#
+    code = []
+    for t in tails:
+        F = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
+        Fnew = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
+        dFdt = HermitianMatrix(args.N, "p.rdata(PIdx::dfdt{}{}_{}"+t+")")
+    
+        # Calculate C = i * [A,B]
+        dt = sympy.symbols('dt',real=True)
+        Fnew.H = (F + dFdt.times(dt)).H
     
         # Get generated code for the components of C
         code.append(Fnew.code())
     code = [line for sublist in code for line in sublist]
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "flavor_evolve_K.H_fill"))
-
+    write_code(code, os.path.join(args.emu_home,"Source/generated_files","flavor_evolve_K.H_fill"))
+    
     #================================================#
     # FlavoredNeutrinoContainer.cpp_Renormalize_fill #
     #================================================#
