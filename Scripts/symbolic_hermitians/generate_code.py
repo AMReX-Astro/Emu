@@ -273,7 +273,7 @@ if __name__ == "__main__":
             line = line + ");"
             code.append(line)
             code.append("")
-        line = "inside_parentheses = SI_partial - SI_partialbar"
+        line = "inside_parentheses = SI_partial + SI_partialbar"
 
         # matter potential
         if("V00" in Vlist[icomp]):
