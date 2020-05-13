@@ -250,7 +250,7 @@ if __name__ == "__main__":
     Vlist = HermitianMatrix(args.N, "V{}{}_{}").header()
     Nlist = HermitianMatrix(args.N, "N{}{}_{}").header()
     Flist = [HermitianMatrix(args.N, "F"+d+"{}{}_{}").header() for d in direction]
-    rhoye = string_interp+"rho)*"+string_interp+"Ye)/PhysConst::Mp"
+    rhoye = string_interp+"rho)*"+string_interp+"Ye)/PhysConst::Mp/inv_cell_volume"
     code.append("double SI_partial, SI_partialbar, inside_parentheses;")
     code.append("")
     
@@ -292,7 +292,7 @@ if __name__ == "__main__":
             else:
                 line += " -= "
 
-            line += "sqrt(2.) * PhysConst::GF * sx[ii]*sy[jj]*sz[kk] * (inside_parentheses);"
+            line += "sqrt(2.) * PhysConst::GF * inv_cell_volume * sx[ii]*sy[jj]*sz[kk] * (inside_parentheses);"
             code.append(line)
             code.append("")
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_interpolate_from_mesh_fill"))

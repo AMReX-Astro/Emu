@@ -70,6 +70,7 @@ void interpolate_from_mesh(FlavoredNeutrinoContainer& neutrinos, MultiFab& state
 {
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
+    const Real inv_cell_volume = dxi[0]*dxi[1]*dxi[2];
 
     amrex::MeshToParticle(neutrinos, state, 0,
     [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
