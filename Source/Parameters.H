@@ -10,6 +10,7 @@ struct TestParams
 {
     IntVect ncell;      // num cells in domain
     IntVect nppc;       // number of particles per cell in each dim
+    int nphi_equator;   // number of directions in x-y plane.
     Real Lx, Ly, Lz;
     int max_grid_size;
     int nsteps;

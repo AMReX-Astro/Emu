@@ -125,6 +125,7 @@ int main(int argc, char* argv[])
     pp.get("Ly", parms.Ly);
     pp.get("Lz", parms.Lz);
     pp.get("nppc",  parms.nppc);
+    pp.get("nphi_equator",  parms.nphi_equator);
     pp.get("max_grid_size", parms.max_grid_size);
     pp.get("nsteps", parms.nsteps);
     pp.get("rho", parms.rho_in);

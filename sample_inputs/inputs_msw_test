@@ -10,6 +10,7 @@ Lz = 1.0
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
+nphi_equator = 4
 
 # Maximum size of each grid in the domain
 max_grid_size = 64
