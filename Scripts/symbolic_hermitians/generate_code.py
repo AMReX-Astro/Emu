@@ -91,10 +91,12 @@ if __name__ == "__main__":
     vars = ["f","dfdt"]
     tails = ["","bar"]
     code = []
-    for v in vars:
-        for t in tails:
+    for t in tails:
+        code += ["N"+t]
+        for v in vars:
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
+            
     code = [code[i]+"," for i in range(len(code))]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoContainer.H_fill"))
 
@@ -104,11 +106,12 @@ if __name__ == "__main__":
     vars = ["f","dfdt"]
     tails = ["","bar"]
     code = []
-    for v in vars:
-        for t in tails:
+    for t in tails:
+        code += ["N"+t]
+        for v in vars:
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
-    code_string = 'attribute_names = {"N", "pupt", "pupx", "pupy", "pupz", "time", '
+    code_string = 'attribute_names = {"time", "pupx", "pupy", "pupz", "pupt", '
     code = ['"{}"'.format(c) for c in code]
     code_string = code_string + ", ".join(code) + "};"
     code = [code_string]
@@ -133,7 +136,6 @@ if __name__ == "__main__":
     tails = ["","bar"]
     string1 = "amrex::Gpu::Atomic::Add(&sarr(i+ii-1, j+jj-1, k+kk-1, GIdx::"
     string2 = "-start_comp), sx[ii]*sy[jj]*sz[kk] * p.rdata(PIdx::"
-    string3 = ")*p.rdata(PIdx::N)"
     string4 = [");",
                "*p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt));",
                "*p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt));",
@@ -141,6 +143,7 @@ if __name__ == "__main__":
     deposit_vars = ["N","Fx","Fy","Fz"]
     code = []
     for t in tails:
+        string3 = ")*p.rdata(PIdx::N"+t+")"
         flist = HermitianMatrix(args.N, "f{}{}_{}"+t).header()
         for ivar in range(len(deposit_vars)):
             deplist = HermitianMatrix(args.N, deposit_vars[ivar]+"{}{}_{}"+t).header()

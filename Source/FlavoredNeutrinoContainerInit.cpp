@@ -218,10 +218,11 @@ InitParticles(const TestParams& parms)
 		  // set all particles to start in electron state (and anti-state)
 		  // Set N to be small enough that self-interaction is not important
 		  // Set all particle momenta to be such that one oscillation wavelength is 1cm
-		  AMREX_ASSERT(PIdx::nattribs==22); // hack for nflavors==2
+		  AMREX_ASSERT(PIdx::nattribs==23); // hack for nflavors==2
 
 		  // Set particle flavor
 		  p.rdata(PIdx::N) = 1.0;
+		  p.rdata(PIdx::Nbar) = 1.0;
 		  p.rdata(PIdx::f00_Re)    = 1.0;
 		  p.rdata(PIdx::f01_Im)    = 0.0;
 		  p.rdata(PIdx::f01_Im)    = 0.0;
@@ -244,7 +245,7 @@ InitParticles(const TestParams& parms)
 		// BIPOLAR OSCILLATION TEST //
 		//==========================//
 		else if(parms.simulation_type==1){
-		  AMREX_ASSERT(PIdx::nattribs==22); // hack for nflavors==2
+		  AMREX_ASSERT(PIdx::nattribs==23); // hack for nflavors==2
 		  
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
@@ -267,6 +268,7 @@ InitParticles(const TestParams& parms)
 		  constexpr Real dm2 = (PhysConst::mass2-PhysConst::mass1)*(PhysConst::mass2-PhysConst::mass1); //g^2
 		  double ndens = 10. * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
 		  p.rdata(PIdx::N) = ndens * scale_fac;
+		  p.rdata(PIdx::Nbar) = ndens * scale_fac;
 		}
 
 		else{
