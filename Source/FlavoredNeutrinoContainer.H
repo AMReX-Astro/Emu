@@ -60,6 +60,8 @@ public:
         Redistribute(lev_min, lev_max, nGrow, local);
     }
 
+    void Renormalize();
+
     amrex::Vector<std::string> get_attribute_names() const
     {
         return attribute_names;
