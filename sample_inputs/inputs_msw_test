@@ -1,5 +1,5 @@
 simulation_type = 0
-cfl_factor = 0.04
+cfl_factor = 0.25
 flavor_cfl_factor = 0.1
 
 # Domain size in 3D index space
@@ -15,7 +15,7 @@ nppc  = (1, 1, 1)
 max_grid_size = 64
 
 # Number of steps to run
-nsteps = 100
+nsteps = 50
 
 # Make FPE signal errors so we get a Backtrace
 amrex.fpe_trap_invalid=1
