@@ -36,19 +36,19 @@ if __name__ == "__main__":
         "f01_Re":10,
         "f01_Im":11,
         "f11_Re":12,
-        "Nbar":13,
-        "f00_Rebar":14,
-        "f01_Rebar":15,
-        "f01_Imbar":16,
-        "f11_Rebar":17,
-        "V00_Re":18,
-        "V01_Re":19,
-        "V01_Im":20,
-        "V11_Re":21,
-        "V00_Rebar":22,
-        "V01_Rebar":23,
-        "V01_Imbar":24,
-        "V11_Rebar":25
+        "dfdt00_Re":13,
+        "dfdt01_Re":14,
+        "dfdt01_Im":15,
+        "dfdt11_Re":16,
+        "Nbar":17,
+        "f00_Rebar":18,
+        "f01_Rebar":19,
+        "f01_Imbar":20,
+        "f11_Rebar":21,
+        "dfdt00_Rebar":22,
+        "dfdt01_Rebar":23,
+        "dfdt01_Imbar":24,
+        "dfdt11_Rebar":25
     }
     ikey = {
         # no ints are stored
