@@ -11,6 +11,7 @@ void integrate_particle(FlavoredNeutrinoContainer::ParticleType& p,
                         amrex::Real dt)
 {
     // evolve the flavor
+	Real Fmag, Fmagnew, dFdtmag;
     #include "generated_files/flavor_evolve_K.H_fill"
   
     // evolve position for this particle over the timestep dt

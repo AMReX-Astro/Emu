@@ -4,6 +4,7 @@ from sympy.physics.quantum.dagger import Dagger
 import argparse
 import os
 import sympy
+from sympy.codegen.ast import Assignment
 from HermitianUtils import HermitianMatrix
 import shutil
 
@@ -322,17 +323,30 @@ if __name__ == "__main__":
     # flavor_evolve_K.H_fill #
     #========================#
     code = []
+    Fmag = sympy.symbols('Fmag',real=True)
+    Fmagnew = sympy.symbols('Fmagnew',real=True)
+    dFdtmag = sympy.symbols('dFdtmag',real=True)
     for t in tails:
         F = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
         Fnew = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
         dFdt = HermitianMatrix(args.N, "p.rdata(PIdx::dfdt{}{}_{}"+t+")")
     
+        # calculate amplification factor alpha                                                            
+        code.append([sympy.cxxcode(Assignment(Fmag, sympy.simplify(F.SU_vector_magnitude())))])          
+        code.append([sympy.cxxcode(Assignment(dFdtmag, sympy.simplify(dFdt.SU_vector_magnitude())))])
+        
         # Calculate C = i * [A,B]
         dt = sympy.symbols('dt',real=True)
         Fnew.H = (F + dFdt.times(dt)).H
-    
-        # Get generated code for the components of C
         code.append(Fnew.code())
+    
+        # code.append(Fnew.code())
+        code.append([sympy.cxxcode(Assignment(Fmagnew, sympy.simplify(F.SU_vector_magnitude())))])
+        
+        # normalize the flavor vector                                                                    
+        Fnew.H = (F.add_scalar(-1/args.N)).times(Fmag/Fmagnew).add_scalar(1/args.N).H                    
+        code.append(Fnew.code())      
+        
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home,"Source/generated_files","flavor_evolve_K.H_fill"))
     
