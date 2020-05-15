@@ -3,6 +3,9 @@ cfl_factor = 0.04
 
 # Domain size in 3D index space
 ncell = (4, 4, 4)
+Lx = 1.0
+Ly = 1.0
+Lz = 1.0
 
 # Number of particles per cell
 nppc  = (1, 1, 1)

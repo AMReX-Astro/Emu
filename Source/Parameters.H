@@ -10,6 +10,7 @@ struct TestParams
 {
     IntVect ncell;      // num cells in domain
     IntVect nppc;       // number of particles per cell in each dim
+    Real Lx, Ly, Lz;
     int max_grid_size;
     int nsteps;
     int write_plot_every;
