@@ -5,29 +5,29 @@ using namespace amrex;
 
 // generate an array of theta,phi pairs that uniformily cover the surface of a sphere
 // based on DOI: 10.1080/10586458.2003.10504492 section 3.3 but specifying n_j=0 instead of n
-std::vector<std::array<Real,3> > uniform_sphere_xyz(int nphi_at_equator){
+Gpu::ManagedVector<GpuArray<Real,3> > uniform_sphere_xyz(int nphi_at_equator){
 	AMREX_ASSERT(nphi_at_equator >= 4);
 	AMREX_ASSERT(nphi_at_equator%2==0); // make sure its even so isotropy can be represented exactly
 
-	Real dtheta = M_PI*sqrt(3)/nphi_at_equator;
+	Real dtheta = M_PI*std::sqrt(3)/nphi_at_equator;
 
-	std::vector<std::array<Real,3> > xyz;
+	Gpu::ManagedVector<GpuArray<Real,3> > xyz;
 	Real theta = 0;
 	Real phi0 = 0;
 	while(theta < M_PI/2.){
-		int nphi = theta==0 ? nphi_at_equator : lround(nphi_at_equator*cos(theta));
+		int nphi = theta==0 ? nphi_at_equator : lround(nphi_at_equator * std::cos(theta));
 		Real dphi = 2.*M_PI/nphi;
 		if(nphi==1) theta = M_PI/2.;
 
 		for(int iphi=0; iphi<nphi; iphi++){
 			Real phi = phi0 + iphi*dphi;
-			Real x = cos(theta) * cos(phi);
-			Real y = cos(theta) * sin(phi);
-			Real z = sin(theta);
-			xyz.push_back(std::array<Real,3>{x,y,z});
+			Real x = std::cos(theta) * std::cos(phi);
+			Real y = std::cos(theta) * std::sin(phi);
+			Real z = std::sin(theta);
+			xyz.push_back(GpuArray<Real,3>{x,y,z});
 			// construct exactly opposing vectors to limit subtractive cancellation errors
 			// and be able to represent isotropy exactly (all odd moments == 0)
-			if(theta>0) xyz.push_back(std::array<Real,3>{-x,-y,-z});
+			if(theta>0) xyz.push_back(GpuArray<Real,3>{-x,-y,-z});
 		}
 		theta += dtheta;
 		phi0 = phi0 + 0.5*dphi; // offset by half step so adjacent latitudes are not always aligned in longitude
@@ -60,9 +60,9 @@ namespace
         Real theta = amrex::Random() * MathConst::pi;       // theta from [0, pi)
         Real phi   = amrex::Random() * 2.0 * MathConst::pi; // phi from [0, 2*pi)
 
-        u[0] = sin(theta) * cos(phi);
-        u[1] = sin(theta) * sin(phi);
-        u[2] = cos(theta);
+        u[0] = std::sin(theta) * std::cos(phi);
+        u[1] = std::sin(theta) * std::sin(phi);
+        u[2] = std::cos(theta);
     }
 }
 
@@ -90,7 +90,8 @@ InitParticles(const TestParams& parms)
                                      *parms.nppc[1],
                                      *parms.nppc[2]);
     
-    std::vector<std::array<Real,3> > direction_vectors = uniform_sphere_xyz(parms.nphi_equator);
+    Gpu::ManagedVector<GpuArray<Real,3> > direction_vectors = uniform_sphere_xyz(parms.nphi_equator);
+    auto* direction_vectors_p = direction_vectors.dataPtr();
     int ndirs_per_loc = direction_vectors.size();
     amrex::Print() << "Using " << ndirs_per_loc << " directions based on " << parms.nphi_equator << " directions at the equator." << std::endl;
 
@@ -208,7 +209,7 @@ InitParticles(const TestParams& parms)
                     p.pos(1) = y;
                     p.pos(2) = z;
 
-                    const std::array<Real,3> u = direction_vectors[i_direction];
+                    const GpuArray<Real,3> u = direction_vectors_p[i_direction];
                     //get_random_direction(u);
 
 		//=========================//
