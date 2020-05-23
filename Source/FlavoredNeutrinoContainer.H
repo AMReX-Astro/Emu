@@ -2,6 +2,8 @@
 #define FLAVORED_NEUTRINO_CONTAINER_H_
 
 #include <AMReX_Particles.H>
+#include <AMReX_GpuContainers.H>
+
 #include "Parameters.H"
 
 struct PIdx
