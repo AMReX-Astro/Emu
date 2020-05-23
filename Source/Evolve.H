@@ -8,7 +8,7 @@
 #include <AMReX_ParticleMesh.H>
 #include <FlavoredNeutrinoContainer.H>
 
-struct GIdx
+namespace GIdx
 {
   // x/y/z - direction of flux vector
   // e/u/t = electron/muon/tauon
@@ -17,6 +17,10 @@ struct GIdx
         #include "generated_files/Evolve.H_fill"
         ncomp
     };
+
+    extern amrex::Vector<std::string> names;
+
+    void Initialize();
 };
 
 amrex::Real compute_dt(const amrex::Geometry& geom, const amrex::Real cfl_factor, const MultiFab& state, const Real flavor_cfl_factor);
