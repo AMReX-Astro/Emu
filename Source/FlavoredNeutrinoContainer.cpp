@@ -20,8 +20,7 @@ IntegrateParticles(const Real dt)
         const int np  = pti.numParticles();
         ParticleType * pstruct = &(pti.GetArrayOfStructs()[0]);
 
-        AMREX_FOR_1D ( np, i,
-        {
+        ParallelFor ( np, [=] AMREX_GPU_DEVICE (int i) {
             ParticleType& p = pstruct[i];
             integrate_particle(p, dt);
         });       
@@ -43,12 +42,10 @@ Renormalize()
         const int np  = pti.numParticles();
         ParticleType * pstruct = &(pti.GetArrayOfStructs()[0]);
 
-        ParallelFor ( np,
-	  [=] (int i) {
+        ParallelFor ( np, [=] AMREX_GPU_DEVICE (int i) {
 	  ParticleType& p = pstruct[i];
 	  double sumP;
 	  #include "generated_files/FlavoredNeutrinoContainer.cpp_Renormalize_fill"
-	  }
-	);
+	});
     }
 }
