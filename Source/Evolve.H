@@ -14,12 +14,12 @@ struct GIdx
   // e/u/t = electron/muon/tauon
     enum {
         rho, T, Ye, // g/ccm, MeV, unitless
-        #include "Evolve.H_fill"
+        #include "generated_files/Evolve.H_fill"
         ncomp
     };
 };
 
-amrex::Real compute_dt(const amrex::Geometry& geom, const amrex::Real cfl_factor);
+amrex::Real compute_dt(const amrex::Geometry& geom, const amrex::Real cfl_factor, const MultiFab& state, const Real flavor_cfl_factor);
 
 void deposit_to_mesh(FlavoredNeutrinoContainer& neutrinos, amrex::MultiFab& state, amrex::Geometry& geom);
 

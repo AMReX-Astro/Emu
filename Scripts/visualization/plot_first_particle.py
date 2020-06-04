@@ -137,28 +137,29 @@ if __name__ == "__main__":
         "x":0,
         "y":1,
         "z":2,
-        "N":3,
-        "pupt":4,
-        "pupx":5,
-        "pupy":6,
-        "pypz":7,
-        "time":8,
+        "time":3,
+        "pupx":4,
+        "pupy":5,
+        "pypz":6,
+        "pupt":7,
+        "N":8,
         "f00_Re":9,
         "f01_Re":10,
         "f01_Im":11,
         "f11_Re":12,
-        "f00_Rebar":13,
-        "f01_Rebar":14,
-        "f01_Imbar":15,
-        "f11_Rebar":16,
-        "V00_Re":17,
-        "V01_Re":18,
-        "V01_Im":19,
-        "V11_Re":20,
-        "V00_Rebar":21,
-        "V01_Rebar":22,
-        "V01_Imbar":23,
-        "V11_Rebar":24
+        "Nbar":13,
+        "f00_Rebar":14,
+        "f01_Rebar":15,
+        "f01_Imbar":16,
+        "f11_Rebar":17,
+        "V00_Re":18,
+        "V01_Re":19,
+        "V01_Im":20,
+        "V11_Re":21,
+        "V00_Rebar":22,
+        "V01_Rebar":23,
+        "V01_Imbar":24,
+        "V11_Rebar":25
     }
     ikey = {
         # no ints are stored
@@ -166,25 +167,32 @@ if __name__ == "__main__":
 
     t = []
     fee = []
+    fexR = []
+    fexI = []
     fxx = []
-    feebar = []
-    fxxbar = []
     pupt = []
 
-    nfiles = len(glob.glob("plt*"))
-    for i in range(nfiles):
+    files = sorted(glob.glob("plt*"))
+    print(files[0], files[-1])
+    
+    for f in files:
         
-        plotfile = "plt"+str(i).zfill(5)
+        plotfile = f #"plt"+str(i).zfill(5)
         idata, rdata = read_particle_data(plotfile, ptype="neutrinos")
         p = rdata[0]
         t.append(p[rkey["time"]])
         fee.append(p[rkey["f00_Re"]])
+        fexR.append(p[rkey["f01_Re"]])
+        fexI.append(p[rkey["f01_Im"]])
         fxx.append(p[rkey["f11_Re"]])
-        feebar.append(p[rkey["f00_Rebar"]])
-        fxxbar.append(p[rkey["f11_Rebar"]])
         pupt.append(p[rkey["pupt"]])
 
+    fee = np.array(fee)
+    fexR = np.array(fexR)
+    fexI = np.array(fexI)
+    fxx = np.array(fxx)
     t = np.array(t)
+    print(t)
 
     # The neutrino energy we set
     #E = dm21c4 * np.sin(2.*theta12) / (8.*np.pi*hbar*clight)
@@ -203,21 +211,20 @@ if __name__ == "__main__":
     fig = plt.gcf()
     fig.set_size_inches(8, 8)
 
-    plt.plot(t*clight, fee, 'b.')
-    plt.plot(t*clight, 1.-np.sin(t * dm2_eff/(4.*E*hbar))**2 * sin2_eff, 'b-')
+    plt.plot(t, fee, 'b-',linewidth=0.5,label="f00_Re")
+    plt.plot(t, fexR, 'g-',linewidth=0.5,label="f01_Re")
+    plt.plot(t, fexI, 'r-',linewidth=0.5,label="f01_Im")
+    plt.plot(t, fxx, 'k-',linewidth=0.5,label="f11_Re")
+
+    x = fexR
+    y = fexI
+    z = 0.5*(fee-fxx)
+    plt.plot(t, np.sqrt(x**2+y**2+z**2),linewidth=0.5,label="radius")
     
-    plt.plot(t*clight, fxx, 'g.')
-    plt.plot(t*clight, np.sin(t * dm2_eff/(4.*E*hbar))**2 * sin2_eff, 'g-')
-
-    plt.plot(t*clight, feebar, 'r.')
-    plt.plot(t*clight, 1.-np.sin(t * dm2_effbar/(4.*E*hbar))**2 * sin2_effbar, 'r-')
-
-    plt.plot(t*clight, fxxbar, 'k.')
-    plt.plot(t*clight, np.sin(t * dm2_effbar/(4.*E*hbar))**2 * sin2_effbar, 'k-')
-
     plt.grid()
+    plt.legend()
     #plt.axis((0., 1., 0., 1.))
     ax = plt.gca()
-    ax.set_xlabel(r'$ct$ (cm)')
+    ax.set_xlabel(r'$t$ (cm)')
     ax.set_ylabel(r'$f$')
     plt.savefig('single_neutrino.png')

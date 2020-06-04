@@ -34,3 +34,7 @@
 # Other
 Scripts/symbolic_hermitians/*.pyc
 Scripts/symbolic_hermitians/__pycache__
+.cproject
+.project
+.pydevproject
+.settings

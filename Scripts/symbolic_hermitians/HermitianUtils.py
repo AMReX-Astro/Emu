@@ -63,6 +63,26 @@ class HermitianMatrix(object):
         self.H = Conjugate(self.H)
         return self
     
+    # return the length of the SU(n) vector
+    def SU_vector_magnitude(self):
+        # first get the sum of the square of the off-diagonal elements
+        mag2 = 0
+        for i in range(self.size):
+            for j in range(i+1,self.size):
+                mag2 += self.H[i,j]*self.H[j,i]
+
+        # Now get the contribution from the diagonals
+        # See wolfram page for generalization of Gell-Mann matrices
+        for l in range(1,self.size):
+            basis_coefficient = 0;
+            for i in range(1,l+1):
+                basis_coefficient += self.H[i-1,i-1]
+            basis_coefficient -= l*self.H[l,l]
+            basis_coefficient *= sympy.sqrt(2./(l*(l+1.)))
+            mag2 += (basis_coefficient/2.)**2
+
+        return sympy.sqrt(mag2)
+
     def times(self, x):
         # Apply self.H = self.H * x
         # where x is a Sympy expression
@@ -75,6 +95,11 @@ class HermitianMatrix(object):
         # where x is a Sympy expression
         
         self.H = self.H + x
+        return self
+
+    def add_scalar(self,x):
+        for i in range(self.size):
+            self.H[i,i] = self.H[i,i] + x
         return self
         
     def expressions(self):
@@ -111,7 +136,7 @@ class HermitianMatrix(object):
         # Returns a list of strings of C++11 code with expressions for 
         # each real value that constitutes the Hermitian matrix
 
-        lines = [sympy.cxxcode(e) for e in self.expressions()]
+        lines = [sympy.cxxcode(sympy.simplify(e)) for e in self.expressions()]
         return lines
 
     def header(self):

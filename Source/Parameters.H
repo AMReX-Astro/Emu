@@ -10,6 +10,7 @@ struct TestParams
 {
     IntVect ncell;      // num cells in domain
     IntVect nppc;       // number of particles per cell in each dim
+    int nphi_equator;   // number of directions in x-y plane.
     Real Lx, Ly, Lz;
     int max_grid_size;
     int nsteps;
@@ -17,7 +18,7 @@ struct TestParams
     int write_plot_particles;
     Real rho_in, Ye_in, T_in; // g/ccm, 1, MeV
     int simulation_type;
-    Real cfl_factor;
+    Real cfl_factor, flavor_cfl_factor;
 };
 
 #endif

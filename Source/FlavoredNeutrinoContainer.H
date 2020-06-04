@@ -14,8 +14,8 @@ struct PIdx
         // of the code generation script should be changed as well:
         // - FlavoredNeutrinoContainerInit.H_particle_varnames_fill
         // p has units of ergs (implied multiply by c)
-        N=0, pupt, pupx, pupy, pupz, time,
-	#include "FlavoredNeutrinoContainer.H_fill"
+        time=0, pupx, pupy, pupz, pupt,
+	#include "generated_files/FlavoredNeutrinoContainer.H_fill"
         nattribs
     };
 };

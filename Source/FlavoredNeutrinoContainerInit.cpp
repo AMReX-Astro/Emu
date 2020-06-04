@@ -3,6 +3,39 @@
 
 using namespace amrex;
 
+// generate an array of theta,phi pairs that uniformily cover the surface of a sphere
+// based on DOI: 10.1080/10586458.2003.10504492 section 3.3 but specifying n_j=0 instead of n
+std::vector<std::array<Real,3> > uniform_sphere_xyz(int nphi_at_equator){
+	AMREX_ASSERT(nphi_at_equator >= 4);
+	AMREX_ASSERT(nphi_at_equator%2==0); // make sure its even so isotropy can be represented exactly
+
+	Real dtheta = M_PI*sqrt(3)/nphi_at_equator;
+
+	std::vector<std::array<Real,3> > xyz;
+	Real theta = 0;
+	Real phi0 = 0;
+	while(theta < M_PI/2.){
+		int nphi = theta==0 ? nphi_at_equator : lround(nphi_at_equator*cos(theta));
+		Real dphi = 2.*M_PI/nphi;
+		if(nphi==1) theta = M_PI/2.;
+
+		for(int iphi=0; iphi<nphi; iphi++){
+			Real phi = phi0 + iphi*dphi;
+			Real x = cos(theta) * cos(phi);
+			Real y = cos(theta) * sin(phi);
+			Real z = sin(theta);
+			xyz.push_back(std::array<Real,3>{x,y,z});
+			// construct exactly opposing vectors to limit subtractive cancellation errors
+			// and be able to represent isotropy exactly (all odd moments == 0)
+			if(theta>0) xyz.push_back(std::array<Real,3>{-x,-y,-z});
+		}
+		theta += dtheta;
+		phi0 = phi0 + 0.5*dphi; // offset by half step so adjacent latitudes are not always aligned in longitude
+	}
+
+	return xyz;
+}
+
 namespace
 {    
     AMREX_GPU_HOST_DEVICE void get_position_unit_cell(Real* r, const IntVect& nppc, int i_part)
@@ -39,7 +72,7 @@ FlavoredNeutrinoContainer(const Geometry            & a_geom,
                           const BoxArray            & a_ba)
     : ParticleContainer<PIdx::nattribs, 0, 0, 0>(a_geom, a_dmap, a_ba)
 {
-    #include "FlavoredNeutrinoContainerInit.H_particle_varnames_fill"
+    #include "generated_files/FlavoredNeutrinoContainerInit.H_particle_varnames_fill"
 }
 
 void
@@ -53,11 +86,16 @@ InitParticles(const TestParams& parms)
     const auto plo = Geom(lev).ProbLoArray();
     const auto& a_bounds = Geom(lev).ProbDomain();
     
-    const int num_ppc = AMREX_D_TERM( parms.nppc[0],
+    const int nlocs_per_cell = AMREX_D_TERM( parms.nppc[0],
                                      *parms.nppc[1],
                                      *parms.nppc[2]);
-    const Real scale_fac = dx[0]*dx[1]*dx[2]/num_ppc;
     
+    std::vector<std::array<Real,3> > direction_vectors = uniform_sphere_xyz(parms.nphi_equator);
+    int ndirs_per_loc = direction_vectors.size();
+    amrex::Print() << "Using " << ndirs_per_loc << " directions based on " << parms.nphi_equator << " directions at the equator." << std::endl;
+
+    const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell/ndirs_per_loc;
+
     for(MFIter mfi = MakeMFIter(lev); mfi.isValid(); ++mfi)
     {
         const Box& tile_box  = mfi.tilebox();
@@ -75,7 +113,7 @@ InitParticles(const TestParams& parms)
         amrex::ParallelFor(tile_box,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            for (int i_part=0; i_part<num_ppc;i_part++)
+            for (int i_part=0; i_part<nlocs_per_cell;i_part++)
             {
                 Real r[3];
                 
@@ -99,7 +137,7 @@ InitParticles(const TestParams& parms)
                 unsigned int uiy = amrex::min(ny-1,amrex::max(0,iy));
                 unsigned int uiz = amrex::min(nz-1,amrex::max(0,iz));
                 unsigned int cellid = (uix * ny + uiy) * nz + uiz;
-                pcount[cellid] += 1;
+                pcount[cellid] += ndirs_per_loc;
             }
         });
 
@@ -139,36 +177,39 @@ InitParticles(const TestParams& parms)
             unsigned int uiz = amrex::min(nz-1,amrex::max(0,iz));
             unsigned int cellid = (uix * ny + uiy) * nz + uiz;
 
-            for (int i_part=0; i_part<num_ppc;i_part++)
+            for (int i_loc=0; i_loc<nlocs_per_cell;i_loc++)
             {
                 Real r[3];
-                Real u[3];
                 
-                get_position_unit_cell(r, parms.nppc, i_part);
+                get_position_unit_cell(r, parms.nppc, i_loc);
                 
                 Real x = plo[0] + (i + r[0])*dx[0];
                 Real y = plo[1] + (j + r[1])*dx[1];
                 Real z = plo[2] + (k + r[2])*dx[2];
                 
-                get_random_direction(u);
-                
                 if (x >= a_bounds.hi(0) || x < a_bounds.lo(0) ||
                     y >= a_bounds.hi(1) || y < a_bounds.lo(1) ||
                     z >= a_bounds.hi(2) || z < a_bounds.lo(2) ) continue;
                 
-                // Get the Particle data corresponding to our particle index in pidx
-                const int pidx = poffset[cellid] - poffset[0] + i_part;
-                ParticleType& p = pstruct[pidx];
 
-                // Set particle ID and CPU ID
-                p.id()   = pidx;
-                p.cpu()  = procID;
+                for(int i_direction=0; i_direction<ndirs_per_loc; i_direction++){
+                    // Get the Particle data corresponding to our particle index in pidx
+                    // the +1 is because amrex uses negative indices to indicate invalid, so
+                    // they have to not use an index of 0
+                    const int pidx = poffset[cellid] - poffset[0] + i_loc*ndirs_per_loc + i_direction;
+                    ParticleType& p = pstruct[pidx];
+                    p.id()   = pidx+1;
 
-                // Set particle position
-                p.pos(0) = x;
-                p.pos(1) = y;
-                p.pos(2) = z;
-                
+                    // Set CPU ID
+                    p.cpu()  = procID;
+
+                    // Set particle position
+                    p.pos(0) = x;
+                    p.pos(1) = y;
+                    p.pos(2) = z;
+
+                    const std::array<Real,3> u = direction_vectors[i_direction];
+                    //get_random_direction(u);
 
 		//=========================//
 		// VACUUM OSCILLATION TEST //
@@ -177,10 +218,11 @@ InitParticles(const TestParams& parms)
 		  // set all particles to start in electron state (and anti-state)
 		  // Set N to be small enough that self-interaction is not important
 		  // Set all particle momenta to be such that one oscillation wavelength is 1cm
-		  AMREX_ASSERT(PIdx::nattribs==22); // hack for nflavors==2
+		  AMREX_ASSERT(PIdx::nattribs==23); // hack for nflavors==2
 
 		  // Set particle flavor
 		  p.rdata(PIdx::N) = 1.0;
+		  p.rdata(PIdx::Nbar) = 1.0;
 		  p.rdata(PIdx::f00_Re)    = 1.0;
 		  p.rdata(PIdx::f01_Im)    = 0.0;
 		  p.rdata(PIdx::f01_Im)    = 0.0;
@@ -198,10 +240,42 @@ InitParticles(const TestParams& parms)
 		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
 		}
+
+		//==========================//
+		// BIPOLAR OSCILLATION TEST //
+		//==========================//
+		else if(parms.simulation_type==1){
+		  AMREX_ASSERT(PIdx::nattribs==23); // hack for nflavors==2
+		  
+		  // Set particle flavor
+		  p.rdata(PIdx::f00_Re)    = 1.0;
+		  p.rdata(PIdx::f01_Im)    = 0.0;
+		  p.rdata(PIdx::f01_Im)    = 0.0;
+		  p.rdata(PIdx::f11_Re)    = 0.0;
+		  p.rdata(PIdx::f00_Rebar) = 1.0;
+		  p.rdata(PIdx::f01_Imbar) = 0.0;
+		  p.rdata(PIdx::f01_Imbar) = 0.0;
+		  p.rdata(PIdx::f11_Rebar) = 0.0;
+
+		  // set energy to 50 MeV to match Richers+(2019)
+		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
+
+		  // set particle weight such that density is
+		  // 10 dm2 c^4 / (2 sqrt(2) GF E)
+		  constexpr Real dm2 = (PhysConst::mass2-PhysConst::mass1)*(PhysConst::mass2-PhysConst::mass1); //g^2
+		  double ndens = 10. * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
+		  p.rdata(PIdx::N) = ndens * scale_fac;
+		  p.rdata(PIdx::Nbar) = ndens * scale_fac;
+		}
+
 		else{
             amrex::Error("Invalid simulation type");
 		}
             }
+        }
         });
     }
 }
