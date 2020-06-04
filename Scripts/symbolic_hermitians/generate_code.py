@@ -130,6 +130,19 @@ if __name__ == "__main__":
     code = [code[i]+"," for i in range(len(code))]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.H_fill"))
 
+    #============================#
+    # Evolve.cpp_grid_names_fill #
+    #============================#
+    vars = ["N","Fx","Fy","Fz"]
+    tails = ["","bar"]
+    code = []
+    for v in vars:
+        for t in tails:
+            A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
+            code += A.header()
+    code = ["\n".join(["names.push_back(\"{}\");".format(ci) for ci in code])]
+    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_grid_names_fill"))
+
     #=================================#
     # Evolve.cpp_deposit_to_mesh_fill #
     #=================================#

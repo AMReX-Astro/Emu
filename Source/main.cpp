@@ -59,6 +59,9 @@ void evolve_flavor(const TestParams& parms)
     state.setVal(parms.T_in,GIdx::T,1); // MeV
     state.FillBoundary(geom.periodicity());
 
+    // initialize the grid variable names
+    GIdx::Initialize();
+
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... ";
 

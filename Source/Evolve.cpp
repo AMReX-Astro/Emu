@@ -4,6 +4,20 @@
 
 using namespace amrex;
 
+namespace GIdx
+{
+    amrex::Vector<std::string> names;
+
+    void Initialize()
+    {
+        names.resize(0);
+        names.push_back("rho");
+        names.push_back("T");
+        names.push_back("Ye");
+        #include "generated_files/Evolve.cpp_grid_names_fill"
+    }
+}
+
 Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& state, const Real flavor_cfl_factor)
 {
     const auto dx = geom.CellSizeArray();

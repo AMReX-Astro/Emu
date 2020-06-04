@@ -24,11 +24,7 @@ WritePlotFile (const amrex::MultiFab& state,
 
     amrex::Print() << "  Writing plotfile " << plotfilename << "\n";
 
-    Vector<std::string> varnames;
-    for(int i=0; i<GIdx::ncomp; i++)
-      varnames.push_back("scalar"+std::to_string(i));
-
-    amrex::WriteSingleLevelPlotfile(plotfilename, state, varnames, geom, time, step);
+    amrex::WriteSingleLevelPlotfile(plotfilename, state, GIdx::names, geom, time, step);
 
     if (write_plot_particles == 1)
     {
