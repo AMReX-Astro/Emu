@@ -15,6 +15,9 @@ IntegrateParticles(const Real dt)
     const auto dxi = Geom(lev).InvCellSizeArray();
     const auto plo = Geom(lev).ProbLoArray();
 
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
     for (FNParIter pti(*this, lev); pti.isValid(); ++pti)
     {
         const int np  = pti.numParticles();
@@ -37,6 +40,9 @@ Renormalize()
     const auto dxi = Geom(lev).InvCellSizeArray();
     const auto plo = Geom(lev).ProbLoArray();
 
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
     for (FNParIter pti(*this, lev); pti.isValid(); ++pti)
     {
         const int np  = pti.numParticles();
