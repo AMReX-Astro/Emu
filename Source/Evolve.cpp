@@ -20,20 +20,39 @@ namespace GIdx
 
 Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& state, const Real flavor_cfl_factor)
 {
+    AMREX_ASSERT(cfl_factor > 0.0 || flavor_cfl_factor > 0.0);
+
     const auto dx = geom.CellSizeArray();
     const Real cell_volume = dx[0]*dx[1]*dx[2];
 
 	// translation part of timestep limit
     const auto dxi = geom.CellSizeArray();
-    Real dt = min(min(dxi[0],dxi[1]), dxi[2]) / PhysConst::c * cfl_factor;
+    Real dt_translation = 0.0;
+    if (cfl_factor > 0.0) {
+        dt_translation = std::min(std::min(dxi[0],dxi[1]), dxi[2]) / PhysConst::c * cfl_factor;
+    }
 
-    // self-interaction and matter part of timestep limit
-    // NOTE: these currently over-estimate both potentials, but avoid reduction over all particles
-    // NOTE: the vacuum potential is currently ignored. This requires a min reduction over particle energies
-    Real N_diag_max = 0;
-	#include "generated_files/Evolve.cpp_compute_dt_fill"
-    Real Vmax = sqrt(2.) * PhysConst::GF * max(N_diag_max/cell_volume, state.max(GIdx::rho)/PhysConst::Mp);
-    if(Vmax>0) dt = min(dt, PhysConst::hbar/Vmax*flavor_cfl_factor);
+    Real dt_si_matter = 0.0;
+    if (flavor_cfl_factor > 0.0) {
+        // self-interaction and matter part of timestep limit
+        // NOTE: these currently over-estimate both potentials, but avoid reduction over all particles
+        // NOTE: the vacuum potential is currently ignored. This requires a min reduction over particle energies
+        Real N_diag_max = 0;
+        #include "generated_files/Evolve.cpp_compute_dt_fill"
+        Real Vmax = std::sqrt(2.) * PhysConst::GF * std::max(N_diag_max/cell_volume, state.max(GIdx::rho)/PhysConst::Mp);
+        if(Vmax>0) dt_si_matter = PhysConst::hbar/Vmax*flavor_cfl_factor;
+    }
+
+    Real dt = 0.0;
+    if (dt_translation != 0.0 && dt_si_matter != 0.0) {
+        dt = std::min(dt_translation, dt_si_matter);
+    } else if (dt_translation != 0.0) {
+        dt = dt_translation;
+    } else if (dt_si_matter != 0.0) {
+        dt = dt_si_matter;
+    } else {
+        amrex::Error("Timestep selection failed, try using both cfl_factor and flavor_cfl_factor");
+    }
 
     return dt;
 }
