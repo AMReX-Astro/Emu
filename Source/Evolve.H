@@ -27,6 +27,6 @@ amrex::Real compute_dt(const amrex::Geometry& geom, const amrex::Real cfl_factor
 
 void deposit_to_mesh(FlavoredNeutrinoContainer& neutrinos, amrex::MultiFab& state, amrex::Geometry& geom);
 
-void interpolate_from_mesh(FlavoredNeutrinoContainer& neutrinos, amrex::MultiFab& state, amrex::Geometry& geom);
+void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, amrex::MultiFab& state, amrex::Geometry& geom);
 
 #endif
