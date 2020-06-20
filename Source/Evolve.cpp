@@ -38,7 +38,7 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
     return dt;
 }
 
-void deposit_to_mesh(FlavoredNeutrinoContainer& neutrinos, MultiFab& state, Geometry& geom)
+void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state, const Geometry& geom)
 {
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
@@ -78,7 +78,7 @@ void deposit_to_mesh(FlavoredNeutrinoContainer& neutrinos, MultiFab& state, Geom
     });
 }
 
-void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, MultiFab& state, Geometry& geom)
+void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const MultiFab& state, const Geometry& geom)
 {
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
