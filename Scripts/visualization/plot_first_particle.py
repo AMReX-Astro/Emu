@@ -172,7 +172,7 @@ if __name__ == "__main__":
     fxx = []
     pupt = []
 
-    files = sorted(glob.glob("plt*"))
+    files = sorted(glob.glob("plt[0-9][0-9][0-9][0-9][0-9]"))
     print(files[0], files[-1])
     
     for f in files:
