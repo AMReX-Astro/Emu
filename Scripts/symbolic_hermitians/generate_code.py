@@ -88,7 +88,7 @@ if __name__ == "__main__":
     #==================================#
     # FlavoredNeutrinoContainer.H_fill #
     #==================================#
-    vars = ["f","dfdt"]
+    vars = ["f"]
     tails = ["","bar"]
     code = []
     for t in tails:
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     #========================================================#
     # FlavoredNeutrinoContainerInit.H_particle_varnames_fill #
     #========================================================#
-    vars = ["f","dfdt"]
+    vars = ["f"]
     tails = ["","bar"]
     code = []
     for t in tails:
