@@ -117,36 +117,6 @@ if __name__ == "__main__":
     code = [code_string]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoContainerInit.H_particle_varnames_fill"))
 
-    #=====================================#
-    # FlavoredNeutrinoRHSContainer.H_fill #
-    #=====================================#
-    vars = ["dfdt"]
-    tails = ["","bar"]
-    code = []
-    for t in tails:
-        for v in vars:
-            A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
-            code += A.header()
-
-    code = [code[i]+"," for i in range(len(code))]
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoRHSContainer.H_fill"))
-
-    #=======================================================#
-    # FlavoredNeutrinoRHSContainer.H_particle_varnames_fill #
-    #=======================================================#
-    vars = ["dfdt"]
-    tails = ["","bar"]
-    code = []
-    for t in tails:
-        for v in vars:
-            A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
-            code += A.header()
-    code_string = 'attribute_names = { dtdt, dxdt, dydt, dzdt, '
-    code = ['"{}"'.format(c) for c in code]
-    code_string = code_string + ", ".join(code) + "};"
-    code = [code_string]
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoRHSContainer.H_particle_varnames_fill"))
-
     #===============#
     # Evolve.H_fill #
     #===============#
