@@ -14,6 +14,7 @@ struct TestParams
     Real Lx, Ly, Lz;
     int max_grid_size;
     int nsteps;
+    Real end_time;
     int write_plot_every;
     int write_plot_particles;
     Real rho_in, Ye_in, T_in; // g/ccm, 1, MeV
