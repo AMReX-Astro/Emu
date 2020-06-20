@@ -22,6 +22,30 @@ struct PIdx
     };
 };
 
+/*
+template<typename P>
+struct ApplyFlavoredNeutrinoRHS
+{
+    ApplyFlavoredNeutrinoRHS() {}
+
+    AMREX_GPU_HOST_DEVICE
+    void operator() (P& p, amrex::Real dt, const P& p_dFdt) noexcept
+    {
+        // evolve the flavor by applying RHS update of the saxpy form F += dt * dFdt
+        // for a general time integration scheme, dt is a timestep-like weight
+        amrex::Real Fmag, Fmagnew, dFdtmag, dt_effective;
+
+        #include "generated_files/flavor_evolve_K.H_fill"
+
+        // evolve position for this particle over the timestep dt
+        p.rdata(PIdx::time) += dt;
+        p.pos(0) += p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c * dt;
+        p.pos(1) += p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c * dt;
+        p.pos(2) += p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c * dt;
+    }
+};
+*/
+
 class FNParIter
     : public amrex::ParIter<PIdx::nattribs,0,0,0>
 {
@@ -40,7 +64,6 @@ public:
 class FlavoredNeutrinoContainer
     : public amrex::ParticleContainer<PIdx::nattribs, 0, 0, 0>
 {
-
     amrex::Vector<std::string> attribute_names;
 
 public:
@@ -51,7 +74,7 @@ public:
 
     void InitParticles(const TestParams& parms);
 
-    void IntegrateParticles(const FlavoredNeutrinoContainer& rhs, const amrex::Real dt);
+    void IntegrateParticles(FlavoredNeutrinoContainer& rhs, const amrex::Real dt);
 
     void UpdateLocationRHS(FlavoredNeutrinoContainer& rhs);
 
@@ -70,6 +93,9 @@ public:
     {
         return attribute_names;
     }
+
+    /* Public data members */
+    // static ApplyFlavoredNeutrinoRHS<ParticleType> particle_apply_rhs;
 };
 
 #endif

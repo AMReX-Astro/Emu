@@ -6,7 +6,7 @@
 using namespace amrex;
 
 void FlavoredNeutrinoContainer::
-IntegrateParticles(const FlavoredNeutrinoContainer& neutrinos_rhs, const Real dt)
+IntegrateParticles(FlavoredNeutrinoContainer& neutrinos_rhs, const Real dt)
 {
     BL_PROFILE("FlavoredNeutrinoContainer::IntegrateParticles");
 
@@ -41,7 +41,7 @@ IntegrateParticles(const FlavoredNeutrinoContainer& neutrinos_rhs, const Real dt
 
         ParallelFor (np_F, [=] AMREX_GPU_DEVICE (int i) {
             ParticleType& p_F = ps_F[i];
-            ParticleType& p_dFdt = ps_dFdt[i];
+            const ParticleType& p_dFdt = ps_dFdt[i];
             integrate_particle(p_F, p_dFdt, dt);
         });
     }
