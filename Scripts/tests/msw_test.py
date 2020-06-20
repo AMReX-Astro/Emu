@@ -36,19 +36,11 @@ if __name__ == "__main__":
         "f01_Re":10,
         "f01_Im":11,
         "f11_Re":12,
-        "dfdt00_Re":13,
-        "dfdt01_Re":14,
-        "dfdt01_Im":15,
-        "dfdt11_Re":16,
-        "Nbar":17,
-        "f00_Rebar":18,
-        "f01_Rebar":19,
-        "f01_Imbar":20,
-        "f11_Rebar":21,
-        "dfdt00_Rebar":22,
-        "dfdt01_Rebar":23,
-        "dfdt01_Imbar":24,
-        "dfdt11_Rebar":25
+        "Nbar":13,
+        "f00_Rebar":14,
+        "f01_Rebar":15,
+        "f01_Imbar":16,
+        "f11_Rebar":17,
     }
     ikey = {
         # no ints are stored
@@ -61,7 +53,7 @@ if __name__ == "__main__":
     fxxbar = []
     pupt = []
 
-    nfiles = len(glob.glob("plt*"))
+    nfiles = len(glob.glob("plt[0-9][0-9][0-9][0-9][0-9]"))
     for i in range(nfiles):
         
         plotfile = "plt"+str(i).zfill(5)
