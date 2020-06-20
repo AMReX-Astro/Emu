@@ -8,9 +8,9 @@
 
 struct PIdx
 {
-  // pup = four-momentum (up index)
-  // f = distribution function (Real/Imaginary, neutrino/antineutrino)
-  // V = potential
+    // pup = four-momentum (up index)
+    // f = distribution function (Real/Imaginary, neutrino/antineutrino)
+    // V = potential
     enum {
         // NOTE: If the non-scripted variables are changed, the following section
         // of the code generation script should be changed as well:
@@ -51,7 +51,9 @@ public:
 
     void InitParticles(const TestParams& parms);
 
-    void IntegrateParticles(const amrex::Real dt);
+    void IntegrateParticles(const FlavoredNeutrinoContainer& rhs, const amrex::Real dt);
+
+    void UpdateLocationRHS(FlavoredNeutrinoContainer& rhs);
 
     void RedistributeLocal()
     {
