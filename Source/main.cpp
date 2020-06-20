@@ -68,6 +68,8 @@ void evolve_flavor(const TestParams& parms)
     FlavoredNeutrinoContainer neutrinos(geom, dm, ba);
     neutrinos.InitParticles(parms);
 
+    FlavoredNeutrinoContainer neutrinos_rhs(geom, dm, ba);
+
     amrex::Print() << "Done. " << std::endl;
 
     amrex::Print() << "Starting timestepping loop... " << std::endl;
@@ -80,28 +82,40 @@ void evolve_flavor(const TestParams& parms)
     {
         amrex::Print() << "    Time step: " <<  step << " t="<<time << "s.  ct="<< PhysConst::c*time << "cm" << std::endl;
 
-        // Deposit Particle Data to Mesh
+        /* Step 1: Evaluate the neutrino distribution matrix RHS */
+        // 1A: Deposit Particle Data to Mesh
         deposit_to_mesh(neutrinos, state, geom);
-	state.FillBoundary(geom.periodicity());
+        state.FillBoundary(geom.periodicity());
 
-        // Interpolate Mesh Data back to Particles
-        interpolate_from_mesh(neutrinos, state, geom);
+        // 1B: Copy F from neutrino state to neutrino RHS
+        neutrinos_rhs.copyParticles(neutrinos, true);
 
-        // Integrate Particles
+        // 1C: Interpolate Mesh to construct the neutrino RHS in place
+        interpolate_rhs_from_mesh(neutrinos_rhs, state, geom);
+
+        /* Step 2: Update neutrino state using forward Euler */
+        // 2A: Get the timestep from the deposited grid data
         const Real dt = compute_dt(geom,parms.cfl_factor,state,parms.flavor_cfl_factor);
-        neutrinos.IntegrateParticles(dt);
+
+        // 2B: Apply F(t+dt) = F(t) + dt * dFdt(t) to neutrinos
+        neutrinos.IntegrateParticles(neutrinos_rhs, dt);
         time += dt;
 
-        // Redistribute Particles to MPI ranks
+        /* Step 3: Redistribute & Renormalize neutrino state */
+        // 3A: Update neutrino RHS locations with neutrino state locations
+        neutrinos.UpdateLocationRHS(neutrinos_rhs);
+
+        // 3B: Redistribute Particles to MPI ranks
         neutrinos.RedistributeLocal();
+        neutrinos_rhs.RedistributeLocal();
 
+        // 3C: Renormalize particle probabilities
+        neutrinos.Renormalize();
 
-	// Renormalize particle probabilities
-	neutrinos.Renormalize();
-
-	// Write the Mesh Data to Plotfile
-	if ((step+1) % parms.write_plot_every == 0)
-	  WritePlotFile(state, neutrinos, geom, time, step+1, parms.write_plot_particles);
+        /* Step 4: I/O */
+        // Write the Mesh Data to Plotfile
+        if ((step+1) % parms.write_plot_every == 0)
+            WritePlotFile(state, neutrinos, geom, time, step+1, parms.write_plot_particles);
     }
 
     amrex::Print() << "Done. " << std::endl;
