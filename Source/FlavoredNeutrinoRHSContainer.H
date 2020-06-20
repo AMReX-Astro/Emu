@@ -7,8 +7,11 @@
 struct DIdx
 {
     // Stores time derivatives for the following neutrino state quantities:
+    // dtdt : derivative of particle time coordinate
+    // dxdt, dydt, dzdt : derivative of partice spatial coordinates
     // f = distribution function (Real/Imaginary, neutrino/antineutrino)
     enum {
+        dtdt=0, dxdt, dydt, dzdt,
         #include "generated_files/FlavoredNeutrinoRHSContainer.H_fill"
         nattribs
     };
