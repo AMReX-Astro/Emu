@@ -338,7 +338,8 @@ if __name__ == "__main__":
 
         # Store dFdt back into the particle data for F
         dFdt = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
-        dFdt.H = G.H
+        Gempty = HermitianMatrix(args.N, "dfdt{}{}_{}"+t)
+        dFdt.H = Gempty.H
 
         # Write out dFdt->F
         code.append(dFdt.code())
