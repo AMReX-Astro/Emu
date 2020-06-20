@@ -356,7 +356,7 @@ if __name__ == "__main__":
     for t in tails:
         F = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
         Fnew = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
-        dFdt = HermitianMatrix(args.N, "p.rdata(PIdx::dfdt{}{}_{}"+t+")")
+        dFdt = HermitianMatrix(args.N, "p_dFdt.rdata(PIdx::f{}{}_{}"+t+")")
     
         # calculate amplification factor alpha
         dt = sympy.symbols('dt',real=True)
