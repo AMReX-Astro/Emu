@@ -8,9 +8,10 @@
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void integrate_particle(FlavoredNeutrinoContainer::ParticleType& p,
-                        amrex::Real dt)
+                        const FlavoredNeutrinoContainer::ParticleType& p_dFdt,
+                        const amrex::Real dt)
 {
-    // evolve the flavor
+    // evolve the flavor by applying Euler update F += dt * dFdt
 	Real Fmag, Fmagnew, dFdtmag, dt_effective;
     #include "generated_files/flavor_evolve_K.H_fill"
   
