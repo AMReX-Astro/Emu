@@ -324,13 +324,23 @@ if __name__ == "__main__":
     for t in tails:
         H = HermitianMatrix(args.N, "V{}{}_{}"+t)
         F = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
-        dFdt = HermitianMatrix(args.N, "p.rdata(PIdx::dfdt{}{}_{}"+t+")")
+
+        # G = Temporary variables for dFdt
+        G = HermitianMatrix(args.N, "dfdt{}{}_{}"+t)
     
         # Calculate C = i * [A,B]
         #Fnew.anticommutator(H,F).times(sympy.I * dt);
-        dFdt.H = ((H*F - F*H).times(-sympy.I/hbar)).H
-    
-        # Get generated code for the components of C
+        G.H = ((H*F - F*H).times(-sympy.I/hbar)).H
+
+        # Write the temporary variables for dFdt
+        Gdeclare = ["amrex::Real {}".format(line) for line in G.code()]
+        code.append(Gdeclare)
+
+        # Store dFdt back into the particle data for F
+        dFdt = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
+        dFdt.H = G.H
+
+        # Write out dFdt->F
         code.append(dFdt.code())
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))
