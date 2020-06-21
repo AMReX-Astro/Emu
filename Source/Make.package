@@ -1,4 +1,4 @@
 CEXE_sources += main.cpp IO.cpp FlavoredNeutrinoContainerInit.cpp Evolve.cpp FlavoredNeutrinoContainer.cpp
-CEXE_headers += Evolve.H FlavoredNeutrinoContainer.H flavor_evolve_K.H
+CEXE_headers += Evolve.H FlavoredNeutrinoContainer.H
 CEXE_headers += Constants.H Particles.H IO.H
 CEXE_headers += Parameters.H
