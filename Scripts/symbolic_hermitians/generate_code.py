@@ -346,9 +346,9 @@ if __name__ == "__main__":
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))
 
-    #========================#
-    # flavor_evolve_K.H_fill #
-    #========================#
+    #===========================================#
+    # FlavoredNeutrinoContainer.H_ApplyRHS_fill #
+    #===========================================#
     code = []
     Fmag = sympy.symbols('Fmag',real=True)
     Fmagnew = sympy.symbols('Fmagnew',real=True)
@@ -381,7 +381,7 @@ if __name__ == "__main__":
         code.append(Fnew.code())      
         
     code = [line for sublist in code for line in sublist]
-    write_code(code, os.path.join(args.emu_home,"Source/generated_files","flavor_evolve_K.H_fill"))
+    write_code(code, os.path.join(args.emu_home,"Source/generated_files","FlavoredNeutrinoContainer.H_ApplyRHS_fill"))
     
     #================================================#
     # FlavoredNeutrinoContainer.cpp_Renormalize_fill #

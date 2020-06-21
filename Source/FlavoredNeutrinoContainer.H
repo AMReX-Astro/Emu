@@ -37,7 +37,7 @@ struct ApplyFlavoredNeutrinoRHS
         // for a general time integration scheme, dt is a timestep-like weight
         amrex::Real Fmag, Fmagnew, dFdtmag, dt_effective;
 
-        #include "generated_files/flavor_evolve_K.H_fill"
+        #include "generated_files/FlavoredNeutrinoContainer.H_ApplyRHS_fill"
 
         // evolve position for this particle over the timestep dt
         p.rdata(PIdx::time) += dt;
