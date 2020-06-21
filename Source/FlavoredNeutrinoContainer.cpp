@@ -1,8 +1,6 @@
 #include "FlavoredNeutrinoContainer.H"
 #include "Constants.H"
 
-#include "flavor_evolve_K.H"
-
 using namespace amrex;
 
 void FlavoredNeutrinoContainer::
