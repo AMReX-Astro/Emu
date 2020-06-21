@@ -75,8 +75,6 @@ public:
 
     void InitParticles(const TestParams& parms);
 
-    void IntegrateParticles(FlavoredNeutrinoContainer& rhs, const amrex::Real dt);
-
     void UpdateLocationFrom(FlavoredNeutrinoContainer& Other);
 
     void RedistributeLocal()
