@@ -69,9 +69,9 @@ Renormalize()
         ParticleType * pstruct = &(pti.GetArrayOfStructs()[0]);
 
         ParallelFor ( np, [=] AMREX_GPU_DEVICE (int i) {
-	  ParticleType& p = pstruct[i];
-	  double sumP;
-	  #include "generated_files/FlavoredNeutrinoContainer.cpp_Renormalize_fill"
+        ParticleType& p = pstruct[i];
+        Real sumP;
+        #include "generated_files/FlavoredNeutrinoContainer.cpp_Renormalize_fill"
 	});
     }
 }
