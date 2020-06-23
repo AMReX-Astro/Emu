@@ -119,20 +119,22 @@ void evolve_flavor(const TestParams& parms)
         // update them with the new particle locations & Redistribute
         integrator.map_data(update_data);
 
-        // Finally, renormalize and redistribute current data
-        neutrinos.Renormalize();
+        // Finally, redistribute current data
         neutrinos.RedistributeLocal();
     };
 
     auto post_timestep_fun = [&] () {
+        // Get the latest neutrino data
+        auto& neutrinos = integrator.get_new_data();
+
+        // Renormalize the neutrino state
+        neutrinos.Renormalize();
+
         // Get which step the integrator is on
         const int step = integrator.get_step_number();
         const Real time = integrator.get_time();
 
         amrex::Print() << "Completed time step: " << step << " t = " <<time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;
-
-        // Get the latest data
-        const auto& neutrinos = integrator.get_new_data();
 
         // Write the Mesh Data to Plotfile if required
         if ((step+1) % parms.write_plot_every == 0)
