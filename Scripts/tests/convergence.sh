@@ -6,6 +6,7 @@ set -x
 # All runs will use these
 DIM=3
 EXEC=./main${DIM}d.gnu.DEBUG.TPROF.MPI.ex
+MPINUM=4
 
 RUNPARAMS="
 cfl_factor=-1
@@ -23,7 +24,7 @@ rm -rf msw_test_*.txt
 
 # Define a function for a single run
 do_single () {
-    ${EXEC} inputs_msw_test ${RUNPARAMS} flavor_cfl_factor=${FCFL} ${INTPARAMS}
+    mpiexec -n ${MPINUM} ${EXEC} inputs_msw_test ${RUNPARAMS} flavor_cfl_factor=${FCFL} ${INTPARAMS}
     echo "cfl: ${FCFL}" >> msw_test_${INTNAME}.txt
     python3 msw_test.py -na >> msw_test_${INTNAME}.txt
     python3 plot_first_particle.py
