@@ -97,7 +97,7 @@ if __name__ == "__main__":
         for v in vars:
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
-            
+
     code = [code[i]+"," for i in range(len(code))]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoContainer.H_fill"))
 
@@ -164,7 +164,7 @@ if __name__ == "__main__":
             for icomp in range(len(flist)):
                 code.append(string1+deplist[icomp]+string2+flist[icomp]+string3+string4[ivar])
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_deposit_to_mesh_fill"))
-    
+
     #==================#
     # Evolve.H_M2_fill #
     #==================#
@@ -206,7 +206,7 @@ if __name__ == "__main__":
         U23[2,2] =  sympy.cos(theta13)
         alpha2 = sympy.symbols('PhysConst\:\:alpha2',real=True)
         P[1,1] = sympy.exp(sympy.I * alpha2)
-            
+
     if(args.N==2):
         U = U12*P
     if(args.N==3):
@@ -264,14 +264,14 @@ if __name__ == "__main__":
     string3 = ["*p.rdata(PIdx::pupx)"]
     string4 = "/p.rdata(PIdx::pupt)"
     code = []
-    
+
     Vlist = HermitianMatrix(args.N, "V{}{}_{}").header()
     Nlist = HermitianMatrix(args.N, "N{}{}_{}").header()
     Flist = [HermitianMatrix(args.N, "F"+d+"{}{}_{}").header() for d in direction]
     rhoye = string_interp+"rho)*"+string_interp+"Ye)/PhysConst::Mp/inv_cell_volume"
     code.append("double SI_partial, SI_partialbar, inside_parentheses;")
     code.append("")
-    
+
     # term is negative and complex conjugate for antineutrinos
     def sgn(t,var):
         sgn = 1
@@ -280,11 +280,11 @@ if __name__ == "__main__":
             if("Im" in var):
                 sgn *= -1
         return sgn
-    
+
     for icomp in range(len(Vlist)):
         # self-interaction potential
         for t in tails:
-            line = "SI_partial"+t+" = "+str(sgn(t,Vlist[icomp]))+"*(" 
+            line = "SI_partial"+t+" = "+str(sgn(t,Vlist[icomp]))+"*("
             line = line + string_interp+Nlist[icomp]+t+")";
             for i in range(len(direction)):
                 line = line + " - "+string_interp+Flist[i][icomp]+t+")*p.rdata(PIdx::pup"+direction[i]+")/p.rdata(PIdx::pupt)"
@@ -296,7 +296,7 @@ if __name__ == "__main__":
         # matter potential
         if("V00" in Vlist[icomp]):
             line = line + " + " + rhoye
-        
+
         line = line + ";"
         code.append(line)
         code.append("")
@@ -304,7 +304,7 @@ if __name__ == "__main__":
         # add/subtract the potential as appropriate
         for t in tails:
             line = Vlist[icomp]+t
-            
+
             if sgn(t,Vlist[icomp])==1:
                 line += " += "
             else:
@@ -328,7 +328,7 @@ if __name__ == "__main__":
 
         # G = Temporary variables for dFdt
         G = HermitianMatrix(args.N, "dfdt{}{}_{}"+t)
-    
+
         # Calculate C = i * [A,B]
         #Fnew.anticommutator(H,F).times(sympy.I * dt);
         G.H = ((H*F - F*H).times(-sympy.I/hbar)).H
@@ -369,7 +369,7 @@ if __name__ == "__main__":
             # calculate amplification factor alpha
             expr = F.SU_vector_magnitude()
             code.append([sympy.cxxcode(Assignment(Fmag, sympy.simplify(expr)))])
-            expr = dFdt.SU_vector_magnitude()  
+            expr = dFdt.SU_vector_magnitude()
             code.append([sympy.cxxcode(Assignment(dFdtmag, sympy.simplify(expr)))])
             #expr = Fmag/dFdtmag * sympy.tan(dFdtmag/Fmag*dt)
             #code.append([sympy.cxxcode(Assignment(dt_effective, sympy.simplify(expr)))])
@@ -381,14 +381,14 @@ if __name__ == "__main__":
         if args.rhs_normalize:
             # get new magnitude of flavor vector
             code.append([sympy.cxxcode(Assignment(Fmagnew, sympy.simplify(F.SU_vector_magnitude())))])
-            
-            # normalize the flavor vector                                                                    
-            Fnew.H = (F.add_scalar(-1/args.N)).times(Fmag/Fmagnew).add_scalar(1/args.N).H                    
-            code.append(Fnew.code())      
-        
+
+            # normalize the flavor vector
+            Fnew.H = (F.add_scalar(-1/args.N)).times(Fmag/Fmagnew).add_scalar(1/args.N).H
+            code.append(Fnew.code())
+
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home,"Source/generated_files","FlavoredNeutrinoContainer.H_ApplyRHS_fill"))
-    
+
     #================================================#
     # FlavoredNeutrinoContainer.cpp_Renormalize_fill #
     #================================================#
