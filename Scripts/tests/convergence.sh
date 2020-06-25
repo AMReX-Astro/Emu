@@ -5,7 +5,7 @@ set -x
 
 # All runs will use these
 DIM=3
-EXEC=./main${DIM}d.gnu.DEBUG.TPROF.MPI.ex
+EXEC=./main${DIM}d.gnu.TPROF.MPI.ex
 MPINUM=4
 
 RUNPARAMS="
