@@ -65,7 +65,7 @@ class ConvergenceData(object):
         iMaxErr = np.argmax(log_err)
         intercept = log_err[iMaxErr] - order * log_cfl[iMaxErr]
         log_order_err = intercept + order * log_cfl 
-        axis.plot(log_cfl, log_order_err, label="$O({}) = {:0.3g}$".format(label, order), marker="None", linestyle="--", color=color)
+        axis.plot(log_cfl, log_order_err, label="$O({}) = {:0.2f}$".format(label, order), marker="None", linestyle="--", color=color)
             
 
 cdata = {}
