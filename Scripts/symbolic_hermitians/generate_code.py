@@ -355,6 +355,10 @@ if __name__ == "__main__":
     Fmagnew = sympy.symbols('Fmagnew',real=True)
     dFdtmag = sympy.symbols('dFdtmag',real=True)
     #dt_effective = sympy.symbols('dt_effective',real=True)
+
+    if args.rhs_normalize:
+        code.append(["amrex::Real Fmag, Fmagnew, dFdtmag, dt_effective;"])
+
     for t in tails:
         F = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
         Fnew = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")

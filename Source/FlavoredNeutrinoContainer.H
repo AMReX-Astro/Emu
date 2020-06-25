@@ -35,7 +35,6 @@ struct ApplyFlavoredNeutrinoRHS
     {
         // evolve the flavor by applying RHS update of the saxpy form F += dt * dFdt
         // for a general time integration scheme, dt is a timestep-like weight
-        amrex::Real Fmag, Fmagnew, dFdtmag, dt_effective;
 
         #include "generated_files/FlavoredNeutrinoContainer.H_ApplyRHS_fill"
 
