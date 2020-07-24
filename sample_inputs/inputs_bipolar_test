@@ -12,7 +12,7 @@ Ly = 1e7
 Lz = 1e7
 
 # Number of particles per cell
-nppc  = (10, 10, 10)
+nppc  = (1, 1, 1)
 nphi_equator = 4
 
 # Maximum size of each grid in the domain
