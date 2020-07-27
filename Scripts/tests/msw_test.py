@@ -3,6 +3,10 @@ import argparse
 import glob
 import EmuReader
 
+parser = argparse.ArgumentParser()
+parser.add_argument("-na", "--no_assert", action="store_true", help="If --no_assert is supplied, do not raise assertion errors if the test error > tolerance.")
+args = parser.parse_args()
+
 # physical constants
 clight = 2.99792458e10 # cm/s
 hbar = 1.05457266e-27 # erg s
@@ -36,19 +40,11 @@ if __name__ == "__main__":
         "f01_Re":10,
         "f01_Im":11,
         "f11_Re":12,
-        "dfdt00_Re":13,
-        "dfdt01_Re":14,
-        "dfdt01_Im":15,
-        "dfdt11_Re":16,
-        "Nbar":17,
-        "f00_Rebar":18,
-        "f01_Rebar":19,
-        "f01_Imbar":20,
-        "f11_Rebar":21,
-        "dfdt00_Rebar":22,
-        "dfdt01_Rebar":23,
-        "dfdt01_Imbar":24,
-        "dfdt11_Rebar":25
+        "Nbar":13,
+        "f00_Rebar":14,
+        "f01_Rebar":15,
+        "f01_Imbar":16,
+        "f11_Rebar":17,
     }
     ikey = {
         # no ints are stored
@@ -61,7 +57,7 @@ if __name__ == "__main__":
     fxxbar = []
     pupt = []
 
-    nfiles = len(glob.glob("plt*"))
+    nfiles = len(glob.glob("plt[0-9][0-9][0-9][0-9][0-9]"))
     for i in range(nfiles):
         
         plotfile = "plt"+str(i).zfill(5)
@@ -97,33 +93,37 @@ if __name__ == "__main__":
     # theoretical oscillation probabilities
     def Psurv(dm2, sin2theta,E):
         return 1. - np.sin(t * dm2/(4.*E*hbar))**2 * sin2theta
+
+    def myassert(condition):
+        if not args.no_assert:
+            assert(condition)
     
     # calculate errors
     fee_analytic = Psurv(dm2_eff, sin2_eff, E)
     error_ee = np.max(np.abs( fee - fee_analytic ) )
     print("f_ee error:", error_ee)
-    assert( error_ee < tolerance )
+    myassert( error_ee < tolerance )
     
     fxx_analytic = 1. - Psurv(dm2_eff, sin2_eff, E)
     error_xx = np.max(np.abs( fxx - fxx_analytic ) )
     print("f_xx error:", error_xx)
-    assert( error_xx < tolerance )
+    myassert( error_xx < tolerance )
     
     feebar_analytic = Psurv(dm2_effbar, sin2_effbar, E)
     error_eebar = np.max(np.abs( feebar - feebar_analytic ) )
     print("f_eebar error:", error_eebar)
-    assert( error_eebar < tolerance )
+    myassert( error_eebar < tolerance )
     
     fxxbar_analytic = 1. - Psurv(dm2_effbar, sin2_effbar, E)
     error_xxbar = np.max(np.abs( fxxbar - fxxbar_analytic ) )
     print("f_xxbar error:", error_xxbar)
-    assert( error_xxbar < tolerance )
+    myassert( error_xxbar < tolerance )
 
     conservation_error = np.max(np.abs( (fee+fxx) -1. ))
     print("conservation_error:", conservation_error)
-    assert(conservation_error < tolerance)
+    myassert(conservation_error < tolerance)
     
     conservation_errorbar = np.max(np.abs( (feebar+fxxbar) -1. ))
     print("conservation_errorbar:", conservation_errorbar)
-    assert(conservation_errorbar < tolerance)
+    myassert(conservation_errorbar < tolerance)
 

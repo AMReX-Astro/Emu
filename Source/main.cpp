@@ -6,6 +6,7 @@
 #include <AMReX_BC_TYPES.H>
 #include <AMReX_BCRec.H>
 #include <AMReX_BCUtil.H>
+#include <AMReX_TimeIntegrator.H>
 
 #include "FlavoredNeutrinoContainer.H"
 #include "Evolve.H"
@@ -65,49 +66,102 @@ void evolve_flavor(const TestParams& parms)
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... ";
 
-    FlavoredNeutrinoContainer neutrinos(geom, dm, ba);
-    neutrinos.InitParticles(parms);
+    // We store old-time and new-time data
+    FlavoredNeutrinoContainer neutrinos_old(geom, dm, ba);
+    FlavoredNeutrinoContainer neutrinos_new(geom, dm, ba);
+
+    const Real initial_time = 0.0;
+
+    // Initialize old particles
+    neutrinos_old.InitParticles(parms);
+
+    // Copy particles from old data to new data
+    // (the second argument is true to indicate particle container data is local
+    //  and we can skip calling Redistribute() after copying the particles)
+    neutrinos_new.copyParticles(neutrinos_old, true);
+
+    // Deposit particles to grid
+    deposit_to_mesh(neutrinos_old, state, geom);
+
+    // Write plotfile after initialization
+    WritePlotFile(state, neutrinos_old, geom, initial_time, 0, parms.write_plot_particles);
 
     amrex::Print() << "Done. " << std::endl;
 
+    TimeIntegrator<FlavoredNeutrinoContainer> integrator(neutrinos_old, neutrinos_new, initial_time);
+
+    // Create a RHS source function we will integrate
+    auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, const FlavoredNeutrinoContainer& neutrinos, Real time) {
+        /* Evaluate the neutrino distribution matrix RHS */
+        // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
+        deposit_to_mesh(neutrinos, state, geom);
+        state.FillBoundary(geom.periodicity());
+
+        // Step 2: Copy F from neutrino state to neutrino RHS
+        neutrinos_rhs.copyParticles(neutrinos, true);
+
+        // Step 3: Interpolate Mesh to construct the neutrino RHS in place
+        interpolate_rhs_from_mesh(neutrinos_rhs, state, geom);
+    };
+
+    auto post_update_fun = [&] (FlavoredNeutrinoContainer& neutrinos, Real time) {
+        // We write a function for the integrator to map across all internal
+        // particle containers. We have to update particle locations and
+        // redistribute since particles may have moved in the previous update.
+        auto update_data = [&](FlavoredNeutrinoContainer& data) {
+            if (&data != &neutrinos) {
+                data.UpdateLocationFrom(neutrinos);
+                data.RedistributeLocal();
+            }
+        };
+
+        // For all integrator internal particle containers,
+        // update them with the new particle locations & Redistribute
+        integrator.map_data(update_data);
+
+        // Finally, redistribute current data
+        neutrinos.RedistributeLocal();
+    };
+
+    auto post_timestep_fun = [&] () {
+        // Get the latest neutrino data
+        auto& neutrinos = integrator.get_new_data();
+
+        // Renormalize the neutrino state
+        neutrinos.Renormalize();
+
+        // Get which step the integrator is on
+        const int step = integrator.get_step_number();
+        const Real time = integrator.get_time();
+
+        amrex::Print() << "Completed time step: " << step << " t = " <<time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;
+
+        // Write the Mesh Data to Plotfile if required
+        if ((step+1) % parms.write_plot_every == 0)
+            WritePlotFile(state, neutrinos, geom, time, step+1, parms.write_plot_particles);
+
+        // Set the next timestep from the last deposited grid data
+        // Note: this won't be the same as the new-time grid data
+        // because the last deposit_to_mesh call was at either the old time (forward Euler)
+        // or the final RK stage, if using Runge-Kutta.
+        const Real dt = compute_dt(geom,parms.cfl_factor,state,parms.flavor_cfl_factor);
+        integrator.set_timestep(dt);
+    };
+
+    // Attach our RHS, post update, and post timestep hooks to the integrator
+    integrator.set_rhs(source_fun);
+    integrator.set_post_update(post_update_fun);
+    integrator.set_post_timestep(post_timestep_fun);
+
+    // Get a starting timestep
+    const Real starting_dt = compute_dt(geom,parms.cfl_factor,state,parms.flavor_cfl_factor);
+
+    // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
 
-    int nsteps = parms.nsteps;
-
-    Real time = 0.0;
-    WritePlotFile(state, neutrinos, geom, time, 0, parms.write_plot_particles);
-    for (int step = 0; step < nsteps; ++step)
-    {
-        amrex::Print() << "    Time step: " <<  step << " t="<<time << "s.  ct="<< PhysConst::c*time << "cm" << std::endl;
-
-        // Deposit Particle Data to Mesh
-        deposit_to_mesh(neutrinos, state, geom);
-	state.FillBoundary(geom.periodicity());
-
-        // Interpolate Mesh Data back to Particles
-        interpolate_from_mesh(neutrinos, state, geom);
-
-        // Integrate Particles
-        const Real dt = compute_dt(geom,parms.cfl_factor,state,parms.flavor_cfl_factor);
-        neutrinos.IntegrateParticles(dt);
-        time += dt;
-
-        // Redistribute Particles to MPI ranks
-        neutrinos.RedistributeLocal();
-
-
-	// Renormalize particle probabilities
-	neutrinos.Renormalize();
-
-	// Write the Mesh Data to Plotfile
-	if ((step+1) % parms.write_plot_every == 0)
-	  WritePlotFile(state, neutrinos, geom, time, step+1, parms.write_plot_particles);
-    }
+    integrator.integrate(starting_dt, parms.end_time, parms.nsteps); 
 
     amrex::Print() << "Done. " << std::endl;
-
-    // Deposit Particle Data to Mesh
-    deposit_to_mesh(neutrinos, state, geom);
 
 }
 
@@ -131,6 +185,7 @@ int main(int argc, char* argv[])
     pp.get("nphi_equator",  parms.nphi_equator);
     pp.get("max_grid_size", parms.max_grid_size);
     pp.get("nsteps", parms.nsteps);
+    pp.get("end_time", parms.end_time);
     pp.get("rho", parms.rho_in);
     pp.get("Ye", parms.Ye_in);
     pp.get("T", parms.T_in);
