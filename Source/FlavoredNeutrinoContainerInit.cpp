@@ -6,9 +6,8 @@ using namespace amrex;
 // generate an array of theta,phi pairs that uniformily cover the surface of a sphere
 // based on DOI: 10.1080/10586458.2003.10504492 section 3.3 but specifying n_j=0 instead of n
 Gpu::ManagedVector<GpuArray<Real,3> > uniform_sphere_xyz(int nphi_at_equator){
-	AMREX_ASSERT(nphi_at_equator >= 4);
-	AMREX_ASSERT(nphi_at_equator%2==0); // make sure its even so isotropy can be represented exactly
-
+	AMREX_ASSERT(nphi_at_equator>0);
+	
 	Real dtheta = M_PI*std::sqrt(3)/nphi_at_equator;
 
 	Gpu::ManagedVector<GpuArray<Real,3> > xyz;
