@@ -215,7 +215,7 @@ if __name__ == "__main__":
     # create M2 matrix in Evolve.H
     M2 = sympy.zeros(args.N,args.N)
     for i in range(args.N):
-        M2[i] = sympy.symbols('PhysConst\:\:mass'+str(i+1),real=True)**2
+        M2[i,i] = sympy.symbols('PhysConst\:\:mass'+str(i+1),real=True)**2
     M2 = U*M2*Dagger(U)
     massmatrix = HermitianMatrix(args.N, "M2matrix{}{}_{}")
     massmatrix.H = M2

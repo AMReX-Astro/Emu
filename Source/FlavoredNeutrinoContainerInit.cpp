@@ -6,9 +6,8 @@ using namespace amrex;
 // generate an array of theta,phi pairs that uniformily cover the surface of a sphere
 // based on DOI: 10.1080/10586458.2003.10504492 section 3.3 but specifying n_j=0 instead of n
 Gpu::ManagedVector<GpuArray<Real,3> > uniform_sphere_xyz(int nphi_at_equator){
-	AMREX_ASSERT(nphi_at_equator >= 4);
-	AMREX_ASSERT(nphi_at_equator%2==0); // make sure its even so isotropy can be represented exactly
-
+	AMREX_ASSERT(nphi_at_equator>0);
+	
 	Real dtheta = M_PI*std::sqrt(3)/nphi_at_equator;
 
 	Gpu::ManagedVector<GpuArray<Real,3> > xyz;
@@ -228,11 +227,11 @@ InitParticles(const TestParams& parms)
 		  p.rdata(PIdx::N) = 1.0;
 		  p.rdata(PIdx::Nbar) = 1.0;
 		  p.rdata(PIdx::f00_Re)    = 1.0;
-		  p.rdata(PIdx::f01_Im)    = 0.0;
+		  p.rdata(PIdx::f01_Re)    = 0.0;
 		  p.rdata(PIdx::f01_Im)    = 0.0;
 		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
-		  p.rdata(PIdx::f01_Imbar) = 0.0;
+		  p.rdata(PIdx::f01_Rebar) = 0.0;
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
 
@@ -253,11 +252,11 @@ InitParticles(const TestParams& parms)
 		  
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
-		  p.rdata(PIdx::f01_Im)    = 0.0;
+		  p.rdata(PIdx::f01_Re)    = 0.0;
 		  p.rdata(PIdx::f01_Im)    = 0.0;
 		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
-		  p.rdata(PIdx::f01_Imbar) = 0.0;
+		  p.rdata(PIdx::f01_Rebar) = 0.0;
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
 
