@@ -297,9 +297,10 @@ InitParticles(const TestParams& parms)
 		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
 
 		  // set particle weight such that density is
-		  // 10 dm2 c^4 / (2 sqrt(2) GF E)
+		  // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
+		  // to get maximal growth according to Chakraborty 2016 Equation 2.10
 		  constexpr Real dm2 = (PhysConst::mass2-PhysConst::mass1)*(PhysConst::mass2-PhysConst::mass1); //g^2
-		  double ndens = 1.e6 * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
+		  double ndens = 0.5 * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
 		}
