@@ -101,7 +101,7 @@ void evolve_flavor(const TestParams& parms)
         neutrinos_rhs.copyParticles(neutrinos, true);
 
         // Step 3: Interpolate Mesh to construct the neutrino RHS in place
-        interpolate_rhs_from_mesh(neutrinos_rhs, state, geom);
+        interpolate_rhs_from_mesh(neutrinos_rhs, state, geom, parms);
     };
 
     auto post_update_fun = [&] (FlavoredNeutrinoContainer& neutrinos, Real time) {
@@ -186,13 +186,36 @@ int main(int argc, char* argv[])
     pp.get("max_grid_size", parms.max_grid_size);
     pp.get("nsteps", parms.nsteps);
     pp.get("end_time", parms.end_time);
-    pp.get("rho", parms.rho_in);
+    pp.get("rho_g_ccm", parms.rho_in);
     pp.get("Ye", parms.Ye_in);
-    pp.get("T", parms.T_in);
+    pp.get("T_MeV", parms.T_in);
     pp.get("cfl_factor", parms.cfl_factor);
     pp.get("flavor_cfl_factor", parms.flavor_cfl_factor);
     pp.get("write_plot_every", parms.write_plot_every);
     pp.get("write_plot_particles", parms.write_plot_particles);
+
+    // neutrino physics parameters for 2-flavor
+    pp.get("mass1_eV", parms.mass1);
+    pp.get("mass2_eV", parms.mass2);
+    pp.get("theta12_degrees", parms.theta12);
+    pp.get("alpha1_degrees", parms.alpha1);
+    parms.mass1 *= CGSUnitsConst::eV/PhysConst::c2;
+    parms.mass2 *= CGSUnitsConst::eV/PhysConst::c2;
+    parms.theta12 *= M_PI/180.;
+    parms.alpha1 *= M_PI/180.;
+
+    if(NUM_FLAVORS>=2){
+    	pp.get("mass3_eV", parms.mass3);
+    	pp.get("theta13_degrees", parms.theta13);
+    	pp.get("theta23_degrees", parms.theta23);
+    	pp.get("alpha2_degrees", parms.alpha2);
+    	pp.get("deltaCP_degrees", parms.deltaCP);
+    	parms.mass3 *= CGSUnitsConst::eV/PhysConst::c2;
+    	parms.theta13 *= M_PI/180.;
+    	parms.theta23 *= M_PI/180.;
+    	parms.alpha2 *= M_PI/180.;
+    	parms.deltaCP *= M_PI/180.;
+    }
 
     evolve_flavor(parms);
 

@@ -176,7 +176,7 @@ if __name__ == "__main__":
         P[i,i] = 1
         U[i,i] = 1
     if(args.N>=2):
-        theta12 = sympy.symbols('PhysConst\:\:theta12',real=True)
+        theta12 = sympy.symbols('parms.theta12',real=True)
         U12 = sympy.zeros(args.N,args.N)
         for i in range(args.N):
             U12[i,i] = 1
@@ -184,11 +184,11 @@ if __name__ == "__main__":
         U12[0,1] =  sympy.sin(theta12)
         U12[1,0] = -sympy.sin(theta12)
         U12[1,1] =  sympy.cos(theta12)
-        alpha1 = sympy.symbols('PhysConst\:\:alpha1',real=True)
+        alpha1 = sympy.symbols('parms.alpha1',real=True)
         P[0,0] = sympy.exp(sympy.I * alpha1)
     if(args.N>=3):
-        deltaCP = sympy.symbols('PhysConst\:\:deltaCP',real=True)
-        theta13 = sympy.symbols('PhysConst\:\:theta13',real=True)
+        deltaCP = sympy.symbols('parms.deltaCP',real=True)
+        theta13 = sympy.symbols('parms.theta13',real=True)
         U13 = sympy.zeros(args.N,args.N)
         for i in range(args.N):
             U13[i,i] = 1
@@ -196,7 +196,7 @@ if __name__ == "__main__":
         U13[0,2] =  sympy.sin(theta13) * sympy.exp(-sympy.I*deltaCP)
         U13[2,0] = -sympy.sin(theta13) * sympy.exp( sympy.I*deltaCP)
         U13[2,2] =  sympy.cos(theta13)
-        theta23 = sympy.symbols('PhysConst\:\:theta23',real=True)
+        theta23 = sympy.symbols('parms.theta23',real=True)
         U23 = sympy.zeros(args.N,args.N)
         for i in range(args.N):
             U23[i,i] = 1
@@ -204,7 +204,7 @@ if __name__ == "__main__":
         U23[0,2] =  sympy.sin(theta13)
         U23[2,0] = -sympy.sin(theta13)
         U23[2,2] =  sympy.cos(theta13)
-        alpha2 = sympy.symbols('PhysConst\:\:alpha2',real=True)
+        alpha2 = sympy.symbols('parms.alpha2',real=True)
         P[1,1] = sympy.exp(sympy.I * alpha2)
 
     if(args.N==2):
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     # create M2 matrix in Evolve.H
     M2 = sympy.zeros(args.N,args.N)
     for i in range(args.N):
-        M2[i,i] = sympy.symbols('PhysConst\:\:mass'+str(i+1),real=True)**2
+        M2[i,i] = sympy.symbols('parms.mass'+str(i+1),real=True)**2
     M2 = U*M2*Dagger(U)
     massmatrix = HermitianMatrix(args.N, "M2matrix{}{}_{}")
     massmatrix.H = M2

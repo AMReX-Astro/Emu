@@ -237,8 +237,8 @@ InitParticles(const TestParams& parms)
 
 		  // set momentum so that a vacuum oscillation wavelength occurs over a distance of 1cm
 		  // Set particle velocity to c in a random direction
-		  constexpr Real dm2 = (PhysConst::mass2-PhysConst::mass1)*(PhysConst::mass2-PhysConst::mass1); //g^2
-		  p.rdata(PIdx::pupt) = dm2*PhysConst::c4 * sin(2.*PhysConst::theta12) / (8.*M_PI*PhysConst::hbarc); // *1cm for units
+		  Real dm2 = (parms.mass2-parms.mass1)*(parms.mass2-parms.mass1); //g^2
+		  p.rdata(PIdx::pupt) = dm2*PhysConst::c4 * sin(2.*parms.theta12) / (8.*M_PI*PhysConst::hbarc); // *1cm for units
 		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
@@ -268,7 +268,7 @@ InitParticles(const TestParams& parms)
 
 		  // set particle weight such that density is
 		  // 10 dm2 c^4 / (2 sqrt(2) GF E)
-		  constexpr Real dm2 = (PhysConst::mass2-PhysConst::mass1)*(PhysConst::mass2-PhysConst::mass1); //g^2
+		  Real dm2 = (parms.mass2-parms.mass1)*(parms.mass2-parms.mass1); //g^2
 		  double ndens = 10. * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
 		  p.rdata(PIdx::N) = ndens * scale_fac;
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac;
@@ -299,7 +299,7 @@ InitParticles(const TestParams& parms)
 		  // set particle weight such that density is
 		  // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
 		  // to get maximal growth according to Chakraborty 2016 Equation 2.10
-		  constexpr Real dm2 = (PhysConst::mass2-PhysConst::mass1)*(PhysConst::mass2-PhysConst::mass1); //g^2
+		  Real dm2 = (parms.mass2-parms.mass1)*(parms.mass2-parms.mass1); //g^2
 		  double ndens = 0.5 * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
