@@ -171,54 +171,16 @@ int main(int argc, char* argv[])
 
     {
 
+    // Initialize the random number generator
     amrex::InitRandom(451);
 
-    ParmParse pp;
+    // get the run parameters
     std::unique_ptr<TestParams> parms_unique_ptr;
     parms_unique_ptr = std::make_unique<TestParams>();
+    parms_unique_ptr->Initialize();
     const TestParams* parms = parms_unique_ptr.get();
 
-    pp.get("simulation_type", parms_unique_ptr->simulation_type);
-    pp.get("ncell", parms_unique_ptr->ncell);
-    pp.get("Lx", parms_unique_ptr->Lx);
-    pp.get("Ly", parms_unique_ptr->Ly);
-    pp.get("Lz", parms_unique_ptr->Lz);
-    pp.get("nppc",  parms_unique_ptr->nppc);
-    pp.get("nphi_equator",  parms_unique_ptr->nphi_equator);
-    pp.get("max_grid_size", parms_unique_ptr->max_grid_size);
-    pp.get("nsteps", parms_unique_ptr->nsteps);
-    pp.get("end_time", parms_unique_ptr->end_time);
-    pp.get("rho_g_ccm", parms_unique_ptr->rho_in);
-    pp.get("Ye", parms_unique_ptr->Ye_in);
-    pp.get("T_MeV", parms_unique_ptr->T_in);
-    pp.get("cfl_factor", parms_unique_ptr->cfl_factor);
-    pp.get("flavor_cfl_factor", parms_unique_ptr->flavor_cfl_factor);
-    pp.get("write_plot_every", parms_unique_ptr->write_plot_every);
-    pp.get("write_plot_particles", parms_unique_ptr->write_plot_particles);
-
-    // neutrino physics parameters for 2-flavor
-    pp.get("mass1_eV", parms_unique_ptr->mass1);
-    pp.get("mass2_eV", parms_unique_ptr->mass2);
-    pp.get("theta12_degrees", parms_unique_ptr->theta12);
-    pp.get("alpha1_degrees", parms_unique_ptr->alpha1);
-    parms_unique_ptr->mass1 *= CGSUnitsConst::eV/PhysConst::c2;
-    parms_unique_ptr->mass2 *= CGSUnitsConst::eV/PhysConst::c2;
-    parms_unique_ptr->theta12 *= M_PI/180.;
-    parms_unique_ptr->alpha1 *= M_PI/180.;
-
-    if(NUM_FLAVORS>=2){
-    	pp.get("mass3_eV", parms_unique_ptr->mass3);
-    	pp.get("theta13_degrees", parms_unique_ptr->theta13);
-    	pp.get("theta23_degrees", parms_unique_ptr->theta23);
-    	pp.get("alpha2_degrees", parms_unique_ptr->alpha2);
-    	pp.get("deltaCP_degrees", parms_unique_ptr->deltaCP);
-    	parms_unique_ptr->mass3 *= CGSUnitsConst::eV/PhysConst::c2;
-    	parms_unique_ptr->theta13 *= M_PI/180.;
-    	parms_unique_ptr->theta23 *= M_PI/180.;
-    	parms_unique_ptr->alpha2 *= M_PI/180.;
-    	parms_unique_ptr->deltaCP *= M_PI/180.;
-    }
-
+    // do all the work!
     evolve_flavor(parms);
 
     }

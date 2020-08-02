@@ -4,6 +4,7 @@
 #include <AMReX_REAL.H>
 #include <AMReX_IntVect.H>
 #include <AMReX_GpuMemory.H>
+#include "Constants.H"
 
 using namespace amrex;
 
@@ -27,6 +28,52 @@ struct TestParams : public amrex::Gpu::Managed
     Real theta12, theta13, theta23; // neutrino mixing angles in radians
     Real alpha1, alpha2; // Majorana phases, radians
     Real deltaCP; // CP violating phases in radians
+
+    void Initialize(){
+        ParmParse pp;
+        pp.get("simulation_type", simulation_type);
+        pp.get("ncell", ncell);
+        pp.get("Lx", Lx);
+        pp.get("Ly", Ly);
+        pp.get("Lz", Lz);
+        pp.get("nppc",  nppc);
+        pp.get("nphi_equator",  nphi_equator);
+        pp.get("max_grid_size", max_grid_size);
+        pp.get("nsteps", nsteps);
+        pp.get("end_time", end_time);
+        pp.get("rho_g_ccm", rho_in);
+        pp.get("Ye", Ye_in);
+        pp.get("T_MeV", T_in);
+        pp.get("cfl_factor", cfl_factor);
+        pp.get("flavor_cfl_factor", flavor_cfl_factor);
+        pp.get("write_plot_every", write_plot_every);
+        pp.get("write_plot_particles", write_plot_particles);
+
+        // neutrino physics parameters for 2-flavor
+        pp.get("mass1_eV", mass1);
+        pp.get("mass2_eV", mass2);
+        pp.get("theta12_degrees", theta12);
+        pp.get("alpha1_degrees", alpha1);
+        mass1 *= CGSUnitsConst::eV/PhysConst::c2;
+        mass2 *= CGSUnitsConst::eV/PhysConst::c2;
+        theta12 *= M_PI/180.;
+        alpha1 *= M_PI/180.;
+
+        if(NUM_FLAVORS>=2){
+        	pp.get("mass3_eV", mass3);
+        	pp.get("theta13_degrees", theta13);
+        	pp.get("theta23_degrees", theta23);
+        	pp.get("alpha2_degrees", alpha2);
+        	pp.get("deltaCP_degrees", deltaCP);
+        	mass3 *= CGSUnitsConst::eV/PhysConst::c2;
+        	theta13 *= M_PI/180.;
+        	theta23 *= M_PI/180.;
+        	alpha2 *= M_PI/180.;
+        	deltaCP *= M_PI/180.;
+        }
+
+
+    }
 };
 
 #endif
