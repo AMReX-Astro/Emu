@@ -3,10 +3,11 @@
 
 #include <AMReX_REAL.H>
 #include <AMReX_IntVect.H>
+#include <AMReX_GpuMemory.H>
 
 using namespace amrex;
 
-struct TestParams
+struct TestParams : public amrex::Gpu::Managed
 {
     IntVect ncell;      // num cells in domain
     IntVect nppc;       // number of particles per cell in each dim
