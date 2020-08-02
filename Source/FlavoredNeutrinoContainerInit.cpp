@@ -76,7 +76,7 @@ FlavoredNeutrinoContainer(const Geometry            & a_geom,
 
 void
 FlavoredNeutrinoContainer::
-InitParticles(const TestParams& parms)
+InitParticles(const TestParams* parms)
 {
     BL_PROFILE("FlavoredNeutrinoContainer::InitParticles");
 
@@ -85,14 +85,14 @@ InitParticles(const TestParams& parms)
     const auto plo = Geom(lev).ProbLoArray();
     const auto& a_bounds = Geom(lev).ProbDomain();
     
-    const int nlocs_per_cell = AMREX_D_TERM( parms.nppc[0],
-                                     *parms.nppc[1],
-                                     *parms.nppc[2]);
+    const int nlocs_per_cell = AMREX_D_TERM( parms->nppc[0],
+                                     *parms->nppc[1],
+                                     *parms->nppc[2]);
     
-    Gpu::ManagedVector<GpuArray<Real,3> > direction_vectors = uniform_sphere_xyz(parms.nphi_equator);
+    Gpu::ManagedVector<GpuArray<Real,3> > direction_vectors = uniform_sphere_xyz(parms->nphi_equator);
     auto* direction_vectors_p = direction_vectors.dataPtr();
     int ndirs_per_loc = direction_vectors.size();
-    amrex::Print() << "Using " << ndirs_per_loc << " directions based on " << parms.nphi_equator << " directions at the equator." << std::endl;
+    amrex::Print() << "Using " << ndirs_per_loc << " directions based on " << parms->nphi_equator << " directions at the equator." << std::endl;
 
     const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell/ndirs_per_loc;
 
@@ -120,7 +120,7 @@ InitParticles(const TestParams& parms)
             {
                 Real r[3];
                 
-                get_position_unit_cell(r, parms.nppc, i_part);
+                get_position_unit_cell(r, parms->nppc, i_part);
                 
                 Real x = plo[0] + (i + r[0])*dx[0];
                 Real y = plo[1] + (j + r[1])*dx[1];
@@ -184,7 +184,7 @@ InitParticles(const TestParams& parms)
             {
                 Real r[3];
                 
-                get_position_unit_cell(r, parms.nppc, i_loc);
+                get_position_unit_cell(r, parms->nppc, i_loc);
                 
                 Real x = plo[0] + (i + r[0])*dx[0];
                 Real y = plo[1] + (j + r[1])*dx[1];
@@ -217,7 +217,7 @@ InitParticles(const TestParams& parms)
 		//=========================//
 		// VACUUM OSCILLATION TEST //
 		//=========================//
-		if(parms.simulation_type==0){
+		if(parms->simulation_type==0){
 		  // set all particles to start in electron state (and anti-state)
 		  // Set N to be small enough that self-interaction is not important
 		  // Set all particle momenta to be such that one oscillation wavelength is 1cm
@@ -237,8 +237,8 @@ InitParticles(const TestParams& parms)
 
 		  // set momentum so that a vacuum oscillation wavelength occurs over a distance of 1cm
 		  // Set particle velocity to c in a random direction
-		  Real dm2 = (parms.mass2-parms.mass1)*(parms.mass2-parms.mass1); //g^2
-		  p.rdata(PIdx::pupt) = dm2*PhysConst::c4 * sin(2.*parms.theta12) / (8.*M_PI*PhysConst::hbarc); // *1cm for units
+		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
+		  p.rdata(PIdx::pupt) = dm2*PhysConst::c4 * sin(2.*parms->theta12) / (8.*M_PI*PhysConst::hbarc); // *1cm for units
 		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
@@ -247,7 +247,7 @@ InitParticles(const TestParams& parms)
 		//==========================//
 		// BIPOLAR OSCILLATION TEST //
 		//==========================//
-		else if(parms.simulation_type==1){
+		else if(parms->simulation_type==1){
 		  AMREX_ASSERT(NUM_FLAVORS==2);
 		  
 		  // Set particle flavor
@@ -268,7 +268,7 @@ InitParticles(const TestParams& parms)
 
 		  // set particle weight such that density is
 		  // 10 dm2 c^4 / (2 sqrt(2) GF E)
-		  Real dm2 = (parms.mass2-parms.mass1)*(parms.mass2-parms.mass1); //g^2
+		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
 		  double ndens = 10. * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
 		  p.rdata(PIdx::N) = ndens * scale_fac;
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac;
@@ -277,7 +277,7 @@ InitParticles(const TestParams& parms)
 		//========================//
 		// 2-BEAM FAST FLAVOR TEST//
 		//========================//
-		else if(parms.simulation_type==2){
+		else if(parms->simulation_type==2){
 		  AMREX_ASSERT(NUM_FLAVORS==2);
 		  
 		  // Set particle flavor
@@ -299,7 +299,7 @@ InitParticles(const TestParams& parms)
 		  // set particle weight such that density is
 		  // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
 		  // to get maximal growth according to Chakraborty 2016 Equation 2.10
-		  Real dm2 = (parms.mass2-parms.mass1)*(parms.mass2-parms.mass1); //g^2
+		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
 		  double ndens = 0.5 * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);

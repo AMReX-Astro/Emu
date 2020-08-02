@@ -15,7 +15,7 @@
 
 using namespace amrex;
 
-void evolve_flavor(const TestParams& parms)
+void evolve_flavor(const TestParams* parms)
 {
     // Periodicity and Boundary Conditions
     // Defaults to Periodic in all dimensions
@@ -25,18 +25,18 @@ void evolve_flavor(const TestParams& parms)
 
     // Define the index space of the domain
     const IntVect domain_lo(AMREX_D_DECL(0, 0, 0));
-    const IntVect domain_hi(AMREX_D_DECL(parms.ncell[0]-1,parms.ncell[1]-1,parms.ncell[2]-1));
+    const IntVect domain_hi(AMREX_D_DECL(parms->ncell[0]-1,parms->ncell[1]-1,parms->ncell[2]-1));
     const Box domain(domain_lo, domain_hi);
 
     // Initialize the boxarray "ba" from the single box "domain"
     BoxArray ba(domain);
 
     // Break up boxarray "ba" into chunks no larger than "max_grid_size" along a direction
-    ba.maxSize(parms.max_grid_size);
+    ba.maxSize(parms->max_grid_size);
 
     // This defines the physical box, [0,1] in each dimension
     RealBox real_box({AMREX_D_DECL(     0.0,      0.0,      0.0)},
-                     {AMREX_D_DECL(parms.Lx, parms.Ly, parms.Lz)});
+                     {AMREX_D_DECL(parms->Lx, parms->Ly, parms->Lz)});
 
     // This defines the domain Geometry
     Geometry geom(domain, &real_box, CoordSys::cartesian, is_periodic.data());
@@ -55,9 +55,9 @@ void evolve_flavor(const TestParams& parms)
 
     // initialize with NaNs ...
     state.setVal(0.0);
-    state.setVal(parms.rho_in,GIdx::rho,1); // g/ccm
-    state.setVal(parms.Ye_in,GIdx::Ye,1);
-    state.setVal(parms.T_in,GIdx::T,1); // MeV
+    state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
+    state.setVal(parms->Ye_in,GIdx::Ye,1);
+    state.setVal(parms->T_in,GIdx::T,1); // MeV
     state.FillBoundary(geom.periodicity());
 
     // initialize the grid variable names
@@ -84,7 +84,7 @@ void evolve_flavor(const TestParams& parms)
     deposit_to_mesh(neutrinos_old, state, geom);
 
     // Write plotfile after initialization
-    WritePlotFile(state, neutrinos_old, geom, initial_time, 0, parms.write_plot_particles);
+    WritePlotFile(state, neutrinos_old, geom, initial_time, 0, parms->write_plot_particles);
 
     amrex::Print() << "Done. " << std::endl;
 
@@ -137,14 +137,14 @@ void evolve_flavor(const TestParams& parms)
         amrex::Print() << "Completed time step: " << step << " t = " <<time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;
 
         // Write the Mesh Data to Plotfile if required
-        if ((step+1) % parms.write_plot_every == 0)
-            WritePlotFile(state, neutrinos, geom, time, step+1, parms.write_plot_particles);
+        if ((step+1) % parms->write_plot_every == 0)
+            WritePlotFile(state, neutrinos, geom, time, step+1, parms->write_plot_particles);
 
         // Set the next timestep from the last deposited grid data
         // Note: this won't be the same as the new-time grid data
         // because the last deposit_to_mesh call was at either the old time (forward Euler)
         // or the final RK stage, if using Runge-Kutta.
-        const Real dt = compute_dt(geom,parms.cfl_factor,state,parms.flavor_cfl_factor);
+        const Real dt = compute_dt(geom,parms->cfl_factor,state,parms->flavor_cfl_factor);
         integrator.set_timestep(dt);
     };
 
@@ -154,12 +154,12 @@ void evolve_flavor(const TestParams& parms)
     integrator.set_post_timestep(post_timestep_fun);
 
     // Get a starting timestep
-    const Real starting_dt = compute_dt(geom,parms.cfl_factor,state,parms.flavor_cfl_factor);
+    const Real starting_dt = compute_dt(geom,parms->cfl_factor,state,parms->flavor_cfl_factor);
 
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
 
-    integrator.integrate(starting_dt, parms.end_time, parms.nsteps); 
+    integrator.integrate(starting_dt, parms->end_time, parms->nsteps);
 
     amrex::Print() << "Done. " << std::endl;
 
@@ -174,47 +174,49 @@ int main(int argc, char* argv[])
     amrex::InitRandom(451);
 
     ParmParse pp;
-    TestParams parms;
+    std::unique_ptr<TestParams> parms_unique_ptr;
+    parms_unique_ptr = std::make_unique<TestParams>();
+    const TestParams* parms = parms_unique_ptr.get();
 
-    pp.get("simulation_type", parms.simulation_type);
-    pp.get("ncell", parms.ncell);
-    pp.get("Lx", parms.Lx);
-    pp.get("Ly", parms.Ly);
-    pp.get("Lz", parms.Lz);
-    pp.get("nppc",  parms.nppc);
-    pp.get("nphi_equator",  parms.nphi_equator);
-    pp.get("max_grid_size", parms.max_grid_size);
-    pp.get("nsteps", parms.nsteps);
-    pp.get("end_time", parms.end_time);
-    pp.get("rho_g_ccm", parms.rho_in);
-    pp.get("Ye", parms.Ye_in);
-    pp.get("T_MeV", parms.T_in);
-    pp.get("cfl_factor", parms.cfl_factor);
-    pp.get("flavor_cfl_factor", parms.flavor_cfl_factor);
-    pp.get("write_plot_every", parms.write_plot_every);
-    pp.get("write_plot_particles", parms.write_plot_particles);
+    pp.get("simulation_type", parms_unique_ptr->simulation_type);
+    pp.get("ncell", parms_unique_ptr->ncell);
+    pp.get("Lx", parms_unique_ptr->Lx);
+    pp.get("Ly", parms_unique_ptr->Ly);
+    pp.get("Lz", parms_unique_ptr->Lz);
+    pp.get("nppc",  parms_unique_ptr->nppc);
+    pp.get("nphi_equator",  parms_unique_ptr->nphi_equator);
+    pp.get("max_grid_size", parms_unique_ptr->max_grid_size);
+    pp.get("nsteps", parms_unique_ptr->nsteps);
+    pp.get("end_time", parms_unique_ptr->end_time);
+    pp.get("rho_g_ccm", parms_unique_ptr->rho_in);
+    pp.get("Ye", parms_unique_ptr->Ye_in);
+    pp.get("T_MeV", parms_unique_ptr->T_in);
+    pp.get("cfl_factor", parms_unique_ptr->cfl_factor);
+    pp.get("flavor_cfl_factor", parms_unique_ptr->flavor_cfl_factor);
+    pp.get("write_plot_every", parms_unique_ptr->write_plot_every);
+    pp.get("write_plot_particles", parms_unique_ptr->write_plot_particles);
 
     // neutrino physics parameters for 2-flavor
-    pp.get("mass1_eV", parms.mass1);
-    pp.get("mass2_eV", parms.mass2);
-    pp.get("theta12_degrees", parms.theta12);
-    pp.get("alpha1_degrees", parms.alpha1);
-    parms.mass1 *= CGSUnitsConst::eV/PhysConst::c2;
-    parms.mass2 *= CGSUnitsConst::eV/PhysConst::c2;
-    parms.theta12 *= M_PI/180.;
-    parms.alpha1 *= M_PI/180.;
+    pp.get("mass1_eV", parms_unique_ptr->mass1);
+    pp.get("mass2_eV", parms_unique_ptr->mass2);
+    pp.get("theta12_degrees", parms_unique_ptr->theta12);
+    pp.get("alpha1_degrees", parms_unique_ptr->alpha1);
+    parms_unique_ptr->mass1 *= CGSUnitsConst::eV/PhysConst::c2;
+    parms_unique_ptr->mass2 *= CGSUnitsConst::eV/PhysConst::c2;
+    parms_unique_ptr->theta12 *= M_PI/180.;
+    parms_unique_ptr->alpha1 *= M_PI/180.;
 
     if(NUM_FLAVORS>=2){
-    	pp.get("mass3_eV", parms.mass3);
-    	pp.get("theta13_degrees", parms.theta13);
-    	pp.get("theta23_degrees", parms.theta23);
-    	pp.get("alpha2_degrees", parms.alpha2);
-    	pp.get("deltaCP_degrees", parms.deltaCP);
-    	parms.mass3 *= CGSUnitsConst::eV/PhysConst::c2;
-    	parms.theta13 *= M_PI/180.;
-    	parms.theta23 *= M_PI/180.;
-    	parms.alpha2 *= M_PI/180.;
-    	parms.deltaCP *= M_PI/180.;
+    	pp.get("mass3_eV", parms_unique_ptr->mass3);
+    	pp.get("theta13_degrees", parms_unique_ptr->theta13);
+    	pp.get("theta23_degrees", parms_unique_ptr->theta23);
+    	pp.get("alpha2_degrees", parms_unique_ptr->alpha2);
+    	pp.get("deltaCP_degrees", parms_unique_ptr->deltaCP);
+    	parms_unique_ptr->mass3 *= CGSUnitsConst::eV/PhysConst::c2;
+    	parms_unique_ptr->theta13 *= M_PI/180.;
+    	parms_unique_ptr->theta23 *= M_PI/180.;
+    	parms_unique_ptr->alpha2 *= M_PI/180.;
+    	parms_unique_ptr->deltaCP *= M_PI/180.;
     }
 
     evolve_flavor(parms);

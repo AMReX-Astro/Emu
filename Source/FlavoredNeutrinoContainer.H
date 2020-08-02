@@ -72,7 +72,7 @@ public:
                               const amrex::DistributionMapping & a_dmap,
                               const amrex::BoxArray            & a_ba);
 
-    void InitParticles(const TestParams& parms);
+    void InitParticles(const TestParams* parms);
 
     void UpdateLocationFrom(FlavoredNeutrinoContainer& Other);
 
