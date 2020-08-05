@@ -300,7 +300,9 @@ InitParticles(const TestParams* parms)
 		  // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
 		  // to get maximal growth according to Chakraborty 2016 Equation 2.10
 		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
-		  double ndens = 0.5 * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
+		  Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
+		  Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
+		  double ndens = omega / (2.*mu_ndens); // want omega/2mu to be 1
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
 		}
