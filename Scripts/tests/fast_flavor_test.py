@@ -20,12 +20,6 @@ tolerance = 1e-3
 i0 = 50
 i1 = 70
 
-# E and rho*Ye that induces resonance
-E = dm21c4 * np.sin(2.*theta12)/(8.*np.pi*hbar*clight)
-rhoYe = 4.*np.pi*hbar*clight*mp / (np.tan(2.*theta12)*np.sqrt(2.)*GF)
-print("E should be ",E,"erg")
-print("rho*Ye shoud be ", rhoYe," g/cm^3")
-
 if __name__ == "__main__":
 
     rkey = {
