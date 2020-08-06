@@ -307,6 +307,50 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
 		}
 
+		//===============================//
+		// 3- k!=0 BEAM FAST FLAVOR TEST //
+		//===============================//
+		else if(parms->simulation_type==3){
+		  AMREX_ASSERT(NUM_FLAVORS==2);
+
+		  // perturbation parameters
+		  int dir = 2;
+		  Real amplitude = 1e-9;
+		  Real lambda = Geom(lev).ProbLength(dir);
+		  Real k = (2.*M_PI) / lambda;
+		  Print() << "k=" << k*PhysConst::hbarc << " erg" << std::endl;
+
+		  // Set particle flavor
+		  p.rdata(PIdx::f00_Re)    = 1.0;
+		  p.rdata(PIdx::f01_Re)    = amplitude*sin(k*p.pos(dir));
+		  p.rdata(PIdx::f01_Im)    = 0.0;
+		  p.rdata(PIdx::f11_Re)    = 0.0;
+		  p.rdata(PIdx::f00_Rebar) = 1.0;
+		  p.rdata(PIdx::f01_Rebar) = amplitude*sin(k*p.pos(dir));
+		  p.rdata(PIdx::f01_Imbar) = 0.0;
+		  p.rdata(PIdx::f11_Rebar) = 0.0;
+
+		  // set energy to 50 MeV to match Richers+(2019)
+		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
+
+		  // set particle weight such that density is
+		  // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
+		  // to get maximal growth according to Chakraborty 2016 Equation 2.10
+		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
+		  Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
+		  Print() << "omega=" << omega << " erg" << std::endl;
+		  Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
+		  Real ndens = (omega+k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
+		  Real mu = mu_ndens*ndens;
+		  Print() << "omega+k=" << omega+k << std::endl;
+		  Print() << "mu=" << mu << " erg" << std::endl;
+		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
+		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
+		}
+
 		else{
             amrex::Error("Invalid simulation type");
 		}
