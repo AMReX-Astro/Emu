@@ -15,7 +15,7 @@
 
 using namespace amrex;
 
-void evolve_flavor(const TestParams& parms)
+void evolve_flavor(const TestParams* parms)
 {
     // Periodicity and Boundary Conditions
     // Defaults to Periodic in all dimensions
@@ -25,18 +25,18 @@ void evolve_flavor(const TestParams& parms)
 
     // Define the index space of the domain
     const IntVect domain_lo(AMREX_D_DECL(0, 0, 0));
-    const IntVect domain_hi(AMREX_D_DECL(parms.ncell[0]-1,parms.ncell[1]-1,parms.ncell[2]-1));
+    const IntVect domain_hi(AMREX_D_DECL(parms->ncell[0]-1,parms->ncell[1]-1,parms->ncell[2]-1));
     const Box domain(domain_lo, domain_hi);
 
     // Initialize the boxarray "ba" from the single box "domain"
     BoxArray ba(domain);
 
     // Break up boxarray "ba" into chunks no larger than "max_grid_size" along a direction
-    ba.maxSize(parms.max_grid_size);
+    ba.maxSize(parms->max_grid_size);
 
     // This defines the physical box, [0,1] in each dimension
     RealBox real_box({AMREX_D_DECL(     0.0,      0.0,      0.0)},
-                     {AMREX_D_DECL(parms.Lx, parms.Ly, parms.Lz)});
+                     {AMREX_D_DECL(parms->Lx, parms->Ly, parms->Lz)});
 
     // This defines the domain Geometry
     Geometry geom(domain, &real_box, CoordSys::cartesian, is_periodic.data());
@@ -55,9 +55,9 @@ void evolve_flavor(const TestParams& parms)
 
     // initialize with NaNs ...
     state.setVal(0.0);
-    state.setVal(parms.rho_in,GIdx::rho,1); // g/ccm
-    state.setVal(parms.Ye_in,GIdx::Ye,1);
-    state.setVal(parms.T_in,GIdx::T,1); // MeV
+    state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
+    state.setVal(parms->Ye_in,GIdx::Ye,1);
+    state.setVal(parms->T_in,GIdx::T,1); // MeV
     state.FillBoundary(geom.periodicity());
 
     // initialize the grid variable names
@@ -84,7 +84,7 @@ void evolve_flavor(const TestParams& parms)
     deposit_to_mesh(neutrinos_old, state, geom);
 
     // Write plotfile after initialization
-    WritePlotFile(state, neutrinos_old, geom, initial_time, 0, parms.write_plot_particles);
+    WritePlotFile(state, neutrinos_old, geom, initial_time, 0, parms->write_plot_particles);
 
     amrex::Print() << "Done. " << std::endl;
 
@@ -101,7 +101,7 @@ void evolve_flavor(const TestParams& parms)
         neutrinos_rhs.copyParticles(neutrinos, true);
 
         // Step 3: Interpolate Mesh to construct the neutrino RHS in place
-        interpolate_rhs_from_mesh(neutrinos_rhs, state, geom);
+        interpolate_rhs_from_mesh(neutrinos_rhs, state, geom, parms);
     };
 
     auto post_update_fun = [&] (FlavoredNeutrinoContainer& neutrinos, Real time) {
@@ -137,14 +137,14 @@ void evolve_flavor(const TestParams& parms)
         amrex::Print() << "Completed time step: " << step << " t = " <<time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;
 
         // Write the Mesh Data to Plotfile if required
-        if ((step+1) % parms.write_plot_every == 0)
-            WritePlotFile(state, neutrinos, geom, time, step+1, parms.write_plot_particles);
+        if ((step+1) % parms->write_plot_every == 0)
+            WritePlotFile(state, neutrinos, geom, time, step+1, parms->write_plot_particles);
 
         // Set the next timestep from the last deposited grid data
         // Note: this won't be the same as the new-time grid data
         // because the last deposit_to_mesh call was at either the old time (forward Euler)
         // or the final RK stage, if using Runge-Kutta.
-        const Real dt = compute_dt(geom,parms.cfl_factor,state,parms.flavor_cfl_factor);
+        const Real dt = compute_dt(geom,parms->cfl_factor,state,parms->flavor_cfl_factor);
         integrator.set_timestep(dt);
     };
 
@@ -154,12 +154,12 @@ void evolve_flavor(const TestParams& parms)
     integrator.set_post_timestep(post_timestep_fun);
 
     // Get a starting timestep
-    const Real starting_dt = compute_dt(geom,parms.cfl_factor,state,parms.flavor_cfl_factor);
+    const Real starting_dt = compute_dt(geom,parms->cfl_factor,state,parms->flavor_cfl_factor);
 
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
 
-    integrator.integrate(starting_dt, parms.end_time, parms.nsteps); 
+    integrator.integrate(starting_dt, parms->end_time, parms->nsteps);
 
     amrex::Print() << "Done. " << std::endl;
 
@@ -171,29 +171,16 @@ int main(int argc, char* argv[])
 
     {
 
+    // Initialize the random number generator
     amrex::InitRandom(451);
 
-    ParmParse pp;
-    TestParams parms;
+    // get the run parameters
+    std::unique_ptr<TestParams> parms_unique_ptr;
+    parms_unique_ptr = std::make_unique<TestParams>();
+    parms_unique_ptr->Initialize();
+    const TestParams* parms = parms_unique_ptr.get();
 
-    pp.get("simulation_type", parms.simulation_type);
-    pp.get("ncell", parms.ncell);
-    pp.get("Lx", parms.Lx);
-    pp.get("Ly", parms.Ly);
-    pp.get("Lz", parms.Lz);
-    pp.get("nppc",  parms.nppc);
-    pp.get("nphi_equator",  parms.nphi_equator);
-    pp.get("max_grid_size", parms.max_grid_size);
-    pp.get("nsteps", parms.nsteps);
-    pp.get("end_time", parms.end_time);
-    pp.get("rho", parms.rho_in);
-    pp.get("Ye", parms.Ye_in);
-    pp.get("T", parms.T_in);
-    pp.get("cfl_factor", parms.cfl_factor);
-    pp.get("flavor_cfl_factor", parms.flavor_cfl_factor);
-    pp.get("write_plot_every", parms.write_plot_every);
-    pp.get("write_plot_particles", parms.write_plot_particles);
-
+    // do all the work!
     evolve_flavor(parms);
 
     }
