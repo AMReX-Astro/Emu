@@ -17,9 +17,14 @@ mp = 1.6726219e-24 # g
 GF = 1.1663787e-5 / (1e9*eV)**2 * (hbar*clight)**3 #erg cm^3
 
 tolerance = 1e-3
-i0 = 500
-i1 = 800
-Lx = 1e6
+i0 = 100
+i1 = 160
+
+# get domain size
+file = open("inputs","r")
+for line in file:
+    if "Lx" in line:
+        Lx = float(line.split("=")[1])
 
 if __name__ == "__main__":
 
@@ -79,6 +84,10 @@ if __name__ == "__main__":
 
     # wavevector of the perturbation
     k = 2*np.pi/Lx
+
+    # SI potential
+    mu = 1.585229243e-24/hbar # 1/s
+    print(mu)
     
     # theoretical growth rate according to Chakraborty 2016 Equation 2.7 a=0 mu=0.5(V+k)
     ImOmega = (V+k*hbar*clight)/hbar
