@@ -44,8 +44,8 @@ void evolve_flavor(const TestParams* parms)
     // Create the DistributionMapping from the BoxArray
     DistributionMapping dm(ba);
 
-    // We want 1 ghost cells (grids are "grown" by ngrow ghost cells in each direction)
-    const int ngrow = 1;
+    // We want ghost cells according to size of particle shape stencil (grids are "grown" by ngrow ghost cells in each direction)
+    const int ngrow = SHAPE_FACTOR_ORDER;
 
     // We want 1 component (this is one real scalar field on the domain)
     const int ncomp = GIdx::ncomp;
