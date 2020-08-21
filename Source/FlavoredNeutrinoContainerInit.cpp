@@ -1,5 +1,6 @@
 #include "FlavoredNeutrinoContainer.H"
 #include "Constants.H"
+#include <random>
 
 using namespace amrex;
 
@@ -315,19 +316,19 @@ InitParticles(const TestParams* parms)
 
 		  // perturbation parameters
 		  int dir = 2;
-		  Real amplitude = 1e-9;
+		  Real amplitude = 1e-6;
 		  Real lambda = Geom(lev).ProbLength(dir);
 		  Real k = (2.*M_PI) / lambda;
 		  Print() << "k=" << k*PhysConst::hbarc << " erg" << std::endl;
 
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
-		  p.rdata(PIdx::f01_Re)    = amplitude*sin(k*p.pos(dir));
-		  p.rdata(PIdx::f01_Im)    = 0.0;
+		  p.rdata(PIdx::f01_Re)    = amplitude*sin(k*p.pos(dir));//amplitude*Random();
+		  p.rdata(PIdx::f01_Im)    = 0;//amplitude*Random();
 		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
-		  p.rdata(PIdx::f01_Rebar) = amplitude*sin(k*p.pos(dir));
-		  p.rdata(PIdx::f01_Imbar) = 0.0;
+		  p.rdata(PIdx::f01_Rebar) = amplitude*sin(k*p.pos(dir));//amplitude*Random();
+		  p.rdata(PIdx::f01_Imbar) = 0;//amplitude*Random();
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
 
 		  // set energy to 50 MeV to match Richers+(2019)
@@ -345,8 +346,9 @@ InitParticles(const TestParams* parms)
 		  Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
 		  Real ndens = (omega+k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
 		  Real mu = mu_ndens*ndens;
-		  Print() << "omega+k=" << omega+k << std::endl;
+		  Print() << "omega+k=" << omega+PhysConst::hbarc*k << std::endl;
 		  Print() << "mu=" << mu << " erg" << std::endl;
+		  Print() << "mu/omegatilde="<< mu/(omega+PhysConst::hbarc*k) << std::endl;
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
 		}
