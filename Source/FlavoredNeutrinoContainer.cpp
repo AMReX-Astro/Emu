@@ -4,7 +4,7 @@
 using namespace amrex;
 
 void FlavoredNeutrinoContainer::
-UpdateLocationFrom(FlavoredNeutrinoContainer& Other)
+UpdateLocationFrom(FlavoredNeutrinoContainer& Ploc)
 {
     BL_PROFILE("FlavoredNeutrinoContainer::UpdateLocationFrom");
 
@@ -14,36 +14,36 @@ UpdateLocationFrom(FlavoredNeutrinoContainer& Other)
     const auto plo = Geom(lev).ProbLoArray();
 
     FNParIter pti_this(*this, lev);
-    FNParIter pti_other(Other, lev);
+    FNParIter pti_ploc(Ploc, lev);
 
     auto checkValid = [&]() -> bool {
         bool this_v = pti_this.isValid();
-        bool other_v = pti_other.isValid();
-        AMREX_ASSERT(this_v == other_v);
-        return this_v && other_v;
+        bool ploc_v = pti_ploc.isValid();
+        AMREX_ASSERT(this_v == ploc_v);
+        return this_v && ploc_v;
     };
 
-    auto ptIncrement = [&](){ ++pti_this; ++pti_other; };
+    auto ptIncrement = [&](){ ++pti_this; ++pti_ploc; };
 
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
     for (; checkValid(); ptIncrement())
     {
-        const int np_this  = pti_this.numParticles();
-        const int np_other = pti_other.numParticles();
-        AMREX_ASSERT(np_this == np_other);
+        const int np_this = pti_this.numParticles();
+        const int np_ploc = pti_ploc.numParticles();
+        AMREX_ASSERT(np_this == np_ploc);
 
         ParticleType* ps_this = &(pti_this.GetArrayOfStructs()[0]);
-        ParticleType* ps_other = &(pti_other.GetArrayOfStructs()[0]);
+        ParticleType* ps_ploc = &(pti_ploc.GetArrayOfStructs()[0]);
 
         ParallelFor (np_this, [=] AMREX_GPU_DEVICE (int i) {
             ParticleType& p_this = ps_this[i];
-            ParticleType& p_other = ps_other[i];
+            ParticleType& p_ploc = ps_ploc[i];
 
-            p_this.pos(0) = p_other.pos(0);
-            p_this.pos(1) = p_other.pos(1);
-            p_this.pos(2) = p_other.pos(2);
+            p_this.pos(0) = p_ploc.rdata(PIdx::x);
+            p_this.pos(1) = p_ploc.rdata(PIdx::y);
+            p_this.pos(2) = p_ploc.rdata(PIdx::z);
         });
     }
 }

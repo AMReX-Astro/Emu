@@ -19,7 +19,7 @@ struct PIdx
         // of the code generation script should be changed as well:
         // - FlavoredNeutrinoContainerInit.H_particle_varnames_fill
         // p has units of ergs (implied multiply by c)
-        time=0, pupx, pupy, pupz, pupt,
+        time=0, x, y, z, pupx, pupy, pupz, pupt,
         #include "generated_files/FlavoredNeutrinoContainer.H_fill"
         nattribs
     };
@@ -40,9 +40,9 @@ struct ApplyFlavoredNeutrinoRHS
 
         // evolve position for this particle over the timestep dt
         p.rdata(PIdx::time) += dt;
-        p.pos(0) += p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c * dt;
-        p.pos(1) += p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c * dt;
-        p.pos(2) += p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c * dt;
+        p.rdata(PIdx::x) += p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c * dt;
+        p.rdata(PIdx::y) += p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c * dt;
+        p.rdata(PIdx::z) += p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c * dt;
     }
 };
 

@@ -116,6 +116,9 @@ void evolve_flavor(const TestParams* parms)
         // We write a function for the integrator to map across all internal
         // particle containers. We have to update particle locations and
         // redistribute since particles may have moved in the previous update.
+        //
+        // Here we are updating the particle locations using the integrated location
+        // stored in PIdx::x, PIdx::y, PIdx::z.
         auto update_data = [&](FlavoredNeutrinoContainer& data) {
             if (&data != &neutrinos) {
                 data.UpdateLocationFrom(neutrinos);
@@ -127,7 +130,8 @@ void evolve_flavor(const TestParams* parms)
         // update them with the new particle locations & Redistribute
         integrator.map_data(update_data);
 
-        // Finally, redistribute current data
+        // Finally, update & redistribute current data
+        neutrinos.UpdateLocationFrom(neutrinos);
         neutrinos.RedistributeLocal();
     };
 
