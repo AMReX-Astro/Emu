@@ -212,6 +212,11 @@ InitParticles(const TestParams* parms)
                     p.pos(1) = y;
                     p.pos(2) = z;
 
+                    // Set particle integrated position
+                    p.rdata(PIdx::x) = x;
+                    p.rdata(PIdx::y) = y;
+                    p.rdata(PIdx::z) = z;
+
                     const GpuArray<Real,3> u = direction_vectors_p[i_direction];
                     //get_random_direction(u);
 
