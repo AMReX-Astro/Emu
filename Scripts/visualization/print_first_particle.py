@@ -4,35 +4,7 @@ import glob
 import amrex_plot_tools as amrex
 
 if __name__ == "__main__":
-    real_quantities = ["pos_x",
-                       "pos_y",
-                       "pos_z",
-                       "time",
-                       "x",
-                       "y",
-                       "z",
-                       "pupx",
-                       "pupy",
-                       "pypz",
-                       "pupt",
-                       "N",
-                       "f00_Re",
-                       "f01_Re",
-                       "f01_Im",
-                       "f11_Re",
-                       "Nbar",
-                       "f00_Rebar",
-                       "f01_Rebar",
-                       "f01_Imbar",
-                       "f11_Rebar"]
-
-    rkey = {}
-    for i, rlabel in enumerate(real_quantities):
-        rkey[rlabel] = i
-
-    ikey = {
-        # no ints are stored
-    }
+    rkey, ikey = amrex.get_particle_keys()
 
     files = sorted(glob.glob("plt[0-9][0-9][0-9][0-9][0-9]"))
     print(files[0], files[-1])

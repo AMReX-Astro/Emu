@@ -21,37 +21,7 @@ rhoYe = 4.*np.pi*hbar*clight*mp / (np.tan(2.*theta12)*np.sqrt(2.)*GF)
 if __name__ == "__main__":
     import pylab as plt
 
-    rkey = {
-        "x":0,
-        "y":1,
-        "z":2,
-        "time":3,
-        "pupx":4,
-        "pupy":5,
-        "pypz":6,
-        "pupt":7,
-        "N":8,
-        "f00_Re":9,
-        "f01_Re":10,
-        "f01_Im":11,
-        "f11_Re":12,
-        "Nbar":13,
-        "f00_Rebar":14,
-        "f01_Rebar":15,
-        "f01_Imbar":16,
-        "f11_Rebar":17,
-        "V00_Re":18,
-        "V01_Re":19,
-        "V01_Im":20,
-        "V11_Re":21,
-        "V00_Rebar":22,
-        "V01_Rebar":23,
-        "V01_Imbar":24,
-        "V11_Rebar":25
-    }
-    ikey = {
-        # no ints are stored
-    }
+    rkey, ikey = amrex.get_particle_keys()
 
     t = []
     fee = []

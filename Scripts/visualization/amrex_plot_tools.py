@@ -2,6 +2,39 @@ import numpy as np
 import argparse
 import glob
 
+def get_particle_keys():
+    real_quantities = ["pos_x",
+                       "pos_y",
+                       "pos_z",
+                       "time",
+                       "x",
+                       "y",
+                       "z",
+                       "pupx",
+                       "pupy",
+                       "pypz",
+                       "pupt",
+                       "N",
+                       "f00_Re",
+                       "f01_Re",
+                       "f01_Im",
+                       "f11_Re",
+                       "Nbar",
+                       "f00_Rebar",
+                       "f01_Rebar",
+                       "f01_Imbar",
+                       "f11_Rebar"]
+
+    rkey = {}
+    for i, rlabel in enumerate(real_quantities):
+        rkey[rlabel] = i
+
+    ikey = {
+        # no ints are stored
+    }
+
+    return rkey, ikey
+
 class AMReXParticleHeader(object):
     '''
 
