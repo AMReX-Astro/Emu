@@ -2,6 +2,11 @@ import numpy as np
 import argparse
 import glob
 import EmuReader
+import sys
+import os
+importpath = os.path.dirname(os.path.realpath(__file__))+"/../visualization/"
+sys.path.append(importpath)
+import amrex_plot_tools as amrex
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-na", "--no_assert", action="store_true", help="If --no_assert is supplied, do not raise assertion errors if the test error > tolerance.")
@@ -16,35 +21,13 @@ dm21c4 = 7.39e-5 * eV**2 # erg^2
 mp = 1.6726219e-24 # g
 GF = 1.1663787e-5 / (1e9*eV)**2 * (hbar*clight)**3 #erg cm^3
 
-tolerance = 1e-3
+tolerance = 1e-2
 i0 = 50
 i1 = 70
 
 if __name__ == "__main__":
 
-    rkey = {
-        "x":0,
-        "y":1,
-        "z":2,
-        "time":3,
-        "pupx":4,
-        "pupy":5,
-        "pypz":6,
-        "pupt":7,
-        "N":8,
-        "f00_Re":9,
-        "f01_Re":10,
-        "f01_Im":11,
-        "f11_Re":12,
-        "Nbar":13,
-        "f00_Rebar":14,
-        "f01_Rebar":15,
-        "f01_Imbar":16,
-        "f11_Rebar":17,
-    }
-    ikey = {
-        # no ints are stored
-    }
+    rkey, ikey = amrex.get_particle_keys()
 
     t = []
     fexR = []
