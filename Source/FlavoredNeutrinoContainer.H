@@ -35,14 +35,9 @@ struct ApplyFlavoredNeutrinoRHS
     {
         // evolve the flavor by applying RHS update of the saxpy form F += dt * dFdt
         // for a general time integration scheme, dt is a timestep-like weight
-
-        #include "generated_files/FlavoredNeutrinoContainer.H_ApplyRHS_fill"
-
-        // evolve position for this particle over the timestep dt
-        p.rdata(PIdx::time) += dt;
-        p.rdata(PIdx::x) += p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c * dt;
-        p.rdata(PIdx::y) += p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c * dt;
-        p.rdata(PIdx::z) += p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c * dt;
+    	for(int pidx=0; pidx<PIdx::nattribs; pidx++){
+    		p.rdata(pidx) = dt*p_dFdt.rdata(pidx) + p.rdata(pidx);
+    	}
     }
 };
 

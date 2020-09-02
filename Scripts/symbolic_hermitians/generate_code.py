@@ -347,48 +347,6 @@ if __name__ == "__main__":
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))
 
-    #===========================================#
-    # FlavoredNeutrinoContainer.H_ApplyRHS_fill #
-    #===========================================#
-    code = []
-    Fmag = sympy.symbols('Fmag',real=True)
-    Fmagnew = sympy.symbols('Fmagnew',real=True)
-    dFdtmag = sympy.symbols('dFdtmag',real=True)
-    #dt_effective = sympy.symbols('dt_effective',real=True)
-
-    if args.rhs_normalize:
-        code.append(["amrex::Real Fmag, Fmagnew, dFdtmag, dt_effective;"])
-
-    for t in tails:
-        F = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
-        Fnew = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
-        dFdt = HermitianMatrix(args.N, "p_dFdt.rdata(PIdx::f{}{}_{}"+t+")")
-        dt = sympy.symbols('dt',real=True)
-
-        if args.rhs_normalize:
-            # calculate amplification factor alpha
-            expr = F.SU_vector_magnitude()
-            code.append([sympy.cxxcode(Assignment(Fmag, sympy.simplify(expr)))])
-            expr = dFdt.SU_vector_magnitude()
-            code.append([sympy.cxxcode(Assignment(dFdtmag, sympy.simplify(expr)))])
-            #expr = Fmag/dFdtmag * sympy.tan(dFdtmag/Fmag*dt)
-            #code.append([sympy.cxxcode(Assignment(dt_effective, sympy.simplify(expr)))])
-
-        # update Fnew
-        Fnew.H = (F + dFdt.times(dt)).H # dt_effective
-        code.append(Fnew.code())
-
-        if args.rhs_normalize:
-            # get new magnitude of flavor vector
-            code.append([sympy.cxxcode(Assignment(Fmagnew, sympy.simplify(F.SU_vector_magnitude())))])
-
-            # normalize the flavor vector
-            Fnew.H = (F.add_scalar(-1/args.N)).times(Fmag/Fmagnew).add_scalar(1/args.N).H
-            code.append(Fnew.code())
-
-    code = [line for sublist in code for line in sublist]
-    write_code(code, os.path.join(args.emu_home,"Source/generated_files","FlavoredNeutrinoContainer.H_ApplyRHS_fill"))
-
     #================================================#
     # FlavoredNeutrinoContainer.cpp_Renormalize_fill #
     #================================================#

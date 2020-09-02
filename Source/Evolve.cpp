@@ -133,6 +133,16 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             }
         }
 
+        // set the dfdt values into p.rdata
+        p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
+        p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
+        p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
+        p.rdata(PIdx::time) = 1.0; // neutrinos move at one second per second!
+        p.rdata(PIdx::pupx) = 0;
+        p.rdata(PIdx::pupy) = 0;
+        p.rdata(PIdx::pupz) = 0;
+        p.rdata(PIdx::pupt) = 0;
         #include "generated_files/Evolve.cpp_dfdt_fill"
+
     });
 }
