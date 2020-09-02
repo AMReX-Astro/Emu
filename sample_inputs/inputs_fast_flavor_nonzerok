@@ -1,0 +1,75 @@
+simulation_type = 3
+cfl_factor = 0.5
+flavor_cfl_factor = 0.5
+
+integration.type = 1
+integration.rk.type = 4
+
+# filtering
+use_filter = 0
+filter_npass_each_dir = (0,0,0)
+
+# Domain size in 3D index space
+ncell = (1, 1, 50)
+Lx = 1.0
+Ly = 1.0
+Lz = 1.0
+
+# Number of particles per cell
+nppc  = (1, 1, 1)
+nphi_equator = 1
+
+# Maximum size of each grid in the domain
+max_grid_size = 1000
+
+# Number of steps to run
+nsteps = 5000
+
+# Simulation end time
+end_time = 1.0e-10
+
+# Make FPE signal errors so we get a Backtrace
+amrex.fpe_trap_invalid=1
+
+# give background fluid conditions
+rho_g_ccm = 0
+T_MeV = 10
+Ye = 1
+
+# Write plotfiles
+write_plot_every = 1
+
+# Write particle data in plotfiles
+write_plot_particles = 1
+
+###############################
+# NEUTRINO PHYSICS PARAMETERS #
+###############################
+# see first column of table 14.7 in http://pdg.lbl.gov/2019/reviews/rpp2019-rev-neutrino-mixing.pdf
+
+# mass state 1 mass in eV [NO/IO:-sqrt(7.39e-5)]
+mass1_eV = 0 #-0.008596511
+
+# mass state 2 mass in eV (define at 0 arbitrarily because oscillations only sensitive to deltaM^2)
+mass2_eV = 0
+
+# mass state 3 mass in eV [NO:sqrt(2.449e-3) IO:-sqrt(2.509e-3)]
+mass3_eV = 0.049487372
+
+# 1-2 mixing angle in degrees [NO/IO:33.82]
+theta12_degrees = 1e-6
+
+# 2-3 mixing angle in degrees [NO:8.61 IO:8.65]
+theta23_degrees = 8.61
+
+# 1-3 mixing angle in degrees [NO:48.3 IO:48.6]
+theta13_degrees = 48.3
+
+# Majorana angle 1 in degrees
+alpha1_degrees = 0
+
+# Majorana angle 2 in degrees
+alpha2_degrees = 0
+
+# CP-violating phase in degrees [NO:222 IO:285]
+deltaCP_degrees = 222
