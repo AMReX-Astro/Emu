@@ -76,6 +76,7 @@ if __name__ == "__main__":
     
 
     print("growth rates:",fexRomega,fexIomega,fexRbaromega,fexIbaromega)
+    print(dt,t[i0],t[i1])
     print(fexR[i1],fexR[i0])
     print(fexI[i1],fexI[i0])
     print(fexRbar[i1],fexRbar[i0])
