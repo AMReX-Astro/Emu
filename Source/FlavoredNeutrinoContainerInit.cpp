@@ -324,7 +324,6 @@ InitParticles(const TestParams* parms)
 		  Real amplitude = 1e-6;
 		  Real lambda = Geom(lev).ProbLength(dir);
 		  Real k = (2.*M_PI) / lambda;
-		  Print() << "k=" << k*PhysConst::hbarc << " erg" << std::endl;
 
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
@@ -347,13 +346,9 @@ InitParticles(const TestParams* parms)
 		  // to get maximal growth according to Chakraborty 2016 Equation 2.10
 		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
 		  Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
-		  Print() << "omega=" << omega << " erg" << std::endl;
 		  Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
 		  Real ndens = (omega+k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
 		  Real mu = mu_ndens*ndens;
-		  Print() << "omega+k=" << omega+PhysConst::hbarc*k << std::endl;
-		  Print() << "mu=" << mu << " erg" << std::endl;
-		  Print() << "mu/omegatilde="<< mu/(omega+PhysConst::hbarc*k) << std::endl;
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
 		}
