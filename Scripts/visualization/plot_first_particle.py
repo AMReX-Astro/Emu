@@ -3,22 +3,6 @@ import argparse
 import glob
 import amrex_plot_tools as amrex
 
-# physical constants
-clight = 2.99792458e10 # cm/s
-hbar = 1.05457266e-27 # erg s
-theta12 = 33.82*np.pi/180. # radians
-eV = 1.60218e-12 # erg
-dm21c4 = 7.39e-5 * eV**2 # erg^2
-mp = 1.6726219e-24 # g
-GF = 1.1663787e-5 / (1e9*eV)**2 * (hbar*clight)**3 #erg cm^3
-
-# E and rho*Ye that induces resonance
-E = dm21c4 * np.sin(2.*theta12)/(8.*np.pi*hbar*clight)
-rhoYe = 4.*np.pi*hbar*clight*mp / (np.tan(2.*theta12)*np.sqrt(2.)*GF)
-print("E should be ",E,"erg")
-print("rho*Ye shoud be ", rhoYe," g/cm^3")
-
-
 if __name__ == "__main__":
     import pylab as plt
 
@@ -53,20 +37,6 @@ if __name__ == "__main__":
     t = np.array(t)
     print(t)
 
-    # The neutrino energy we set
-    #E = dm21c4 * np.sin(2.*theta12) / (8.*np.pi*hbar*clight)
-
-    # The potential we use
-    V = np.sqrt(2.) * GF * rhoYe/mp
-    
-    # Richers(2019) B3
-    C    = np.cos(2.*theta12) + 2.*V*E/dm21c4
-    Cbar = np.cos(2.*theta12) - 2.*V*E/dm21c4
-    sin2_eff    = np.sin(2.*theta12)**2 / (np.sin(2.*theta12)**2 + C**2)
-    sin2_effbar = np.sin(2.*theta12)**2 / (np.sin(2.*theta12)**2 + Cbar**2)
-    dm2_eff    = dm21c4 * np.sqrt(np.sin(2.*theta12)**2 + C**2)
-    dm2_effbar = dm21c4 * np.sqrt(np.sin(2.*theta12)**2 + Cbar**2)
-    
     fig = plt.gcf()
     fig.set_size_inches(8, 8)
 
@@ -82,8 +52,7 @@ if __name__ == "__main__":
     
     plt.grid()
     plt.legend()
-    #plt.axis((0., 1., 0., 1.))
     ax = plt.gca()
-    ax.set_xlabel(r'$t$ (cm)')
+    ax.set_xlabel(r'$t$ (s)')
     ax.set_ylabel(r'$f$')
     plt.savefig('single_neutrino.png')

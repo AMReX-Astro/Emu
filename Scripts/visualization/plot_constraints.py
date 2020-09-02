@@ -3,81 +3,10 @@ import argparse
 import glob
 import amrex_plot_tools as amrex
 
-# physical constants
-clight = 2.99792458e10 # cm/s
-hbar = 1.05457266e-27 # erg s
-theta12 = 33.82*np.pi/180. # radians
-eV = 1.60218e-12 # erg
-dm21c4 = 7.39e-5 * eV**2 # erg^2
-mp = 1.6726219e-24 # g
-GF = 1.1663787e-5 / (1e9*eV)**2 * (hbar*clight)**3 #erg cm^3
-
-# E and rho*Ye that induces resonance
-E = dm21c4 * np.sin(2.*theta12)/(8.*np.pi*hbar*clight)
-rhoYe = 4.*np.pi*hbar*clight*mp / (np.tan(2.*theta12)*np.sqrt(2.)*GF)
-
-
-
 if __name__ == "__main__":
     import pylab as plt
 
-#    rkey = {
-#        "x":0,
-#        "y":1,
-#        "z":2,
-#        "time":3,
-#        "pupx":4,
-#        "pupy":5,
-#        "pypz":6,
-#        "pupt":7,
-#        "N":8,
-#        "f00_Re":9,
-#        "f01_Re":10,
-#        "f01_Im":11,
-#        "f11_Re":12,
-#        "Nbar":13,
-#        "f00_Rebar":14,
-#        "f01_Rebar":15,
-#        "f01_Imbar":16,
-#        "f11_Rebar":17,
-#        "V00_Re":18,
-#        "V01_Re":19,
-#        "V01_Im":20,
-#        "V11_Re":21,
-#        "V00_Rebar":22,
-#        "V01_Rebar":23,
-#        "V01_Imbar":24,
-#        "V11_Rebar":25
-#    }
-    rkey = {
-        "x":0,
-        "y":1,
-        "z":2,
-        "time":3,
-        "pupx":4,
-        "pupy":5,
-        "pypz":6,
-        "pupt":7,
-        "N":8,
-        "f00_Re":9,
-        "f01_Re":10,
-        "f01_Im":11,
-        "Nbar":12,
-        "f00_Rebar":13,
-        "f01_Rebar":14,
-        "f01_Imbar":15,
-        "V00_Re":16,
-        "V01_Re":17,
-        "V01_Im":18,
-        "V11_Re":19,
-        "V00_Rebar":20,
-        "V01_Rebar":21,
-        "V01_Imbar":22,
-        "V11_Rebar":23
-    }
-    ikey = {
-        # no ints are stored
-    }
+    rkey, ikey = amrex.get_particle_keys()
 
     t = []
     fee = []
@@ -168,6 +97,6 @@ if __name__ == "__main__":
     plt.legend()
     #plt.axis((0., 1., 0., 1.))
     ax = plt.gca()
-    ax.set_xlabel(r'$t$ (cm)')
+    ax.set_xlabel(r'$t$ (s)')
     ax.set_ylabel(r'$f$')
     plt.savefig('constraints.png')
