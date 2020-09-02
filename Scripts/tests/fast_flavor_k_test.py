@@ -19,7 +19,7 @@ i0 = 100
 i1 = 160
 
 # get domain size
-file = open("inputs","r")
+file = open("../sample_inputs/inputs_fast_flavor_nonzerok","r")
 for line in file:
     if "Lx" in line:
         Lx = float(line.split("=")[1])
