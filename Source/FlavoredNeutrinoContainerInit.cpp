@@ -216,6 +216,7 @@ InitParticles(const TestParams* parms)
                     p.rdata(PIdx::x) = x;
                     p.rdata(PIdx::y) = y;
                     p.rdata(PIdx::z) = z;
+                    p.rdata(PIdx::time) = 0;
 
                     const GpuArray<Real,3> u = direction_vectors_p[i_direction];
                     //get_random_direction(u);
