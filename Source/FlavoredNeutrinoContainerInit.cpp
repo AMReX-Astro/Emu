@@ -166,6 +166,10 @@ InitParticles(const TestParams* parms)
         
         int procID = ParallelDescriptor::MyProc();
 
+	// wavelength for fast flavor oscillation test (case 3)
+	int dir = 2;
+	Real lambda = Geom(lev).ProbLength(dir);
+
         // Initialize particle data in the particle tile
         amrex::ParallelFor(tile_box,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
@@ -321,9 +325,7 @@ InitParticles(const TestParams* parms)
 		  AMREX_ASSERT(NUM_FLAVORS==2);
 
 		  // perturbation parameters
-		  int dir = 2;
 		  Real amplitude = 1e-6;
-		  Real lambda = Geom(lev).ProbLength(dir);
 		  Real k = (2.*M_PI) / lambda;
 
 		  // Set particle flavor
@@ -349,7 +351,6 @@ InitParticles(const TestParams* parms)
 		  Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
 		  Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
 		  Real ndens = (omega+k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
-		  Real mu = mu_ndens*ndens;
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
 		}
