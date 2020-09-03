@@ -24,6 +24,7 @@ void evolve_flavor(const TestParams* parms)
     Vector<int> domain_hi_bc_types(AMREX_SPACEDIM, BCType::int_dir);
 
     // Define the index space of the domain
+
     const IntVect domain_lo(AMREX_D_DECL(0, 0, 0));
     const IntVect domain_hi(AMREX_D_DECL(parms->ncell[0]-1,parms->ncell[1]-1,parms->ncell[2]-1));
     const Box domain(domain_lo, domain_hi);
@@ -46,6 +47,7 @@ void evolve_flavor(const TestParams* parms)
 
     // We want ghost cells according to size of particle shape stencil (grids are "grown" by ngrow ghost cells in each direction)
     const int ngrow = (SHAPE_FACTOR_ORDER+1)/2;
+    for(int i=0; i<AMREX_SPACEDIM; i++) AMREX_ASSERT(parms->ncell[i] >= ngrow);
 
     // We want 1 component (this is one real scalar field on the domain)
     const int ncomp = GIdx::ncomp;

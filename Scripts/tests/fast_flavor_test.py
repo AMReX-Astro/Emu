@@ -13,15 +13,10 @@ parser.add_argument("-na", "--no_assert", action="store_true", help="If --no_ass
 args = parser.parse_args()
 
 # physical constants
-clight = 2.99792458e10 # cm/s
-hbar = 1.05457266e-27 # erg s
 theta12 = 33.82*np.pi/180. # radians
-eV = 1.60218e-12 # erg
-dm21c4 = 7.39e-5 * eV**2 # erg^2
-mp = 1.6726219e-24 # g
-GF = 1.1663787e-5 / (1e9*eV)**2 * (hbar*clight)**3 #erg cm^3
+dm21c4 = 7.39e-5 * amrex.eV**2 # erg^2
 
-tolerance = 1e-2
+tolerance = 2e-2
 i0 = 50
 i1 = 70
 
@@ -56,11 +51,11 @@ if __name__ == "__main__":
     fexIbar = np.array(fexIbar)
 
     # The neutrino energy we set
-    E = 50. * 1e6*eV
+    E = 50. * 1e6*amrex.eV
     V = dm21c4 / (2.*E)
 
     # theoretical growth rate according to Chakraborty 2016 Equation 2.7 a=0 mu=0.5V
-    ImOmega = V/hbar
+    ImOmega = V/amrex.hbar
     print("Theoretical growth rate:",ImOmega," s^-1")
     
     # get growth rate from each diagonal component
