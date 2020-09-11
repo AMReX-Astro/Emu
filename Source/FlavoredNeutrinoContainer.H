@@ -76,7 +76,7 @@ public:
         const int lev_min = 0;
         const int lev_max = 0;
         const int nGrow = 0;
-        const int local = 1;
+        const int local = 0;
         Redistribute(lev_min, lev_max, nGrow, local);
     }
 
