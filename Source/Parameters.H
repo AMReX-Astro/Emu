@@ -29,6 +29,10 @@ struct TestParams : public amrex::Gpu::Managed
     Real alpha1, alpha2; // Majorana phases, radians
     Real deltaCP; // CP violating phases in radians
 
+    // filtering options
+    bool use_filter;
+    IntVect filter_npass_each_dir;
+
     void Initialize(){
         ParmParse pp;
         pp.get("simulation_type", simulation_type);
@@ -72,7 +76,9 @@ struct TestParams : public amrex::Gpu::Managed
         	deltaCP *= M_PI/180.;
         }
 
-
+        // filtering options for particle-to-mesh deposition
+        pp.get("use_filter", use_filter);
+        pp.get("filter_npass_each_dir", filter_npass_each_dir);
     }
 };
 

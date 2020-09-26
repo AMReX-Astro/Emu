@@ -24,6 +24,7 @@ void evolve_flavor(const TestParams* parms)
     Vector<int> domain_hi_bc_types(AMREX_SPACEDIM, BCType::int_dir);
 
     // Define the index space of the domain
+
     const IntVect domain_lo(AMREX_D_DECL(0, 0, 0));
     const IntVect domain_hi(AMREX_D_DECL(parms->ncell[0]-1,parms->ncell[1]-1,parms->ncell[2]-1));
     const Box domain(domain_lo, domain_hi);
@@ -44,14 +45,23 @@ void evolve_flavor(const TestParams* parms)
     // Create the DistributionMapping from the BoxArray
     DistributionMapping dm(ba);
 
-    // We want 1 ghost cells (grids are "grown" by ngrow ghost cells in each direction)
-    const int ngrow = 1;
+    // We want ghost cells according to size of particle shape stencil (grids are "grown" by ngrow ghost cells in each direction)
+    const int ngrow = (SHAPE_FACTOR_ORDER+1)/2;
+    for(int i=0; i<AMREX_SPACEDIM; i++) AMREX_ASSERT(parms->ncell[i] >= ngrow);
 
     // We want 1 component (this is one real scalar field on the domain)
     const int ncomp = GIdx::ncomp;
 
     // Create a MultiFab to hold our grid state data and initialize to 0.0
     MultiFab state(ba, dm, ncomp, ngrow);
+
+    // Create a bilinear filter to apply after particle-to-mesh operations
+    BilinearFilter bilinear_filter;
+
+    if (parms->use_filter) {
+        bilinear_filter.npass_each_dir = parms->filter_npass_each_dir;
+        bilinear_filter.ComputeStencils();
+    }
 
     // initialize with NaNs ...
     state.setVal(0.0);
@@ -81,7 +91,7 @@ void evolve_flavor(const TestParams* parms)
     neutrinos_new.copyParticles(neutrinos_old, true);
 
     // Deposit particles to grid
-    deposit_to_mesh(neutrinos_old, state, geom);
+    deposit_to_mesh(neutrinos_old, state, geom, bilinear_filter, parms->use_filter);
 
     // Write plotfile after initialization
     WritePlotFile(state, neutrinos_old, geom, initial_time, 0, parms->write_plot_particles);
@@ -94,7 +104,7 @@ void evolve_flavor(const TestParams* parms)
     auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, const FlavoredNeutrinoContainer& neutrinos, Real time) {
         /* Evaluate the neutrino distribution matrix RHS */
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
-        deposit_to_mesh(neutrinos, state, geom);
+        deposit_to_mesh(neutrinos, state, geom, bilinear_filter, parms->use_filter);
         state.FillBoundary(geom.periodicity());
 
         // Step 2: Copy F from neutrino state to neutrino RHS
@@ -108,6 +118,9 @@ void evolve_flavor(const TestParams* parms)
         // We write a function for the integrator to map across all internal
         // particle containers. We have to update particle locations and
         // redistribute since particles may have moved in the previous update.
+        //
+        // Here we are updating the particle locations using the integrated location
+        // stored in PIdx::x, PIdx::y, PIdx::z.
         auto update_data = [&](FlavoredNeutrinoContainer& data) {
             if (&data != &neutrinos) {
                 data.UpdateLocationFrom(neutrinos);
@@ -119,7 +132,8 @@ void evolve_flavor(const TestParams* parms)
         // update them with the new particle locations & Redistribute
         integrator.map_data(update_data);
 
-        // Finally, redistribute current data
+        // Finally, update & redistribute current data
+        neutrinos.UpdateLocationFrom(neutrinos);
         neutrinos.RedistributeLocal();
     };
 

@@ -1,4 +1,5 @@
 NUM_FLAVORS ?= 2
+SHAPE_FACTOR_ORDER ?= 2
 
 TOP := $(EMU_HOME)
 
@@ -20,7 +21,7 @@ Ppack             += $(foreach dir, $(Pdirs), $(AMREX_HOME)/Src/$(dir)/Make.pack
 
 include $(Ppack)
 
-DEFINES += -DNUM_FLAVORS=$(NUM_FLAVORS)
+DEFINES += -DNUM_FLAVORS=$(NUM_FLAVORS) -DSHAPE_FACTOR_ORDER=$(SHAPE_FACTOR_ORDER)
 
 all: generate $(executable)
 	@echo SUCCESS

@@ -1,5 +1,6 @@
 #include "FlavoredNeutrinoContainer.H"
 #include "Constants.H"
+#include <random>
 
 using namespace amrex;
 
@@ -165,6 +166,10 @@ InitParticles(const TestParams* parms)
         
         int procID = ParallelDescriptor::MyProc();
 
+	// wavelength for fast flavor oscillation test (case 3)
+	int dir = 2;
+	Real lambda = Geom(lev).ProbLength(dir);
+
         // Initialize particle data in the particle tile
         amrex::ParallelFor(tile_box,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
@@ -210,6 +215,12 @@ InitParticles(const TestParams* parms)
                     p.pos(0) = x;
                     p.pos(1) = y;
                     p.pos(2) = z;
+
+                    // Set particle integrated position
+                    p.rdata(PIdx::x) = x;
+                    p.rdata(PIdx::y) = y;
+                    p.rdata(PIdx::z) = z;
+                    p.rdata(PIdx::time) = 0;
 
                     const GpuArray<Real,3> u = direction_vectors_p[i_direction];
                     //get_random_direction(u);
@@ -300,7 +311,84 @@ InitParticles(const TestParams* parms)
 		  // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
 		  // to get maximal growth according to Chakraborty 2016 Equation 2.10
 		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
-		  double ndens = 0.5 * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
+		  Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
+		  Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
+		  double ndens = omega / (2.*mu_ndens); // want omega/2mu to be 1
+		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
+		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
+		}
+
+		//===============================//
+		// 3- k!=0 BEAM FAST FLAVOR TEST //
+		//===============================//
+		else if(parms->simulation_type==3){
+		  AMREX_ASSERT(NUM_FLAVORS==2);
+
+		  // perturbation parameters
+		  Real amplitude = 1e-6;
+		  Real k = (2.*M_PI) / lambda;
+
+		  // Set particle flavor
+		  p.rdata(PIdx::f00_Re)    = 1.0;
+		  p.rdata(PIdx::f01_Re)    = amplitude*sin(k*p.pos(dir));//amplitude*Random();
+		  p.rdata(PIdx::f01_Im)    = 0;//amplitude*Random();
+		  p.rdata(PIdx::f11_Re)    = 0.0;
+		  p.rdata(PIdx::f00_Rebar) = 1.0;
+		  p.rdata(PIdx::f01_Rebar) = amplitude*sin(k*p.pos(dir));//amplitude*Random();
+		  p.rdata(PIdx::f01_Imbar) = 0;//amplitude*Random();
+		  p.rdata(PIdx::f11_Rebar) = 0.0;
+
+		  // set energy to 50 MeV to match Richers+(2019)
+		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
+
+		  // set particle weight such that density is
+		  // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
+		  // to get maximal growth according to Chakraborty 2016 Equation 2.10
+		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
+		  Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
+		  Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
+		  Real ndens = (omega+k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
+		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
+		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
+		}
+
+		//====================//
+		// 4- k!=0 RANDOMIZED //
+		//====================//
+		else if(parms->simulation_type==4){
+		  AMREX_ASSERT(NUM_FLAVORS==2);
+
+		  // perturbation parameters
+		  Real amplitude = 1e-6;
+		  Real k = (2.*M_PI) / lambda;
+
+		  // Set particle flavor
+		  p.rdata(PIdx::f00_Re)    = 1.0;
+		  p.rdata(PIdx::f01_Re)    = amplitude*Random();//amplitude*sin(k*p.pos(dir));//
+		  p.rdata(PIdx::f01_Im)    = amplitude*Random();//0;//
+		  p.rdata(PIdx::f11_Re)    = 0.0;
+		  p.rdata(PIdx::f00_Rebar) = 1.0;
+		  p.rdata(PIdx::f01_Rebar) = amplitude*Random();//amplitude*sin(k*p.pos(dir));//
+		  p.rdata(PIdx::f01_Imbar) = amplitude*Random();//0;//
+		  p.rdata(PIdx::f11_Rebar) = 0.0;
+
+		  // set energy to 50 MeV to match Richers+(2019)
+		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
+
+		  // set particle weight such that density is
+		  // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
+		  // to get maximal growth according to Chakraborty 2016 Equation 2.10
+		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
+		  Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
+		  Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
+		  Real k_expected = (2.*M_PI)/1.0;// corresponding to wavelength of 1cm
+		  Real ndens = (omega+k_expected*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
 		}

@@ -1,5 +1,6 @@
 #include "Evolve.H"
 #include "Constants.H"
+#include "ShapeFactors.H"
 #include <cmath>
 
 using namespace amrex;
@@ -57,7 +58,8 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
     return dt;
 }
 
-void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state, const Geometry& geom)
+void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state, const Geometry& geom,
+                     BilinearFilter& bilinear_filter, bool use_filter)
 {
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
@@ -65,9 +67,11 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
     // create a copy of the MultiFab so it only erases the quantities that will be set by the neutrinos
     int start_comp = GIdx::N00_Re;
     int num_comps = GIdx::ncomp - start_comp;
-    MultiFab alias_mf(state, amrex::make_alias, start_comp, num_comps);
+    MultiFab deposit_mf(state.boxArray(), state.DistributionMap(), num_comps, state.nGrowVect());
 
-    amrex::ParticleToMesh(neutrinos, alias_mf, 0,
+    Compute_shape_factor< SHAPE_FACTOR_ORDER > const compute_shape_factor;
+
+    amrex::ParticleToMesh(neutrinos, deposit_mf, 0,
     [=] AMREX_GPU_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p,
                             amrex::Array4<amrex::Real> const& sarr)
     {
@@ -75,26 +79,27 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
         amrex::Real ly = (p.pos(1) - plo[1]) * dxi[1] + 0.5;
         amrex::Real lz = (p.pos(2) - plo[2]) * dxi[2] + 0.5;
 
-        int i = std::floor(lx);
-        int j = std::floor(ly);
-        int k = std::floor(lz);
+        amrex::Real sx[SHAPE_FACTOR_ORDER+1], sy[SHAPE_FACTOR_ORDER+1], sz[SHAPE_FACTOR_ORDER+1];
+        int i = compute_shape_factor(sx, lx);
+        int j = compute_shape_factor(sy, ly);
+        int k = compute_shape_factor(sz, lz);
 
-        amrex::Real xint = lx - i;
-        amrex::Real yint = ly - j;
-        amrex::Real zint = lz - k;
-
-        amrex::Real sx[] = {1.-xint, xint};
-        amrex::Real sy[] = {1.-yint, yint};
-        amrex::Real sz[] = {1.-zint, zint};
-
-        for (int kk = 0; kk <= 1; ++kk) { 
-            for (int jj = 0; jj <= 1; ++jj) { 
-                for (int ii = 0; ii <= 1; ++ii) {
+        for (int kk = 0; kk <= SHAPE_FACTOR_ORDER; ++kk) {
+            for (int jj = 0; jj <= SHAPE_FACTOR_ORDER; ++jj) {
+                for (int ii = 0; ii <= SHAPE_FACTOR_ORDER; ++ii) {
                     #include "generated_files/Evolve.cpp_deposit_to_mesh_fill"
                 }
             }
         }
     });
+
+    if (use_filter) {
+        IntVect ngrow_filter = state.nGrowVect();
+        ngrow_filter += bilinear_filter.stencil_length_each_dir - 1;
+        bilinear_filter.ApplyStencil(state, deposit_mf, 0, start_comp, num_comps);
+    } else {
+        MultiFab::Copy(state, deposit_mf, 0, start_comp, num_comps, state.nGrowVect());
+    }
 }
 
 void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const MultiFab& state, const Geometry& geom, const TestParams* parms)
@@ -102,6 +107,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
     const Real inv_cell_volume = dxi[0]*dxi[1]*dxi[2];
+
+    Compute_shape_factor< SHAPE_FACTOR_ORDER > const compute_shape_factor;
 
     amrex::MeshToParticle(neutrinos_rhs, state, 0,
     [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
@@ -113,26 +120,29 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         amrex::Real ly = (p.pos(1) - plo[1]) * dxi[1] + 0.5;
         amrex::Real lz = (p.pos(2) - plo[2]) * dxi[2] + 0.5;
 
-        int i = std::floor(lx);
-        int j = std::floor(ly);
-        int k = std::floor(lz);
+        amrex::Real sx[SHAPE_FACTOR_ORDER+1], sy[SHAPE_FACTOR_ORDER+1], sz[SHAPE_FACTOR_ORDER+1];
+        int i = compute_shape_factor(sx, lx);
+        int j = compute_shape_factor(sy, ly);
+        int k = compute_shape_factor(sz, lz);
 
-        amrex::Real xint = lx - i;
-        amrex::Real yint = ly - j;
-        amrex::Real zint = lz - k;
-
-        amrex::Real sx[] = {1.-xint, xint};
-        amrex::Real sy[] = {1.-yint, yint};
-        amrex::Real sz[] = {1.-zint, zint};
-
-        for (int kk = 0; kk <= 1; ++kk) { 
-            for (int jj = 0; jj <= 1; ++jj) { 
-                for (int ii = 0; ii <= 1; ++ii) {
+        for (int kk = 0; kk <= SHAPE_FACTOR_ORDER; ++kk) {
+            for (int jj = 0; jj <= SHAPE_FACTOR_ORDER; ++jj) {
+                for (int ii = 0; ii <= SHAPE_FACTOR_ORDER; ++ii) {
                     #include "generated_files/Evolve.cpp_interpolate_from_mesh_fill"
                 }
             }
         }
 
+        // set the dfdt values into p.rdata
+        p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
+        p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
+        p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
+        p.rdata(PIdx::time) = 1.0; // neutrinos move at one second per second!
+        p.rdata(PIdx::pupx) = 0;
+        p.rdata(PIdx::pupy) = 0;
+        p.rdata(PIdx::pupz) = 0;
+        p.rdata(PIdx::pupt) = 0;
         #include "generated_files/Evolve.cpp_dfdt_fill"
+
     });
 }

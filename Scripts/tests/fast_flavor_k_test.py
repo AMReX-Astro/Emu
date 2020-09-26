@@ -12,18 +12,22 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-na", "--no_assert", action="store_true", help="If --no_assert is supplied, do not raise assertion errors if the test error > tolerance.")
 args = parser.parse_args()
 
-# physical constants
-theta12 = 33.82*np.pi/180. # radians
-dm21c4 = 7.39e-5 * amrex.eV**2 # erg^2
 
-tolerance = 2e-2
-i0 = 50
-i1 = 70
+dm21c4 = 0 # parameter file has both masses set to 0
+tolerance = 1e-2
+i0 = 100
+i1 = 160
+
+# get domain size
+file = open("../sample_inputs/inputs_fast_flavor_nonzerok","r")
+for line in file:
+    if "Lx" in line:
+        Lx = float(line.split("=")[1])
 
 if __name__ == "__main__":
 
     rkey, ikey = amrex.get_particle_keys()
-
+    
     t = []
     fexR = []
     fexI = []
@@ -36,47 +40,47 @@ if __name__ == "__main__":
         
         plotfile = "plt"+str(i).zfill(5)
         idata, rdata = EmuReader.read_particle_data(plotfile, ptype="neutrinos")
-        p = rdata[0]
-        t.append(p[rkey["time"]])
-        fexR.append(p[rkey["f01_Re"]])
-        fexI.append(p[rkey["f01_Im"]])
-        fexRbar.append(p[rkey["f01_Rebar"]])
-        fexIbar.append(p[rkey["f01_Imbar"]])
-        pupt.append(p[rkey["pupt"]])
+        p = rdata
+        t.append(p[0][rkey["time"]])
+        fexR.append(np.max(np.abs(p[:,rkey["f01_Re"]])))
+        fexI.append(np.max(np.abs(p[:,rkey["f01_Im"]])))
+        fexRbar.append(np.max(np.abs(p[:,rkey["f01_Rebar"]])))
+        fexIbar.append(np.max(np.abs(p[:,rkey["f01_Imbar"]])))
+        pupt.append(p[0][rkey["pupt"]])
 
     t = np.array(t)
     fexR = np.array(fexR)
     fexI = np.array(fexI)
     fexRbar = np.array(fexRbar)
     fexIbar = np.array(fexIbar)
-
+    print(fexR)
+    
     # The neutrino energy we set
     E = 50. * 1e6*amrex.eV
     V = dm21c4 / (2.*E)
 
-    # theoretical growth rate according to Chakraborty 2016 Equation 2.7 a=0 mu=0.5V
-    ImOmega = V/amrex.hbar
+    # wavevector of the perturbation
+    k = 2*np.pi/Lx
+    print("k=",k)
+    
+    # theoretical growth rate according to Chakraborty 2016 Equation 2.7 a=0 mu=0.5(V+k)
+    ImOmega = (V+k*amrex.hbar*amrex.clight)/amrex.hbar
     print("Theoretical growth rate:",ImOmega," s^-1")
     
     # get growth rate from each diagonal component
     dt = t[i1]-t[i0]
-    fexRomega = np.log(fexR[i1]/fexR[i0]) / dt
-    fexIomega = np.log(fexI[i1]/fexI[i0]) / dt
-    fexRbaromega = np.log(fexRbar[i1]/fexRbar[i0]) / dt
-    fexIbaromega = np.log(fexIbar[i1]/fexIbar[i0]) / dt
+    fexRomega = np.log(np.abs(fexR[i1]/fexR[i0])) / dt
+    fexIomega = np.log(np.abs(fexI[i1]/fexI[i0])) / dt
+    fexRbaromega = np.log(np.abs(fexRbar[i1]/fexRbar[i0])) / dt
+    fexIbaromega = np.log(np.abs(fexIbar[i1]/fexIbar[i0])) / dt
+
+    print("growth rates:",fexRomega,fexIomega,fexRbaromega,fexIbaromega)
+    print("growth rates / theoretical:",fexRomega/ImOmega,fexIomega/ImOmega,fexRbaromega/ImOmega,fexIbaromega/ImOmega)
 
     def myassert(condition):
         if not args.no_assert:
             assert(condition)
-    
 
-    print("growth rates:",fexRomega,fexIomega,fexRbaromega,fexIbaromega)
-    print(dt,t[i0],t[i1])
-    print(fexR[i1],fexR[i0])
-    print(fexI[i1],fexI[i0])
-    print(fexRbar[i1],fexRbar[i0])
-    print(fexIbar[i1],fexIbar[i0])
-    
     fexRerror = np.abs(ImOmega - fexRomega) / ImOmega
     myassert( fexRerror < tolerance )
 
