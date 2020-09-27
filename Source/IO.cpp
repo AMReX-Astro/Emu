@@ -32,3 +32,30 @@ WritePlotFile (const amrex::MultiFab& state,
         neutrinos.Checkpoint(plotfilename, "neutrinos", true, neutrino_varnames);
     }
 }
+
+void
+RecoverParticles (const std::string& dir,
+				  FlavoredNeutrinoContainer *neutrinos,
+				  amrex::Real *time, int *step){
+
+	// get the time and step number from the header file
+	constexpr int hack_time_line_number = 39;
+	constexpr int hack_step_line_number = 45;
+	std::string line;
+	std::ifstream header(dir+"/Header");
+	int line_number = 1;
+
+	// get the time
+	for(; line_number<=hack_time_line_number; line_number++)
+		std::getline(header,line);
+	*time = std::atof(line.c_str());
+
+	// get the iteration
+	for(; line_number<=hack_step_line_number; line_number++)
+		std::getline(header,line);
+	*step = std::atoi(line.c_str());
+	header.close();
+
+	std::string file("neutrinos");
+	neutrinos->Restart(dir, file);
+}

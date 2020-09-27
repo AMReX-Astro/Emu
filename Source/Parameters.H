@@ -22,6 +22,8 @@ struct TestParams : public amrex::Gpu::Managed
     Real rho_in, Ye_in, T_in; // g/ccm, 1, MeV
     int simulation_type;
     Real cfl_factor, flavor_cfl_factor;
+    bool do_restart;
+    std::string restart_dir;
 
     // neutrino physics parameters. See first column of table 14.7 in http://pdg.lbl.gov/2019/reviews/rpp2019-rev-neutrino-mixing.pdf
     Real mass1, mass2, mass3; // neutrino masses in grams
@@ -52,6 +54,8 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("flavor_cfl_factor", flavor_cfl_factor);
         pp.get("write_plot_every", write_plot_every);
         pp.get("write_plot_particles", write_plot_particles);
+        pp.get("do_restart", do_restart);
+        pp.get("restart_dir", restart_dir);
 
         // neutrino physics parameters for 2-flavor
         pp.get("mass1_eV", mass1);

@@ -80,14 +80,20 @@ void evolve_flavor(const TestParams* parms)
     FlavoredNeutrinoContainer neutrinos_old(geom, dm, ba);
     FlavoredNeutrinoContainer neutrinos_new(geom, dm, ba);
 
-    const Real initial_time = 0.0;
-
     // Track the Figure of Merit for the simulation
     // defined as number of particles advanced per microsecond of walltime
     Real run_fom = 0.0;
 
-    // Initialize old particles
-    neutrinos_old.InitParticles(parms);
+    Real initial_time = 0.0;
+    int initial_step = 0;
+    if(parms->do_restart){
+    	// get particle data from file
+    	RecoverParticles(parms->restart_dir, &neutrinos_old, &initial_time, &initial_step);
+    }
+    else{
+    	// Initialize old particles
+    	neutrinos_old.InitParticles(parms);
+    }
 
     // Copy particles from old data to new data
     // (the second argument is true to indicate particle container data is local
@@ -98,11 +104,12 @@ void evolve_flavor(const TestParams* parms)
     deposit_to_mesh(neutrinos_old, state, geom, bilinear_filter, parms->use_filter);
 
     // Write plotfile after initialization
-    WritePlotFile(state, neutrinos_old, geom, initial_time, 0, parms->write_plot_particles);
+    if(not parms->do_restart)
+    	WritePlotFile(state, neutrinos_old, geom, initial_time, initial_step, parms->write_plot_particles);
 
     amrex::Print() << "Done. " << std::endl;
 
-    TimeIntegrator<FlavoredNeutrinoContainer> integrator(neutrinos_old, neutrinos_new, initial_time);
+    TimeIntegrator<FlavoredNeutrinoContainer> integrator(neutrinos_old, neutrinos_new, initial_time, initial_step);
 
     // Create a RHS source function we will integrate
     auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, const FlavoredNeutrinoContainer& neutrinos, Real time) {
