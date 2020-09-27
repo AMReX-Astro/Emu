@@ -42,6 +42,10 @@ write_plot_every = 1
 # Write particle data in plotfiles
 write_plot_particles = 1
 
+# checkpointing
+do_restart = 0
+restart_dir = ""
+
 ###############################
 # NEUTRINO PHYSICS PARAMETERS #
 ###############################
