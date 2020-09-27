@@ -13,8 +13,8 @@ WritePlotFile (const amrex::MultiFab& state,
                int step, int write_plot_particles);
 
 void
-RecoverFromPlotFile (const std::string& dir,
-					 FlavoredNeutrinoContainer *neutrinos,
-					 amrex::Real *time, int *step);
+RecoverParticles (const std::string& dir,
+				  FlavoredNeutrinoContainer *neutrinos,
+				  amrex::Real *time, int *step);
 
 #endif
