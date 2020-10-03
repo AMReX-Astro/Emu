@@ -159,6 +159,19 @@ InitParticles(const TestParams* parms)
         particle_tile.resize(new_size);
 
         if (num_to_add == 0) continue;
+
+		// this will be the particle ID for the first new particle in the tile
+		long new_pid;
+		#ifdef _OPENMP
+		#pragma omp critical
+		#endif
+		{
+			// get the next particle ID
+			new_pid = ParticleType::NextID();
+
+			// set the starting particle ID for the next tile of particles
+			ParticleType::NextID(new_pid + num_to_add);
+		}
         
         ParticleType* pstruct = particle_tile.GetArrayOfStructs()().data();
 
@@ -202,11 +215,12 @@ InitParticles(const TestParams* parms)
 
                 for(int i_direction=0; i_direction<ndirs_per_loc; i_direction++){
                     // Get the Particle data corresponding to our particle index in pidx
-                    // the +1 is because amrex uses negative indices to indicate invalid, so
-                    // they have to not use an index of 0
                     const int pidx = poffset[cellid] - poffset[0] + i_loc*ndirs_per_loc + i_direction;
                     ParticleType& p = pstruct[pidx];
-                    p.id()   = pidx+1;
+
+					// Set particle ID using the ID for the first of the new particles in this tile
+					// plus our zero-based particle index
+                    p.id()   = new_pid + pidx;
 
                     // Set CPU ID
                     p.cpu()  = procID;
