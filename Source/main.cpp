@@ -82,6 +82,10 @@ void evolve_flavor(const TestParams* parms)
 
     const Real initial_time = 0.0;
 
+    // Track the Figure of Merit for the simulation
+    // defined as number of particles advanced per microsecond of walltime
+    Real run_fom = 0.0;
+
     // Initialize old particles
     neutrinos_old.InitParticles(parms);
 
@@ -153,7 +157,9 @@ void evolve_flavor(const TestParams* parms)
         const int step = integrator.get_step_number();
         const Real time = integrator.get_time();
 
-        amrex::Print() << "Completed time step: " << step << " t = " <<time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;
+        amrex::Print() << "Completed time step: " << step << " t = " << time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;
+
+        run_fom += neutrinos.TotalNumberOfParticles();
 
         // Write the Mesh Data to Plotfile if required
         if ((step+1) % parms->write_plot_every == 0)
@@ -178,9 +184,21 @@ void evolve_flavor(const TestParams* parms)
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
 
+    Real start_time = amrex::second();
+
     integrator.integrate(starting_dt, parms->end_time, parms->nsteps);
 
+    Real stop_time = amrex::second();
+    Real advance_time = stop_time - start_time;
+
+    // Get total number of particles advanced per microsecond of walltime
+    run_fom = run_fom / advance_time / 1.e6;
+
     amrex::Print() << "Done. " << std::endl;
+
+    amrex::Print() << "Run time w/o initialization (seconds) = " << std::fixed << std::setprecision(3) << advance_time << std::endl;
+
+    amrex::Print() << "Average number of particles advanced per microsecond = " << std::fixed << std::setprecision(3) << run_fom << std::endl;
 
 }
 
