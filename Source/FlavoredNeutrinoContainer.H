@@ -69,6 +69,8 @@ public:
 
     void InitParticles(const TestParams* parms);
 
+    void ResetLocationInPlace();
+
     void UpdateLocationFrom(FlavoredNeutrinoContainer& Other);
 
     void RedistributeLocal()

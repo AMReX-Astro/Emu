@@ -115,12 +115,18 @@ void evolve_flavor(const TestParams* parms)
     };
 
     auto post_update_fun = [&] (FlavoredNeutrinoContainer& neutrinos, Real time) {
+        // First, call ResetLocationInPlace on the neutrinos state.
+        // This updates particle locations with integrated position
+        // and applies periodicity and domain boundary constraints.
+        neutrinos.ResetLocationInPlace();
+
         // We write a function for the integrator to map across all internal
         // particle containers. We have to update particle locations and
-        // redistribute since particles may have moved in the previous update.
+        // redistribute since particles may have moved to different grids.
         //
         // Here we are updating the particle locations using the integrated location
         // stored in PIdx::x, PIdx::y, PIdx::z.
+        // We also invalidate any particles that were invalidated by ResetLocationInPlace().
         auto update_data = [&](FlavoredNeutrinoContainer& data) {
             if (&data != &neutrinos) {
                 data.UpdateLocationFrom(neutrinos);
@@ -129,11 +135,10 @@ void evolve_flavor(const TestParams* parms)
         };
 
         // For all integrator internal particle containers,
-        // update them with the new particle locations & Redistribute
+        // update them with the new particle locations & Redistribute.
         integrator.map_data(update_data);
 
-        // Finally, update & redistribute current data
-        neutrinos.UpdateLocationFrom(neutrinos);
+        // Finally, redistribute the particles in the neutrinos state.
         neutrinos.RedistributeLocal();
     };
 
