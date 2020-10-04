@@ -25,6 +25,11 @@ struct PIdx
     };
 };
 
+struct Sync
+{
+    enum {CoordinateToPosition=0, PositionToCoordinate};
+};
+
 template<typename P>
 struct ApplyFlavoredNeutrinoRHS
 {
@@ -69,7 +74,7 @@ public:
 
     void InitParticles(const TestParams* parms);
 
-    void ResetLocationInPlace();
+    void SyncLocation(int type);
 
     void UpdateLocationFrom(FlavoredNeutrinoContainer& Other);
 
