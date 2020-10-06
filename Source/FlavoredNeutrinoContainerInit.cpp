@@ -160,18 +160,18 @@ InitParticles(const TestParams* parms)
 
         if (num_to_add == 0) continue;
 
-	// this will be the particle ID for the first new particle in the tile
-	long new_pid;
-	#ifdef _OPENMP
-	#pragma omp critical
-	#endif
-	{
-	    // get the next particle ID
-	    new_pid = ParticleType::NextID();
+        // this will be the particle ID for the first new particle in the tile
+        long new_pid;
+        #ifdef _OPENMP
+        #pragma omp critical
+        #endif
+        {
+            // get the next particle ID
+            new_pid = ParticleType::NextID();
 
-	    // set the starting particle ID for the next tile of particles
-	    ParticleType::NextID(new_pid + num_to_add);
-	}
+            // set the starting particle ID for the next tile of particles
+            ParticleType::NextID(new_pid + num_to_add);
+        }
         
         ParticleType* pstruct = particle_tile.GetArrayOfStructs()().data();
 
