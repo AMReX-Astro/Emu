@@ -218,8 +218,8 @@ InitParticles(const TestParams* parms)
                     const int pidx = poffset[cellid] - poffset[0] + i_loc*ndirs_per_loc + i_direction;
                     ParticleType& p = pstruct[pidx];
 
-					// Set particle ID using the ID for the first of the new particles in this tile
-					// plus our zero-based particle index
+                    // Set particle ID using the ID for the first of the new particles in this tile
+                    // plus our zero-based particle index
                     p.id()   = new_pid + pidx;
 
                     // Set CPU ID
