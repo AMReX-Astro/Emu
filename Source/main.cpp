@@ -218,9 +218,6 @@ int main(int argc, char* argv[])
 
     {
 
-    // Initialize the random number generator
-    amrex::InitRandom(451);
-
     // get the run parameters
     std::unique_ptr<TestParams> parms_unique_ptr;
     parms_unique_ptr = std::make_unique<TestParams>();
