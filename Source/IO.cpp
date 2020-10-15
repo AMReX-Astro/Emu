@@ -16,7 +16,7 @@ WritePlotFile (const amrex::MultiFab& state,
     BL_PROFILE("WritePlotFile()");
 
     BoxArray grids = state.boxArray();
-    grids.convert(IntVect(0,0,0));
+    grids.convert(IntVect());
 
     const DistributionMapping& dmap = state.DistributionMap();
 
