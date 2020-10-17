@@ -1,4 +1,5 @@
 #include <iostream>
+#include <ctime>
 
 #include <AMReX.H>
 #include <AMReX_ParmParse.H>
@@ -215,6 +216,10 @@ void evolve_flavor(const TestParams* parms)
 int main(int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
+
+    // by default amrex initializes rng deterministically
+    // this uses the time for a different run each time
+    amrex::InitRandom(time(NULL), ParallelDescriptor::NProcs());
 
     {
 
