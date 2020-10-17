@@ -149,34 +149,33 @@ InitParticles(const TestParams* parms)
         Gpu::inclusive_scan(counts.begin(), counts.end(), offsets.begin());
 
         int num_to_add = offsets[tile_box.numPts()-1];
-
-        auto& particles = GetParticles(lev);
-        auto& particle_tile = particles[std::make_pair(mfi.index(), mfi.LocalTileIndex())];
-
-        // Resize the particle container
-        auto old_size = particle_tile.GetArrayOfStructs().size();
-        auto new_size = old_size + num_to_add;
-        particle_tile.resize(new_size);
-
         if (num_to_add == 0) continue;
 
         // this will be the particle ID for the first new particle in the tile
         long new_pid;
+        ParticleType* pstruct;
         #ifdef _OPENMP
         #pragma omp critical
         #endif
         {
-            // get the next particle ID
-            new_pid = ParticleType::NextID();
 
-            // set the starting particle ID for the next tile of particles
-            ParticleType::NextID(new_pid + num_to_add);
+        	auto& particles = GetParticles(lev);
+        	auto& particle_tile = particles[std::make_pair(mfi.index(), mfi.LocalTileIndex())];
+
+        	// Resize the particle container
+        	auto old_size = particle_tile.GetArrayOfStructs().size();
+        	auto new_size = old_size + num_to_add;
+        	particle_tile.resize(new_size);
+
+        	// get the next particle ID
+        	new_pid = ParticleType::NextID();
+
+        	// set the starting particle ID for the next tile of particles
+        	ParticleType::NextID(new_pid + num_to_add);
+
+        	pstruct = particle_tile.GetArrayOfStructs()().data();
         }
-        
-        ParticleType* pstruct = particle_tile.GetArrayOfStructs()().data();
 
-        auto arrdata = particle_tile.GetStructOfArrays().realarray();
-        
         int procID = ParallelDescriptor::MyProc();
 
 	// wavelength for fast flavor oscillation test (case 3)
