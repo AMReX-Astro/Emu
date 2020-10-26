@@ -372,7 +372,7 @@ InitParticles(const TestParams* parms)
 		// 4- k!=0 RANDOMIZED //
 		//====================//
 		else if(parms->simulation_type==4){
-		  AMREX_ASSERT(NUM_FLAVORS==2);
+		  AMREX_ASSERT(NUM_FLAVORS==3 or NUM_FLAVORS==2);
 
 		  // perturbation parameters
 		  Real amplitude = 1e-6;
@@ -380,13 +380,25 @@ InitParticles(const TestParams* parms)
 
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
-		  p.rdata(PIdx::f01_Re)    = amplitude*Random();//amplitude*sin(k*p.pos(dir));//
-		  p.rdata(PIdx::f01_Im)    = amplitude*Random();//0;//
+		  p.rdata(PIdx::f01_Re)    = amplitude*Random();
+		  p.rdata(PIdx::f01_Im)    = amplitude*Random();
 		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
-		  p.rdata(PIdx::f01_Rebar) = amplitude*Random();//amplitude*sin(k*p.pos(dir));//
-		  p.rdata(PIdx::f01_Imbar) = amplitude*Random();//0;//
+		  p.rdata(PIdx::f01_Rebar) = amplitude*Random();
+		  p.rdata(PIdx::f01_Imbar) = amplitude*Random();
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
+		  if(NUM_FLAVORS==3){
+			  p.rdata(PIdx::f22_Re)    = 0.0;
+			  p.rdata(PIdx::f22_Rebar) = 0.0;
+			  p.rdata(PIdx::f02_Re)    = amplitude*Random();
+			  p.rdata(PIdx::f02_Im)    = amplitude*Random();
+			  p.rdata(PIdx::f12_Re)    = amplitude*Random();
+			  p.rdata(PIdx::f12_Im)    = amplitude*Random();
+			  p.rdata(PIdx::f02_Rebar) = amplitude*Random();
+			  p.rdata(PIdx::f02_Imbar) = amplitude*Random();
+			  p.rdata(PIdx::f12_Rebar) = amplitude*Random();
+			  p.rdata(PIdx::f12_Imbar) = amplitude*Random();
+		  }
 
 		  // set energy to 50 MeV to match Richers+(2019)
 		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
