@@ -219,7 +219,7 @@ int main(int argc, char* argv[])
 
     // by default amrex initializes rng deterministically
     // this uses the time for a different run each time
-    amrex::InitRandom(time(NULL), ParallelDescriptor::NProcs());
+    amrex::InitRandom(ParallelDescriptor::MyProc()+time(NULL), ParallelDescriptor::NProcs());
 
     {
 
