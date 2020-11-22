@@ -75,6 +75,10 @@ FlavoredNeutrinoContainer(const Geometry            & a_geom,
     #include "generated_files/FlavoredNeutrinoContainerInit.H_particle_varnames_fill"
 }
 
+double symmetric_uniform(double U){
+	return 2. * (U-0.5);
+}
+
 void
 FlavoredNeutrinoContainer::
 InitParticles(const TestParams* parms)
@@ -380,24 +384,24 @@ InitParticles(const TestParams* parms)
 
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
-		  p.rdata(PIdx::f01_Re)    = amplitude*Random();
-		  p.rdata(PIdx::f01_Im)    = amplitude*Random();
+		  p.rdata(PIdx::f01_Re)    = amplitude*symmetric_uniform(Random());
+		  p.rdata(PIdx::f01_Im)    = amplitude*symmetric_uniform(Random());
 		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
-		  p.rdata(PIdx::f01_Rebar) = amplitude*Random();
-		  p.rdata(PIdx::f01_Imbar) = amplitude*Random();
+		  p.rdata(PIdx::f01_Rebar) = amplitude*symmetric_uniform(Random());
+		  p.rdata(PIdx::f01_Imbar) = amplitude*symmetric_uniform(Random());
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
 		  if(NUM_FLAVORS==3){
 			  p.rdata(PIdx::f22_Re)    = 0.0;
 			  p.rdata(PIdx::f22_Rebar) = 0.0;
-			  p.rdata(PIdx::f02_Re)    = amplitude*Random();
-			  p.rdata(PIdx::f02_Im)    = amplitude*Random();
-			  p.rdata(PIdx::f12_Re)    = amplitude*Random();
-			  p.rdata(PIdx::f12_Im)    = amplitude*Random();
-			  p.rdata(PIdx::f02_Rebar) = amplitude*Random();
-			  p.rdata(PIdx::f02_Imbar) = amplitude*Random();
-			  p.rdata(PIdx::f12_Rebar) = amplitude*Random();
-			  p.rdata(PIdx::f12_Imbar) = amplitude*Random();
+			  p.rdata(PIdx::f02_Re)    = amplitude*symmetric_uniform(Random());
+			  p.rdata(PIdx::f02_Im)    = amplitude*symmetric_uniform(Random());
+			  p.rdata(PIdx::f12_Re)    = 0;
+			  p.rdata(PIdx::f12_Im)    = 0;
+			  p.rdata(PIdx::f02_Rebar) = amplitude*symmetric_uniform(Random());
+			  p.rdata(PIdx::f02_Imbar) = amplitude*symmetric_uniform(Random());
+			  p.rdata(PIdx::f12_Rebar) = 0;
+			  p.rdata(PIdx::f12_Imbar) = 0;
 		  }
 
 		  // set energy to 50 MeV to match Richers+(2019)
