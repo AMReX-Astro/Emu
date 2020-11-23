@@ -391,18 +391,18 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Rebar) = amplitude*symmetric_uniform(Random());
 		  p.rdata(PIdx::f01_Imbar) = amplitude*symmetric_uniform(Random());
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
-		  if(NUM_FLAVORS==3){
-			  p.rdata(PIdx::f22_Re)    = 0.0;
-			  p.rdata(PIdx::f22_Rebar) = 0.0;
-			  p.rdata(PIdx::f02_Re)    = amplitude*symmetric_uniform(Random());
-			  p.rdata(PIdx::f02_Im)    = amplitude*symmetric_uniform(Random());
-			  p.rdata(PIdx::f12_Re)    = 0;
-			  p.rdata(PIdx::f12_Im)    = 0;
-			  p.rdata(PIdx::f02_Rebar) = amplitude*symmetric_uniform(Random());
-			  p.rdata(PIdx::f02_Imbar) = amplitude*symmetric_uniform(Random());
-			  p.rdata(PIdx::f12_Rebar) = 0;
-			  p.rdata(PIdx::f12_Imbar) = 0;
-		  }
+#if (NUM_FLAVORS==3)
+		  p.rdata(PIdx::f22_Re)    = 0.0;
+		  p.rdata(PIdx::f22_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Re)    = amplitude*symmetric_uniform(Random());
+		  p.rdata(PIdx::f02_Im)    = amplitude*symmetric_uniform(Random());
+		  p.rdata(PIdx::f12_Re)    = 0;
+		  p.rdata(PIdx::f12_Im)    = 0;
+		  p.rdata(PIdx::f02_Rebar) = amplitude*symmetric_uniform(Random());
+		  p.rdata(PIdx::f02_Imbar) = amplitude*symmetric_uniform(Random());
+		  p.rdata(PIdx::f12_Rebar) = 0;
+		  p.rdata(PIdx::f12_Imbar) = 0;
+#endif
 
 		  // set energy to 50 MeV to match Richers+(2019)
 		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
