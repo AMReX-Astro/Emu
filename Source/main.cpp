@@ -162,7 +162,7 @@ void evolve_flavor(const TestParams* parms)
         auto& neutrinos = integrator.get_new_data();
 
         // Renormalize the neutrino state
-        neutrinos.Renormalize();
+        neutrinos.Renormalize(parms);
 
         // Get which step the integrator is on
         const int step = integrator.get_step_number();

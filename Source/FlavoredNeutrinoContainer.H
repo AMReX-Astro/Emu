@@ -87,7 +87,7 @@ public:
         Redistribute(lev_min, lev_max, nGrow, local);
     }
 
-    void Renormalize();
+    void Renormalize(const TestParams* parms);
 
     amrex::Vector<std::string> get_attribute_names() const
     {

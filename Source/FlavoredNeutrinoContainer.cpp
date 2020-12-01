@@ -85,7 +85,7 @@ UpdateLocationFrom(FlavoredNeutrinoContainer& Ploc)
 }
 
 void FlavoredNeutrinoContainer::
-Renormalize()
+Renormalize(const TestParams* parms)
 {
     BL_PROFILE("FlavoredNeutrinoContainer::Renormalize");
 
