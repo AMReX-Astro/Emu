@@ -2,6 +2,7 @@ import sympy
 from sympy.functions import conjugate
 from sympy.codegen.ast import Assignment
 import copy
+import re
 
 class HermitianMatrix(object):
     # Stores a symbolic matrix Hermitian by construction
@@ -142,8 +143,9 @@ class HermitianMatrix(object):
     def header(self):
         # Returns a list of strings of C++11 code with expressions for 
         # each real value that constitutes the Hermitian matrix
+        # The regular expression replaces Pow(x,2) with x*x
 
-        lines = [sympy.cxxcode(e) for e in self.declarations()]
+        lines = [re.sub(r"std::pow\((.*?), 2\)",r"\1*\1",sympy.cxxcode(e)) for e in self.declarations()]
         return lines
         
     def header_diagonals(self):
