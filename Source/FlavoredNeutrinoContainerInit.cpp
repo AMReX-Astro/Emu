@@ -1,5 +1,5 @@
 #include "FlavoredNeutrinoContainer.H"
-#include "Constants.H"
+ #include "Constants.H"
 #include <random>
 
 using namespace amrex;
@@ -262,6 +262,8 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Rebar) = 0.0;
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
+		  p.rdata(PIdx::L) = p.rdata(PIdx::N);
+		  p.rdata(PIdx::Lbar) = p.rdata(PIdx::Nbar);
 
 		  // set momentum so that a vacuum oscillation wavelength occurs over a distance of 1cm
 		  // Set particle velocity to c in a random direction
@@ -297,9 +299,15 @@ InitParticles(const TestParams* parms)
 		  // set particle weight such that density is
 		  // 10 dm2 c^4 / (2 sqrt(2) GF E)
 		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
+		  double omega = dm2*PhysConst::c4 / (2.*p.rdata(PIdx::pupt));
 		  double ndens = 10. * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
+		  double mu = sqrt(2.)*PhysConst::GF * ndens;
+		  amrex::Print() << "ndens = "<< ndens << std::endl;
+		  amrex::Print() << mu/omega << " " << omega << std::endl;
 		  p.rdata(PIdx::N) = ndens * scale_fac;
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac;
+		  p.rdata(PIdx::L) = p.rdata(PIdx::N);
+		  p.rdata(PIdx::Lbar) = p.rdata(PIdx::Nbar);
 		}
 
 		//========================//
@@ -333,6 +341,8 @@ InitParticles(const TestParams* parms)
 		  double ndens = omega / (2.*mu_ndens); // want omega/2mu to be 1
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
+		  p.rdata(PIdx::L) = p.rdata(PIdx::N);
+		  p.rdata(PIdx::Lbar) = p.rdata(PIdx::Nbar);
 		}
 
 		//===============================//
@@ -370,6 +380,8 @@ InitParticles(const TestParams* parms)
 		  Real ndens = (omega+k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
+		  p.rdata(PIdx::L) = p.rdata(PIdx::N);
+		  p.rdata(PIdx::Lbar) = p.rdata(PIdx::Nbar);
 		}
 
 		//====================//
@@ -393,6 +405,7 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
 #if (NUM_FLAVORS==3)
 		  p.rdata(PIdx::f22_Re)    = 0.0;
+
 		  p.rdata(PIdx::f22_Rebar) = 0.0;
 		  p.rdata(PIdx::f02_Re)    = amplitude*symmetric_uniform(Random());
 		  p.rdata(PIdx::f02_Im)    = amplitude*symmetric_uniform(Random());
@@ -420,6 +433,8 @@ InitParticles(const TestParams* parms)
 		  Real ndens = (omega+k_expected*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
+		  p.rdata(PIdx::L) = p.rdata(PIdx::N);
+		  p.rdata(PIdx::Lbar) = p.rdata(PIdx::Nbar);
 		}
 
 		else{

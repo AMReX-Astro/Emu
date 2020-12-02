@@ -93,7 +93,8 @@ if __name__ == "__main__":
     tails = ["","bar"]
     code = []
     for t in tails:
-        code += ["N"+t]
+        code += ["N"+t] # number of neutrinos
+        code += ["L"+t] # length of isospin vector, units of number of neutrinos
         for v in vars:
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
@@ -109,6 +110,7 @@ if __name__ == "__main__":
     code = []
     for t in tails:
         code += ["N"+t]
+        code += ["L"+t]
         for v in vars:
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
@@ -157,7 +159,7 @@ if __name__ == "__main__":
     deposit_vars = ["N","Fx","Fy","Fz"]
     code = []
     for t in tails:
-        string3 = ")*p.rdata(PIdx::N"+t+")"
+        string3 = ")*p.rdata(PIdx::L"+t+")"
         flist = HermitianMatrix(args.N, "f{}{}_{}"+t).header()
         for ivar in range(len(deposit_vars)):
             deplist = HermitianMatrix(args.N, deposit_vars[ivar]+"{}{}_{}"+t).header()
