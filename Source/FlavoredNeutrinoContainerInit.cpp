@@ -64,6 +64,11 @@ namespace
         u[1] = std::sin(theta) * std::sin(phi);
         u[2] = std::cos(theta);
     }
+
+  AMREX_GPU_HOST_DEVICE double symmetric_uniform(double U){
+    return 2. * (U-0.5);
+  }
+
 }
 
 FlavoredNeutrinoContainer::
@@ -73,10 +78,6 @@ FlavoredNeutrinoContainer(const Geometry            & a_geom,
     : ParticleContainer<PIdx::nattribs, 0, 0, 0>(a_geom, a_dmap, a_ba)
 {
     #include "generated_files/FlavoredNeutrinoContainerInit.H_particle_varnames_fill"
-}
-
-double symmetric_uniform(double U){
-	return 2. * (U-0.5);
 }
 
 void
