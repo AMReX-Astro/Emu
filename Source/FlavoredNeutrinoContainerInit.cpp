@@ -65,8 +65,8 @@ namespace
         u[2] = std::cos(theta);
     }
 
-  AMREX_GPU_HOST_DEVICE double symmetric_uniform(double U){
-    return 2. * (U-0.5);
+  AMREX_GPU_HOST_DEVICE void symmetric_uniform(Real* Usymmetric){
+    *Usymmetric = 2. * (amrex::Random()-0.5);
   }
 
 }
@@ -396,24 +396,32 @@ InitParticles(const TestParams* parms)
 		  Real k = (2.*M_PI) / lambda;
 
 		  // Set particle flavor
+		  Real rand1, rand2, rand3, rand4;
+		  symmetric_uniform(&rand1);
+		  symmetric_uniform(&rand2);
+		  symmetric_uniform(&rand3);
+		  symmetric_uniform(&rand4);
 		  p.rdata(PIdx::f00_Re)    = 1.0;
-		  p.rdata(PIdx::f01_Re)    = amplitude*symmetric_uniform(Random());
-		  p.rdata(PIdx::f01_Im)    = amplitude*symmetric_uniform(Random());
+		  p.rdata(PIdx::f01_Re)    = amplitude*rand1;
+		  p.rdata(PIdx::f01_Im)    = amplitude*rand2;
 		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
-		  p.rdata(PIdx::f01_Rebar) = amplitude*symmetric_uniform(Random());
-		  p.rdata(PIdx::f01_Imbar) = amplitude*symmetric_uniform(Random());
+		  p.rdata(PIdx::f01_Rebar) = amplitude*rand3;
+		  p.rdata(PIdx::f01_Imbar) = amplitude*rand4;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
 #if (NUM_FLAVORS==3)
+		  symmetric_uniform(&rand1);
+		  symmetric_uniform(&rand2);
+		  symmetric_uniform(&rand3);
+		  symmetric_uniform(&rand4);
 		  p.rdata(PIdx::f22_Re)    = 0.0;
-
 		  p.rdata(PIdx::f22_Rebar) = 0.0;
-		  p.rdata(PIdx::f02_Re)    = amplitude*symmetric_uniform(Random());
-		  p.rdata(PIdx::f02_Im)    = amplitude*symmetric_uniform(Random());
+		  p.rdata(PIdx::f02_Re)    = amplitude*rand1;
+		  p.rdata(PIdx::f02_Im)    = amplitude*rand2;
 		  p.rdata(PIdx::f12_Re)    = 0;
 		  p.rdata(PIdx::f12_Im)    = 0;
-		  p.rdata(PIdx::f02_Rebar) = amplitude*symmetric_uniform(Random());
-		  p.rdata(PIdx::f02_Imbar) = amplitude*symmetric_uniform(Random());
+		  p.rdata(PIdx::f02_Rebar) = amplitude*rand3;
+		  p.rdata(PIdx::f02_Imbar) = amplitude*rand4;
 		  p.rdata(PIdx::f12_Rebar) = 0;
 		  p.rdata(PIdx::f12_Imbar) = 0;
 #endif
