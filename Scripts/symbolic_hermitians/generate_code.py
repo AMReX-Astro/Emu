@@ -5,7 +5,7 @@ import argparse
 import os
 import sympy
 from sympy.codegen.ast import Assignment
-from HermitianUtils import HermitianMatrix
+from HermitianUtils import HermitianMatrix,SU_vector_ideal_magnitude
 import shutil
 
 parser = argparse.ArgumentParser(description="Generates code for calculating C = i * [A,B] for symbolic NxN Hermitian matrices A, B, C, using real-valued Real and Imaginary components.")
@@ -375,15 +375,16 @@ if __name__ == "__main__":
             code.append("if("+fii+"<-parms->maxError) "+fii+"=0;")
         code.append("")
 
-        # make sure the flavor vector length is 0.5
+        # make sure the flavor vector length is what it would be with a 1 in only one diagonal
         length = sympy.symbols("length",real=True)
         length = f.SU_vector_magnitude()
+        target_length = SU_vector_ideal_magnitude(args.N)
         code.append("length = "+sympy.cxxcode(sympy.simplify(length))+";")
-        code.append("error = length-0.5;")
+        code.append("error = length-"+str(target_length)+";")
         code.append("if( std::abs(error) > 10.*parms->maxError) amrex::Abort();")
         code.append("if( std::abs(error) > parms->maxError) {")
         for fii in flist:
-            code.append(fii+" /= length/0.5;")
+            code.append(fii+" /= length/"+str(target_length)+";")
         code.append("}")
         code.append("")
         

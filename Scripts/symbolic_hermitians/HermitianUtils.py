@@ -4,6 +4,15 @@ from sympy.codegen.ast import Assignment
 import copy
 import re
 
+def SU_vector_ideal_magnitude(size):
+    mag2 = 0
+    for l in range(1,size):
+        basis_coefficient = sympy.sqrt(2./(l*(l+1.)))
+        mag2 += (basis_coefficient/2.)**2
+
+    return sympy.sqrt(mag2)
+    
+
 class HermitianMatrix(object):
     # Stores a symbolic matrix Hermitian by construction
     # written in terms of real valued components.
@@ -83,7 +92,7 @@ class HermitianMatrix(object):
             mag2 += (basis_coefficient/2.)**2
 
         return sympy.sqrt(mag2)
-
+    
     def times(self, x):
         # Apply self.H = self.H * x
         # where x is a Sympy expression
@@ -145,7 +154,7 @@ class HermitianMatrix(object):
         # each real value that constitutes the Hermitian matrix
         # The regular expression replaces Pow(x,2) with x*x
 
-        lines = [re.sub(r"std::pow\((.*?), 2\)",r"\1*\1",sympy.cxxcode(e)) for e in self.declarations()]
+        lines = [sympy.cxxcode(sympy.simplify(e)) for e in self.declarations()]
         return lines
         
     def header_diagonals(self):
