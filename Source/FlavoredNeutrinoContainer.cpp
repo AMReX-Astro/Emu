@@ -104,7 +104,7 @@ Renormalize(const TestParams* parms)
 
         amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
             ParticleType& p = pstruct[i];
-            Real sumP, error;
+            Real sumP, length, error;
             #include "generated_files/FlavoredNeutrinoContainer.cpp_Renormalize_fill"
         });
     }

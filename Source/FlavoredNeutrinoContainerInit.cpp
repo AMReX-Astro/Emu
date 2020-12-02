@@ -262,8 +262,8 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Rebar) = 0.0;
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
-		  p.rdata(PIdx::L) = p.rdata(PIdx::N);
-		  p.rdata(PIdx::Lbar) = p.rdata(PIdx::Nbar);
+		  p.rdata(PIdx::L) = 0.5*p.rdata(PIdx::N);
+		  p.rdata(PIdx::Lbar) = 0.5*p.rdata(PIdx::Nbar);
 
 		  // set momentum so that a vacuum oscillation wavelength occurs over a distance of 1cm
 		  // Set particle velocity to c in a random direction
@@ -306,8 +306,8 @@ InitParticles(const TestParams* parms)
 		  amrex::Print() << mu/omega << " " << omega << std::endl;
 		  p.rdata(PIdx::N) = ndens * scale_fac;
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac;
-		  p.rdata(PIdx::L) = p.rdata(PIdx::N);
-		  p.rdata(PIdx::Lbar) = p.rdata(PIdx::Nbar);
+		  p.rdata(PIdx::L) = 0.5*p.rdata(PIdx::N);
+		  p.rdata(PIdx::Lbar) = 0.5*p.rdata(PIdx::Nbar);
 		}
 
 		//========================//
@@ -341,8 +341,8 @@ InitParticles(const TestParams* parms)
 		  double ndens = omega / (2.*mu_ndens); // want omega/2mu to be 1
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
-		  p.rdata(PIdx::L) = p.rdata(PIdx::N);
-		  p.rdata(PIdx::Lbar) = p.rdata(PIdx::Nbar);
+		  p.rdata(PIdx::L) = 0.5*p.rdata(PIdx::N);
+		  p.rdata(PIdx::Lbar) = 0.5*p.rdata(PIdx::Nbar);
 		}
 
 		//===============================//
@@ -380,8 +380,8 @@ InitParticles(const TestParams* parms)
 		  Real ndens = (omega+k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
-		  p.rdata(PIdx::L) = p.rdata(PIdx::N);
-		  p.rdata(PIdx::Lbar) = p.rdata(PIdx::Nbar);
+		  p.rdata(PIdx::L) = 0.5*p.rdata(PIdx::N);
+		  p.rdata(PIdx::Lbar) = 0.5*p.rdata(PIdx::Nbar);
 		}
 
 		//====================//
@@ -433,8 +433,8 @@ InitParticles(const TestParams* parms)
 		  Real ndens = (omega+k_expected*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
-		  p.rdata(PIdx::L) = p.rdata(PIdx::N);
-		  p.rdata(PIdx::Lbar) = p.rdata(PIdx::Nbar);
+		  p.rdata(PIdx::L) = 0.5*p.rdata(PIdx::N);
+		  p.rdata(PIdx::Lbar) = 0.5*p.rdata(PIdx::Nbar);
 		}
 
 		else{

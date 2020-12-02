@@ -13,7 +13,7 @@ struct PIdx
 {
     // pup = four-momentum (up index), units of ergs (implied multiply by c)
     // f = distribution function (Real/Imaginary, neutrino/antineutrino)
-    //     the flavor vector constructed from f must have unit magnitude
+    //     the flavor vector constructed from f must have a magnitude of 0.5
     // V = potential
     enum {
         // NOTE: If the non-scripted variables are changed, the following section

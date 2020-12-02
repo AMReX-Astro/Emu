@@ -159,7 +159,7 @@ if __name__ == "__main__":
     deposit_vars = ["N","Fx","Fy","Fz"]
     code = []
     for t in tails:
-        string3 = ")*p.rdata(PIdx::L"+t+")"
+        string3 = ")*2.*p.rdata(PIdx::L"+t+")"
         flist = HermitianMatrix(args.N, "f{}{}_{}"+t).header()
         for ivar in range(len(deposit_vars)):
             deplist = HermitianMatrix(args.N, deposit_vars[ivar]+"{}{}_{}"+t).header()
@@ -354,16 +354,39 @@ if __name__ == "__main__":
     #================================================#
     code = []
     for t in tails:
+        # make sure the trace is 1
         code.append("sumP = 0;")
-        fdlist = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")").header_diagonals()
-        flist = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")").header()
+        f = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
+        fdlist = f.header_diagonals()
+        flist = f.header()
         for fii in fdlist:
             code.append("sumP += " + fii + ";")
         code.append("error = sumP-1.0;")
+        code.append("if( std::abs(error) > 10.*parms->maxError) amrex::Abort();")
         code.append("if( std::abs(error) > parms->maxError ) {")
         for fii in fdlist:
             code.append(fii + " -= error/"+str(args.N)+";")
         code.append("}")
+        code.append("")
+
+        # make sure diagonals are positive
+        for fii in fdlist:
+            code.append("if("+fii+"<-10.*parms->maxError) amrex::Abort();")
+            code.append("if("+fii+"<-parms->maxError) "+fii+"=0;")
+        code.append("")
+
+        # make sure the flavor vector length is 0.5
+        length = sympy.symbols("length",real=True)
+        length = f.SU_vector_magnitude()
+        code.append("length = "+sympy.cxxcode(sympy.simplify(length))+";")
+        code.append("error = length-0.5;")
+        code.append("if( std::abs(error) > 10.*parms->maxError) amrex::Abort();")
+        code.append("if( std::abs(error) > parms->maxError) {")
+        for fii in flist:
+            code.append(fii+" /= length/0.5;")
+        code.append("}")
+        code.append("")
+        
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoContainer.cpp_Renormalize_fill"))
     # Write code to output file, using a template if one is provided
     # write_code(code, "code.cpp", args.output_template)
