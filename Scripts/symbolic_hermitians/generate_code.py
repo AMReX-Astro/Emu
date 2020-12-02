@@ -359,9 +359,10 @@ if __name__ == "__main__":
         flist = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")").header()
         for fii in fdlist:
             code.append("sumP += " + fii + ";")
-        code.append("if( std::abs(sumP-1.0) > parms->maxError ) {")
-        for fii in flist:
-            code.append(fii + " /= sumP;")
+        code.append("error = sumP-1.0;")
+        code.append("if( std::abs(error) > parms->maxError ) {")
+        for fii in fdlist:
+            code.append(fii + " -= error/"+str(args.N)+";")
         code.append("}")
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoContainer.cpp_Renormalize_fill"))
     # Write code to output file, using a template if one is provided
