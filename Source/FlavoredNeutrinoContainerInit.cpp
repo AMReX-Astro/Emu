@@ -303,8 +303,6 @@ InitParticles(const TestParams* parms)
 		  double omega = dm2*PhysConst::c4 / (2.*p.rdata(PIdx::pupt));
 		  double ndens = 10. * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
 		  double mu = sqrt(2.)*PhysConst::GF * ndens;
-		  amrex::Print() << "ndens = "<< ndens << std::endl;
-		  amrex::Print() << mu/omega << " " << omega << std::endl;
 		  p.rdata(PIdx::N) = ndens * scale_fac;
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac;
 		  p.rdata(PIdx::L) = 0.5*p.rdata(PIdx::N);
