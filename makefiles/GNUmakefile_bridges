@@ -1,0 +1,37 @@
+#module unload intel
+#module load python3/3.5.2_gcc_mkl cuda/10.2 mpi/gcc_openmpi gcc/8.3.0
+
+EMU_HOME ?= ../
+AMREX_HOME ?= ../amrex
+
+DIM	= 3
+
+NUM_FLAVORS = 3
+
+COMP = gnu
+
+DEBUG	= TRUE
+
+USE_MPI       = TRUE
+USE_OMP       = FALSE
+USE_ACC       = FALSE
+USE_CUDA      = TRUE
+AMREX_CUDA_ARCH=60
+USE_HDF5 = FALSE
+
+TINY_PROFILE  = TRUE
+USE_PARTICLES = TRUE
+
+PRECISION     = DOUBLE
+
+Bpack   :=
+Blocs   := . 
+
+ifeq ($(USE_HDF5), TRUE)
+HDF5_HOME = /usr/local/hdf5-1.12.0_gnu7.5.0
+DEFINES += -DAMREX_USE_HDF5
+INCLUDE_LOCATIONS += $(HDF5_HOME)/include
+LIBRARIES         += -L$(HDF5_HOME)/lib -lhdf5 -lz -ldl 
+endif
+
+include ../Make.Emu
