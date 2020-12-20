@@ -61,6 +61,8 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
 void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state, const Geometry& geom,
                      BilinearFilter& bilinear_filter, bool use_filter)
 {
+    const auto domain = geom.Domain();
+    const auto  lo = amrex::lbound(domain);
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
 
@@ -75,9 +77,9 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
     [=] AMREX_GPU_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p,
                             amrex::Array4<amrex::Real> const& sarr)
     {
-        amrex::Real lx = (p.pos(0) - plo[0]) * dxi[0] + 0.5;
-        amrex::Real ly = (p.pos(1) - plo[1]) * dxi[1] + 0.5;
-        amrex::Real lz = (p.pos(2) - plo[2]) * dxi[2] + 0.5;
+        amrex::Real lx = (p.pos(0) - plo[0]) * dxi[0] - 0.5_rt;
+        amrex::Real ly = (p.pos(1) - plo[1]) * dxi[1] - 0.5_rt;
+        amrex::Real lz = (p.pos(2) - plo[2]) * dxi[2] - 0.5_rt;
 
         amrex::Real sx[SHAPE_FACTOR_ORDER+1], sy[SHAPE_FACTOR_ORDER+1], sz[SHAPE_FACTOR_ORDER+1];
         int i = compute_shape_factor(sx, lx);
@@ -104,6 +106,8 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
 
 void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const MultiFab& state, const Geometry& geom, const TestParams* parms)
 {
+    const auto domain = geom.Domain();
+    const auto  lo = amrex::lbound(domain);
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
     const Real inv_cell_volume = dxi[0]*dxi[1]*dxi[2];
@@ -116,9 +120,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
     {
         #include "generated_files/Evolve.cpp_Vvac_fill"
 
-        amrex::Real lx = (p.pos(0) - plo[0]) * dxi[0] + 0.5;
-        amrex::Real ly = (p.pos(1) - plo[1]) * dxi[1] + 0.5;
-        amrex::Real lz = (p.pos(2) - plo[2]) * dxi[2] + 0.5;
+        amrex::Real lx = (p.pos(0) - plo[0]) * dxi[0] - 0.5;
+        amrex::Real ly = (p.pos(1) - plo[1]) * dxi[1] - 0.5;
+        amrex::Real lz = (p.pos(2) - plo[2]) * dxi[2] - 0.5;
 
         amrex::Real sx[SHAPE_FACTOR_ORDER+1], sy[SHAPE_FACTOR_ORDER+1], sz[SHAPE_FACTOR_ORDER+1];
         int i = compute_shape_factor(sx, lx);
