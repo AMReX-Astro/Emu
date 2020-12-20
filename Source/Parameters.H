@@ -18,7 +18,7 @@ struct TestParams : public amrex::Gpu::Managed
     int nsteps;
     Real end_time;
     int write_plot_every;
-    int write_plot_particles;
+    int write_plot_particles_every;
     Real rho_in, Ye_in, T_in; // g/ccm, 1, MeV
     int simulation_type;
     Real cfl_factor, flavor_cfl_factor;
@@ -54,10 +54,10 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("cfl_factor", cfl_factor);
         pp.get("flavor_cfl_factor", flavor_cfl_factor);
         pp.get("write_plot_every", write_plot_every);
-        pp.get("write_plot_particles", write_plot_particles);
+        pp.get("write_plot_particles_every", write_plot_particles_every);
         pp.get("do_restart", do_restart);
         pp.get("restart_dir", restart_dir);
-	pp.get("maxError", maxError);
+        pp.get("maxError", maxError);
 
         // neutrino physics parameters for 2-flavor
         pp.get("mass1_eV", mass1);
