@@ -391,7 +391,6 @@ InitParticles(const TestParams* parms)
 
 		  // perturbation parameters
 		  Real amplitude = 1e-6;
-		  Real k = (2.*M_PI) / lambda;
 
 		  // Set particle flavor
 		  Real rand1, rand2, rand3, rand4;
