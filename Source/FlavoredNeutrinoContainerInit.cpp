@@ -426,12 +426,12 @@ InitParticles(const TestParams* parms)
 		  // set particle weight such that density is
 		  // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
 		  // to get maximal growth according to Chakraborty 2016 Equation 2.10
-		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
-		  Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
-		  Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
-		  Real k_expected = (2.*M_PI)/1.0;// corresponding to wavelength of 1cm
-		  Real ndens_fiducial = (omega+k_expected*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
-		  amrex::Print() << "fiducial ndens would be " << ndens_fiducial << std::endl;
+		  //Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
+		  //Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
+		  //Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
+		  //Real k_expected = (2.*M_PI)/1.0;// corresponding to wavelength of 1cm
+		  //Real ndens_fiducial = (omega+k_expected*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
+		  //amrex::Print() << "fiducial ndens would be " << ndens_fiducial << std::endl;
 		  
 		  Real ndens    = parms->st4_ndens;
 		  Real ndensbar = parms->st4_ndensbar;
