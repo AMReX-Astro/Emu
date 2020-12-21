@@ -41,7 +41,7 @@ Ye = 1
 write_plot_every = 1
 
 # Write particle data in plotfiles
-write_plot_particles = 1
+write_plot_particles_every = 1
 
 # checkpointing
 do_restart = 0
@@ -78,3 +78,4 @@ alpha2_degrees = 0
 
 # CP-violating phase in degrees [NO:222 IO:285]
 deltaCP_degrees = 222
+

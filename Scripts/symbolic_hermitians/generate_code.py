@@ -150,7 +150,7 @@ if __name__ == "__main__":
     # Evolve.cpp_deposit_to_mesh_fill #
     #=================================#
     tails = ["","bar"]
-    string1 = "amrex::Gpu::Atomic::Add(&sarr(i+ii-1, j+jj-1, k+kk-1, GIdx::"
+    string1 = "amrex::Gpu::Atomic::Add(&sarr(lo.x+i+ii, lo.y+j+jj, lo.z+k+kk, GIdx::"
     string2 = "-start_comp), sx[ii]*sy[jj]*sz[kk] * p.rdata(PIdx::"
     string4 = [");",
                "*p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt));",
@@ -261,7 +261,7 @@ if __name__ == "__main__":
     tails = ["","bar"]
     string1 = "p.rdata(PIdx::"
     string2 = ") +=  sqrt(2.) * PhysConst::GF * sx[ii]*sy[jj]*sz[kk] * ("
-    string_interp = "sarr(i+ii-1,j+jj-1,k+kk-1,GIdx::"
+    string_interp = "sarr(lo.x+i+ii,lo.y+j+jj,lo.z+k+kk,GIdx::"
     direction = ["x","y","z"]
     string3 = ["*p.rdata(PIdx::pupx)"]
     string4 = "/p.rdata(PIdx::pupt)"
