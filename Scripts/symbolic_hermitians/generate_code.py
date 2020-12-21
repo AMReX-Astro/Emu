@@ -362,7 +362,7 @@ if __name__ == "__main__":
         for fii in fdlist:
             code.append("sumP += " + fii + ";")
         code.append("error = sumP-1.0;")
-        code.append("if( std::abs(error) > 10.*parms->maxError) amrex::Abort();")
+        code.append("if( std::abs(error) > 100.*parms->maxError) amrex::Abort();")
         code.append("if( std::abs(error) > parms->maxError ) {")
         for fii in fdlist:
             code.append(fii + " -= error/"+str(args.N)+";")
@@ -371,7 +371,7 @@ if __name__ == "__main__":
 
         # make sure diagonals are positive
         for fii in fdlist:
-            code.append("if("+fii+"<-10.*parms->maxError) amrex::Abort();")
+            code.append("if("+fii+"<-100.*parms->maxError) amrex::Abort();")
             code.append("if("+fii+"<-parms->maxError) "+fii+"=0;")
         code.append("")
 
@@ -381,7 +381,7 @@ if __name__ == "__main__":
         target_length = SU_vector_ideal_magnitude(args.N)
         code.append("length = "+sympy.cxxcode(sympy.simplify(length))+";")
         code.append("error = length-"+str(target_length)+";")
-        code.append("if( std::abs(error) > 10.*parms->maxError) amrex::Abort();")
+        code.append("if( std::abs(error) > 100.*parms->maxError) amrex::Abort();")
         code.append("if( std::abs(error) > parms->maxError) {")
         for fii in flist:
             code.append(fii+" /= length/"+str(target_length)+";")
