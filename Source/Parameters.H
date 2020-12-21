@@ -36,6 +36,15 @@ struct TestParams : public amrex::Gpu::Managed
     bool use_filter;
     IntVect filter_npass_each_dir;
 
+    // simulation_type==3
+    int st3_wavelength_fraction_of_domain;
+    Real st3_amplitude;
+  
+    // simulation_type==4
+    Real st4_ndens   , st4_theta   , st4_phi   , st4_fluxfac   ;
+    Real st4_ndensbar, st4_thetabar, st4_phibar, st4_fluxfacbar;
+    Real st4_amplitude;
+
     void Initialize(){
         ParmParse pp;
         pp.get("simulation_type", simulation_type);
@@ -82,6 +91,23 @@ struct TestParams : public amrex::Gpu::Managed
         	deltaCP *= M_PI/180.;
         }
 
+	if(simulation_type==3){
+	  pp.get("st3_amplitude", st3_amplitude);
+	  pp.get("st3_wavelength_fraction_of_domain", st3_wavelength_fraction_of_domain);
+	}
+	
+	if(simulation_type==4){
+	  pp.get("st4_flux_theta"   , st4_theta   );
+	  pp.get("st4_flux_thetabar", st4_thetabar);
+	  pp.get("st4_flux_phi"   , st4_phi);
+	  pp.get("st4_flux_phibar", st4_phibar);
+	  pp.get("st4_ndens"   , st4_ndens);
+	  pp.get("st4_ndensbar", st4_ndensbar);
+	  pp.get("st4_fluxfac"   , st4_fluxfac);
+	  pp.get("st4_fluxfacbar", st4_fluxfacbar);
+	  pp.get("st4_amplitude", st4_amplitude);
+	}
+	
         // filtering options for particle-to-mesh deposition
         pp.get("use_filter", use_filter);
         pp.get("filter_npass_each_dir", filter_npass_each_dir);
