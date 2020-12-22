@@ -183,6 +183,8 @@ InitParticles(const TestParams* parms)
 
         int procID = ParallelDescriptor::MyProc();
 
+	Real domain_length_z = Geom(lev).ProbLength(2);
+
         // Initialize particle data in the particle tile
         amrex::ParallelFor(tile_box,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
@@ -347,17 +349,16 @@ InitParticles(const TestParams* parms)
 		  AMREX_ASSERT(NUM_FLAVORS==2);
 
 		  // perturbation parameters
-		  int dir = 2;
-		  Real lambda = Geom(lev).ProbLength(dir)/(Real)parms->st3_wavelength_fraction_of_domain;
+		  Real lambda = domain_length_z/(Real)parms->st3_wavelength_fraction_of_domain;
 		  Real k = (2.*M_PI) / lambda;
 
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
-		  p.rdata(PIdx::f01_Re)    = parms->st3_amplitude*sin(k*p.pos(dir));
+		  p.rdata(PIdx::f01_Re)    = parms->st3_amplitude*sin(k*p.pos(2));
 		  p.rdata(PIdx::f01_Im)    = 0.0;
 		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
-		  p.rdata(PIdx::f01_Rebar) = parms->st3_amplitude*sin(k*p.pos(dir));
+		  p.rdata(PIdx::f01_Rebar) = parms->st3_amplitude*sin(k*p.pos(2));
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
 
