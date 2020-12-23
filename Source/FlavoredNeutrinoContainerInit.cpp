@@ -442,8 +442,8 @@ InitParticles(const TestParams* parms)
 		  Real fhatbar[3] = {cos(parms->st4_phibar)*sin(parms->st4_thetabar),
 				     sin(parms->st4_phibar)*sin(parms->st4_thetabar),
 				     cos(parms->st4_thetabar)};
-		  Real costheta    = fhat   [0]*u[0] + fhat   [1]*u[1] * fhat   [2]*u[2];
-		  Real costhetabar = fhatbar[0]*u[0] + fhatbar[1]*u[1] * fhatbar[2]*u[2];
+		  Real costheta    = fhat   [0]*u[0] + fhat   [1]*u[1] + fhat   [2]*u[2];
+		  Real costhetabar = fhatbar[0]*u[0] + fhatbar[1]*u[1] + fhatbar[2]*u[2];
 		  
 		  p.rdata(PIdx::N   ) = ndens   *scale_fac * (1. + 3.*parms->st4_fluxfac   *costheta   );
 		  p.rdata(PIdx::Nbar) = ndensbar*scale_fac * (1. + 3.*parms->st4_fluxfacbar*costhetabar);

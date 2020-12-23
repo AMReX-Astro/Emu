@@ -97,10 +97,10 @@ struct TestParams : public amrex::Gpu::Managed
 	}
 	
 	if(simulation_type==4){
-	  pp.get("st4_flux_theta"   , st4_theta   );
-	  pp.get("st4_flux_thetabar", st4_thetabar);
-	  pp.get("st4_flux_phi"   , st4_phi);
-	  pp.get("st4_flux_phibar", st4_phibar);
+	  pp.get("st4_theta"   , st4_theta   );
+	  pp.get("st4_thetabar", st4_thetabar);
+	  pp.get("st4_phi"   , st4_phi);
+	  pp.get("st4_phibar", st4_phibar);
 	  pp.get("st4_ndens"   , st4_ndens);
 	  pp.get("st4_ndensbar", st4_ndensbar);
 	  pp.get("st4_fluxfac"   , st4_fluxfac);
