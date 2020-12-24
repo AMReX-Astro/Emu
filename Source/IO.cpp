@@ -35,27 +35,25 @@ WritePlotFile (const amrex::MultiFab& state,
 
 void
 RecoverParticles (const std::string& dir,
-				  FlavoredNeutrinoContainer *neutrinos,
-				  amrex::Real *time, int *step){
+				  FlavoredNeutrinoContainer& neutrinos,
+				  amrex::Real& time, int& step)
+{
+    BL_PROFILE("RecoverParticles()");
 
-	// get the time and step number from the header file
-	constexpr int hack_time_line_number = 39;
-	constexpr int hack_step_line_number = 45;
-	std::string line;
-	std::ifstream header(dir+"/Header");
-	int line_number = 1;
+    // load the metadata from this plotfile
+    PlotFileData plotfile(dir);
 
-	// get the time
-	for(; line_number<=hack_time_line_number; line_number++)
-		std::getline(header,line);
-	*time = std::atof(line.c_str());
+	// get the time at which to restart
+	time = plotfile.time();
 
-	// get the iteration
-	for(; line_number<=hack_step_line_number; line_number++)
-		std::getline(header,line);
-	*step = std::atoi(line.c_str());
-	header.close();
+	// get the time step at which to restart
+	const int lev = 0;
+	step = plotfile.levelStep(lev);
 
+	// initialize our particle container from the plotfile
 	std::string file("neutrinos");
-	neutrinos->Restart(dir, file);
+	neutrinos.Restart(dir, file);
+
+	// print the step/time for the restart
+	amrex::Print() << "Restarting after time step: " << step-1 << " t = " << time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;
 }

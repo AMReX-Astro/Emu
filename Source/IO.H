@@ -14,7 +14,7 @@ WritePlotFile (const amrex::MultiFab& state,
 
 void
 RecoverParticles (const std::string& dir,
-				  FlavoredNeutrinoContainer *neutrinos,
-				  amrex::Real *time, int *step);
+				  FlavoredNeutrinoContainer& neutrinos,
+				  amrex::Real& time, int& step);
 
 #endif
