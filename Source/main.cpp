@@ -88,8 +88,8 @@ void evolve_flavor(const TestParams* parms)
     Real initial_time = 0.0;
     int initial_step = 0;
     if(parms->do_restart){
-    	// get particle data from file
-    	RecoverParticles(parms->restart_dir, &neutrinos_old, &initial_time, &initial_step);
+        // get particle data from file
+        RecoverParticles(parms->restart_dir, neutrinos_old, initial_time, initial_step);
     }
     else{
     	// Initialize old particles
