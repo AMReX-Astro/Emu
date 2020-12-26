@@ -44,6 +44,51 @@ def get_particle_keys():
 
     return rkey, ikey
 
+def get_3flavor_particle_keys():
+    real_quantities = ["pos_x",
+                       "pos_y",
+                       "pos_z",
+                       "time",
+                       "x",
+                       "y",
+                       "z",
+                       "pupx",
+                       "pupy",
+                       "pypz",
+                       "pupt",
+                       "N",
+                       "L",
+                       "f00_Re",
+                       "f01_Re",
+                       "f01_Im",
+                       "f02_Re",
+                       "f02_Im",
+                       "f11_Re",
+                       "f12_Re",
+                       "f12_Im",
+                       "f22_Re",
+                       "Nbar",
+                       "Lbar",
+                       "f00_Rebar",
+                       "f01_Rebar",
+                       "f01_Imbar",
+                       "f02_Rebar",
+                       "f02_Imbar",
+                       "f11_Rebar",
+                       "f12_Rebar",
+                       "f12_Imbar",
+                       "f22_Rebar"]
+
+    rkey = {}
+    for i, rlabel in enumerate(real_quantities):
+        rkey[rlabel] = i
+
+    ikey = {
+        # no ints are stored
+    }
+
+    return rkey, ikey
+
 class AMReXParticleHeader(object):
     '''
 
