@@ -1,3 +1,5 @@
+![Emu](https://github.com/AMReX-Astro/Emu/blob/development/Docs/Emu_logo_transparent.png)
+
 # Emu
 
 Emu is an open-source particle-in-cell code for solving the neutrino quantum
