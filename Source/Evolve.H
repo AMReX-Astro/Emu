@@ -13,6 +13,9 @@ namespace GIdx
 {
   // x/y/z - direction of flux vector
   // e/u/t = electron/muon/tauon
+  // the grid N, Fx, Fy, Fz are the LENGTH OF THE FLAVOR VECTOR
+  //    with units of number density. Could add total number density later
+  //    too, but this helps with subtractive cancellation errors
     enum {
         rho, T, Ye, // g/ccm, MeV, unitless
         #include "generated_files/Evolve.H_fill"

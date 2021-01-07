@@ -1,33 +1,43 @@
-simulation_type = 2
+simulation_type = 4
+st4_theta = 0
+st4_thetabar = 3.14159265359
+st4_phi = 0
+st4_phibar=0
+st4_ndens = 4.891290819e+32
+st4_ndensbar = 4.891290819e+32
+st4_fluxfac = .333333333333333
+st4_fluxfacbar = .333333333333333
+st4_amplitude = 1e-6
+
 cfl_factor = 0.5
-flavor_cfl_factor = .5
+flavor_cfl_factor = 0.5
 maxError = 1e-6
 
 integration.type = 1
 integration.rk.type = 4
 
-# Domain size in 3D index space
-ncell = (1, 1, 1)
-Lx = 1e7
-Ly = 1e7
-Lz = 1e7
-
-# Number of particles per cell
-nppc  = (1, 1, 1)
-nphi_equator = 1
-
 # filtering
 use_filter = 0
 filter_npass_each_dir = (0,0,0)
 
+# Domain size in 3D index space
+ncell = (1, 1, 256)
+Lx = 1.0
+Ly = 1.0
+Lz = 64.0
+
+# Number of particles per cell
+nppc  = (1, 1, 1)
+nphi_equator = 16
+
 # Maximum size of each grid in the domain
-max_grid_size = 64
+max_grid_size = 16
 
 # Number of steps to run
-nsteps = 100
+nsteps = 5000
 
 # Simulation end time
-end_time = 1.0
+end_time = 5.0e-9
 
 # Make FPE signal errors so we get a Backtrace
 amrex.fpe_trap_invalid=1
@@ -38,10 +48,10 @@ T_MeV = 10
 Ye = 1
 
 # Write plotfiles
-write_plot_every = 1
+write_plot_every = 25
 
 # Write particle data in plotfiles
-write_plot_particles_every = 1
+write_plot_particles_every = 0
 
 # checkpointing
 do_restart = 0
@@ -53,7 +63,7 @@ restart_dir = ""
 # see first column of table 14.7 in http://pdg.lbl.gov/2019/reviews/rpp2019-rev-neutrino-mixing.pdf
 
 # mass state 1 mass in eV [NO/IO:-sqrt(7.39e-5)]
-mass1_eV = -0.008596511
+mass1_eV = 0 #-0.008596511
 
 # mass state 2 mass in eV (define at 0 arbitrarily because oscillations only sensitive to deltaM^2)
 mass2_eV = 0
@@ -78,3 +88,4 @@ alpha2_degrees = 0
 
 # CP-violating phase in degrees [NO:222 IO:285]
 deltaCP_degrees = 222
+

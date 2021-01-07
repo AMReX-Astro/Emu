@@ -1,6 +1,7 @@
 simulation_type = 1
 cfl_factor = 0.5
 flavor_cfl_factor = .5
+maxError = 1e-6
 
 integration.type = 1
 integration.rk.type = 4
@@ -40,7 +41,7 @@ Ye = 1
 write_plot_every = 1
 
 # Write particle data in plotfiles
-write_plot_particles = 1
+write_plot_particles_every = 1
 
 # checkpointing
 do_restart = 0

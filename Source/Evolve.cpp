@@ -142,6 +142,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         p.rdata(PIdx::pupy) = 0;
         p.rdata(PIdx::pupz) = 0;
         p.rdata(PIdx::pupt) = 0;
+        p.rdata(PIdx::N) = 0;
+        p.rdata(PIdx::Nbar) = 0;
+        p.rdata(PIdx::L) = 0;
+        p.rdata(PIdx::Lbar) = 0;
         #include "generated_files/Evolve.cpp_dfdt_fill"
 
     });

@@ -18,12 +18,13 @@ struct TestParams : public amrex::Gpu::Managed
     int nsteps;
     Real end_time;
     int write_plot_every;
-    int write_plot_particles;
+    int write_plot_particles_every;
     Real rho_in, Ye_in, T_in; // g/ccm, 1, MeV
     int simulation_type;
     Real cfl_factor, flavor_cfl_factor;
     bool do_restart;
     std::string restart_dir;
+    Real maxError;
 
     // neutrino physics parameters. See first column of table 14.7 in http://pdg.lbl.gov/2019/reviews/rpp2019-rev-neutrino-mixing.pdf
     Real mass1, mass2, mass3; // neutrino masses in grams
@@ -34,6 +35,15 @@ struct TestParams : public amrex::Gpu::Managed
     // filtering options
     bool use_filter;
     IntVect filter_npass_each_dir;
+
+    // simulation_type==3
+    int st3_wavelength_fraction_of_domain;
+    Real st3_amplitude;
+  
+    // simulation_type==4
+    Real st4_ndens   , st4_theta   , st4_phi   , st4_fluxfac   ;
+    Real st4_ndensbar, st4_thetabar, st4_phibar, st4_fluxfacbar;
+    Real st4_amplitude;
 
     void Initialize(){
         ParmParse pp;
@@ -53,9 +63,10 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("cfl_factor", cfl_factor);
         pp.get("flavor_cfl_factor", flavor_cfl_factor);
         pp.get("write_plot_every", write_plot_every);
-        pp.get("write_plot_particles", write_plot_particles);
+        pp.get("write_plot_particles_every", write_plot_particles_every);
         pp.get("do_restart", do_restart);
         pp.get("restart_dir", restart_dir);
+        pp.get("maxError", maxError);
 
         // neutrino physics parameters for 2-flavor
         pp.get("mass1_eV", mass1);
@@ -80,6 +91,23 @@ struct TestParams : public amrex::Gpu::Managed
         	deltaCP *= M_PI/180.;
         }
 
+	if(simulation_type==3){
+	  pp.get("st3_amplitude", st3_amplitude);
+	  pp.get("st3_wavelength_fraction_of_domain", st3_wavelength_fraction_of_domain);
+	}
+	
+	if(simulation_type==4){
+	  pp.get("st4_theta"   , st4_theta   );
+	  pp.get("st4_thetabar", st4_thetabar);
+	  pp.get("st4_phi"   , st4_phi);
+	  pp.get("st4_phibar", st4_phibar);
+	  pp.get("st4_ndens"   , st4_ndens);
+	  pp.get("st4_ndensbar", st4_ndensbar);
+	  pp.get("st4_fluxfac"   , st4_fluxfac);
+	  pp.get("st4_fluxfacbar", st4_fluxfacbar);
+	  pp.get("st4_amplitude", st4_amplitude);
+	}
+	
         // filtering options for particle-to-mesh deposition
         pp.get("use_filter", use_filter);
         pp.get("filter_npass_each_dir", filter_npass_each_dir);

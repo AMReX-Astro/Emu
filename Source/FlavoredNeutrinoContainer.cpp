@@ -85,7 +85,7 @@ UpdateLocationFrom(FlavoredNeutrinoContainer& Ploc)
 }
 
 void FlavoredNeutrinoContainer::
-Renormalize()
+Renormalize(const TestParams* parms)
 {
     BL_PROFILE("FlavoredNeutrinoContainer::Renormalize");
 
@@ -104,7 +104,7 @@ Renormalize()
 
         amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
             ParticleType& p = pstruct[i];
-            Real sumP;
+            Real sumP, length, error;
             #include "generated_files/FlavoredNeutrinoContainer.cpp_Renormalize_fill"
         });
     }

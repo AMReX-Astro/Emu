@@ -1,6 +1,10 @@
 simulation_type = 3
+st3_amplitude = 1e-6
+st3_wavelength_fraction_of_domain = 1
+
 cfl_factor = 0.5
 flavor_cfl_factor = 0.5
+maxError = 1e-6
 
 integration.type = 1
 integration.rk.type = 4
@@ -40,7 +44,7 @@ Ye = 1
 write_plot_every = 1
 
 # Write particle data in plotfiles
-write_plot_particles = 1
+write_plot_particles_every = 1
 
 # checkpointing
 do_restart = 0
@@ -77,3 +81,4 @@ alpha2_degrees = 0
 
 # CP-violating phase in degrees [NO:222 IO:285]
 deltaCP_degrees = 222
+

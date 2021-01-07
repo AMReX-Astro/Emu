@@ -1,5 +1,5 @@
 #include "FlavoredNeutrinoContainer.H"
-#include "Constants.H"
+ #include "Constants.H"
 #include <random>
 
 using namespace amrex;
@@ -64,6 +64,11 @@ namespace
         u[1] = std::sin(theta) * std::sin(phi);
         u[2] = std::cos(theta);
     }
+
+  AMREX_GPU_HOST_DEVICE void symmetric_uniform(Real* Usymmetric){
+    *Usymmetric = 2. * (amrex::Random()-0.5);
+  }
+
 }
 
 FlavoredNeutrinoContainer::
@@ -178,9 +183,7 @@ InitParticles(const TestParams* parms)
 
         int procID = ParallelDescriptor::MyProc();
 
-	// wavelength for fast flavor oscillation test (case 3)
-	int dir = 2;
-	Real lambda = Geom(lev).ProbLength(dir);
+	Real domain_length_z = Geom(lev).ProbLength(2);
 
         // Initialize particle data in the particle tile
         amrex::ParallelFor(tile_box,
@@ -258,6 +261,8 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Rebar) = 0.0;
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
+		  p.rdata(PIdx::L) = 0.5*p.rdata(PIdx::N);
+		  p.rdata(PIdx::Lbar) = 0.5*p.rdata(PIdx::Nbar);
 
 		  // set momentum so that a vacuum oscillation wavelength occurs over a distance of 1cm
 		  // Set particle velocity to c in a random direction
@@ -293,9 +298,13 @@ InitParticles(const TestParams* parms)
 		  // set particle weight such that density is
 		  // 10 dm2 c^4 / (2 sqrt(2) GF E)
 		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
+		  double omega = dm2*PhysConst::c4 / (2.*p.rdata(PIdx::pupt));
 		  double ndens = 10. * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
+		  double mu = sqrt(2.)*PhysConst::GF * ndens;
 		  p.rdata(PIdx::N) = ndens * scale_fac;
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac;
+		  p.rdata(PIdx::L) = 0.5*p.rdata(PIdx::N);
+		  p.rdata(PIdx::Lbar) = 0.5*p.rdata(PIdx::Nbar);
 		}
 
 		//========================//
@@ -329,6 +338,8 @@ InitParticles(const TestParams* parms)
 		  double ndens = omega / (2.*mu_ndens); // want omega/2mu to be 1
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
+		  p.rdata(PIdx::L) = 0.5*p.rdata(PIdx::N);
+		  p.rdata(PIdx::Lbar) = 0.5*p.rdata(PIdx::Nbar);
 		}
 
 		//===============================//
@@ -338,17 +349,17 @@ InitParticles(const TestParams* parms)
 		  AMREX_ASSERT(NUM_FLAVORS==2);
 
 		  // perturbation parameters
-		  Real amplitude = 1e-6;
+		  Real lambda = domain_length_z/(Real)parms->st3_wavelength_fraction_of_domain;
 		  Real k = (2.*M_PI) / lambda;
 
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
-		  p.rdata(PIdx::f01_Re)    = amplitude*sin(k*p.pos(dir));//amplitude*Random();
-		  p.rdata(PIdx::f01_Im)    = 0;//amplitude*Random();
+		  p.rdata(PIdx::f01_Re)    = parms->st3_amplitude*sin(k*p.pos(2));
+		  p.rdata(PIdx::f01_Im)    = 0.0;
 		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
-		  p.rdata(PIdx::f01_Rebar) = amplitude*sin(k*p.pos(dir));//amplitude*Random();
-		  p.rdata(PIdx::f01_Imbar) = 0;//amplitude*Random();
+		  p.rdata(PIdx::f01_Rebar) = parms->st3_amplitude*sin(k*p.pos(2));
+		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
 
 		  // set energy to 50 MeV to match Richers+(2019)
@@ -366,27 +377,46 @@ InitParticles(const TestParams* parms)
 		  Real ndens = (omega+k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
+		  p.rdata(PIdx::L) = 0.5*p.rdata(PIdx::N);
+		  p.rdata(PIdx::Lbar) = 0.5*p.rdata(PIdx::Nbar);
 		}
 
 		//====================//
 		// 4- k!=0 RANDOMIZED //
 		//====================//
 		else if(parms->simulation_type==4){
-		  AMREX_ASSERT(NUM_FLAVORS==2);
-
-		  // perturbation parameters
-		  Real amplitude = 1e-6;
-		  Real k = (2.*M_PI) / lambda;
+		  AMREX_ASSERT(NUM_FLAVORS==3 or NUM_FLAVORS==2);
 
 		  // Set particle flavor
+		  Real rand1, rand2, rand3, rand4;
+		  symmetric_uniform(&rand1);
+		  symmetric_uniform(&rand2);
+		  symmetric_uniform(&rand3);
+		  symmetric_uniform(&rand4);
 		  p.rdata(PIdx::f00_Re)    = 1.0;
-		  p.rdata(PIdx::f01_Re)    = amplitude*Random();//amplitude*sin(k*p.pos(dir));//
-		  p.rdata(PIdx::f01_Im)    = amplitude*Random();//0;//
+		  p.rdata(PIdx::f01_Re)    = parms->st4_amplitude*rand1;
+		  p.rdata(PIdx::f01_Im)    = parms->st4_amplitude*rand2;
 		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
-		  p.rdata(PIdx::f01_Rebar) = amplitude*Random();//amplitude*sin(k*p.pos(dir));//
-		  p.rdata(PIdx::f01_Imbar) = amplitude*Random();//0;//
+		  p.rdata(PIdx::f01_Rebar) = parms->st4_amplitude*rand3;
+		  p.rdata(PIdx::f01_Imbar) = parms->st4_amplitude*rand4;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
+#if (NUM_FLAVORS==3)
+		  symmetric_uniform(&rand1);
+		  symmetric_uniform(&rand2);
+		  symmetric_uniform(&rand3);
+		  symmetric_uniform(&rand4);
+		  p.rdata(PIdx::f22_Re)    = 0.0;
+		  p.rdata(PIdx::f22_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Re)    = parms->st4_amplitude*rand1;
+		  p.rdata(PIdx::f02_Im)    = parms->st4_amplitude*rand2;
+		  p.rdata(PIdx::f12_Re)    = 0;
+		  p.rdata(PIdx::f12_Im)    = 0;
+		  p.rdata(PIdx::f02_Rebar) = parms->st4_amplitude*rand3;
+		  p.rdata(PIdx::f02_Imbar) = parms->st4_amplitude*rand4;
+		  p.rdata(PIdx::f12_Rebar) = 0;
+		  p.rdata(PIdx::f12_Imbar) = 0;
+#endif
 
 		  // set energy to 50 MeV to match Richers+(2019)
 		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
@@ -397,13 +427,28 @@ InitParticles(const TestParams* parms)
 		  // set particle weight such that density is
 		  // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
 		  // to get maximal growth according to Chakraborty 2016 Equation 2.10
-		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
-		  Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
-		  Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
-		  Real k_expected = (2.*M_PI)/1.0;// corresponding to wavelength of 1cm
-		  Real ndens = (omega+k_expected*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
-		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
-		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
+		  //Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
+		  //Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
+		  //Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
+		  //Real k_expected = (2.*M_PI)/1.0;// corresponding to wavelength of 1cm
+		  //Real ndens_fiducial = (omega+k_expected*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
+		  //amrex::Print() << "fiducial ndens would be " << ndens_fiducial << std::endl;
+		  
+		  Real ndens    = parms->st4_ndens;
+		  Real ndensbar = parms->st4_ndensbar;
+		  Real fhat[3]    = {cos(parms->st4_phi)   *sin(parms->st4_theta   ),
+				     sin(parms->st4_phi)   *sin(parms->st4_theta   ),
+				     cos(parms->st4_theta   )};
+		  Real fhatbar[3] = {cos(parms->st4_phibar)*sin(parms->st4_thetabar),
+				     sin(parms->st4_phibar)*sin(parms->st4_thetabar),
+				     cos(parms->st4_thetabar)};
+		  Real costheta    = fhat   [0]*u[0] + fhat   [1]*u[1] + fhat   [2]*u[2];
+		  Real costhetabar = fhatbar[0]*u[0] + fhatbar[1]*u[1] + fhatbar[2]*u[2];
+		  
+		  p.rdata(PIdx::N   ) = ndens   *scale_fac * (1. + 3.*parms->st4_fluxfac   *costheta   );
+		  p.rdata(PIdx::Nbar) = ndensbar*scale_fac * (1. + 3.*parms->st4_fluxfacbar*costhetabar);
+		  p.rdata(PIdx::L   ) = 0.5*p.rdata(PIdx::N   );
+		  p.rdata(PIdx::Lbar) = 0.5*p.rdata(PIdx::Nbar);
 		}
 
 		else{

@@ -88,8 +88,8 @@ void evolve_flavor(const TestParams* parms)
     Real initial_time = 0.0;
     int initial_step = 0;
     if(parms->do_restart){
-    	// get particle data from file
-    	RecoverParticles(parms->restart_dir, &neutrinos_old, &initial_time, &initial_step);
+        // get particle data from file
+        RecoverParticles(parms->restart_dir, neutrinos_old, initial_time, initial_step);
     }
     else{
     	// Initialize old particles
@@ -105,8 +105,11 @@ void evolve_flavor(const TestParams* parms)
     deposit_to_mesh(neutrinos_old, state, geom, bilinear_filter, parms->use_filter);
 
     // Write plotfile after initialization
-    if(not parms->do_restart)
-    	WritePlotFile(state, neutrinos_old, geom, initial_time, initial_step, parms->write_plot_particles);
+    if (not parms->do_restart) {
+        // If we have just initialized, then always save the particle data for reference
+        const int write_particles_after_init = 1;
+        WritePlotFile(state, neutrinos_old, geom, initial_time, initial_step, write_particles_after_init);
+    }
 
     amrex::Print() << "Done. " << std::endl;
 
@@ -162,7 +165,7 @@ void evolve_flavor(const TestParams* parms)
         auto& neutrinos = integrator.get_new_data();
 
         // Renormalize the neutrino state
-        neutrinos.Renormalize();
+        neutrinos.Renormalize(parms);
 
         // Get which step the integrator is on
         const int step = integrator.get_step_number();
@@ -173,8 +176,14 @@ void evolve_flavor(const TestParams* parms)
         run_fom += neutrinos.TotalNumberOfParticles();
 
         // Write the Mesh Data to Plotfile if required
-        if ((step+1) % parms->write_plot_every == 0)
-            WritePlotFile(state, neutrinos, geom, time, step+1, parms->write_plot_particles);
+        if ((step+1) % parms->write_plot_every == 0 ||
+            (parms->write_plot_particles_every > 0 &&
+             (step+1) % parms->write_plot_particles_every == 0)) {
+            // Only include the Particle Data if write_plot_particles_every is satisfied
+            int write_plot_particles = parms->write_plot_particles_every > 0 &&
+                                       (step+1) % parms->write_plot_particles_every == 0;
+            WritePlotFile(state, neutrinos, geom, time, step+1, write_plot_particles);
+        }
 
         // Set the next timestep from the last deposited grid data
         // Note: this won't be the same as the new-time grid data
@@ -219,7 +228,7 @@ int main(int argc, char* argv[])
 
     // by default amrex initializes rng deterministically
     // this uses the time for a different run each time
-    amrex::InitRandom(time(NULL), ParallelDescriptor::NProcs());
+    amrex::InitRandom(ParallelDescriptor::MyProc()+time(NULL), ParallelDescriptor::NProcs());
 
     {
 
