@@ -25,6 +25,11 @@ struct PIdx
     };
 };
 
+struct Sync
+{
+    enum {CoordinateToPosition=0, PositionToCoordinate};
+};
+
 template<typename P>
 struct ApplyFlavoredNeutrinoRHS
 {
@@ -68,6 +73,8 @@ public:
                               const amrex::BoxArray            & a_ba);
 
     void InitParticles(const TestParams* parms);
+
+    void SyncLocation(int type);
 
     void UpdateLocationFrom(FlavoredNeutrinoContainer& Other);
 

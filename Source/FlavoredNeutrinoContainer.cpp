@@ -4,46 +4,82 @@
 using namespace amrex;
 
 void FlavoredNeutrinoContainer::
-UpdateLocationFrom(FlavoredNeutrinoContainer& Ploc)
+SyncLocation(int type)
 {
-    BL_PROFILE("FlavoredNeutrinoContainer::UpdateLocationFrom");
+    BL_PROFILE("FlavoredNeutrinoContainer::SyncLocation");
+
+    AMREX_ASSERT(type==Sync::CoordinateToPosition || type==Sync::PositionToCoordinate);
 
     const int lev = 0;
-
-    const auto dxi = Geom(lev).InvCellSizeArray();
-    const auto plo = Geom(lev).ProbLoArray();
-
-    FNParIter pti_this(*this, lev);
-    FNParIter pti_ploc(Ploc, lev);
-
-    auto checkValid = [&]() -> bool {
-        bool this_v = pti_this.isValid();
-        bool ploc_v = pti_ploc.isValid();
-        AMREX_ASSERT(this_v == ploc_v);
-        return this_v && ploc_v;
-    };
-
-    auto ptIncrement = [&](){ ++pti_this; ++pti_ploc; };
 
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (; checkValid(); ptIncrement())
+    for (FNParIter pti(*this, lev); pti.isValid(); ++pti)
     {
-        const int np_this = pti_this.numParticles();
-        const int np_ploc = pti_ploc.numParticles();
-        AMREX_ASSERT(np_this == np_ploc);
+        const int np  = pti.numParticles();
+        ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
 
-        ParticleType* ps_this = &(pti_this.GetArrayOfStructs()[0]);
-        ParticleType* ps_ploc = &(pti_ploc.GetArrayOfStructs()[0]);
+        amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
+            ParticleType& p = pstruct[i];
 
-        ParallelFor (np_this, [=] AMREX_GPU_DEVICE (int i) {
+            if (type == Sync::CoordinateToPosition) {
+                // Copy integrated position to the particle position.
+                p.pos(0) = p.rdata(PIdx::x);
+                p.pos(1) = p.rdata(PIdx::y);
+                p.pos(2) = p.rdata(PIdx::z);
+            } else if (type == Sync::PositionToCoordinate) {
+                // Copy the reset particle position back to the integrated position.
+                p.rdata(PIdx::x) = p.pos(0);
+                p.rdata(PIdx::y) = p.pos(1);
+                p.rdata(PIdx::z) = p.pos(2);
+            }
+        });
+    }
+}
+
+void FlavoredNeutrinoContainer::
+UpdateLocationFrom(FlavoredNeutrinoContainer& Ploc)
+{
+    // This function updates particle locations in the current particle container
+    // using the particle locations in particle container Ploc.
+    //
+    // We also copy the particle id's so particles invalidated in Ploc are
+    // invalidated for the current particle container as well.
+    BL_PROFILE("FlavoredNeutrinoContainer::UpdateLocationFrom");
+
+    const int lev = 0;
+
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+    for (FNParIter pti(*this, lev); pti.isValid(); ++pti)
+    {
+        auto grid_tile = pti.GetPairIndex();
+
+        auto& this_tile = this->ParticlesAt(lev, grid_tile.first, grid_tile.second);
+        auto& ploc_tile = Ploc.ParticlesAt(lev, grid_tile.first, grid_tile.second);
+
+        AMREX_ASSERT(this_tile.numParticles() == ploc_tile.numParticles());
+        int np = this_tile.numParticles();
+
+        ParticleType* ps_this = &(this_tile.GetArrayOfStructs()[0]);
+        ParticleType* ps_ploc = &(ploc_tile.GetArrayOfStructs()[0]);
+
+        amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
             ParticleType& p_this = ps_this[i];
             ParticleType& p_ploc = ps_ploc[i];
 
-            p_this.pos(0) = p_ploc.rdata(PIdx::x);
-            p_this.pos(1) = p_ploc.rdata(PIdx::y);
-            p_this.pos(2) = p_ploc.rdata(PIdx::z);
+            AMREX_ASSERT(p_this.id() == p_ploc.id() || p_this.id() == -p_ploc.id());
+
+            p_this.pos(0) = p_ploc.pos(0);
+            p_this.pos(1) = p_ploc.pos(1);
+            p_this.pos(2) = p_ploc.pos(2);
+
+            // if the particle has been invalidated in Ploc, invalidate it here also
+            if (p_ploc.id() < 0) {
+                p_this.id() = p_ploc.id();
+            }
         });
     }
 }
@@ -66,10 +102,10 @@ Renormalize()
         const int np  = pti.numParticles();
         ParticleType * pstruct = &(pti.GetArrayOfStructs()[0]);
 
-        ParallelFor ( np, [=] AMREX_GPU_DEVICE (int i) {
-        ParticleType& p = pstruct[i];
-        Real sumP;
-        #include "generated_files/FlavoredNeutrinoContainer.cpp_Renormalize_fill"
-	});
+        amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
+            ParticleType& p = pstruct[i];
+            Real sumP;
+            #include "generated_files/FlavoredNeutrinoContainer.cpp_Renormalize_fill"
+        });
     }
 }

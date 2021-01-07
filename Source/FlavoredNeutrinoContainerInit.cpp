@@ -149,21 +149,33 @@ InitParticles(const TestParams* parms)
         Gpu::inclusive_scan(counts.begin(), counts.end(), offsets.begin());
 
         int num_to_add = offsets[tile_box.numPts()-1];
-
-        auto& particles = GetParticles(lev);
-        auto& particle_tile = particles[std::make_pair(mfi.index(), mfi.LocalTileIndex())];
-
-        // Resize the particle container
-        auto old_size = particle_tile.GetArrayOfStructs().size();
-        auto new_size = old_size + num_to_add;
-        particle_tile.resize(new_size);
-
         if (num_to_add == 0) continue;
-        
-        ParticleType* pstruct = particle_tile.GetArrayOfStructs()().data();
 
-        auto arrdata = particle_tile.GetStructOfArrays().realarray();
-        
+        // this will be the particle ID for the first new particle in the tile
+        long new_pid;
+        ParticleType* pstruct;
+        #ifdef _OPENMP
+        #pragma omp critical
+        #endif
+        {
+
+        	auto& particles = GetParticles(lev);
+        	auto& particle_tile = particles[std::make_pair(mfi.index(), mfi.LocalTileIndex())];
+
+        	// Resize the particle container
+        	auto old_size = particle_tile.GetArrayOfStructs().size();
+        	auto new_size = old_size + num_to_add;
+        	particle_tile.resize(new_size);
+
+        	// get the next particle ID
+        	new_pid = ParticleType::NextID();
+
+        	// set the starting particle ID for the next tile of particles
+        	ParticleType::NextID(new_pid + num_to_add);
+
+        	pstruct = particle_tile.GetArrayOfStructs()().data();
+        }
+
         int procID = ParallelDescriptor::MyProc();
 
 	// wavelength for fast flavor oscillation test (case 3)
@@ -202,11 +214,12 @@ InitParticles(const TestParams* parms)
 
                 for(int i_direction=0; i_direction<ndirs_per_loc; i_direction++){
                     // Get the Particle data corresponding to our particle index in pidx
-                    // the +1 is because amrex uses negative indices to indicate invalid, so
-                    // they have to not use an index of 0
                     const int pidx = poffset[cellid] - poffset[0] + i_loc*ndirs_per_loc + i_direction;
                     ParticleType& p = pstruct[pidx];
-                    p.id()   = pidx+1;
+
+                    // Set particle ID using the ID for the first of the new particles in this tile
+                    // plus our zero-based particle index
+                    p.id()   = new_pid + pidx;
 
                     // Set CPU ID
                     p.cpu()  = procID;

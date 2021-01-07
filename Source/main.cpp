@@ -1,4 +1,5 @@
 #include <iostream>
+#include <ctime>
 
 #include <AMReX.H>
 #include <AMReX_ParmParse.H>
@@ -80,10 +81,20 @@ void evolve_flavor(const TestParams* parms)
     FlavoredNeutrinoContainer neutrinos_old(geom, dm, ba);
     FlavoredNeutrinoContainer neutrinos_new(geom, dm, ba);
 
-    const Real initial_time = 0.0;
+    // Track the Figure of Merit for the simulation
+    // defined as number of particles advanced per microsecond of walltime
+    Real run_fom = 0.0;
 
-    // Initialize old particles
-    neutrinos_old.InitParticles(parms);
+    Real initial_time = 0.0;
+    int initial_step = 0;
+    if(parms->do_restart){
+    	// get particle data from file
+    	RecoverParticles(parms->restart_dir, &neutrinos_old, &initial_time, &initial_step);
+    }
+    else{
+    	// Initialize old particles
+    	neutrinos_old.InitParticles(parms);
+    }
 
     // Copy particles from old data to new data
     // (the second argument is true to indicate particle container data is local
@@ -94,11 +105,12 @@ void evolve_flavor(const TestParams* parms)
     deposit_to_mesh(neutrinos_old, state, geom, bilinear_filter, parms->use_filter);
 
     // Write plotfile after initialization
-    WritePlotFile(state, neutrinos_old, geom, initial_time, 0, parms->write_plot_particles);
+    if(not parms->do_restart)
+    	WritePlotFile(state, neutrinos_old, geom, initial_time, initial_step, parms->write_plot_particles);
 
     amrex::Print() << "Done. " << std::endl;
 
-    TimeIntegrator<FlavoredNeutrinoContainer> integrator(neutrinos_old, neutrinos_new, initial_time);
+    TimeIntegrator<FlavoredNeutrinoContainer> integrator(neutrinos_old, neutrinos_new, initial_time, initial_step);
 
     // Create a RHS source function we will integrate
     auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, const FlavoredNeutrinoContainer& neutrinos, Real time) {
@@ -115,12 +127,16 @@ void evolve_flavor(const TestParams* parms)
     };
 
     auto post_update_fun = [&] (FlavoredNeutrinoContainer& neutrinos, Real time) {
+        // First, update the particle locations in the domain with their
+        // integrated coordinates.
+        neutrinos.SyncLocation(Sync::CoordinateToPosition);
+
         // We write a function for the integrator to map across all internal
         // particle containers. We have to update particle locations and
-        // redistribute since particles may have moved in the previous update.
+        // redistribute since particles may have moved to different grids.
         //
-        // Here we are updating the particle locations using the integrated location
-        // stored in PIdx::x, PIdx::y, PIdx::z.
+        // Here we are updating the particle locations using the
+        // particle locations in the neutrino state.
         auto update_data = [&](FlavoredNeutrinoContainer& data) {
             if (&data != &neutrinos) {
                 data.UpdateLocationFrom(neutrinos);
@@ -129,12 +145,16 @@ void evolve_flavor(const TestParams* parms)
         };
 
         // For all integrator internal particle containers,
-        // update them with the new particle locations & Redistribute
+        // update them with the new particle locations & Redistribute.
         integrator.map_data(update_data);
 
-        // Finally, update & redistribute current data
-        neutrinos.UpdateLocationFrom(neutrinos);
+        // Now that all the other particle containers are updated
+        // and redistributed, redistribute the particles in the neutrinos state.
         neutrinos.RedistributeLocal();
+
+        // Finally, update the integrated coordinates with the new particle locations
+        // since Redistribute() applies periodic boundary conditions.
+        neutrinos.SyncLocation(Sync::PositionToCoordinate);
     };
 
     auto post_timestep_fun = [&] () {
@@ -148,7 +168,9 @@ void evolve_flavor(const TestParams* parms)
         const int step = integrator.get_step_number();
         const Real time = integrator.get_time();
 
-        amrex::Print() << "Completed time step: " << step << " t = " <<time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;
+        amrex::Print() << "Completed time step: " << step << " t = " << time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;
+
+        run_fom += neutrinos.TotalNumberOfParticles();
 
         // Write the Mesh Data to Plotfile if required
         if ((step+1) % parms->write_plot_every == 0)
@@ -173,9 +195,21 @@ void evolve_flavor(const TestParams* parms)
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
 
+    Real start_time = amrex::second();
+
     integrator.integrate(starting_dt, parms->end_time, parms->nsteps);
 
+    Real stop_time = amrex::second();
+    Real advance_time = stop_time - start_time;
+
+    // Get total number of particles advanced per microsecond of walltime
+    run_fom = run_fom / advance_time / 1.e6;
+
     amrex::Print() << "Done. " << std::endl;
+
+    amrex::Print() << "Run time w/o initialization (seconds) = " << std::fixed << std::setprecision(3) << advance_time << std::endl;
+
+    amrex::Print() << "Average number of particles advanced per microsecond = " << std::fixed << std::setprecision(3) << run_fom << std::endl;
 
 }
 
@@ -183,10 +217,11 @@ int main(int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
 
-    {
+    // by default amrex initializes rng deterministically
+    // this uses the time for a different run each time
+    amrex::InitRandom(time(NULL), ParallelDescriptor::NProcs());
 
-    // Initialize the random number generator
-    amrex::InitRandom(451);
+    {
 
     // get the run parameters
     std::unique_ptr<TestParams> parms_unique_ptr;
