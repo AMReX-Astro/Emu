@@ -261,8 +261,6 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Rebar) = 0.0;
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
-		  p.rdata(PIdx::L) = 0.5*p.rdata(PIdx::N);
-		  p.rdata(PIdx::Lbar) = 0.5*p.rdata(PIdx::Nbar);
 
 		  // set momentum so that a vacuum oscillation wavelength occurs over a distance of 1cm
 		  // Set particle velocity to c in a random direction
@@ -303,8 +301,6 @@ InitParticles(const TestParams* parms)
 		  double mu = sqrt(2.)*PhysConst::GF * ndens;
 		  p.rdata(PIdx::N) = ndens * scale_fac;
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac;
-		  p.rdata(PIdx::L) = 0.5*p.rdata(PIdx::N);
-		  p.rdata(PIdx::Lbar) = 0.5*p.rdata(PIdx::Nbar);
 		}
 
 		//========================//
@@ -338,8 +334,6 @@ InitParticles(const TestParams* parms)
 		  double ndens = omega / (2.*mu_ndens); // want omega/2mu to be 1
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
-		  p.rdata(PIdx::L) = 0.5*p.rdata(PIdx::N);
-		  p.rdata(PIdx::Lbar) = 0.5*p.rdata(PIdx::Nbar);
 		}
 
 		//===============================//
@@ -377,8 +371,6 @@ InitParticles(const TestParams* parms)
 		  Real ndens = (omega+k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
-		  p.rdata(PIdx::L) = 0.5*p.rdata(PIdx::N);
-		  p.rdata(PIdx::Lbar) = 0.5*p.rdata(PIdx::Nbar);
 		}
 
 		//====================//
@@ -447,13 +439,13 @@ InitParticles(const TestParams* parms)
 		  
 		  p.rdata(PIdx::N   ) = ndens   *scale_fac * (1. + 3.*parms->st4_fluxfac   *costheta   );
 		  p.rdata(PIdx::Nbar) = ndensbar*scale_fac * (1. + 3.*parms->st4_fluxfacbar*costhetabar);
-		  p.rdata(PIdx::L   ) = 0.5*p.rdata(PIdx::N   );
-		  p.rdata(PIdx::Lbar) = 0.5*p.rdata(PIdx::Nbar);
 		}
 
 		else{
             amrex::Error("Invalid simulation type");
 		}
+
+		#include "generated_files/FlavoredNeutrinoContainerInit.cpp_set_trace_length"
             }
         }
         });
