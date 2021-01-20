@@ -72,9 +72,9 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
     Compute_shape_factor< SHAPE_FACTOR_ORDER > const compute_shape_factor;
     Compute_shape_factor<0> const compute_shape_factor_order0;
 
-    int shape_factor_order_x = SHAPE_FACTOR_ORDER;
-    int shape_factor_order_y = SHAPE_FACTOR_ORDER;
-    int shape_factor_order_z = SHAPE_FACTOR_ORDER;
+    const int shape_factor_order_x = geom.ProbLength(0) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_factor_order_y = geom.ProbLength(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_factor_order_z = geom.ProbLength(2) > 1 ? SHAPE_FACTOR_ORDER : 0;
 
     amrex::ParticleToMesh(neutrinos, deposit_mf, 0,
     [=] AMREX_GPU_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p,
@@ -116,9 +116,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
     Compute_shape_factor< SHAPE_FACTOR_ORDER > const compute_shape_factor;
     Compute_shape_factor<0> const compute_shape_factor_order0;
 
-    int shape_factor_order_x = SHAPE_FACTOR_ORDER;
-    int shape_factor_order_y = SHAPE_FACTOR_ORDER;
-    int shape_factor_order_z = SHAPE_FACTOR_ORDER;
+    const int shape_factor_order_x = geom.ProbLength(0) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_factor_order_y = geom.ProbLength(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_factor_order_z = geom.ProbLength(2) > 1 ? SHAPE_FACTOR_ORDER : 0;
 
     amrex::MeshToParticle(neutrinos_rhs, state, 0,
     [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
