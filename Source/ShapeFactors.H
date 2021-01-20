@@ -87,7 +87,9 @@ struct Compute_shape_factor< 0 >
     AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
     int operator()(T* const sx, T xmid) const
     {
-        const auto j = static_cast<int>(xmid + T(0.5));
+        const T x = xmid + T(0.5);
+        const auto i = static_cast<int>(x);
+	const auto j = std::signbit(x) ? i-1 : i;
         sx[0] = T(1.0);
         return j;
     }
@@ -105,7 +107,9 @@ struct Compute_shape_factor< 1 >
     AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
     int operator()(T* const sx, T xmid) const
     {
-        const auto j = static_cast<int>(xmid);
+        const T x = xmid;
+        const auto i = static_cast<int>(x);
+	const auto j = std::signbit(x) ? i-1 : i;
         const T xint = xmid - T(j);
         sx[0] = T(1.0) - xint;
         sx[1] = xint;
@@ -125,7 +129,9 @@ struct Compute_shape_factor< 2 >
     AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
     int operator()(T* const sx, T xmid) const
     {
-        const auto j = static_cast<int>(xmid + T(0.5));
+        const T x = xmid + T(0.5);
+        const auto i = static_cast<int>(x);
+	const auto j = std::signbit(x) ? i-1 : i;
         const T xint = xmid - T(j);
         sx[0] = T(0.5)*(T(0.5) - xint)*(T(0.5) - xint);
         sx[1] = T(0.75) - xint*xint;
@@ -147,7 +153,9 @@ struct Compute_shape_factor< 3 >
     AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
     int operator()(T* const sx, T xmid) const
     {
-        const auto j = static_cast<int>(xmid);
+        const T x = xmid;
+        const auto i = static_cast<int>(x);
+	const auto j = std::signbit(x) ? i-1 : i;
         const T xint = xmid - T(j);
         sx[0] = (T(1.0))/(T(6.0))*(T(1.0) - xint)*(T(1.0) - xint)*(T(1.0) - xint);
         sx[1] = (T(2.0))/(T(3.0)) - xint*xint*(T(1.0) - xint/(T(2.0)));
