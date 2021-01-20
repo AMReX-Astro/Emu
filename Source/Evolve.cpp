@@ -70,6 +70,11 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
     MultiFab deposit_mf(state.boxArray(), state.DistributionMap(), num_comps, state.nGrowVect());
 
     Compute_shape_factor< SHAPE_FACTOR_ORDER > const compute_shape_factor;
+    Compute_shape_factor<0> const compute_shape_factor_order0;
+
+    int shape_factor_order_x = SHAPE_FACTOR_ORDER;
+    int shape_factor_order_y = SHAPE_FACTOR_ORDER;
+    int shape_factor_order_z = SHAPE_FACTOR_ORDER;
 
     amrex::ParticleToMesh(neutrinos, deposit_mf, 0,
     [=] AMREX_GPU_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p,
@@ -80,13 +85,13 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
         amrex::Real lz = (p.pos(2) - plo[2]) * dxi[2] + 0.5;
 
         amrex::Real sx[SHAPE_FACTOR_ORDER+1], sy[SHAPE_FACTOR_ORDER+1], sz[SHAPE_FACTOR_ORDER+1];
-        int i = compute_shape_factor(sx, lx);
-        int j = compute_shape_factor(sy, ly);
-        int k = compute_shape_factor(sz, lz);
+        int i = shape_factor_order_x==0 ? compute_shape_factor_order0(sx, lx) : compute_shape_factor(sx, lx);
+        int j = shape_factor_order_y==0 ? compute_shape_factor_order0(sy, ly) : compute_shape_factor(sy, ly);
+        int k = shape_factor_order_z==0 ? compute_shape_factor_order0(sz, lz) : compute_shape_factor(sz, lz);
 
-        for (int kk = 0; kk <= SHAPE_FACTOR_ORDER; ++kk) {
-            for (int jj = 0; jj <= SHAPE_FACTOR_ORDER; ++jj) {
-                for (int ii = 0; ii <= SHAPE_FACTOR_ORDER; ++ii) {
+        for (int kk = 0; kk <= shape_factor_order_z; ++kk) {
+            for (int jj = 0; jj <= shape_factor_order_y; ++jj) {
+                for (int ii = 0; ii <= shape_factor_order_x; ++ii) {
                     #include "generated_files/Evolve.cpp_deposit_to_mesh_fill"
                 }
             }
@@ -109,6 +114,11 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
     const Real inv_cell_volume = dxi[0]*dxi[1]*dxi[2];
 
     Compute_shape_factor< SHAPE_FACTOR_ORDER > const compute_shape_factor;
+    Compute_shape_factor<0> const compute_shape_factor_order0;
+
+    int shape_factor_order_x = SHAPE_FACTOR_ORDER;
+    int shape_factor_order_y = SHAPE_FACTOR_ORDER;
+    int shape_factor_order_z = SHAPE_FACTOR_ORDER;
 
     amrex::MeshToParticle(neutrinos_rhs, state, 0,
     [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
@@ -121,13 +131,13 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         amrex::Real lz = (p.pos(2) - plo[2]) * dxi[2] + 0.5;
 
         amrex::Real sx[SHAPE_FACTOR_ORDER+1], sy[SHAPE_FACTOR_ORDER+1], sz[SHAPE_FACTOR_ORDER+1];
-        int i = compute_shape_factor(sx, lx);
-        int j = compute_shape_factor(sy, ly);
-        int k = compute_shape_factor(sz, lz);
+        int i = shape_factor_order_x==0 ? compute_shape_factor_order0(sx, lx) : compute_shape_factor(sx, lx);
+        int j = shape_factor_order_y==0 ? compute_shape_factor_order0(sy, ly) : compute_shape_factor(sy, ly);
+        int k = shape_factor_order_z==0 ? compute_shape_factor_order0(sz, lz) : compute_shape_factor(sz, lz);
 
-        for (int kk = 0; kk <= SHAPE_FACTOR_ORDER; ++kk) {
-            for (int jj = 0; jj <= SHAPE_FACTOR_ORDER; ++jj) {
-                for (int ii = 0; ii <= SHAPE_FACTOR_ORDER; ++ii) {
+        for (int kk = 0; kk <= shape_factor_order_z; ++kk) {
+            for (int jj = 0; jj <= shape_factor_order_y; ++jj) {
+                for (int ii = 0; ii <= shape_factor_order_x; ++ii) {
                     #include "generated_files/Evolve.cpp_interpolate_from_mesh_fill"
                 }
             }
