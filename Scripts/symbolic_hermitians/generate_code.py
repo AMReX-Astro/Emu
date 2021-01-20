@@ -159,7 +159,7 @@ if __name__ == "__main__":
     deposit_vars = ["N","Fx","Fy","Fz"]
     code = []
     for t in tails:
-        string3 = ")*2.*p.rdata(PIdx::L"+t+")"
+        string3 = ")*p.rdata(PIdx::N"+t+")"
         flist = HermitianMatrix(args.N, "f{}{}_{}"+t).header()
         for ivar in range(len(deposit_vars)):
             deplist = HermitianMatrix(args.N, deposit_vars[ivar]+"{}{}_{}"+t).header()
@@ -378,7 +378,7 @@ if __name__ == "__main__":
         # make sure the flavor vector length is what it would be with a 1 in only one diagonal
         length = sympy.symbols("length",real=True)
         length = f.SU_vector_magnitude()
-        target_length = SU_vector_ideal_magnitude(args.N)
+        target_length = "p.rdata(PIdx::L"+t+")"
         code.append("length = "+sympy.cxxcode(sympy.simplify(length))+";")
         code.append("error = length-"+str(target_length)+";")
         code.append("if( std::abs(error) > 100.*parms->maxError) amrex::Abort();")
@@ -392,3 +392,12 @@ if __name__ == "__main__":
     # Write code to output file, using a template if one is provided
     # write_code(code, "code.cpp", args.output_template)
 
+
+    #====================================================#
+    # FlavoredNeutrinoContainerInit.cpp_set_trace_length #
+    #====================================================#
+    code = []
+    for t in tails:
+        f = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
+        code.append("p.rdata(PIdx::L"+t+") = "+sympy.cxxcode(sympy.simplify(f.SU_vector_magnitude()))+";" )
+    write_code(code, os.path.join(args.emu_home, "Source/generated_files/FlavoredNeutrinoContainerInit.cpp_set_trace_length"))
