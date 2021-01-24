@@ -58,8 +58,7 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
     return dt;
 }
 
-void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state, const Geometry& geom,
-                     BilinearFilter& bilinear_filter, bool use_filter)
+void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state, const Geometry& geom)
 {
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
@@ -94,13 +93,7 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
         }
     });
 
-    if (use_filter) {
-        IntVect ngrow_filter = state.nGrowVect();
-        ngrow_filter += bilinear_filter.stencil_length_each_dir - 1;
-        bilinear_filter.ApplyStencil(state, deposit_mf, 0, start_comp, num_comps);
-    } else {
-        MultiFab::Copy(state, deposit_mf, 0, start_comp, num_comps, state.nGrowVect());
-    }
+    MultiFab::Copy(state, deposit_mf, 0, start_comp, num_comps, state.nGrowVect());
 }
 
 void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const MultiFab& state, const Geometry& geom, const TestParams* parms)
