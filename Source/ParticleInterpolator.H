@@ -53,12 +53,12 @@ struct ParticleInterpolator
     }
 
     AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-    const int& first() () const noexcept {
+    const int& first() const noexcept {
         return first_cell;
     }
 
     AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-    const int& last() () const noexcept {
+    const int& last() const noexcept {
         return last_cell;
     }
 
