@@ -7,7 +7,6 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_ParticleMesh.H>
 #include <FlavoredNeutrinoContainer.H>
-#include <BilinearFilter.H>
 
 namespace GIdx
 {
