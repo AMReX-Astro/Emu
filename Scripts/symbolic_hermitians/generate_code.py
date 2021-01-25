@@ -150,8 +150,8 @@ if __name__ == "__main__":
     # Evolve.cpp_deposit_to_mesh_fill #
     #=================================#
     tails = ["","bar"]
-    string1 = "amrex::Gpu::Atomic::Add(&sarr(i+ii-1, j+jj-1, k+kk-1, GIdx::"
-    string2 = "-start_comp), sx[ii]*sy[jj]*sz[kk] * p.rdata(PIdx::"
+    string1 = "amrex::Gpu::Atomic::AddNoRet(&sarr(i, j, k, GIdx::"
+    string2 = "-start_comp), sx(i) * sy(j) * sz(k) * p.rdata(PIdx::"
     string4 = [");",
                "*p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt));",
                "*p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt));",
@@ -260,8 +260,8 @@ if __name__ == "__main__":
     # matter and SI potentials require interpolating from grid
     tails = ["","bar"]
     string1 = "p.rdata(PIdx::"
-    string2 = ") +=  sqrt(2.) * PhysConst::GF * sx[ii]*sy[jj]*sz[kk] * ("
-    string_interp = "sarr(i+ii-1,j+jj-1,k+kk-1,GIdx::"
+    string2 = ") +=  sqrt(2.) * PhysConst::GF * sx(i) * sy(j) * sz(k) * ("
+    string_interp = "sarr(i, j, k, GIdx::"
     direction = ["x","y","z"]
     string3 = ["*p.rdata(PIdx::pupx)"]
     string4 = "/p.rdata(PIdx::pupt)"
@@ -312,7 +312,7 @@ if __name__ == "__main__":
             else:
                 line += " -= "
 
-            line += "sqrt(2.) * PhysConst::GF * inv_cell_volume * sx[ii]*sy[jj]*sz[kk] * (inside_parentheses);"
+            line += "sqrt(2.) * PhysConst::GF * inv_cell_volume * sx(i) * sy(j) * sz(k) * (inside_parentheses);"
             code.append(line)
             code.append("")
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_interpolate_from_mesh_fill"))
