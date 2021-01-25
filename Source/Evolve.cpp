@@ -63,16 +63,17 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
 
-    // create a copy of the MultiFab so it only erases the quantities that will be set by the neutrinos
-    int start_comp = GIdx::N00_Re;
-    int num_comps = GIdx::ncomp - start_comp;
-    MultiFab deposit_mf(state.boxArray(), state.DistributionMap(), num_comps, state.nGrowVect());
+    // Create an alias of the MultiFab so ParticleToMesh only erases the quantities
+    // that will be set by the neutrinos.
+    int deposit_start_comp = GIdx::N00_Re;
+    int deposit_num_comps = GIdx::ncomp - deposit_start_comp;
+    MultiFab deposit_state(state, amrex::make_alias, deposit_start_comp, deposit_num_comps);
 
     const int shape_factor_order_x = geom.Domain().length(0) > 1 ? SHAPE_FACTOR_ORDER : 0;
     const int shape_factor_order_y = geom.Domain().length(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
     const int shape_factor_order_z = geom.Domain().length(2) > 1 ? SHAPE_FACTOR_ORDER : 0;
 
-    amrex::ParticleToMesh(neutrinos, deposit_mf, 0,
+    amrex::ParticleToMesh(neutrinos, deposit_state, 0,
     [=] AMREX_GPU_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p,
                           amrex::Array4<amrex::Real> const& sarr)
     {
@@ -92,8 +93,6 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
             }
         }
     });
-
-    MultiFab::Copy(state, deposit_mf, 0, start_comp, num_comps, state.nGrowVect());
 }
 
 void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const MultiFab& state, const Geometry& geom, const TestParams* parms)
@@ -141,7 +140,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         p.rdata(PIdx::Nbar) = 0;
         p.rdata(PIdx::L) = 0;
         p.rdata(PIdx::Lbar) = 0;
-        #include "generated_files/Evolve.cpp_dfdt_fill"
 
+        #include "generated_files/Evolve.cpp_dfdt_fill"
     });
 }
