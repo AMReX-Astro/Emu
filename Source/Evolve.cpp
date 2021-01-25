@@ -65,9 +65,9 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
 
     // Create an alias of the MultiFab so ParticleToMesh only erases the quantities
     // that will be set by the neutrinos.
-    int deposit_start_comp = GIdx::N00_Re;
-    int deposit_num_comps = GIdx::ncomp - deposit_start_comp;
-    MultiFab deposit_state(state, amrex::make_alias, deposit_start_comp, deposit_num_comps);
+    int start_comp = GIdx::N00_Re;
+    int num_comps = GIdx::ncomp - start_comp;
+    MultiFab deposit_state(state, amrex::make_alias, start_comp, num_comps);
 
     const int shape_factor_order_x = geom.Domain().length(0) > 1 ? SHAPE_FACTOR_ORDER : 0;
     const int shape_factor_order_y = geom.Domain().length(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
