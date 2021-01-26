@@ -47,8 +47,11 @@ void evolve_flavor(const TestParams* parms)
     DistributionMapping dm(ba);
 
     // We want ghost cells according to size of particle shape stencil (grids are "grown" by ngrow ghost cells in each direction)
-    const int ngrow = (SHAPE_FACTOR_ORDER+1)/2;
-    for(int i=0; i<AMREX_SPACEDIM; i++) AMREX_ASSERT(parms->ncell[i] >= ngrow);
+    const IntVect shape_factor_order_vec(AMREX_D_DECL( parms->ncell[0]==1 ? 0 : SHAPE_FACTOR_ORDER,
+						       parms->ncell[1]==1 ? 0 : SHAPE_FACTOR_ORDER,
+						       parms->ncell[2]==1 ? 0 : SHAPE_FACTOR_ORDER));
+    const IntVect ngrow(1 + (1+shape_factor_order_vec)/2);
+    for(int i=0; i<AMREX_SPACEDIM; i++) AMREX_ASSERT(parms->ncell[i] >= ngrow[i]);
 
     // We want 1 component (this is one real scalar field on the domain)
     const int ncomp = GIdx::ncomp;

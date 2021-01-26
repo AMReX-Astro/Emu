@@ -1,8 +1,7 @@
 EMU_HOME ?= ../
 AMREX_HOME ?= ../amrex
 
-DIM = 3
-
+SHAPE_FACTOR_ORDER ?= 2
 NUM_FLAVORS ?= 3
 
 COMP = gnu

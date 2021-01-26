@@ -1,5 +1,6 @@
 NUM_FLAVORS ?= 2
 SHAPE_FACTOR_ORDER ?= 2
+DIM = 3
 
 TOP := $(EMU_HOME)
 
