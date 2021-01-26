@@ -59,14 +59,6 @@ void evolve_flavor(const TestParams* parms)
     // Create a MultiFab to hold our grid state data and initialize to 0.0
     MultiFab state(ba, dm, ncomp, ngrow);
 
-    // Create a bilinear filter to apply after particle-to-mesh operations
-    BilinearFilter bilinear_filter;
-
-    if (parms->use_filter) {
-        bilinear_filter.npass_each_dir = parms->filter_npass_each_dir;
-        bilinear_filter.ComputeStencils();
-    }
-
     // initialize with NaNs ...
     state.setVal(0.0);
     state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
@@ -105,7 +97,7 @@ void evolve_flavor(const TestParams* parms)
     neutrinos_new.copyParticles(neutrinos_old, true);
 
     // Deposit particles to grid
-    deposit_to_mesh(neutrinos_old, state, geom, bilinear_filter, parms->use_filter);
+    deposit_to_mesh(neutrinos_old, state, geom);
 
     // Write plotfile after initialization
     if (not parms->do_restart) {
@@ -122,7 +114,7 @@ void evolve_flavor(const TestParams* parms)
     auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, const FlavoredNeutrinoContainer& neutrinos, Real time) {
         /* Evaluate the neutrino distribution matrix RHS */
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
-        deposit_to_mesh(neutrinos, state, geom, bilinear_filter, parms->use_filter);
+        deposit_to_mesh(neutrinos, state, geom);
         state.FillBoundary(geom.periodicity());
 
         // Step 2: Copy F from neutrino state to neutrino RHS

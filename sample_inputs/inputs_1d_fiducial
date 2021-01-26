@@ -16,10 +16,6 @@ maxError = 1e-6
 integration.type = 1
 integration.rk.type = 4
 
-# filtering
-use_filter = 0
-filter_npass_each_dir = (0,0,0)
-
 # Domain size in 3D index space
 ncell = (1, 1, 256)
 Lx = 1.0

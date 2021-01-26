@@ -7,7 +7,6 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_ParticleMesh.H>
 #include <FlavoredNeutrinoContainer.H>
-#include <BilinearFilter.H>
 
 namespace GIdx
 {
@@ -29,7 +28,7 @@ namespace GIdx
 
 amrex::Real compute_dt(const amrex::Geometry& geom, const amrex::Real cfl_factor, const MultiFab& state, const Real flavor_cfl_factor);
 
-void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, amrex::MultiFab& state, const amrex::Geometry& geom, BilinearFilter& bilinear_filter, bool use_filter);
+void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, amrex::MultiFab& state, const amrex::Geometry& geom);
 
 void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const amrex::MultiFab& state, const amrex::Geometry& geom, const TestParams* parms);
 

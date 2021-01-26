@@ -11,8 +11,3 @@ CEXE_headers += Particles.H
 CEXE_headers += IO.H
 CEXE_headers += Parameters.H
 CEXE_headers += ParticleInterpolator.H
-
-CEXE_sources += Filter.cpp
-CEXE_headers += Filter.H
-CEXE_sources += BilinearFilter.cpp
-CEXE_headers += BilinearFilter.H

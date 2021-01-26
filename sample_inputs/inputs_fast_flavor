@@ -16,10 +16,6 @@ Lz = 1e7
 nppc  = (1, 1, 1)
 nphi_equator = 1
 
-# filtering
-use_filter = 0
-filter_npass_each_dir = (0,0,0)
-
 # Maximum size of each grid in the domain
 max_grid_size = 64
 
