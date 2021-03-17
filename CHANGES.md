@@ -25,5 +25,5 @@
 
 # 1.0
 
-   * Version of Emu used for paper 1 _Particle-in-cell Simulation of the Neutrino Fast Flavor Instability_
+   * Version of Emu used for paper 1 _Particle-in-cell Simulation of the Neutrino Fast Flavor Instability_ (https://arxiv.org/abs/2101.02745)
 
