@@ -93,6 +93,12 @@ class HermitianMatrix(object):
 
         return sympy.sqrt(mag2)
     
+    def trace(self):
+        result = 0
+        for i in range(self.size):
+            result += self.H[i,i]
+        return result
+    
     def times(self, x):
         # Apply self.H = self.H * x
         # where x is a Sympy expression

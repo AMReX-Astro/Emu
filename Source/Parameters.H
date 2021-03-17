@@ -32,10 +32,6 @@ struct TestParams : public amrex::Gpu::Managed
     Real alpha1, alpha2; // Majorana phases, radians
     Real deltaCP; // CP violating phases in radians
 
-    // filtering options
-    bool use_filter;
-    IntVect filter_npass_each_dir;
-
     // simulation_type==3
     int st3_wavelength_fraction_of_domain;
     Real st3_amplitude;
@@ -107,10 +103,6 @@ struct TestParams : public amrex::Gpu::Managed
 	  pp.get("st4_fluxfacbar", st4_fluxfacbar);
 	  pp.get("st4_amplitude", st4_amplitude);
 	}
-	
-        // filtering options for particle-to-mesh deposition
-        pp.get("use_filter", use_filter);
-        pp.get("filter_npass_each_dir", filter_npass_each_dir);
     }
 };
 

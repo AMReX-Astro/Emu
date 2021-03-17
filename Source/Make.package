@@ -1,9 +1,13 @@
-CEXE_sources += main.cpp IO.cpp FlavoredNeutrinoContainerInit.cpp Evolve.cpp FlavoredNeutrinoContainer.cpp
-CEXE_headers += Evolve.H FlavoredNeutrinoContainer.H
-CEXE_headers += Constants.H Particles.H IO.H
-CEXE_headers += Parameters.H
+CEXE_sources += main.cpp
+CEXE_sources += IO.cpp
+CEXE_sources += FlavoredNeutrinoContainerInit.cpp
+CEXE_sources += Evolve.cpp
+CEXE_sources += FlavoredNeutrinoContainer.cpp
 
-CEXE_sources += Filter.cpp
-CEXE_headers += Filter.H
-CEXE_sources += BilinearFilter.cpp
-CEXE_headers += BilinearFilter.H
+CEXE_headers += Evolve.H
+CEXE_headers += FlavoredNeutrinoContainer.H
+CEXE_headers += Constants.H
+CEXE_headers += Particles.H
+CEXE_headers += IO.H
+CEXE_headers += Parameters.H
+CEXE_headers += ParticleInterpolator.H

@@ -12,10 +12,6 @@ Lx = 1e7
 Ly = 1e7
 Lz = 1e7
 
-# filtering
-use_filter = 0
-filter_npass_each_dir = (0,0,0)
-
 # Number of particles per cell
 nppc  = (1, 1, 1)
 nphi_equator = 1

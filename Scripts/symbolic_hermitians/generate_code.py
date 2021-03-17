@@ -150,8 +150,8 @@ if __name__ == "__main__":
     # Evolve.cpp_deposit_to_mesh_fill #
     #=================================#
     tails = ["","bar"]
-    string1 = "amrex::Gpu::Atomic::Add(&sarr(i+ii-1, j+jj-1, k+kk-1, GIdx::"
-    string2 = "-start_comp), sx[ii]*sy[jj]*sz[kk] * p.rdata(PIdx::"
+    string1 = "amrex::Gpu::Atomic::AddNoRet(&sarr(i, j, k, GIdx::"
+    string2 = "-start_comp), sx(i) * sy(j) * sz(k) * p.rdata(PIdx::"
     string4 = [");",
                "*p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt));",
                "*p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt));",
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     deposit_vars = ["N","Fx","Fy","Fz"]
     code = []
     for t in tails:
-        string3 = ")*2.*p.rdata(PIdx::L"+t+")"
+        string3 = ")*p.rdata(PIdx::N"+t+")"
         flist = HermitianMatrix(args.N, "f{}{}_{}"+t).header()
         for ivar in range(len(deposit_vars)):
             deplist = HermitianMatrix(args.N, deposit_vars[ivar]+"{}{}_{}"+t).header()
@@ -260,8 +260,8 @@ if __name__ == "__main__":
     # matter and SI potentials require interpolating from grid
     tails = ["","bar"]
     string1 = "p.rdata(PIdx::"
-    string2 = ") +=  sqrt(2.) * PhysConst::GF * sx[ii]*sy[jj]*sz[kk] * ("
-    string_interp = "sarr(i+ii-1,j+jj-1,k+kk-1,GIdx::"
+    string2 = ") +=  sqrt(2.) * PhysConst::GF * sx(i) * sy(j) * sz(k) * ("
+    string_interp = "sarr(i, j, k, GIdx::"
     direction = ["x","y","z"]
     string3 = ["*p.rdata(PIdx::pupx)"]
     string4 = "/p.rdata(PIdx::pupt)"
@@ -312,7 +312,7 @@ if __name__ == "__main__":
             else:
                 line += " -= "
 
-            line += "sqrt(2.) * PhysConst::GF * inv_cell_volume * sx[ii]*sy[jj]*sz[kk] * (inside_parentheses);"
+            line += "sqrt(2.) * PhysConst::GF * inv_cell_volume * sx(i) * sy(j) * sz(k) * (inside_parentheses);"
             code.append(line)
             code.append("")
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_interpolate_from_mesh_fill"))
@@ -378,7 +378,7 @@ if __name__ == "__main__":
         # make sure the flavor vector length is what it would be with a 1 in only one diagonal
         length = sympy.symbols("length",real=True)
         length = f.SU_vector_magnitude()
-        target_length = SU_vector_ideal_magnitude(args.N)
+        target_length = "p.rdata(PIdx::L"+t+")"
         code.append("length = "+sympy.cxxcode(sympy.simplify(length))+";")
         code.append("error = length-"+str(target_length)+";")
         code.append("if( std::abs(error) > 100.*parms->maxError) amrex::Abort();")
@@ -392,3 +392,12 @@ if __name__ == "__main__":
     # Write code to output file, using a template if one is provided
     # write_code(code, "code.cpp", args.output_template)
 
+
+    #====================================================#
+    # FlavoredNeutrinoContainerInit.cpp_set_trace_length #
+    #====================================================#
+    code = []
+    for t in tails:
+        f = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
+        code.append("p.rdata(PIdx::L"+t+") = "+sympy.cxxcode(sympy.simplify(f.SU_vector_magnitude()))+";" )
+    write_code(code, os.path.join(args.emu_home, "Source/generated_files/FlavoredNeutrinoContainerInit.cpp_set_trace_length"))

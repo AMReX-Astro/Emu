@@ -65,22 +65,17 @@ void evolve_flavor(const TestParams* parms)
     DistributionMapping dm(ba);
 
     // We want ghost cells according to size of particle shape stencil (grids are "grown" by ngrow ghost cells in each direction)
-    const int ngrow = (SHAPE_FACTOR_ORDER+1)/2;
-    for(int i=0; i<AMREX_SPACEDIM; i++) AMREX_ASSERT(parms->ncell[i] >= ngrow);
+    const IntVect shape_factor_order_vec(AMREX_D_DECL(parms->ncell[0]==1 ? 0 : SHAPE_FACTOR_ORDER,
+                                                      parms->ncell[1]==1 ? 0 : SHAPE_FACTOR_ORDER,
+                                                      parms->ncell[2]==1 ? 0 : SHAPE_FACTOR_ORDER));
+    const IntVect ngrow(1 + (1+shape_factor_order_vec)/2);
+    for(int i=0; i<AMREX_SPACEDIM; i++) AMREX_ASSERT(parms->ncell[i] >= ngrow[i]);
 
     // We want 1 component (this is one real scalar field on the domain)
     const int ncomp = GIdx::ncomp;
 
     // Create a MultiFab to hold our grid state data and initialize to 0.0
     MultiFab state(ba, dm, ncomp, ngrow);
-
-    // Create a bilinear filter to apply after particle-to-mesh operations
-    BilinearFilter bilinear_filter;
-
-    if (parms->use_filter) {
-        bilinear_filter.npass_each_dir = parms->filter_npass_each_dir;
-        bilinear_filter.ComputeStencils();
-    }
 
     // initialize with NaNs ...
     state.setVal(0.0);
@@ -120,7 +115,7 @@ void evolve_flavor(const TestParams* parms)
     neutrinos_new.copyParticles(neutrinos_old, true);
 
     // Deposit particles to grid
-    deposit_to_mesh(neutrinos_old, state, geom, bilinear_filter, parms->use_filter);
+    deposit_to_mesh(neutrinos_old, state, geom);
 
     // Write plotfile after initialization
     if (not parms->do_restart) {
@@ -136,51 +131,43 @@ void evolve_flavor(const TestParams* parms)
     // Create a RHS source function we will integrate
     auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, const FlavoredNeutrinoContainer& neutrinos, Real time) {
         /* Evaluate the neutrino distribution matrix RHS */
+
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
-        deposit_to_mesh(neutrinos, state, geom, bilinear_filter, parms->use_filter);
+        deposit_to_mesh(neutrinos, state, geom);
         state.FillBoundary(geom.periodicity());
 
-        // Step 2: Copy F from neutrino state to neutrino RHS
+        // Step 2: Copy Particles and their F from neutrino state to neutrino RHS ParticleContainer
+        //
+        // This is necessary for two reasons:
+        //
+        // A) We evaluate the Hamiltonians in the interpolation step for efficiency. This requires
+        //    us to know F for each particle so we can calculate its RHS.
+        // B) We only Redistribute the integrator new data at the end of the timestep, not all the RHS data.
+        //    Thus, this copy clears the old RHS particles and creates particles in the RHS container corresponding
+        //    to the current particles in neutrinos.
         neutrinos_rhs.copyParticles(neutrinos, true);
 
         // Step 3: Interpolate Mesh to construct the neutrino RHS in place
         interpolate_rhs_from_mesh(neutrinos_rhs, state, geom, parms);
     };
 
-    auto post_update_fun = [&] (FlavoredNeutrinoContainer& neutrinos, Real time) {
-        // First, update the particle locations in the domain with their
+    // Create a function to call after every integrator timestep.
+    auto post_timestep_fun = [&] () {
+        /* Post-timestep function. The integrator new-time data is the latest data available. */
+
+        // Get the latest neutrino data
+        auto& neutrinos = integrator.get_new_data();
+
+        // Update the new time particle locations in the domain with their
         // integrated coordinates.
         neutrinos.SyncLocation(Sync::CoordinateToPosition);
 
-        // We write a function for the integrator to map across all internal
-        // particle containers. We have to update particle locations and
-        // redistribute since particles may have moved to different grids.
-        //
-        // Here we are updating the particle locations using the
-        // particle locations in the neutrino state.
-        auto update_data = [&](FlavoredNeutrinoContainer& data) {
-            if (&data != &neutrinos) {
-                data.UpdateLocationFrom(neutrinos);
-                data.RedistributeLocal();
-            }
-        };
-
-        // For all integrator internal particle containers,
-        // update them with the new particle locations & Redistribute.
-        integrator.map_data(update_data);
-
-        // Now that all the other particle containers are updated
-        // and redistributed, redistribute the particles in the neutrinos state.
+        // Now Redistribute the new time particles to their new grids.
         neutrinos.RedistributeLocal();
 
-        // Finally, update the integrated coordinates with the new particle locations
+        // Update the integrated coordinates with the new particle locations
         // since Redistribute() applies periodic boundary conditions.
         neutrinos.SyncLocation(Sync::PositionToCoordinate);
-    };
-
-    auto post_timestep_fun = [&] () {
-        // Get the latest neutrino data
-        auto& neutrinos = integrator.get_new_data();
 
         // Renormalize the neutrino state
         neutrinos.Renormalize(parms);
@@ -211,9 +198,8 @@ void evolve_flavor(const TestParams* parms)
         integrator.set_timestep(dt);
     };
 
-    // Attach our RHS, post update, and post timestep hooks to the integrator
+    // Attach our RHS and post timestep hooks to the integrator
     integrator.set_rhs(source_fun);
-    integrator.set_post_update(post_update_fun);
     integrator.set_post_timestep(post_timestep_fun);
 
     // Get a starting timestep
