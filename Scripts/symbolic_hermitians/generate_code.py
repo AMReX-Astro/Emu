@@ -362,7 +362,12 @@ if __name__ == "__main__":
         for fii in fdlist:
             code.append("sumP += " + fii + ";")
         code.append("error = sumP-1.0;")
-        code.append('if( std::abs(error) > 100.*parms->maxError) amrex::Error("Matrix trace (SumP) is not equal to 1, trace error exceeds 100*maxError.");')
+        code.append('if( std::abs(error) > 100.*parms->maxError) {')
+        code.append("std::ostringstream Convert;")
+        code.append('Convert << "Matrix trace (SumP) is not equal to 1, trace error exceeds 100*maxError: " << std::abs(error) << " > " << 100.*parms->maxError;')
+        code.append("std::string Trace_Error = Convert.str();")
+        code.append('amrex::Error(Trace_Error);')
+        code.append("}")
         code.append("if( std::abs(error) > parms->maxError ) {")
         for fii in fdlist:
             code.append(fii + " -= error/"+str(args.N)+";")
@@ -371,7 +376,12 @@ if __name__ == "__main__":
 
         # make sure diagonals are positive
         for fii in fdlist:
-            code.append('if('+fii+'<-100.*parms->maxError) amrex::Error("Diagonal element '+fii[14:20]+' is negative, less than -100*maxError.");')
+            code.append('if('+fii+'<-100.*parms->maxError) {')
+            code.append("std::ostringstream Convert;")
+            code.append('Convert << "Diagonal element '+fii[14:20]+' is negative, less than -100*maxError: " << '+fii+' << " < " << -100.*parms->maxError;')
+            code.append("std::string Sign_Error = Convert.str();")
+            code.append('amrex::Error(Sign_Error);')
+            code.append("}")
             code.append("if("+fii+"<-parms->maxError) "+fii+"=0;")
         code.append("")
 
@@ -381,7 +391,12 @@ if __name__ == "__main__":
         target_length = "p.rdata(PIdx::L"+t+")"
         code.append("length = "+sympy.cxxcode(sympy.simplify(length))+";")
         code.append("error = length-"+str(target_length)+";")
-        code.append('if( std::abs(error) > 100.*parms->maxError) amrex::Error("flavor vector length differs from target length by more than 100*maxError.");')
+        code.append('if( std::abs(error) > 100.*parms->maxError) {')
+        code.append("std::ostringstream Convert;")
+        code.append('Convert << "flavor vector length differs from target length by more than 100*maxError: " << std::abs(error) << " > " << 100.*parms->maxError;')
+        code.append("std::string Length_Error = Convert.str();")
+        code.append('amrex::Error(Length_Error);')
+        code.append("}")
         code.append("if( std::abs(error) > parms->maxError) {")
         for fii in flist:
             code.append(fii+" /= length/"+str(target_length)+";")
