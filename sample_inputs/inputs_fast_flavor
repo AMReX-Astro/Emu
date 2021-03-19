@@ -55,7 +55,8 @@ mass1_eV = -0.008596511
 mass2_eV = 0
 
 # mass state 3 mass in eV [NO:sqrt(2.449e-3) IO:-sqrt(2.509e-3)]
-mass3_eV = 0.049487372
+#mass3_eV = 0.049487372
+mass3_eV = 0
 
 # 1-2 mixing angle in degrees [NO/IO:33.82]
 theta12_degrees = 1e-6
