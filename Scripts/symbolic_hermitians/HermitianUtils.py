@@ -37,18 +37,41 @@ class HermitianMatrix(object):
         self.construct()
     
     def __mul__(self, other):
-        result = copy.deepcopy(other)
-        result.H = self.H * other.H
+        result = copy.deepcopy(self)
+        if isinstance(other, self.__class__):
+            result.H = self.H * other.H
+        else:
+            for i in range(self.size):
+                for j in range(self.size):
+                    result.H[i,j] *= other
+        return result
+
+    def __truediv__(self, other):
+        result = copy.deepcopy(self)
+        if isinstance(other, self.__class__):
+            result.H = self.H * other.H
+        else:
+            for i in range(self.size):
+                for j in range(self.size):
+                    result.H[i,j] /= other
         return result
 
     def __add__(self, other):
-        result = copy.deepcopy(other)
-        result.H = self.H + other.H
+        result = copy.deepcopy(self)
+        if isinstance(other, self.__class__):
+            result.H = self.H + other.H
+        else:
+            for i in range(self.size):
+                result.H[i,i] += other
         return result
 
     def __sub__(self, other):
-        result = copy.deepcopy(other)
-        result.H = self.H - other.H
+        result = copy.deepcopy(self)
+        if isinstance(other, self.__class__):
+            result.H = self.H - other.H
+        else:
+            for i in range(self.size):
+                result.H[i,i] -= other
         return result
 
     def construct(self):
