@@ -1,6 +1,6 @@
 simulation_type = 2
 cfl_factor = 0.5
-flavor_cfl_factor = .5
+flavor_cfl_factor = .05
 maxError = 1e-6
 
 integration.type = 1

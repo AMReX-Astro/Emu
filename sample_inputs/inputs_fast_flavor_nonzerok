@@ -3,7 +3,7 @@ st3_amplitude = 1e-6
 st3_wavelength_fraction_of_domain = 1
 
 cfl_factor = 0.5
-flavor_cfl_factor = 0.5
+flavor_cfl_factor = 0.05
 maxError = 1e-6
 
 integration.type = 1

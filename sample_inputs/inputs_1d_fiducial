@@ -10,7 +10,7 @@ st4_fluxfacbar = .333333333333333
 st4_amplitude = 1e-6
 
 cfl_factor = 0.5
-flavor_cfl_factor = 0.5
+flavor_cfl_factor = 0.05
 maxError = 1e-6
 
 integration.type = 1
