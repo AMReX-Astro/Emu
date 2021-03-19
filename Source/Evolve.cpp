@@ -15,7 +15,6 @@ namespace GIdx
         names.push_back("rho");
         names.push_back("T");
         names.push_back("Ye");
-        names.push_back("requested_dt");
         #include "generated_files/Evolve.cpp_grid_names_fill"
     }
 }
@@ -37,12 +36,26 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
     Real dt_si_matter = 0.0;
     if (flavor_cfl_factor > 0.0) {
         // self-interaction and matter part of timestep limit
-        // NOTE: these currently over-estimate both potentials, but avoid reduction over all particles
         // NOTE: the vacuum potential is currently ignored. This requires a min reduction over particle energies
-        Real N_diag_max = 0;
-        #include "generated_files/Evolve.cpp_compute_dt_fill"
-        Real Vmax = std::sqrt(2.) * PhysConst::GF * std::max(N_diag_max/cell_volume, state.max(GIdx::rho)/PhysConst::Mp);
-        if(Vmax>0) dt_si_matter = PhysConst::hbar/Vmax*flavor_cfl_factor;
+
+        ReduceOps<ReduceOpMax> reduce_op;
+        ReduceData<Real> reduce_data(reduce_op);
+        using ReduceTuple = typename decltype(reduce_data)::Type;
+        for (MFIter mfi(state); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.fabbox();
+	    auto const& fab = state.array(mfi);
+            reduce_op.eval(bx, reduce_data,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
+            {
+	        Real length = 0;
+                #include "generated_files/Evolve.cpp_compute_dt_fill"
+                return length;
+            });
+	}
+
+	Real Vmax = amrex::get<0>(reduce_data.value());
+	dt_si_matter = PhysConst::hbar/Vmax*flavor_cfl_factor;
     }
 
     Real dt = 0.0;

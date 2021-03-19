@@ -7,6 +7,7 @@ import sympy
 from sympy.codegen.ast import Assignment
 from HermitianUtils import HermitianMatrix,SU_vector_ideal_magnitude
 import shutil
+import math
 
 parser = argparse.ArgumentParser(description="Generates code for calculating C = i * [A,B] for symbolic NxN Hermitian matrices A, B, C, using real-valued Real and Imaginary components.")
 parser.add_argument("N", type=int, help="Size of NxN Hermitian matrices.")
@@ -247,11 +248,23 @@ if __name__ == "__main__":
     # Evolve.cpp_compute_dt_fill #
     #============================#
     code = []
-    for t in tails:
-        for i in range(args.N):
-            line = "N_diag_max = max(N_diag_max, state.max(GIdx::N"+str(i)+str(i)+"_Re"+t+"));"
-            code.append(line)
-    code.append("N_diag_max *= 2*"+str(args.N)+";") # overestimate of net neutrino+antineutrino number density
+    length = sympy.symbols("length",real=True)
+    cell_volume = sympy.symbols("cell_volume",real=True)
+    rho = sympy.symbols("fab(i\,j\,k\,GIdx\:\:rho)",real=True)
+    Ye = sympy.symbols("fab(i\,j\,k\,GIdx\:\:Ye)",real=True)
+    mp = sympy.symbols("PhysConst\:\:Mp",real=True)
+    sqrt2GF = sympy.symbols("M_SQRT2*PhysConst\:\:GF",real=True)
+    
+    N    = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::N{}{}_{})")
+    Nbar = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::N{}{}_{}bar)")
+    HSI  = (N-Nbar) / cell_volume
+    HSI.H[0,0] += rho*Ye/mp
+    HSI *= sqrt2GF
+    
+    length, asdf = HSI.SU_vector_magnitude().as_real_imag()
+    code.append("length = "+sympy.cxxcode(sympy.simplify(length))+";")
+
+    
     write_code(code, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_compute_dt_fill"))
 
     #=======================================#

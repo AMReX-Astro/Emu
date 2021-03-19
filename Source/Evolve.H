@@ -16,7 +16,7 @@ namespace GIdx
   //    with units of number density. Could add total number density later
   //    too, but this helps with subtractive cancellation errors
     enum {
-        rho, T, Ye, requested_dt, // g/ccm, MeV, unitless
+        rho, T, Ye, // g/ccm, MeV, unitless
         #include "generated_files/Evolve.H_fill"
         ncomp
     };
