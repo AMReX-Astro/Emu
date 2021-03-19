@@ -248,7 +248,7 @@ InitParticles(const TestParams* parms)
 		  // set all particles to start in electron state (and anti-state)
 		  // Set N to be small enough that self-interaction is not important
 		  // Set all particle momenta to be such that one oscillation wavelength is 1cm
-		  AMREX_ASSERT(NUM_FLAVORS==2);
+		  AMREX_ASSERT(NUM_FLAVORS==3 or NUM_FLAVORS==2);
 
 		  // Set particle flavor
 		  p.rdata(PIdx::N) = 1.0;
@@ -261,6 +261,19 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Rebar) = 0.0;
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
+
+#if (NUM_FLAVORS==3)
+		  p.rdata(PIdx::f22_Re)    = 0.0;
+		  p.rdata(PIdx::f22_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Re)    = 0.0;
+		  p.rdata(PIdx::f02_Im)    = 0.0;
+		  p.rdata(PIdx::f12_Re)    = 0.0;
+		  p.rdata(PIdx::f12_Im)    = 0.0;
+		  p.rdata(PIdx::f02_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Imbar) = 0.0;
+		  p.rdata(PIdx::f12_Rebar) = 0.0;
+		  p.rdata(PIdx::f12_Imbar) = 0.0;
+#endif
 
 		  // set momentum so that a vacuum oscillation wavelength occurs over a distance of 1cm
 		  // Set particle velocity to c in a random direction
@@ -275,7 +288,7 @@ InitParticles(const TestParams* parms)
 		// BIPOLAR OSCILLATION TEST //
 		//==========================//
 		else if(parms->simulation_type==1){
-		  AMREX_ASSERT(NUM_FLAVORS==2);
+		  AMREX_ASSERT(NUM_FLAVORS==3 or NUM_FLAVORS==2);
 		  
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
@@ -286,6 +299,19 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Rebar) = 0.0;
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
+
+#if (NUM_FLAVORS==3)
+		  p.rdata(PIdx::f22_Re)    = 0.0;
+		  p.rdata(PIdx::f22_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Re)    = 0.0;
+		  p.rdata(PIdx::f02_Im)    = 0.0;
+		  p.rdata(PIdx::f12_Re)    = 0.0;
+		  p.rdata(PIdx::f12_Im)    = 0.0;
+		  p.rdata(PIdx::f02_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Imbar) = 0.0;
+		  p.rdata(PIdx::f12_Rebar) = 0.0;
+		  p.rdata(PIdx::f12_Imbar) = 0.0;
+#endif
 
 		  // set energy to 50 MeV to match Richers+(2019)
 		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
@@ -307,7 +333,7 @@ InitParticles(const TestParams* parms)
 		// 2-BEAM FAST FLAVOR TEST//
 		//========================//
 		else if(parms->simulation_type==2){
-		  AMREX_ASSERT(NUM_FLAVORS==2);
+		  AMREX_ASSERT(NUM_FLAVORS==3 or NUM_FLAVORS==2);
 		  
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
@@ -318,6 +344,19 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Rebar) = 0.0;
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
+
+#if (NUM_FLAVORS==3)
+		  p.rdata(PIdx::f22_Re)    = 0.0;
+		  p.rdata(PIdx::f22_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Re)    = 0.0;
+		  p.rdata(PIdx::f02_Im)    = 0.0;
+		  p.rdata(PIdx::f12_Re)    = 0.0;
+		  p.rdata(PIdx::f12_Im)    = 0.0;
+		  p.rdata(PIdx::f02_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Imbar) = 0.0;
+		  p.rdata(PIdx::f12_Rebar) = 0.0;
+		  p.rdata(PIdx::f12_Imbar) = 0.0;
+#endif
 
 		  // set energy to 50 MeV to match Richers+(2019)
 		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
@@ -340,7 +379,7 @@ InitParticles(const TestParams* parms)
 		// 3- k!=0 BEAM FAST FLAVOR TEST //
 		//===============================//
 		else if(parms->simulation_type==3){
-		  AMREX_ASSERT(NUM_FLAVORS==2);
+		  AMREX_ASSERT(NUM_FLAVORS==3 or NUM_FLAVORS==2);
 
 		  // perturbation parameters
 		  Real lambda = domain_length_z/(Real)parms->st3_wavelength_fraction_of_domain;
@@ -355,6 +394,20 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Rebar) = parms->st3_amplitude*sin(k*p.pos(2));
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
+
+#if (NUM_FLAVORS==3) 
+		  //just perturbing the electron-muon flavor state, other terms can stay = 0.0 for simplicity
+		  p.rdata(PIdx::f22_Re)    = 0.0;
+		  p.rdata(PIdx::f22_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Re)    = 0.0; 
+		  p.rdata(PIdx::f02_Im)    = 0.0; 
+		  p.rdata(PIdx::f12_Re)    = 0.0;
+		  p.rdata(PIdx::f12_Im)    = 0.0;
+		  p.rdata(PIdx::f02_Rebar) = 0.0; 
+		  p.rdata(PIdx::f02_Imbar) = 0.0; 
+		  p.rdata(PIdx::f12_Rebar) = 0.0;
+		  p.rdata(PIdx::f12_Imbar) = 0.0;
+#endif
 
 		  // set energy to 50 MeV to match Richers+(2019)
 		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
