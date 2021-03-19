@@ -97,7 +97,7 @@ class HermitianMatrix(object):
         return self
     
     # return the length of the SU(n) vector
-    def SU_vector_magnitude(self):
+    def SU_vector_magnitude2(self):
         # first get the sum of the square of the off-diagonal elements
         mag2 = 0
         for i in range(self.size):
@@ -115,7 +115,10 @@ class HermitianMatrix(object):
             basis_coefficient *= sympy.sqrt(2./(l*(l+1.)))
             mag2 += (basis_coefficient/2.)**2
 
-        return sympy.sqrt(mag2)
+        return mag2
+
+    def SU_vector_magnitude(self):
+        return sympy.sqrt(self.SU_vector_magnitude2())
     
     def trace(self):
         result = 0
