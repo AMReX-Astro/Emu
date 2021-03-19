@@ -102,7 +102,8 @@ class HermitianMatrix(object):
         mag2 = 0
         for i in range(self.size):
             for j in range(i+1,self.size):
-                mag2 += self.H[i,j]*self.H[j,i]
+                re,im = self.H[i,j].as_real_imag()
+                mag2 += re**2 + im**2
 
         # Now get the contribution from the diagonals
         # See wolfram page for generalization of Gell-Mann matrices
