@@ -19,7 +19,7 @@ namespace GIdx
     }
 }
 
-Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& state, const Real flavor_cfl_factor)
+Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& state, const FlavoredNeutrinoContainer& neutrinos, const Real flavor_cfl_factor)
 {
     AMREX_ASSERT(cfl_factor > 0.0 || flavor_cfl_factor > 0.0);
 
@@ -35,8 +35,7 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
 
     Real dt_si_matter = 0.0;
     if (flavor_cfl_factor > 0.0) {
-        // self-interaction and matter part of timestep limit
-        // NOTE: the vacuum potential is currently ignored. This requires a min reduction over particle energies
+        // self-interaction, matter, and vacuum part of timestep limit
 
         ReduceOps<ReduceOpMax> reduce_op;
         ReduceData<Real> reduce_data(reduce_op);
@@ -55,7 +54,8 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
 	}
 
 	Real Vmax = amrex::get<0>(reduce_data.value());
-	dt_si_matter = PhysConst::hbar/Vmax*flavor_cfl_factor;
+	ParallelDescriptor::ReduceRealMax(Vmax);
+	dt_si_matter = PhysConst::hbar/(Vmax+neutrinos.Vvac_max)*flavor_cfl_factor;
     }
 
     Real dt = 0.0;

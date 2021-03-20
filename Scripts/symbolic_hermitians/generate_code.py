@@ -216,16 +216,26 @@ if __name__ == "__main__":
         U = U23*U13*U12*P
 
     # create M2 matrix in Evolve.H
-    M2 = sympy.zeros(args.N,args.N)
+    M2_massbasis = sympy.zeros(args.N,args.N)
     for i in range(args.N):
-        M2[i,i] = sympy.symbols('parms->mass'+str(i+1),real=True)**2
-    M2 = U*M2*Dagger(U)
+        M2_massbasis[i,i] = sympy.symbols('parms->mass'+str(i+1),real=True)**2
+    M2 = U*M2_massbasis*Dagger(U)
     massmatrix = HermitianMatrix(args.N, "M2matrix{}{}_{}")
     massmatrix.H = M2
     code = massmatrix.code()
     code = ["double "+code[i] for i in range(len(code))]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files","Evolve.H_M2_fill"))
 
+    #=============================================#
+    # FlavoredNeutrinoContainerInit.cpp_Vvac_fill #
+    #=============================================#
+    code = []
+    massmatrix_massbasis = HermitianMatrix(args.N, "M2massbasis{}{}_{}")
+    massmatrix_massbasis.H = M2_massbasis
+    M2length = massmatrix_massbasis.SU_vector_magnitude()
+    code.append("this->Vvac_max = "+sympy.cxxcode(sympy.simplify(M2length))+"/pupt_min;")
+    write_code(code, os.path.join(args.emu_home,"Source/generated_files","FlavoredNeutrinoContainerInit.cpp_Vvac_fill"))
+    
     #======================#
     # Evolve.cpp_Vvac_fill #
     #======================#

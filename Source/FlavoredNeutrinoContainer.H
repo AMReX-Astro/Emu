@@ -68,6 +68,8 @@ class FlavoredNeutrinoContainer
 
 public:
 
+    Real Vvac_max;
+
     FlavoredNeutrinoContainer(const amrex::Geometry            & a_geom,
                               const amrex::DistributionMapping & a_dmap,
                               const amrex::BoxArray            & a_ba);
