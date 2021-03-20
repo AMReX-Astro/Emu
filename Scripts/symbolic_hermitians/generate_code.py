@@ -254,16 +254,23 @@ if __name__ == "__main__":
     Ye = sympy.symbols("fab(i\,j\,k\,GIdx\:\:Ye)",real=True)
     mp = sympy.symbols("PhysConst\:\:Mp",real=True)
     sqrt2GF = sympy.symbols("M_SQRT2*PhysConst\:\:GF",real=True)
-    
+
+    # spherically symmetric part
     N    = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::N{}{}_{})")
     Nbar = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::N{}{}_{}bar)")
     HSI  = (N-Nbar) / cell_volume
     HSI.H[0,0] += rho*Ye/mp
     HSI *= sqrt2GF
-    
-    length, asdf = HSI.SU_vector_magnitude().as_real_imag()
-    code.append("length = "+sympy.cxxcode(sympy.simplify(length))+";")
+    length2 = HSI.SU_vector_magnitude2()
+    code.append("length2 += "+sympy.cxxcode(sympy.simplify(length2))+";")
 
+    # flux part
+    for component in ["x","y","z"]:
+        F    = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::F"+component+"{}{}_{})")
+        Fbar = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::F"+component+"{}{}_{}bar)")
+        HSI  = (F-Fbar) * sqrt2GF / cell_volume
+        length2 = HSI.SU_vector_magnitude2()
+        code.append("length2 += "+sympy.cxxcode(sympy.simplify(length2))+";")
     
     write_code(code, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_compute_dt_fill"))
 

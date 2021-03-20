@@ -48,9 +48,9 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
             reduce_op.eval(bx, reduce_data,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
             {
-	        Real length = 0;
+	        Real length2 = 0;
                 #include "generated_files/Evolve.cpp_compute_dt_fill"
-                return length;
+                return sqrt(length2);
             });
 	}
 
