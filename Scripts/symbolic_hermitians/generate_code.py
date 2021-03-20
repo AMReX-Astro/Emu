@@ -233,7 +233,7 @@ if __name__ == "__main__":
     massmatrix_massbasis = HermitianMatrix(args.N, "M2massbasis{}{}_{}")
     massmatrix_massbasis.H = M2_massbasis
     M2length = massmatrix_massbasis.SU_vector_magnitude()
-    code.append("this->Vvac_max = "+sympy.cxxcode(sympy.simplify(M2length))+"/pupt_min;")
+    code.append("this->Vvac_max = "+sympy.cxxcode(sympy.simplify(M2length))+"*PhysConst::c4/pupt_min;")
     write_code(code, os.path.join(args.emu_home,"Source/generated_files","FlavoredNeutrinoContainerInit.cpp_Vvac_fill"))
     
     #======================#
