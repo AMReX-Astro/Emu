@@ -96,6 +96,11 @@ public:
         return attribute_names;
     }
 
+    void copyParticles(const FlavoredNeutrinoContainer& other, bool local=false){
+        amrex::ParticleContainer<PIdx::nattribs, 0, 0, 0>::copyParticles(other, local);
+        this->Vvac_max = other.Vvac_max;
+    }
+
     /* Public data members */
     static ApplyFlavoredNeutrinoRHS<ParticleType> particle_apply_rhs;
 };
