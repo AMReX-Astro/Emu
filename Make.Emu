@@ -1,5 +1,13 @@
 NUM_FLAVORS ?= 2
 SHAPE_FACTOR_ORDER ?= 2
+
+YLM_MAX_DEGREE ?= 0 
+USE_YLM_SUM_M ?= FALSE
+
+ifeq ($(USE_YLM_SUM_M), TRUE)
+	YLM_SUM_M_OPTION := --Ylm_sum_m
+endif
+
 DIM = 3
 
 TOP := $(EMU_HOME)
@@ -28,6 +36,6 @@ all: generate $(executable)
 	@echo SUCCESS
 
 generate:
-	python3 $(EMU_HOME)/Scripts/symbolic_hermitians/generate_code.py $(NUM_FLAVORS) --emu_home $(EMU_HOME)
+	python3 $(EMU_HOME)/Scripts/symbolic_hermitians/generate_code.py $(NUM_FLAVORS) --emu_home $(EMU_HOME) --max_Ylm_degree $(YLM_MAX_DEGREE) $(YLM_SUM_M_OPTION)
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules
