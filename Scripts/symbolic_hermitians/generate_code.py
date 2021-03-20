@@ -14,6 +14,8 @@ parser.add_argument("-ot", "--output_template", type=str, default=None, help="Te
 parser.add_argument("-eh", "--emu_home", type=str, default=".", help="Path to Emu home directory.")
 parser.add_argument("-c", "--clean", action="store_true", help="Clean up any previously generated files.")
 parser.add_argument("-rn", "--rhs_normalize", action="store_true", help="Normalize F when applying the RHS update F += dt * dFdt (limits to 2nd order in time).")
+parser.add_argument("-lmax", "--max_Ylm_degree", type=int, default=0, help="Maximum degree 'l' of the spherical harmonic decomposition into Ylm.")
+parser.add_argument("-Ylm_sum_m", "--Ylm_sum_m", action="store_true", help="When computing spherical harmonic decomposition Ylm, sum over m to save memory.")
 
 args = parser.parse_args()
 
@@ -416,3 +418,198 @@ if __name__ == "__main__":
         f = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
         code.append("p.rdata(PIdx::L"+t+") = "+sympy.cxxcode(sympy.simplify(f.SU_vector_magnitude()))+";" )
     write_code(code, os.path.join(args.emu_home, "Source/generated_files/FlavoredNeutrinoContainerInit.cpp_set_trace_length"))
+
+
+    #================#
+    # YlmDiagnostics #
+    #================#
+
+    # First, define some helper classes we'll need
+    class YlmAmplitude(object):
+        def __init__(self, base_name, n, m, ctype, i, j, t):
+            self.base_name = base_name
+
+            self.n = n
+            self.m = m
+
+            self.mstring = f"{self.m}"
+            if self.m < 0:
+                self.mstring = f"m{self.m}"
+            if args.Ylm_sum_m:
+                self.m = "summ"
+                self.mstring = "summ"
+
+            self.ctype = ctype
+            self.i = i
+            self.j = j
+            self.t = t
+            self.set_name()
+
+        def set_name(self):
+            self.name = f"amp_{self.base_name}_{self.n}_{self.mstring}_{self.ctype}_{self.i}{self.j}_{self.t}"
+
+    class YlmPower(YlmAmplitude):
+        def __init__(self, *args, **kwargs):
+            super(YlmPower, self).__init__(*args, **kwargs)
+
+            self.set_name()
+            self.amp_re = YlmAmplitude(self.base_name, self.n, self.m, "Re", self.i, self.j, self.t)
+            self.amp_im = YlmAmplitude(self.base_name, self.n, self.m, "Im", self.i, self.j, self.t)
+
+        def set_name(self):
+            self.name = f"pow_{self.base_name}_{self.n}_{self.mstring}_{self.i}{self.j}_{self.t}"
+
+    class YlmDiagnostics(object):
+        def __init__(self):
+            self.make_spherical_harmonic_vars()
+
+        def generate(self):
+            self.fill_grid_indices()
+            self.fill_grid_names()
+            self.fill_compute_Ylm()
+            self.fill_setup_reductions_Ylm_power()
+            self.fill_local_reduce_Ylm_power()
+            self.fill_MPI_reduce_Ylm_power()
+
+        def gridvar(self, name):
+            return f"sarr(i, j, k, YIdx::{name})"
+
+        def make_spherical_harmonic_vars(self):
+            # constructs tuples of the form (varname, n, m, Re/Im, i, j, t) for Ynm
+            # corresponding to density matrix component (i,j) for neutrinos (t="")
+            # or antineutrinos (t="bar"). Re/Im is for the spherical harmonic amplitude,
+            # with contributions from both the real and imaginary parts of the density matrix element.
+            self.Ylm_amplitudes = []
+            self.Ylm_powers = []
+
+            vars_base = "n"
+            vars_re_im = ["Re", "Im"]
+            tails = ["","bar"]
+            for t in tails:
+                for n in range(args.max_Ylm_degree + 1):
+                    for m in range(-n, n+1):
+                        for i in range(args.N):
+                            for j in range(i, args.N):
+                                self.Ylm_powers.append(YlmPower(vars_base, n, m, "Re", i, j, t))
+                                for ctype in vars_re_im:
+                                    self.Ylm_amplitudes.append(YlmAmplitude(vars_base, n, m, ctype, i, j, t))
+                        if args.Ylm_sum_m:
+                            break
+
+            self.Ylm_amplitude_names = [d.name for d in self.Ylm_amplitudes]
+
+        def fill_grid_indices(self):
+            #====================================#
+            # YlmDiagnostics.H_grid_indices_fill #
+            #====================================#
+            code = [f"{ci}," for ci in self.Ylm_amplitude_names]
+            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.H_grid_indices_fill"))
+
+        def fill_grid_names(self):
+            #====================================#
+            # YlmDiagnostics.cpp_grid_names_fill #
+            #====================================#
+            code = ["\n".join([f"names.push_back(\"{ci}\");" for ci in self.Ylm_amplitude_names])]
+            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_grid_names_fill"))
+
+        def fill_compute_Ylm(self):
+            #=====================================#
+            # YlmDiagnostics.cpp_compute_Ylm_fill #
+            #=====================================#
+            #
+            # For each grid variable in the spherical harmonic decomposition,
+            # generate the line of code for any particle's contribution.
+            code = []
+
+            for Alm in self.Ylm_amplitudes:
+                # make symbols for variables defined in the enclosing scope of the C++
+                theta = sympy.Symbol("theta", real=True)
+                phi = sympy.Symbol("phi", real=True)
+                dVi = sympy.Symbol("dVi", real=True)
+
+                # make symbol for number of neutrinos in the particle
+                Np = sympy.Symbol(f"p.rdata(PIdx::N{Alm.t})", real=True)
+
+                # make symbols for the particle density matrix components we will need
+                rho_ij_Re = sympy.Symbol(f"p.rdata(PIdx::f{Alm.i}{Alm.j}_Re{Alm.t}", real=True)
+                rho_ij_Im = sympy.Symbol(f"p.rdata(PIdx::f{Alm.i}{Alm.j}_Im{Alm.t}", real=True)
+                if Alm.i==Alm.j:
+                    rho_ij_Im = 0
+                rho_ij = rho_ij_Re + sympy.I * rho_ij_Im
+
+                # get the quantity we want to deposit into this grid variable matrix component
+                if args.Ylm_sum_m:
+                    mrange = range(-Alm.n, Alm.n+1)
+                else:
+                    mrange = [Alm.m]
+
+                part_n_ij_nm = 0
+                for m in mrange:
+                    part_n_ij_nm += sympy.Ynm(Alm.n, m, theta, phi).conjugate().expand(func=True)
+                part_n_ij_nm = Np * dVi * rho_ij * part_n_ij_nm
+
+                # get real and imaginary parts of the quantity we're depositing
+                part_n_ij_nm_Re, part_n_ij_nm_Im = part_n_ij_nm.as_real_imag()
+
+                dep_n_ij_nm = {"Re": part_n_ij_nm_Re, "Im": part_n_ij_nm_Im}
+
+                # construct the C++ string for depositing into n_ij_nm_Re or n_ij_nm_Im
+                code.append(f"amrex::Gpu::Atomic::AddNoRet(&{self.gridvar(Alm.name)}, sx(i) * sy(j) * sz(k) * {dep_n_ij_nm[Alm.ctype]});")
+
+            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_compute_Ylm_fill"))
+
+        def fill_setup_reductions_Ylm_power(self):
+            #====================================================#
+            # YlmDiagnostics.cpp_setup_reductions_Ylm_power_fill #
+            #====================================================#
+            num_powers = len(self.Ylm_powers)
+            reduce_ops  = ",".join(["ReduceOpSum"] * num_powers)
+            reduce_data = ",".join(["Real"] * num_powers)
+
+            code = []
+            code.append(f"ReduceOps<{reduce_ops}> reduce_operations;")
+            code.append(f"ReduceData<{reduce_data}> reduce_data(reduce_operations);")
+            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_setup_reductions_Ylm_power_fill"))
+
+        def fill_local_reduce_Ylm_power(self):
+            #================================================#
+            # YlmDiagnostics.cpp_local_reduce_Ylm_power_fill #
+            #================================================#
+            def power_string(Plm):
+                amp_re = self.gridvar(Plm.amp_re.name)
+                amp_im = self.gridvar(Plm.amp_im.name)
+                return f"{amp_re} * {amp_re} + {amp_im} * {amp_im}"
+
+            compute_power = [power_string(Plm) for Plm in self.Ylm_powers]
+            return_power_str = "return {\n" + ",\n".join(compute_power) + "\n};"
+
+            code = []
+            code.append(return_power_str)
+            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_local_reduce_Ylm_power_fill"))
+
+        def fill_MPI_reduce_Ylm_power(self):
+            #==============================================#
+            # YlmDiagnostics.cpp_MPI_reduce_Ylm_power_fill #
+            #==============================================#
+            num_powers = len(self.Ylm_powers)
+
+            code = []
+            for i in range(num_powers):
+                code.append(f"ParallelDescriptor::ReduceRealSum(amrex::get<{i}>(reduced_Ylm_power), IOProc);")
+
+            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_MPI_reduce_Ylm_power_fill"))
+
+        def fill_write_Ylm_power(self):
+            #=========================================#
+            # YlmDiagnostics.cpp_write_Ylm_power_fill #
+            #=========================================#
+            num_powers = len(self.Ylm_powers)
+
+            code = []
+            for i in range(num_powers):
+                code.append(f"sphFile << amrex::get<{i}>(reduced_Ylm_power) << ',';")
+
+            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_MPI_reduce_Ylm_power_fill"))
+
+    ylm_diags = YlmDiagnostics()
+    ylm_diags.generate()
