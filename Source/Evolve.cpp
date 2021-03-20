@@ -37,8 +37,8 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
     if (flavor_cfl_factor > 0.0) {
         // self-interaction, matter, and vacuum part of timestep limit
 
-        ReduceOps<ReduceOpMax> reduce_op;
-        ReduceData<Real> reduce_data(reduce_op);
+        ReduceOps<ReduceOpMax,ReduceOpMax> reduce_op;
+        ReduceData<Real,Real> reduce_data(reduce_op);
         using ReduceTuple = typename decltype(reduce_data)::Type;
         for (MFIter mfi(state); mfi.isValid(); ++mfi)
         {
@@ -47,14 +47,18 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
             reduce_op.eval(bx, reduce_data,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
             {
-	        Real length2 = 0;
+	        Real length2=0, ndens_lepton_total=0;
                 #include "generated_files/Evolve.cpp_compute_dt_fill"
-                return sqrt(length2);
+                return {sqrt(length2), ndens_lepton_total};
             });
 	}
 
-	Real Vmax = amrex::get<0>(reduce_data.value());
+	auto rv = reduce_data.value();
+	Real Vmax = amrex::get<0>(rv);
+	Real ndens_lepton_max = amrex::get<1>(rv);
 	ParallelDescriptor::ReduceRealMax(Vmax);
+	ParallelDescriptor::ReduceRealMax(ndens_lepton_max);
+
 	dt_si_matter = PhysConst::hbar/(Vmax+neutrinos.Vvac_max)*flavor_cfl_factor;
     }
 
