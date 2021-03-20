@@ -268,7 +268,7 @@ if __name__ == "__main__":
     # spherically symmetric part
     N    = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::N{}{}_{})")
     Nbar = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::N{}{}_{}bar)")
-    HSI  = (N-Nbar) / cell_volume
+    HSI  = (N-Nbar.conjugate()) / cell_volume
     HSI.H[0,0] += rho*Ye/mp
     HSI *= sqrt2GF
     length2 = HSI.SU_vector_magnitude2()
