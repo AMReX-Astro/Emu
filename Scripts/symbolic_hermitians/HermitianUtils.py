@@ -93,7 +93,9 @@ class HermitianMatrix(object):
         return self
 
     def conjugate(self):
-        self.H = Conjugate(self.H)
+        for i in range(self.size):
+            for j in range(i, self.size):
+                self.H[i,j] = conjugate(self.H[i,j])
         return self
     
     # return the length of the SU(n) vector
