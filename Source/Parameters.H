@@ -19,6 +19,7 @@ struct TestParams : public amrex::Gpu::Managed
     Real end_time;
     int write_plot_every;
     int write_plot_particles_every;
+    int compute_Ylm_every;
     Real rho_in, Ye_in, T_in; // g/ccm, 1, MeV
     int simulation_type;
     Real cfl_factor, flavor_cfl_factor;
@@ -60,6 +61,10 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("flavor_cfl_factor", flavor_cfl_factor);
         pp.get("write_plot_every", write_plot_every);
         pp.get("write_plot_particles_every", write_plot_particles_every);
+
+        compute_Ylm_every = -1; // by default do not compute Ylm spectrum
+        pp.query("compute_Ylm_every", compute_Ylm_every);
+
         pp.get("do_restart", do_restart);
         pp.get("restart_dir", restart_dir);
         pp.get("maxError", maxError);

@@ -29,6 +29,7 @@
 
 #include "FlavoredNeutrinoContainer.H"
 #include "Evolve.H"
+#include "YlmDiagnostics.H"
 #include "Constants.H"
 #include "IO.H"
 
@@ -123,6 +124,9 @@ void evolve_flavor(const TestParams* parms)
         const int write_particles_after_init = 1;
         WritePlotFile(state, neutrinos_old, geom, initial_time, initial_step, write_particles_after_init);
     }
+
+    // Create spherical harmonics diagnostics
+    YlmDiagnostics spherical_harmonics(ba, dm, geom);
 
     amrex::Print() << "Done. " << std::endl;
 
