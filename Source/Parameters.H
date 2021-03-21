@@ -22,6 +22,7 @@ struct TestParams : public amrex::Gpu::Managed
     Real rho_in, Ye_in, T_in; // g/ccm, 1, MeV
     int simulation_type;
     Real cfl_factor, flavor_cfl_factor;
+    Real max_adaptive_speedup;
     bool do_restart;
     std::string restart_dir;
     Real maxError;
@@ -58,6 +59,7 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("T_MeV", T_in);
         pp.get("cfl_factor", cfl_factor);
         pp.get("flavor_cfl_factor", flavor_cfl_factor);
+        pp.get("max_adaptive_speedup", max_adaptive_speedup);
         pp.get("write_plot_every", write_plot_every);
         pp.get("write_plot_particles_every", write_plot_particles_every);
         pp.get("do_restart", do_restart);

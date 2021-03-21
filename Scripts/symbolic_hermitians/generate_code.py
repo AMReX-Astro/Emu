@@ -268,20 +268,29 @@ if __name__ == "__main__":
     # spherically symmetric part
     N    = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::N{}{}_{})")
     Nbar = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::N{}{}_{}bar)")
-    HSI  = (N-Nbar.conjugate()) / cell_volume
-    HSI.H[0,0] += rho*Ye/mp
-    HSI *= sqrt2GF
-    length2 = HSI.SU_vector_magnitude2()
-    code.append("length2 += "+sympy.cxxcode(sympy.simplify(length2))+";")
+    HSI  = (N-Nbar.conjugate())
+    HSI.H[0,0] += rho*Ye/mp * cell_volume
+    V_adaptive2 = HSI.SU_vector_magnitude2()
+    code.append("V_adaptive2 += "+sympy.cxxcode(sympy.simplify(V_adaptive2))+";")
 
     # flux part
     for component in ["x","y","z"]:
         F    = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::F"+component+"{}{}_{})")
         Fbar = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::F"+component+"{}{}_{}bar)")
-        HSI  = (F-Fbar) * sqrt2GF / cell_volume
-        length2 = HSI.SU_vector_magnitude2()
-        code.append("length2 += "+sympy.cxxcode(sympy.simplify(length2))+";")
-    
+        HSI  = (F-Fbar)
+        V_adaptive2 = HSI.SU_vector_magnitude2()
+        code.append("V_adaptive2 += "+sympy.cxxcode(sympy.simplify(V_adaptive2))+";")
+
+    # put in the units
+    code.append("V_adaptive = sqrt(V_adaptive2)*"+sympy.cxxcode(sqrt2GF/cell_volume)+";")
+
+    # old "stupid" way of computing the timestep.
+    # the factor of 2 accounts for potential worst-case effects of neutrinos and antineutrinos
+    for i in range(args.N):
+        code.append("V_stupid = max(V_stupid,"+sympy.cxxcode(N.H[i,i])+");")
+        code.append("V_stupid = max(V_stupid,"+sympy.cxxcode(Nbar.H[i,i])+");")
+    code.append("V_stupid = max(V_stupid,"+sympy.cxxcode(rho*Ye/mp*cell_volume)+");")
+    code.append("V_stupid *= "+sympy.cxxcode(2.0*args.N*sqrt2GF/cell_volume)+";")
     write_code(code, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_compute_dt_fill"))
 
     #=======================================#
