@@ -38,3 +38,5 @@ Scripts/symbolic_hermitians/__pycache__
 .project
 .pydevproject
 .settings
+.vscode
+Source/generated_files
