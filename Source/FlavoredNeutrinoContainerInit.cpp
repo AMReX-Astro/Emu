@@ -585,7 +585,8 @@ InitParticles(const TestParams* parms)
 		  Real mux = fluxfac_x>0 ? (parms->st5_fxnux*u[0] + parms->st5_fynux*u[1] + parms->st5_fznux*u[2])/fluxfac_x : 0;
 
 		  // get the number of each flavor in this particle.
-		  // the x-flavor is the number of neutrinos in EACH x-flavor
+          // parms->st5_nnux contains the number density of mu+tau neutrinos+antineutrinos
+		  // Nnux_thisparticle contains the number of EACH of mu/tau anti/neutrinos (hence the factor of 4)
 		  Real angular_factor;
 		  minerbo_closure(&angular_factor, Ze, mue);
 		  Real Nnue_thisparticle = parms->st5_nnue*scale_fac * angular_factor;
