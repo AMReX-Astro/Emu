@@ -40,7 +40,7 @@ Gpu::ManagedVector<GpuArray<Real,3> > uniform_sphere_xyz(int nphi_at_equator){
 // Z needs to be bigger if residual is positive
 // Minerbo (1978) (unfortunately under Elsevier paywall)
 // Can also see Richers (2020) https://ui.adsabs.harvard.edu/abs/2020PhRvD.102h3017R
-//     Eq.41, but in the non-degenerate limit
+//     Eq.41 (where a is Z), but in the non-degenerate limit
 //     k->0, eta->0, N->Z/(4pi sinh(Z)) (just to make it integrate to 1)
 //     minerbo_residual is the "f" equation between eq.42 and 43
 Real minerbo_residual(const Real fluxfac, const Real Z){
