@@ -1,5 +1,6 @@
 simulation_type = 1
 cfl_factor = 0.5
+max_adaptive_speedup = 0
 flavor_cfl_factor = .5
 maxError = 1e-6
 

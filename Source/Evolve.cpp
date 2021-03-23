@@ -19,7 +19,7 @@ namespace GIdx
     }
 }
 
-Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& state, const Real flavor_cfl_factor)
+Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& state, const FlavoredNeutrinoContainer& neutrinos, const Real flavor_cfl_factor, const Real max_adaptive_speedup)
 {
     AMREX_ASSERT(cfl_factor > 0.0 || flavor_cfl_factor > 0.0);
 
@@ -33,24 +33,55 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
         dt_translation = std::min(std::min(dxi[0],dxi[1]), dxi[2]) / PhysConst::c * cfl_factor;
     }
 
-    Real dt_si_matter = 0.0;
+    Real dt_flavor = 0.0;
     if (flavor_cfl_factor > 0.0) {
-        // self-interaction and matter part of timestep limit
-        // NOTE: these currently over-estimate both potentials, but avoid reduction over all particles
-        // NOTE: the vacuum potential is currently ignored. This requires a min reduction over particle energies
-        Real N_diag_max = 0;
-        #include "generated_files/Evolve.cpp_compute_dt_fill"
-        Real Vmax = std::sqrt(2.) * PhysConst::GF * std::max(N_diag_max/cell_volume, state.max(GIdx::rho)/PhysConst::Mp);
-        if(Vmax>0) dt_si_matter = PhysConst::hbar/Vmax*flavor_cfl_factor;
+        // define the reduction operator to get the max contribution to
+        // the potential from matter and neutrinos
+        // compute "effective" potential (ergs) that produces characteristic timescale
+        // when multiplied by hbar
+        ReduceOps<ReduceOpMax,ReduceOpMax> reduce_op;
+        ReduceData<Real,Real> reduce_data(reduce_op);
+        using ReduceTuple = typename decltype(reduce_data)::Type;
+        for (MFIter mfi(state); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.fabbox();
+	    auto const& fab = state.array(mfi);
+            reduce_op.eval(bx, reduce_data,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
+            {
+                Real V_adaptive=0, V_adaptive2=0, V_stupid=0;
+                #include "generated_files/Evolve.cpp_compute_dt_fill"
+                return {V_adaptive, V_stupid};
+            });
+	}
+
+	// extract the reduced values from the combined reduced data structure
+	auto rv = reduce_data.value();
+	Real Vmax_adaptive = amrex::get<0>(rv) + FlavoredNeutrinoContainer::Vvac_max;
+	Real Vmax_stupid   = amrex::get<1>(rv) + FlavoredNeutrinoContainer::Vvac_max;
+
+	// reduce across MPI ranks
+	ParallelDescriptor::ReduceRealMax(Vmax_adaptive);
+	ParallelDescriptor::ReduceRealMax(Vmax_stupid  );
+
+	// define the dt associated with each method
+	Real dt_flavor_adaptive = PhysConst::hbar/Vmax_adaptive*flavor_cfl_factor;
+	Real dt_flavor_stupid   = PhysConst::hbar/Vmax_stupid  *flavor_cfl_factor;
+
+	// pick the appropriate timestep
+	if(dt_flavor_adaptive*max_adaptive_speedup > dt_flavor_stupid)
+	  dt_flavor = dt_flavor_adaptive;
+	else
+	  dt_flavor = dt_flavor_stupid;
     }
 
     Real dt = 0.0;
-    if (dt_translation != 0.0 && dt_si_matter != 0.0) {
-        dt = std::min(dt_translation, dt_si_matter);
+    if (dt_translation != 0.0 && dt_flavor != 0.0) {
+        dt = std::min(dt_translation, dt_flavor);
     } else if (dt_translation != 0.0) {
         dt = dt_translation;
-    } else if (dt_si_matter != 0.0) {
-        dt = dt_si_matter;
+    } else if (dt_flavor != 0.0) {
+        dt = dt_flavor;
     } else {
         amrex::Error("Timestep selection failed, try using both cfl_factor and flavor_cfl_factor");
     }
