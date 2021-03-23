@@ -49,7 +49,7 @@ class HermitianMatrix(object):
     def __truediv__(self, other):
         result = copy.deepcopy(self)
         if isinstance(other, self.__class__):
-            result.H = self.H * other.H
+            raise ArithmeticError
         else:
             for i in range(self.size):
                 for j in range(self.size):
@@ -94,7 +94,7 @@ class HermitianMatrix(object):
 
     def conjugate(self):
         for i in range(self.size):
-            for j in range(i, self.size):
+            for j in range(self.size):
                 self.H[i,j] = conjugate(self.H[i,j])
         return self
     

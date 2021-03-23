@@ -68,7 +68,7 @@ class FlavoredNeutrinoContainer
 
 public:
 
-    Real Vvac_max;
+    inline static Real Vvac_max;
 
     FlavoredNeutrinoContainer(const amrex::Geometry            & a_geom,
                               const amrex::DistributionMapping & a_dmap,
@@ -94,11 +94,6 @@ public:
     amrex::Vector<std::string> get_attribute_names() const
     {
         return attribute_names;
-    }
-
-    void copyParticles(const FlavoredNeutrinoContainer& other, bool local=false){
-        amrex::ParticleContainer<PIdx::nattribs, 0, 0, 0>::copyParticles(other, local);
-        this->Vvac_max = other.Vvac_max;
     }
 
     /* Public data members */

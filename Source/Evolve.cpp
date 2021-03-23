@@ -57,8 +57,8 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
 
 	// extract the reduced values from the combined reduced data structure
 	auto rv = reduce_data.value();
-	Real Vmax_adaptive = amrex::get<0>(rv) + neutrinos.Vvac_max;
-	Real Vmax_stupid   = amrex::get<1>(rv) + neutrinos.Vvac_max;
+	Real Vmax_adaptive = amrex::get<0>(rv) + FlavoredNeutrinoContainer::Vvac_max;
+	Real Vmax_stupid   = amrex::get<1>(rv) + FlavoredNeutrinoContainer::Vvac_max;
 
 	// reduce across MPI ranks
 	ParallelDescriptor::ReduceRealMax(Vmax_adaptive);
