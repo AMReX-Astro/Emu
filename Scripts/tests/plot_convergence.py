@@ -4,15 +4,17 @@ import matplotlib.pyplot as plt
 # Read forward Euler data
 class ConvergenceData(object):
     def __init__(self, filename=None):
-        self.data = {"cfl": [],
-                     "f_ee error": [],
-                     "f_xx error": [],
-                     "f_eebar error": [],
-                     "f_xxbar error": []}
+        self.data = {
+            "cfl": [],
+            "f_ee error": [],
+            "f_xx error": [],
+            "f_eebar error": [],
+            "f_xxbar error": [],
+        }
 
         if filename:
             self.readfrom(filename)
-    
+
     def readfrom(self, filename):
         f = open(filename, "r")
 
@@ -48,25 +50,34 @@ class ConvergenceData(object):
         cfl = self.get("cfl")
 
         orders = []
-        for i in range(len(err)-1):
-            order = np.log10(err[i+1]/err[i]) / np.log10(cfl[i+1]/cfl[i])
+        for i in range(len(err) - 1):
+            order = np.log10(err[i + 1] / err[i]) / np.log10(cfl[i + 1] / cfl[i])
             orders.append(order)
         orders = np.array(orders)
-        
+
         order_average = np.average(orders)
         return order_average
 
     def plot_on_axis(self, axis, key, label, color):
         log_cfl = np.log10(self.get("cfl"))
         log_err = np.log10(self.get(key))
-        axis.plot(log_cfl, log_err, label=label, marker="o", linestyle="None", color=color)
+        axis.plot(
+            log_cfl, log_err, label=label, marker="o", linestyle="None", color=color
+        )
 
         order = self.average_convergence(key)
         iMaxErr = np.argmax(log_err)
         intercept = log_err[iMaxErr] - order * log_cfl[iMaxErr]
-        log_order_err = intercept + order * log_cfl 
-        axis.plot(log_cfl, log_order_err, label="$O({}) = {:0.2f}$".format(label, order), marker="None", linestyle="--", color=color)
-            
+        log_order_err = intercept + order * log_cfl
+        axis.plot(
+            log_cfl,
+            log_order_err,
+            label="$O({}) = {:0.2f}$".format(label, order),
+            marker="None",
+            linestyle="--",
+            color=color,
+        )
+
 
 cdata = {}
 cdata["fe"] = ConvergenceData("msw_test_fe.txt")
@@ -93,6 +104,6 @@ for v in variables:
     ax.legend(loc=(1.05, 0.0))
     fig.tight_layout()
 
-    plt.savefig("convergence_{}.eps".format(v.replace(" ","_")))
-    plt.savefig("convergence_{}.png".format(v.replace(" ","_")), dpi=300)
+    plt.savefig("convergence_{}.eps".format(v.replace(" ", "_")))
+    plt.savefig("convergence_{}.png".format(v.replace(" ", "_")), dpi=300)
     plt.clf()

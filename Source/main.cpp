@@ -34,7 +34,7 @@
 
 using namespace amrex;
 
-void evolve_flavor(const TestParams* parms)
+void evolve_flavor(const TestParams *parms)
 {
     // Periodicity and Boundary Conditions
     // Defaults to Periodic in all dimensions
@@ -45,7 +45,7 @@ void evolve_flavor(const TestParams* parms)
     // Define the index space of the domain
 
     const IntVect domain_lo(AMREX_D_DECL(0, 0, 0));
-    const IntVect domain_hi(AMREX_D_DECL(parms->ncell[0]-1,parms->ncell[1]-1,parms->ncell[2]-1));
+    const IntVect domain_hi(AMREX_D_DECL(parms->ncell[0] - 1, parms->ncell[1] - 1, parms->ncell[2] - 1));
     const Box domain(domain_lo, domain_hi);
 
     // Initialize the boxarray "ba" from the single box "domain"
@@ -55,7 +55,7 @@ void evolve_flavor(const TestParams* parms)
     ba.maxSize(parms->max_grid_size);
 
     // This defines the physical box, [0,1] in each dimension
-    RealBox real_box({AMREX_D_DECL(     0.0,      0.0,      0.0)},
+    RealBox real_box({AMREX_D_DECL(0.0, 0.0, 0.0)},
                      {AMREX_D_DECL(parms->Lx, parms->Ly, parms->Lz)});
 
     // This defines the domain Geometry
@@ -65,11 +65,12 @@ void evolve_flavor(const TestParams* parms)
     DistributionMapping dm(ba);
 
     // We want ghost cells according to size of particle shape stencil (grids are "grown" by ngrow ghost cells in each direction)
-    const IntVect shape_factor_order_vec(AMREX_D_DECL(parms->ncell[0]==1 ? 0 : SHAPE_FACTOR_ORDER,
-                                                      parms->ncell[1]==1 ? 0 : SHAPE_FACTOR_ORDER,
-                                                      parms->ncell[2]==1 ? 0 : SHAPE_FACTOR_ORDER));
-    const IntVect ngrow(1 + (1+shape_factor_order_vec)/2);
-    for(int i=0; i<AMREX_SPACEDIM; i++) AMREX_ASSERT(parms->ncell[i] >= ngrow[i]);
+    const IntVect shape_factor_order_vec(AMREX_D_DECL(parms->ncell[0] == 1 ? 0 : SHAPE_FACTOR_ORDER,
+                                                      parms->ncell[1] == 1 ? 0 : SHAPE_FACTOR_ORDER,
+                                                      parms->ncell[2] == 1 ? 0 : SHAPE_FACTOR_ORDER));
+    const IntVect ngrow(1 + (1 + shape_factor_order_vec) / 2);
+    for (int i = 0; i < AMREX_SPACEDIM; i++)
+        AMREX_ASSERT(parms->ncell[i] >= ngrow[i]);
 
     // We want 1 component (this is one real scalar field on the domain)
     const int ncomp = GIdx::ncomp;
@@ -79,9 +80,9 @@ void evolve_flavor(const TestParams* parms)
 
     // initialize with NaNs ...
     state.setVal(0.0);
-    state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
-    state.setVal(parms->Ye_in,GIdx::Ye,1);
-    state.setVal(parms->T_in,GIdx::T,1); // MeV
+    state.setVal(parms->rho_in, GIdx::rho, 1); // g/ccm
+    state.setVal(parms->Ye_in, GIdx::Ye, 1);
+    state.setVal(parms->T_in, GIdx::T, 1); // MeV
     state.FillBoundary(geom.periodicity());
 
     // initialize the grid variable names
@@ -100,13 +101,15 @@ void evolve_flavor(const TestParams* parms)
 
     Real initial_time = 0.0;
     int initial_step = 0;
-    if(parms->do_restart){
+    if (parms->do_restart)
+    {
         // get particle data from file
         RecoverParticles(parms->restart_dir, neutrinos_old, initial_time, initial_step);
     }
-    else{
-    	// Initialize old particles
-    	neutrinos_old.InitParticles(parms);
+    else
+    {
+        // Initialize old particles
+        neutrinos_old.InitParticles(parms);
     }
 
     // Copy particles from old data to new data
@@ -118,7 +121,8 @@ void evolve_flavor(const TestParams* parms)
     deposit_to_mesh(neutrinos_old, state, geom);
 
     // Write plotfile after initialization
-    if (not parms->do_restart) {
+    if (not parms->do_restart)
+    {
         // If we have just initialized, then always save the particle data for reference
         const int write_particles_after_init = 1;
         WritePlotFile(state, neutrinos_old, geom, initial_time, initial_step, write_particles_after_init);
@@ -129,7 +133,7 @@ void evolve_flavor(const TestParams* parms)
     TimeIntegrator<FlavoredNeutrinoContainer> integrator(neutrinos_old, neutrinos_new, initial_time, initial_step);
 
     // Create a RHS source function we will integrate
-    auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, const FlavoredNeutrinoContainer& neutrinos, Real time) {
+    auto source_fun = [&](FlavoredNeutrinoContainer &neutrinos_rhs, const FlavoredNeutrinoContainer &neutrinos, Real time) {
         /* Evaluate the neutrino distribution matrix RHS */
 
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
@@ -152,11 +156,11 @@ void evolve_flavor(const TestParams* parms)
     };
 
     // Create a function to call after every integrator timestep.
-    auto post_timestep_fun = [&] () {
+    auto post_timestep_fun = [&]() {
         /* Post-timestep function. The integrator new-time data is the latest data available. */
 
         // Get the latest neutrino data
-        auto& neutrinos = integrator.get_new_data();
+        auto &neutrinos = integrator.get_new_data();
 
         // Update the new time particle locations in the domain with their
         // integrated coordinates.
@@ -181,20 +185,21 @@ void evolve_flavor(const TestParams* parms)
         run_fom += neutrinos.TotalNumberOfParticles();
 
         // Write the Mesh Data to Plotfile if required
-        if ((step+1) % parms->write_plot_every == 0 ||
+        if ((step + 1) % parms->write_plot_every == 0 ||
             (parms->write_plot_particles_every > 0 &&
-             (step+1) % parms->write_plot_particles_every == 0)) {
+             (step + 1) % parms->write_plot_particles_every == 0))
+        {
             // Only include the Particle Data if write_plot_particles_every is satisfied
             int write_plot_particles = parms->write_plot_particles_every > 0 &&
-                                       (step+1) % parms->write_plot_particles_every == 0;
-            WritePlotFile(state, neutrinos, geom, time, step+1, write_plot_particles);
+                                       (step + 1) % parms->write_plot_particles_every == 0;
+            WritePlotFile(state, neutrinos, geom, time, step + 1, write_plot_particles);
         }
 
         // Set the next timestep from the last deposited grid data
         // Note: this won't be the same as the new-time grid data
         // because the last deposit_to_mesh call was at either the old time (forward Euler)
         // or the final RK stage, if using Runge-Kutta.
-        const Real dt = compute_dt(geom,parms->cfl_factor,state,neutrinos,parms->flavor_cfl_factor,parms->max_adaptive_speedup);
+        const Real dt = compute_dt(geom, parms->cfl_factor, state, neutrinos, parms->flavor_cfl_factor, parms->max_adaptive_speedup);
         integrator.set_timestep(dt);
     };
 
@@ -203,7 +208,7 @@ void evolve_flavor(const TestParams* parms)
     integrator.set_post_timestep(post_timestep_fun);
 
     // Get a starting timestep
-    const Real starting_dt = compute_dt(geom,parms->cfl_factor,state,neutrinos_old,parms->flavor_cfl_factor, parms->max_adaptive_speedup);
+    const Real starting_dt = compute_dt(geom, parms->cfl_factor, state, neutrinos_old, parms->flavor_cfl_factor, parms->max_adaptive_speedup);
 
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
@@ -223,28 +228,25 @@ void evolve_flavor(const TestParams* parms)
     amrex::Print() << "Run time w/o initialization (seconds) = " << std::fixed << std::setprecision(3) << advance_time << std::endl;
 
     amrex::Print() << "Average number of particles advanced per microsecond = " << std::fixed << std::setprecision(3) << run_fom << std::endl;
-
 }
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
-    amrex::Initialize(argc,argv);
+    amrex::Initialize(argc, argv);
 
     // by default amrex initializes rng deterministically
     // this uses the time for a different run each time
-    amrex::InitRandom(ParallelDescriptor::MyProc()+time(NULL), ParallelDescriptor::NProcs());
+    amrex::InitRandom(ParallelDescriptor::MyProc() + time(NULL), ParallelDescriptor::NProcs());
 
     {
+        // get the run parameters
+        std::unique_ptr<TestParams> parms_unique_ptr;
+        parms_unique_ptr = std::make_unique<TestParams>();
+        parms_unique_ptr->Initialize();
+        const TestParams *parms = parms_unique_ptr.get();
 
-    // get the run parameters
-    std::unique_ptr<TestParams> parms_unique_ptr;
-    parms_unique_ptr = std::make_unique<TestParams>();
-    parms_unique_ptr->Initialize();
-    const TestParams* parms = parms_unique_ptr.get();
-
-    // do all the work!
-    evolve_flavor(parms);
-
+        // do all the work!
+        evolve_flavor(parms);
     }
 
     amrex::Finalize();

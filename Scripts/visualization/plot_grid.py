@@ -5,29 +5,32 @@ import glob
 import multiprocessing as mp
 
 base = "N01"
+
+
 def make_plot(d):
     print(d)
     plt.clf()
-    #plt.ylim(-1.5e40,1.5e40)
+    # plt.ylim(-1.5e40,1.5e40)
     ds = yt.load(d)
     ad = ds.all_data()
-    Re = ad['boxlib',base+"_Re"]
-    Im = ad['boxlib',base+"_Im"]
-    mag = np.sqrt(Re**2+Im**2)
-    plt.plot(Re,color="blue")
-    plt.plot(Im,color="orange")
-    Re = ad['boxlib',base+"_Rebar"]
-    Im = ad['boxlib',base+"_Imbar"]
-    mag = np.sqrt(Re**2+Im**2)
-    plt.plot(Re,color="blue",linestyle="--")
-    plt.plot(Im,color="orange",linestyle="--")
-#    plt.plot(mag)
-    plt.savefig(base+"_"+d+".png")
+    Re = ad["boxlib", base + "_Re"]
+    Im = ad["boxlib", base + "_Im"]
+    mag = np.sqrt(Re ** 2 + Im ** 2)
+    plt.plot(Re, color="blue")
+    plt.plot(Im, color="orange")
+    Re = ad["boxlib", base + "_Rebar"]
+    Im = ad["boxlib", base + "_Imbar"]
+    mag = np.sqrt(Re ** 2 + Im ** 2)
+    plt.plot(Re, color="blue", linestyle="--")
+    plt.plot(Im, color="orange", linestyle="--")
+    #    plt.plot(mag)
+    plt.savefig(base + "_" + d + ".png")
+
 
 directories = sorted(glob.glob("plt*"))
 
-#pool = mp.Pool(mp.cpu_count())
-#pool.map(make_plot, directories)
+# pool = mp.Pool(mp.cpu_count())
+# pool.map(make_plot, directories)
 for d in directories:
     make_plot(d)
 

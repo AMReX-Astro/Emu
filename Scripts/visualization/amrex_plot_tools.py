@@ -3,36 +3,39 @@ import argparse
 import glob
 
 # physical constants
-clight = 2.99792458e10 # cm/s
-hbar = 1.05457266e-27 # erg s
-eV = 1.60218e-12 # erg
-mp = 1.6726219e-24 # g
-GF = 1.1663787e-5 / (1e9*eV)**2 * (hbar*clight)**3 #erg cm^3
+clight = 2.99792458e10  # cm/s
+hbar = 1.05457266e-27  # erg s
+eV = 1.60218e-12  # erg
+mp = 1.6726219e-24  # g
+GF = 1.1663787e-5 / (1e9 * eV) ** 2 * (hbar * clight) ** 3  # erg cm^3
+
 
 def get_particle_keys():
-    real_quantities = ["pos_x",
-                       "pos_y",
-                       "pos_z",
-                       "time",
-                       "x",
-                       "y",
-                       "z",
-                       "pupx",
-                       "pupy",
-                       "pupz",
-                       "pupt",
-                       "N",
-                       "L",
-                       "f00_Re",
-                       "f01_Re",
-                       "f01_Im",
-                       "f11_Re",
-                       "Nbar",
-                       "Lbar",
-                       "f00_Rebar",
-                       "f01_Rebar",
-                       "f01_Imbar",
-                       "f11_Rebar"]
+    real_quantities = [
+        "pos_x",
+        "pos_y",
+        "pos_z",
+        "time",
+        "x",
+        "y",
+        "z",
+        "pupx",
+        "pupy",
+        "pupz",
+        "pupt",
+        "N",
+        "L",
+        "f00_Re",
+        "f01_Re",
+        "f01_Im",
+        "f11_Re",
+        "Nbar",
+        "Lbar",
+        "f00_Rebar",
+        "f01_Rebar",
+        "f01_Imbar",
+        "f11_Rebar",
+    ]
 
     rkey = {}
     for i, rlabel in enumerate(real_quantities):
@@ -43,41 +46,44 @@ def get_particle_keys():
     }
 
     return rkey, ikey
+
 
 def get_3flavor_particle_keys():
-    real_quantities = ["pos_x",
-                       "pos_y",
-                       "pos_z",
-                       "time",
-                       "x",
-                       "y",
-                       "z",
-                       "pupx",
-                       "pupy",
-                       "pupz",
-                       "pupt",
-                       "N",
-                       "L",
-                       "f00_Re",
-                       "f01_Re",
-                       "f01_Im",
-                       "f02_Re",
-                       "f02_Im",
-                       "f11_Re",
-                       "f12_Re",
-                       "f12_Im",
-                       "f22_Re",
-                       "Nbar",
-                       "Lbar",
-                       "f00_Rebar",
-                       "f01_Rebar",
-                       "f01_Imbar",
-                       "f02_Rebar",
-                       "f02_Imbar",
-                       "f11_Rebar",
-                       "f12_Rebar",
-                       "f12_Imbar",
-                       "f22_Rebar"]
+    real_quantities = [
+        "pos_x",
+        "pos_y",
+        "pos_z",
+        "time",
+        "x",
+        "y",
+        "z",
+        "pupx",
+        "pupy",
+        "pupz",
+        "pupt",
+        "N",
+        "L",
+        "f00_Re",
+        "f01_Re",
+        "f01_Im",
+        "f02_Re",
+        "f02_Im",
+        "f11_Re",
+        "f12_Re",
+        "f12_Im",
+        "f22_Re",
+        "Nbar",
+        "Lbar",
+        "f00_Rebar",
+        "f01_Rebar",
+        "f01_Imbar",
+        "f02_Rebar",
+        "f02_Imbar",
+        "f11_Rebar",
+        "f12_Rebar",
+        "f12_Imbar",
+        "f22_Rebar",
+    ]
 
     rkey = {}
     for i, rlabel in enumerate(real_quantities):
@@ -89,8 +95,9 @@ def get_3flavor_particle_keys():
 
     return rkey, ikey
 
+
 class AMReXParticleHeader(object):
-    '''
+    """
 
     This class is designed to parse and store the information
     contained in an AMReX particle header file.
@@ -103,7 +110,7 @@ class AMReXParticleHeader(object):
 
     etc...
 
-    '''
+    """
 
     def __init__(self, header_filename):
 
@@ -112,11 +119,11 @@ class AMReXParticleHeader(object):
         with open(header_filename, "r") as f:
             self.version_string = f.readline().strip()
 
-            particle_real_type = self.version_string.split('_')[-1]
-            particle_real_type = self.version_string.split('_')[-1]
-            if particle_real_type == 'double':
+            particle_real_type = self.version_string.split("_")[-1]
+            particle_real_type = self.version_string.split("_")[-1]
+            if particle_real_type == "double":
                 self.real_type = np.float64
-            elif particle_real_type == 'single':
+            elif particle_real_type == "single":
                 self.real_type = np.float32
             else:
                 raise RuntimeError("Did not recognize particle real type.")
@@ -144,7 +151,7 @@ class AMReXParticleHeader(object):
                 self.num_int_extra = 0
                 self.num_int = 0
 
-            self.grids_per_level = np.zeros(self.num_levels, dtype='int64')
+            self.grids_per_level = np.zeros(self.num_levels, dtype="int64")
             self.grids = []
             for level_num in range(self.num_levels):
                 self.grids_per_level[level_num] = int(f.readline().strip())
@@ -157,7 +164,7 @@ class AMReXParticleHeader(object):
 
 
 def read_particle_data(fn, ptype="particle0"):
-    '''
+    """
 
     This function returns the particle data stored in a particular
     plot file and particle type. It returns two numpy arrays, the
@@ -171,7 +178,7 @@ def read_particle_data(fn, ptype="particle0"):
 
         idata, rdata = read_particle_data("plt00000", "particle0")
 
-    '''
+    """
     base_fn = fn + "/" + ptype
     header = AMReXParticleHeader(base_fn + "/Header")
 
@@ -181,22 +188,23 @@ def read_particle_data(fn, ptype="particle0"):
     elif header.real_type == np.float32:
         fdtype = "(%d,)f4" % header.num_real
 
-    idata = np.empty((header.num_particles, header.num_int ))
+    idata = np.empty((header.num_particles, header.num_int))
     rdata = np.empty((header.num_particles, header.num_real))
 
     ip = 0
     for lvl, level_grids in enumerate(header.grids):
         for (which, count, where) in level_grids:
-            if count == 0: continue
+            if count == 0:
+                continue
             fn = base_fn + "/Level_%d/DATA_%05d" % (lvl, which)
 
-            with open(fn, 'rb') as f:
+            with open(fn, "rb") as f:
                 f.seek(where)
-                ints   = np.fromfile(f, dtype = idtype, count=count)
-                floats = np.fromfile(f, dtype = fdtype, count=count)
+                ints = np.fromfile(f, dtype=idtype, count=count)
+                floats = np.fromfile(f, dtype=fdtype, count=count)
 
-            idata[ip:ip+count] = ints
-            rdata[ip:ip+count] = floats
+            idata[ip : ip + count] = ints
+            rdata[ip : ip + count] = floats
             ip += count
 
     return idata, rdata
