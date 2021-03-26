@@ -434,7 +434,7 @@ if __name__ == "__main__":
 
             self.mstring = f"{self.m}"
             if self.m < 0:
-                self.mstring = f"m{self.m}"
+                self.mstring = f"m{abs(self.m)}"
             if args.Ylm_sum_m:
                 self.m = "summ"
                 self.mstring = "summ"
@@ -482,6 +482,7 @@ if __name__ == "__main__":
             self.fill_setup_reductions_Ylm_power()
             self.fill_local_reduce_Ylm_power()
             self.fill_MPI_reduce_Ylm_power()
+            self.fill_write_Ylm_power()
 
         def gridvar(self, name):
             return f"sarr(i, j, k, YIdx::{name})"
@@ -568,8 +569,8 @@ if __name__ == "__main__":
                 Np = sympy.Symbol(f"p.rdata(PIdx::N{Alm.t})", real=True)
 
                 # make symbols for the particle density matrix components we will need
-                rho_ij_Re = sympy.Symbol(f"p.rdata(PIdx::f{Alm.i}{Alm.j}_Re{Alm.t}", real=True)
-                rho_ij_Im = sympy.Symbol(f"p.rdata(PIdx::f{Alm.i}{Alm.j}_Im{Alm.t}", real=True)
+                rho_ij_Re = sympy.Symbol(f"p.rdata(PIdx::f{Alm.i}{Alm.j}_Re{Alm.t})", real=True)
+                rho_ij_Im = sympy.Symbol(f"p.rdata(PIdx::f{Alm.i}{Alm.j}_Im{Alm.t})", real=True)
                 if Alm.i==Alm.j:
                     rho_ij_Im = 0
                 rho_ij = rho_ij_Re + sympy.I * rho_ij_Im
@@ -588,7 +589,8 @@ if __name__ == "__main__":
                 # get real and imaginary parts of the quantity we're depositing
                 part_n_ij_nm_Re, part_n_ij_nm_Im = part_n_ij_nm.as_real_imag()
 
-                dep_n_ij_nm = {"Re": part_n_ij_nm_Re, "Im": part_n_ij_nm_Im}
+                dep_n_ij_nm = {"Re": sympy.cxxcode(part_n_ij_nm_Re),
+                               "Im": sympy.cxxcode(part_n_ij_nm_Im)}
 
                 # construct the C++ string for depositing into n_ij_nm_Re or n_ij_nm_Im
                 code.append(f"amrex::Gpu::Atomic::AddNoRet(&{self.gridvar(Alm.name)}, sx(i) * sy(j) * sz(k) * {dep_n_ij_nm[Alm.ctype]});")
@@ -644,21 +646,22 @@ if __name__ == "__main__":
 
             code = []
 
-            code.append("Group Ylm_power = sphFile.get_group(\"Ylm_power\");")
+            code.append("Group Ylm_power, nu_group, flavor_group, l_group;")
+            code.append("Ylm_power = sphFile.get_group(\"Ylm_power\");")
 
             for nu_type in self.Ylm_power_hierarchy.keys():
-                code.append(f"Group nu_group = Ylm_power.get_group({nu_type});")
+                code.append(f"nu_group = Ylm_power.get_group(\"{nu_type}\");")
                 Pnu = self.Ylm_power_hierarchy[nu_type]
                 for flavor_component in Pnu.keys():
-                    code.append(f"Group flavor_group = nu_group.get_group({flavor_component});")
+                    code.append(f"flavor_group = nu_group.get_group(\"{flavor_component}\");")
                     Pflavor = Pnu[flavor_component]
                     for lcomp in Pflavor.keys():
-                        code.append(f"Group l_group = flavor_group.get_group({lcomp});")
+                        code.append(f"l_group = flavor_group.get_group(\"{lcomp}\");")
                         Pl = Pflavor[lcomp]
                         for mcomp in Pl.keys():
                             P_lm_ijt = Pl[mcomp]
-                            get_lm_ijt = f"amrex::get<{P_lm_ijt.power_index}>(reduced_Ylm_power)"
-                            code.append(f"l_group.open_dataset(\"{mcomp}\").append(Data<Real>(\"{mcomp}\", {get_lm_ijt}));")
+                            data_lm_ijt = "{" + f"amrex::get<{P_lm_ijt.power_index}>(reduced_Ylm_power)" + "}"
+                            code.append(f"l_group.open_dataset(\"{mcomp}\").append(Data<Real>(\"{mcomp}\", {data_lm_ijt}));")
 
             write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_write_Ylm_power_fill"))
 
