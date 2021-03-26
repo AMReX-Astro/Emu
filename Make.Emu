@@ -16,9 +16,15 @@ EBASE := main
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 
+CXXFLAGS += -ftemplate-depth=1000
+
 Bdirs   := Source
 Bpack   += $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
 Blocs   += $(foreach dir, $(Bdirs), $(TOP)/$(dir))
+
+CLASSYHDF_SRC = $(TOP)/ClassyHDF/Source
+Bpack += $(CLASSYHDF_SRC)/Make.package
+Blocs += $(CLASSYHDF_SRC)
 
 include $(Bpack)
 
