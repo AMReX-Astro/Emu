@@ -125,8 +125,8 @@ void evolve_flavor(const TestParams* parms)
         WritePlotFile(state, neutrinos_old, geom, initial_time, initial_step, write_particles_after_init);
     }
 
-    // Create spherical harmonics diagnostics
-    YlmDiagnostics spherical_harmonics(ba, dm, geom);
+    // Initialize spherical harmonics diagnostics
+    YlmDiagnostics spherical_harmonics(ba, dm, geom, initial_step);
 
     amrex::Print() << "Done. " << std::endl;
 
@@ -192,6 +192,11 @@ void evolve_flavor(const TestParams* parms)
             int write_plot_particles = parms->write_plot_particles_every > 0 &&
                                        (step+1) % parms->write_plot_particles_every == 0;
             WritePlotFile(state, neutrinos, geom, time, step+1, write_plot_particles);
+        }
+
+        // Calculate the spherical harmonic power spectrum if required
+        if (parms->ylm_diag_every > 0 && (step+1) % parms->ylm_diag_every == 0) {
+            spherical_harmonics.evaluate(neutrinos, time, step+1);
         }
 
         // Set the next timestep from the last deposited grid data
