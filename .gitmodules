@@ -1,3 +1,6 @@
 [submodule "amrex"]
 	path = amrex
 	url = https://github.com/dwillcox/amrex.git
+[submodule "ClassyHDF"]
+	path = ClassyHDF
+	url = https://github.com/dwillcox/ClassyHDF
