@@ -6,6 +6,7 @@
 #include <AMReX_Geometry.H>
 #include <AMReX_MultiFab.H>
 #include <AMReX_ParticleMesh.H>
+#include <AMReX_PlotFileUtil.H>
 #include <ClassyHDF.H>
 #include <FlavoredNeutrinoContainer.H>
 
@@ -29,7 +30,8 @@ class YlmDiagnostics
     MultiFab grid_Ylm_spectrum;
     const Geometry& grid_geometry;
   public:
-    YlmDiagnostics(const amrex::BoxArray& ba, const amrex::DistributionMapping& dm, const amrex::Geometry& geom);
+    YlmDiagnostics(const amrex::BoxArray& ba, const amrex::DistributionMapping& dm, const amrex::Geometry& geom, const int initial_step);
+    void initialize_power_diagnostics(const int initial_step);
     void evaluate(const FlavoredNeutrinoContainer& neutrinos, amrex::Real time, int step);
     void compute_amplitudes(const FlavoredNeutrinoContainer& neutrinos);
     void reduce_power(amrex::Real time, int step);

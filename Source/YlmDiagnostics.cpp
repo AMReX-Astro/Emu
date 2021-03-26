@@ -20,14 +20,14 @@ namespace YIdx
 }
 
 YlmDiagnostics::YlmDiagnostics(const amrex::BoxArray& ba, const amrex::DistributionMapping& dm,
-                               const amrex::Geometry& geom, const int starting_step) : grid_geometry(geom)
+                               const amrex::Geometry& geom, const int initial_step) : grid_geometry(geom)
 {
     YIdx::Initialize();
     grid_Ylm_spectrum.define(ba, dm, YIdx::ncomp, 0);
-    initialize_power_diagnostics(starting_step);
+    initialize_power_diagnostics(initial_step);
 }
 
-void YlmDiagnostics::initialize_power_diagnostics(const int starting_step)
+void YlmDiagnostics::initialize_power_diagnostics(const int initial_step)
 {
     if (ParallelDescriptor::IOProcessor())
     {
@@ -42,7 +42,7 @@ void YlmDiagnostics::initialize_power_diagnostics(const int starting_step)
 
         // create a utility lambda to iterate through all of the Ylm
         // component datasets for each flavor component and call another lambda F.
-        auto map_Ylm_datasets = [] (auto& F) {
+        auto map_Ylm_datasets = [&] (const auto& F) {
             Group Ylm_power = sphFile.get_group("Ylm_power");
 
             for (auto nu_type : {"neutrinos", "antineutrinos"}) {
@@ -77,15 +77,15 @@ void YlmDiagnostics::initialize_power_diagnostics(const int starting_step)
             sphFile.create_dataset<Real>("times");
 
             // create datasets for the power spectrum components
-            map_Ylm_datasets([] (Group& nu_group, Group& f_group, Group& l_group, std::string& s_Ylm_m) {
+            map_Ylm_datasets([] (Group& nu_group, Group& f_group, Group& l_group, const std::string& s_Ylm_m) {
                 l_group.create_dataset<Real>(s_Ylm_m);
             });
         } else {
-            // otherwise, truncate the existing datasets to our starting_step due to restart
+            // otherwise, truncate the existing datasets to our initial_step due to restart
             Dataset steps = sphFile.open_dataset("steps");
 
             // find the index of the latest step number matching our current step number
-            auto search_criteria = [=](int i) -> bool { return (i==starting_step); };
+            auto search_criteria = [=](int i) -> bool { return (i==initial_step); };
             const bool search_backwards = true;
             int loc = steps.search<int>(search_criteria, search_backwards);
 
@@ -95,7 +95,7 @@ void YlmDiagnostics::initialize_power_diagnostics(const int starting_step)
                 steps.set_extent({loc});
                 sphFile.open_dataset("times").set_extent({loc});
 
-                map_Ylm_datasets([=] (Group& nu_group, Group& f_group, Group& l_group, std::string& s_Ylm_m) {
+                map_Ylm_datasets([=] (Group& nu_group, Group& f_group, Group& l_group, const std::string& s_Ylm_m) {
                     l_group.open_dataset(s_Ylm_m).set_extent({loc});
                 });
             }
@@ -137,10 +137,10 @@ void YlmDiagnostics::compute_amplitudes(const FlavoredNeutrinoContainer& neutrin
         const ParticleInterpolator<0> sz(delta_z, shape_factor_order_z);
 
         // Calculate the direction of this particle in (theta, phi)
-        const amrex::Real ux = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt)
-        const amrex::Real uy = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt)
-        const amrex::Real uz = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)
-        const amrex::Real theta, phi;
+        const amrex::Real ux = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt);
+        const amrex::Real uy = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt);
+        const amrex::Real uz = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt);
+        amrex::Real theta, phi;
         Util::CartesianToSphericalDirections(ux, uy, uz, theta, phi);
 
         for (int k = sz.first(); k <= sz.last(); ++k) {
@@ -170,7 +170,7 @@ void YlmDiagnostics::reduce_power(Real time, int step)
         const auto& sarr = grid_Ylm_spectrum.array(mfi);
 
         reduce_operations.eval(bx, reduce_data,
-        [=] AMREX_GPU_DEVICE (const int i, const int j, const int t) -> ReduceTuple
+        [=] AMREX_GPU_DEVICE (const int i, const int j, const int k) -> ReduceTuple
         {
             #include "generated_files/YlmDiagnostics.cpp_local_reduce_Ylm_power_fill"
         });
@@ -190,8 +190,8 @@ void YlmDiagnostics::reduce_power(Real time, int step)
         File sphFile("Ylm_power_diagnostics.h5");
 
         // append step & time to their respective datasets
-        sphFile.append(Data<int>("step", {step}));
-        sphFile.append(Data<Real>("time", {time}));
+        sphFile.append(Data<int>("steps", {step}));
+        sphFile.append(Data<Real>("times", {time}));
 
         // append reduced Ylm power to the respective datasets for
         // each flavor component
