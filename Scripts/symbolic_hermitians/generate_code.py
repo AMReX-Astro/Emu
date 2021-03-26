@@ -446,18 +446,30 @@ if __name__ == "__main__":
             self.set_name()
 
         def set_name(self):
-            self.name = f"amp_{self.base_name}_{self.n}_{self.mstring}_{self.ctype}_{self.i}{self.j}_{self.t}"
+            if self.t:
+                tail = f"_{self.t}"
+            else:
+                tail = ""
+            self.name = f"amp_{self.base_name}_{self.n}_{self.mstring}_{self.ctype}_{self.i}{self.j}{tail}"
 
     class YlmPower(YlmAmplitude):
         def __init__(self, *args, **kwargs):
             super(YlmPower, self).__init__(*args, **kwargs)
 
             self.set_name()
+            self.power_index = 0
             self.amp_re = YlmAmplitude(self.base_name, self.n, self.m, "Re", self.i, self.j, self.t)
             self.amp_im = YlmAmplitude(self.base_name, self.n, self.m, "Im", self.i, self.j, self.t)
 
+        def set_index(self, i):
+            self.power_index = i
+
         def set_name(self):
-            self.name = f"pow_{self.base_name}_{self.n}_{self.mstring}_{self.i}{self.j}_{self.t}"
+            if self.t:
+                tail = f"_{self.t}"
+            else:
+                tail = ""
+            self.name = f"pow_{self.base_name}_{self.n}_{self.mstring}_{self.i}{self.j}{tail}"
 
     class YlmDiagnostics(object):
         def __init__(self):
@@ -474,6 +486,13 @@ if __name__ == "__main__":
         def gridvar(self, name):
             return f"sarr(i, j, k, YIdx::{name})"
 
+        def initialize_power_hierarchy(self):
+                if t=="":
+                    self.Ylm_power_hierarchy["neutrinos"] = {}
+                elif t=="bar":
+                    self.Ylm_power_hierarchy["antineutrinos"] = {}
+
+
         def make_spherical_harmonic_vars(self):
             # constructs tuples of the form (varname, n, m, Re/Im, i, j, t) for Ynm
             # corresponding to density matrix component (i,j) for neutrinos (t="")
@@ -481,20 +500,36 @@ if __name__ == "__main__":
             # with contributions from both the real and imaginary parts of the density matrix element.
             self.Ylm_amplitudes = []
             self.Ylm_powers = []
+            self.Ylm_power_hierarchy = {}
 
             vars_base = "n"
             vars_re_im = ["Re", "Im"]
             tails = ["","bar"]
+            nu_types = {"": "neutrinos", "bar": "antineutrinos"}
+            pidx = 0
             for t in tails:
-                for n in range(args.max_Ylm_degree + 1):
-                    for m in range(-n, n+1):
-                        for i in range(args.N):
-                            for j in range(i, args.N):
-                                self.Ylm_powers.append(YlmPower(vars_base, n, m, "Re", i, j, t))
+                self.Ylm_power_hierarchy[nu_types[t]] = {}
+                for i in range(args.N):
+                    for j in range(i, args.N):
+                        self.Ylm_power_hierarchy[nu_types[t]][f"flavor_{i}{j}"] = {}
+                        for n in range(args.max_Ylm_degree + 1):
+                            self.Ylm_power_hierarchy[nu_types[t]][f"flavor_{i}{j}"][f"l={n}"] = {}
+                            for m in range(-n, n+1):
+                                if args.Ylm_sum_m:
+                                    m_key = "m=sum"
+                                else:
+                                    m_key = f"m={m}"
+                                power_lm_ijt = YlmPower(vars_base, n, m, "Re", i, j, t)
+                                # we have to keep track of what order we made these power variables
+                                # so we reduce them and save them in the same order
+                                power_lm_ijt.set_index(pidx)
+                                pidx += 1
+                                self.Ylm_power_hierarchy[nu_types[t]][f"flavor_{i}{j}"][f"l={n}"][m_key] = power_lm_ijt
+                                self.Ylm_powers.append(power_lm_ijt)
                                 for ctype in vars_re_im:
                                     self.Ylm_amplitudes.append(YlmAmplitude(vars_base, n, m, ctype, i, j, t))
-                        if args.Ylm_sum_m:
-                            break
+                                if args.Ylm_sum_m:
+                                    break
 
             self.Ylm_amplitude_names = [d.name for d in self.Ylm_amplitudes]
 
@@ -509,7 +544,9 @@ if __name__ == "__main__":
             #====================================#
             # YlmDiagnostics.cpp_grid_names_fill #
             #====================================#
-            code = ["\n".join([f"names.push_back(\"{ci}\");" for ci in self.Ylm_amplitude_names])]
+            code = [f"names.push_back(\"{ci}\");" for ci in self.Ylm_amplitude_names]
+            code.append(f"max_Ylm_degree = {args.max_Ylm_degree};")
+            code.append(f"using_Ylm_sum_m = {str(args.Ylm_sum_m).lower()};")
             write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_grid_names_fill"))
 
         def fill_compute_Ylm(self):
@@ -606,10 +643,24 @@ if __name__ == "__main__":
             num_powers = len(self.Ylm_powers)
 
             code = []
-            for i in range(num_powers):
-                code.append(f"sphFile << amrex::get<{i}>(reduced_Ylm_power) << ',';")
 
-            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_MPI_reduce_Ylm_power_fill"))
+            code.append("Group Ylm_power = sphFile.get_group(\"Ylm_power\");")
+
+            for nu_type in self.Ylm_power_hierarchy.keys():
+                code.append(f"Group nu_group = Ylm_power.get_group({nu_type});")
+                Pnu = self.Ylm_power_hierarchy[nu_type]
+                for flavor_component in Pnu.keys():
+                    code.append(f"Group flavor_group = nu_group.get_group({flavor_component});")
+                    Pflavor = Pnu[flavor_component]
+                    for lcomp in Pflavor.keys():
+                        code.append(f"Group l_group = flavor_group.get_group({lcomp});")
+                        Pl = Pflavor[lcomp]
+                        for mcomp in Pl.keys():
+                            P_lm_ijt = Pl[mcomp]
+                            get_lm_ijt = f"amrex::get<{P_lm_ijt.power_index}>(reduced_Ylm_power)"
+                            code.append(f"l_group.open_dataset(\"{mcomp}\").append(Data<Real>(\"{mcomp}\", {get_lm_ijt}));")
+
+            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_write_Ylm_power_fill"))
 
     ylm_diags = YlmDiagnostics()
     ylm_diags.generate()
