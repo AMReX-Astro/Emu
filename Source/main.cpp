@@ -195,7 +195,7 @@ void evolve_flavor(const TestParams* parms)
         }
 
         // Calculate the spherical harmonic power spectrum if required
-        if (parms->ylm_diag_every > 0 && (step+1) % parms->ylm_diag_every == 0) {
+        if (parms->compute_Ylm_every > 0 && (step+1) % parms->compute_Ylm_every == 0) {
             spherical_harmonics.evaluate(neutrinos, time, step+1);
         }
 
