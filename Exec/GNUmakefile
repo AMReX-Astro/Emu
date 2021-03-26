@@ -1,4 +1,4 @@
-EMU_HOME ?= ../
+EMU_HOME ?= ..
 AMREX_HOME ?= ../amrex
 
 SHAPE_FACTOR_ORDER ?= 2
