@@ -9,6 +9,8 @@ using namespace amrex;
 namespace YIdx
 {
     amrex::Vector<std::string> names;
+    int max_Ylm_degree;
+    bool using_Ylm_sum_m;
 
     void Initialize()
     {
@@ -18,10 +20,87 @@ namespace YIdx
 }
 
 YlmDiagnostics::YlmDiagnostics(const amrex::BoxArray& ba, const amrex::DistributionMapping& dm,
-                         const amrex::Geometry& geom) : grid_geometry(geom)
+                               const amrex::Geometry& geom, const int starting_step) : grid_geometry(geom)
 {
     YIdx::Initialize();
     grid_Ylm_spectrum.define(ba, dm, YIdx::ncomp, 0);
+    initialize_power_diagnostics(starting_step);
+}
+
+void YlmDiagnostics::initialize_power_diagnostics(const int starting_step)
+{
+    if (ParallelDescriptor::IOProcessor())
+    {
+        // Create an HDF5 file for saving our diagnostic data.
+        // If the file is already present, then assume we are doing a restart
+        // and truncate the file immediately prior to our starting step to
+        // overwrite any output from the prior run.
+
+        using namespace ClassyHDF;
+
+        File sphFile("Ylm_power_diagnostics.h5");
+
+        // create a utility lambda to iterate through all of the Ylm
+        // component datasets for each flavor component and call another lambda F.
+        auto map_Ylm_datasets = [] (auto& F) {
+            Group Ylm_power = sphFile.get_group("Ylm_power");
+
+            for (auto nu_type : {"neutrinos", "antineutrinos"}) {
+                Group nu_group = Ylm_power.get_group(nu_type);
+
+                for (int i = 0; i < NUM_FLAVORS; ++i) {
+                for (int j = i; j < NUM_FLAVORS; ++j) {
+                    const std::string s_flavor = "flavor_" + std::to_string(i) + std::to_string(j);
+                    Group flavor_group = nu_group.get_group(s_flavor);
+
+                    for (int Ylm_l = 0; Ylm_l <= YIdx::max_Ylm_degree; ++Ylm_l) {
+                        const std::string s_Ylm_l = "l=" + std::to_string(Ylm_l);
+                        Group l_group = flavor_group.get_group(s_Ylm_l);
+
+                        if (YIdx::using_Ylm_sum_m) {
+                            const std::string s_Ylm_m = "m=sum";
+                            F(nu_group, flavor_group, l_group, s_Ylm_m);
+                        } else {
+                            for (int Ylm_m = -Ylm_l; Ylm_m <= Ylm_l; ++Ylm_m) {
+                                const std::string s_Ylm_m = "m=" + std::to_string(Ylm_m);
+                                F(nu_group, flavor_group, l_group, s_Ylm_m);
+                            }
+                        }
+                    }
+                }}
+            }
+        };
+
+        if (!sphFile.existed()) {
+            // create our datasets if the diagnostics file did not already exist
+            sphFile.create_dataset<int>("steps");
+            sphFile.create_dataset<Real>("times");
+
+            // create datasets for the power spectrum components
+            map_Ylm_datasets([] (Group& nu_group, Group& f_group, Group& l_group, std::string& s_Ylm_m) {
+                l_group.create_dataset<Real>(s_Ylm_m);
+            });
+        } else {
+            // otherwise, truncate the existing datasets to our starting_step due to restart
+            Dataset steps = sphFile.open_dataset("steps");
+
+            // find the index of the latest step number matching our current step number
+            auto search_criteria = [=](int i) -> bool { return (i==starting_step); };
+            const bool search_backwards = true;
+            int loc = steps.search<int>(search_criteria, search_backwards);
+
+            // truncate the datasets in the file to remove the current step and any
+            // following steps that may be present from a previous run
+            if (loc >= 0) {
+                steps.set_extent({loc});
+                sphFile.open_dataset("times").set_extent({loc});
+
+                map_Ylm_datasets([=] (Group& nu_group, Group& f_group, Group& l_group, std::string& s_Ylm_m) {
+                    l_group.open_dataset(s_Ylm_m).set_extent({loc});
+                });
+            }
+        }
+    }
 }
 
 void YlmDiagnostics::evaluate(const FlavoredNeutrinoContainer& neutrinos,
@@ -29,7 +108,7 @@ void YlmDiagnostics::evaluate(const FlavoredNeutrinoContainer& neutrinos,
 {
     BL_PROFILE("YlmDiagnostics::evaluate()");
     compute_amplitudes(neutrinos);
-    reduce_power(step);
+    reduce_power(time, step);
     save_amplitudes(time, step);
 }
 
@@ -74,10 +153,11 @@ void YlmDiagnostics::compute_amplitudes(const FlavoredNeutrinoContainer& neutrin
     });
 }
 
-void YlmDiagnostics::reduce_power(int step)
+void YlmDiagnostics::reduce_power(Real time, int step)
 {
     BL_PROFILE("YlmDiagnostics::reduce_power()");
     // Sum reduce spherical harmonic power to IO Processor
+
     #include "generated_files/YlmDiagnostics.cpp_setup_reductions_Ylm_power_fill"
     using ReduceTuple = typename decltype(reduce_data)::Type;
 
@@ -105,15 +185,17 @@ void YlmDiagnostics::reduce_power(int step)
     // Write spherical harmonic power spectrum to diagnostic file
     if (ParallelDescriptor::IOProcessor())
     {
-        std::ofstream sphFile;
+        using namespace ClassyHDF;
 
-        // Write reduced Ylm power
-        sphFile.open("Ylm_power_diagnostics.dat", std::fstream::app);
-        sphFile << step << ',';
+        File sphFile("Ylm_power_diagnostics.h5");
+
+        // append step & time to their respective datasets
+        sphFile.append(Data<int>("step", {step}));
+        sphFile.append(Data<Real>("time", {time}));
+
+        // append reduced Ylm power to the respective datasets for
+        // each flavor component
         #include "generated_files/YlmDiagnostics.cpp_write_Ylm_power_fill"
-        sphFile << std::endl;
-
-        sphFile.close();
     }
 }
 

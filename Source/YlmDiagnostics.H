@@ -6,6 +6,7 @@
 #include <AMReX_Geometry.H>
 #include <AMReX_MultiFab.H>
 #include <AMReX_ParticleMesh.H>
+#include <ClassyHDF.H>
 #include <FlavoredNeutrinoContainer.H>
 
 namespace YIdx
@@ -16,6 +17,8 @@ namespace YIdx
     };
 
     extern amrex::Vector<std::string> names;
+    extern int max_Ylm_degree;
+    extern bool using_Ylm_sum_m;
 
     void Initialize();
 };
@@ -29,7 +32,7 @@ class YlmDiagnostics
     YlmDiagnostics(const amrex::BoxArray& ba, const amrex::DistributionMapping& dm, const amrex::Geometry& geom);
     void evaluate(const FlavoredNeutrinoContainer& neutrinos, amrex::Real time, int step);
     void compute_amplitudes(const FlavoredNeutrinoContainer& neutrinos);
-    void reduce_power(int step);
+    void reduce_power(amrex::Real time, int step);
     void save_amplitudes(amrex::Real time, int step);
 };
 
