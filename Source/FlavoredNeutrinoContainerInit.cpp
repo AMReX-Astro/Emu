@@ -115,9 +115,10 @@ namespace
 // angular structure as determined by the Minerbo closure
 // Z is a parameter determined by the flux factor
 // mu is the cosine of the angle relative to the flux direction
+// Coefficients set such that the expectation value is 1
   AMREX_GPU_HOST_DEVICE void minerbo_closure(Real* result, const Real Z, const Real mu){
 	Real minfluxfac = 1e-3;
-	*result = 1./(4.*M_PI) * std::exp(Z*mu);
+	*result = std::exp(Z*mu);
 	if(Z/3.0 > minfluxfac)
 		*result *= Z/std::sinh(Z);
   }
