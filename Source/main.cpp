@@ -230,6 +230,11 @@ int main(int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
 
+    // write build information to screen
+    if (ParallelDescriptor::IOProcessor()) {
+        writeBuildInfo();
+    }
+
     // by default amrex initializes rng deterministically
     // this uses the time for a different run each time
     amrex::InitRandom(ParallelDescriptor::MyProc()+time(NULL), ParallelDescriptor::NProcs());

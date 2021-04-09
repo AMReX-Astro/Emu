@@ -17,4 +17,7 @@ RecoverParticles (const std::string& dir,
 				  FlavoredNeutrinoContainer& neutrinos,
 				  amrex::Real& time, int& step);
 
+void
+writeBuildInfo ();
+
 #endif
