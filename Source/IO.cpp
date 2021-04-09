@@ -32,6 +32,9 @@ WritePlotFile (const amrex::MultiFab& state,
         auto neutrino_varnames = neutrinos.get_attribute_names();
         neutrinos.Checkpoint(plotfilename, "neutrinos", true, neutrino_varnames);
     }
+
+    // write job information
+    writeJobInfo (plotfilename, geom);
 }
 
 void
@@ -60,7 +63,7 @@ RecoverParticles (const std::string& dir,
 }
 
 
-// writeBuildInfo is copied from Castro/Source/driver/Castro_io.cpp
+// writeBuildInfo and writeJobInfo are copied from Castro/Source/driver/Castro_io.cpp
 // and modified by Sherwood Richers
 /*
 SOURCE CODE LICENSE AGREEMENT
@@ -165,4 +168,159 @@ writeBuildInfo (){
   }
 
   std::cout << "\n"<<PrettyLine<<"\n";
+}
+
+
+void
+writeJobInfo (const std::string& dir, const amrex::Geometry& geom)
+{
+
+  // job_info file with details about the run
+  std::ofstream jobInfoFile;
+  std::string FullPathJobInfoFile = dir;
+  FullPathJobInfoFile += "/job_info";
+  jobInfoFile.open(FullPathJobInfoFile.c_str(), std::ios::out);
+
+  std::string PrettyLine = std::string(78, '=') + "\n";
+  std::string OtherLine = std::string(78, '-') + "\n";
+  std::string SkipSpace = std::string(8, ' ');
+
+  // job information
+  jobInfoFile << PrettyLine;
+  jobInfoFile << " Emu Job Information\n";
+  jobInfoFile << PrettyLine;
+
+  jobInfoFile << "number of MPI processes: " << ParallelDescriptor::NProcs() << "\n";
+#ifdef _OPENMP
+  jobInfoFile << "number of threads:       " << omp_get_max_threads() << "\n";
+#endif
+
+  jobInfoFile << "\n\n";
+
+  // plotfile information
+  jobInfoFile << PrettyLine;
+  jobInfoFile << " Plotfile Information\n";
+  jobInfoFile << PrettyLine;
+
+  time_t now = time(0);
+
+  // Convert now to tm struct for local timezone
+  tm* localtm = localtime(&now);
+  jobInfoFile   << "output date / time: " << asctime(localtm);
+
+#ifdef AMREX_USE_GPU
+  // This output assumes for simplicity that every rank uses the
+  // same type of GPU.
+
+  jobInfoFile << PrettyLine;
+  jobInfoFile << "GPU Information:       " << "\n";
+  jobInfoFile << PrettyLine;
+
+  jobInfoFile << "GPU model name: " << Gpu::Device::deviceName() << "\n";
+  jobInfoFile << "Number of GPUs used: " << Gpu::Device::numDevicesUsed() << "\n";
+
+  jobInfoFile << "\n\n";
+#endif
+  jobInfoFile << "\n\n";
+
+
+  // build information
+  jobInfoFile << PrettyLine;
+  jobInfoFile << " Build Information\n";
+  jobInfoFile << PrettyLine;
+
+  jobInfoFile << "build date:    " << buildInfoGetBuildDate() << "\n";
+  jobInfoFile << "build machine: " << buildInfoGetBuildMachine() << "\n";
+  jobInfoFile << "build dir:     " << buildInfoGetBuildDir() << "\n";
+  jobInfoFile << "AMReX dir:     " << buildInfoGetAMReXDir() << "\n";
+
+  jobInfoFile << "\n";
+
+  jobInfoFile << "COMP:          " << buildInfoGetComp() << "\n";
+  jobInfoFile << "COMP version:  " << buildInfoGetCompVersion() << "\n";
+
+  jobInfoFile << "\n";
+  
+  jobInfoFile << "C++ compiler:  " << buildInfoGetCXXName() << "\n";
+  jobInfoFile << "C++ flags:     " << buildInfoGetCXXFlags() << "\n";
+
+  jobInfoFile << "\n";
+
+  jobInfoFile << "Fortran comp:  " << buildInfoGetFName() << "\n";
+  jobInfoFile << "Fortran flags: " << buildInfoGetFFlags() << "\n";
+
+  jobInfoFile << "\n";
+
+  jobInfoFile << "Link flags:    " << buildInfoGetLinkFlags() << "\n";
+  jobInfoFile << "Libraries:     " << buildInfoGetLibraries() << "\n";
+
+  jobInfoFile << "\n";
+
+  for (int n = 1; n <= buildInfoGetNumModules(); n++) {
+    jobInfoFile << buildInfoGetModuleName(n) << ": " << buildInfoGetModuleVal(n) << "\n";
+  }
+
+  jobInfoFile << "\n";
+
+  const char* githash1 = buildInfoGetGitHash(1);
+  const char* githash2 = buildInfoGetGitHash(2);
+  if (strlen(githash1) > 0) {
+    jobInfoFile << "Emu       git describe: " << githash1 << "\n";
+  }
+  if (strlen(githash2) > 0) {
+    jobInfoFile << "AMReX        git describe: " << githash2 << "\n";
+  }
+
+  const char* buildgithash = buildInfoGetBuildGitHash();
+  const char* buildgitname = buildInfoGetBuildGitName();
+  if (strlen(buildgithash) > 0){
+    jobInfoFile << buildgitname << " git describe: " << buildgithash << "\n";
+  }
+
+  jobInfoFile << "\n\n";
+
+
+  // grid information
+  jobInfoFile << PrettyLine;
+  jobInfoFile << " Grid Information\n";
+  jobInfoFile << PrettyLine;
+
+  jobInfoFile << "geometry.is_periodic: ";
+  for (int idir = 0; idir < AMREX_SPACEDIM; idir++) {
+    jobInfoFile << geom.isPeriodic(idir) << " ";
+  }
+  jobInfoFile << "\n";
+
+  jobInfoFile << "geometry.coord_sys:   " << geom.Coord() << "\n";
+
+  jobInfoFile << "geometry.prob_lo:     ";
+  for (int idir = 0; idir < AMREX_SPACEDIM; idir++) {
+    jobInfoFile << geom.ProbLo(idir) << " ";
+  }
+  jobInfoFile << "\n";
+
+  jobInfoFile << "geometry.prob_hi:     ";
+  for (int idir = 0; idir < AMREX_SPACEDIM; idir++) {
+    jobInfoFile << geom.ProbHi(idir) << " ";
+  }
+  jobInfoFile << "\n";
+
+  jobInfoFile << "amr.n_cell:           ";
+  const int*  domain_lo = geom.Domain().loVect();
+  const int*  domain_hi = geom.Domain().hiVect();
+  for (int idir = 0; idir < AMREX_SPACEDIM; idir++) {
+    jobInfoFile << domain_hi[idir] - domain_lo[idir] + 1 << " ";
+  }
+  jobInfoFile << "\n\n";
+
+  jobInfoFile.close();
+
+  // now the external parameters
+  const int jobinfo_file_length = FullPathJobInfoFile.length();
+  Vector<int> jobinfo_file_name(jobinfo_file_length);
+
+  for (int i = 0; i < jobinfo_file_length; i++) {
+    jobinfo_file_name[i] = FullPathJobInfoFile[i];
+  }
+
 }

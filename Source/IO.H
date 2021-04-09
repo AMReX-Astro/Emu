@@ -20,4 +20,7 @@ RecoverParticles (const std::string& dir,
 void
 writeBuildInfo ();
 
+void
+writeJobInfo (const std::string& dir, const amrex::Geometry& geom);
+
 #endif
