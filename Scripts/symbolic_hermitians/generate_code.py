@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 
-from sympy.physics.quantum.dagger import Dagger
-import argparse
 import os
+import argparse
 import sympy
+from sympy.physics.quantum.dagger import Dagger
 from sympy.codegen.ast import Assignment
 from HermitianUtils import HermitianMatrix,SU_vector_ideal_magnitude
-import shutil
+from SphericalHarmonics import YlmDiagnostics
+from CodeWriter import CodeWriter
 
 parser = argparse.ArgumentParser(description="Generates code for calculating C = i * [A,B] for symbolic NxN Hermitian matrices A, B, C, using real-valued Real and Imaginary components.")
 parser.add_argument("N", type=int, help="Size of NxN Hermitian matrices.")
@@ -19,74 +20,14 @@ parser.add_argument("-Ylm_sum_m", "--Ylm_sum_m", action="store_true", help="When
 
 args = parser.parse_args()
 
-def write_code(code, output_file, template=None):
-    ## If a template file is supplied, this will insert the generated code
-    ## where the "<>code<>" string is found.
-    ##
-    ## Only the first instance of "<>code<>" is used
-    ## The generated code will be indented the same amount as "<>code<>"
-
-    try:
-        fo = open(output_file, 'w')
-    except:
-        print("could not open output file for writing")
-        raise
-
-    indent = ""
-    header = []
-    footer = []
-
-    if template:
-        try:
-            ft = open(template, 'r')
-        except:
-            print("could not open template file for reading")
-            raise
-
-        found_code_loc = False
-        for l in ft:
-            loc = l.find("<>code<>")
-            if loc != -1:
-                found_code_loc = True
-                indent = " "*loc # indent the generated code the same amount as <>code<>
-            else:
-                if found_code_loc:
-                    footer.append(l)
-                else:
-                    header.append(l)
-        ft.close()
-    #else:
-        #header.append('\n')
-        #footer.append('\n')
-
-    # Write header
-    for l in header:
-        fo.write(l)
-
-    # Write generated code
-    for i, line in enumerate(code):
-        fo.write("{}{}\n".format(indent, line))
-        #if i<len(code)-1:
-        #    fo.write("\n")
-
-    # Write footer
-    for l in footer:
-        fo.write(l)
-
-    fo.close()
-
-def delete_generated_files():
-    try:
-        shutil.rmtree("Source/generated_files")
-    except FileNotFoundError:
-        pass
-
 if __name__ == "__main__":
+    codeWriter = CodeWriter(args.emu_home)
+
     if args.clean:
-        delete_generated_files()
+        codeWriter.delete_generated_files()
         exit()
 
-    os.makedirs(os.path.join(args.emu_home,"Source/generated_files"), exist_ok=True)
+    os.makedirs(os.path.join(args.emu_home, "Source", "generated_files"), exist_ok=True)
 
     #==================================#
     # FlavoredNeutrinoContainer.H_fill #
@@ -102,7 +43,7 @@ if __name__ == "__main__":
             code += A.header()
 
     code = [code[i]+"," for i in range(len(code))]
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoContainer.H_fill"))
+    codeWriter.write(code, "FlavoredNeutrinoContainer.H_fill")
 
     #========================================================#
     # FlavoredNeutrinoContainerInit.H_particle_varnames_fill #
@@ -120,7 +61,7 @@ if __name__ == "__main__":
     code = ['"{}"'.format(c) for c in code]
     code_string = code_string + ", ".join(code) + "};"
     code = [code_string]
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoContainerInit.H_particle_varnames_fill"))
+    codeWriter.write(code, "FlavoredNeutrinoContainerInit.H_particle_varnames_fill")
 
     #===============#
     # Evolve.H_fill #
@@ -133,7 +74,7 @@ if __name__ == "__main__":
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
     code = [code[i]+"," for i in range(len(code))]
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.H_fill"))
+    codeWriter.write(code, "Evolve.H_fill")
 
     #============================#
     # Evolve.cpp_grid_names_fill #
@@ -146,7 +87,7 @@ if __name__ == "__main__":
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
     code = ["\n".join(["names.push_back(\"{}\");".format(ci) for ci in code])]
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_grid_names_fill"))
+    codeWriter.write(code, "Evolve.cpp_grid_names_fill")
 
     #=================================#
     # Evolve.cpp_deposit_to_mesh_fill #
@@ -167,7 +108,7 @@ if __name__ == "__main__":
             deplist = HermitianMatrix(args.N, deposit_vars[ivar]+"{}{}_{}"+t).header()
             for icomp in range(len(flist)):
                 code.append(string1+deplist[icomp]+string2+flist[icomp]+string3+string4[ivar])
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_deposit_to_mesh_fill"))
+    codeWriter.write(code, "Evolve.cpp_deposit_to_mesh_fill")
 
     #==================#
     # Evolve.H_M2_fill #
@@ -225,7 +166,7 @@ if __name__ == "__main__":
     massmatrix.H = M2
     code = massmatrix.code()
     code = ["double "+code[i] for i in range(len(code))]
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files","Evolve.H_M2_fill"))
+    codeWriter.write(code, "Evolve.H_M2_fill")
 
     #======================#
     # Evolve.cpp_Vvac_fill #
@@ -243,7 +184,7 @@ if __name__ == "__main__":
                 sgn =  1
             line = "Real "+Vlist[icomp]+" = "+str(sgn)+"*("+M2list[icomp] + ")*PhysConst::c4/(2.*p.rdata(PIdx::pupt));"
             code.append(line)
-    write_code(code, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_Vvac_fill"))
+    codeWriter.write(code, "Evolve.cpp_Vvac_fill")
 
     #============================#
     # Evolve.cpp_compute_dt_fill #
@@ -254,7 +195,7 @@ if __name__ == "__main__":
             line = "N_diag_max = max(N_diag_max, state.max(GIdx::N"+str(i)+str(i)+"_Re"+t+"));"
             code.append(line)
     code.append("N_diag_max *= 2*"+str(args.N)+";") # overestimate of net neutrino+antineutrino number density
-    write_code(code, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_compute_dt_fill"))
+    codeWriter.write(code, "Evolve.cpp_compute_dt_fill")
 
     #=======================================#
     # Evolve.cpp_interpolate_from_mesh_fill #
@@ -317,7 +258,7 @@ if __name__ == "__main__":
             line += "sqrt(2.) * PhysConst::GF * inv_cell_volume * sx(i) * sy(j) * sz(k) * (inside_parentheses);"
             code.append(line)
             code.append("")
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_interpolate_from_mesh_fill"))
+    codeWriter.write(code, "Evolve.cpp_interpolate_from_mesh_fill")
 
     #========================#
     # Evolve.cpp_dfdt_fill #
@@ -349,7 +290,7 @@ if __name__ == "__main__":
         # Write out dFdt->F
         code.append(dFdt.code())
     code = [line for sublist in code for line in sublist]
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))
+    codeWriter.write(code, "Evolve.cpp_dfdt_fill")
 
     #================================================#
     # FlavoredNeutrinoContainer.cpp_Renormalize_fill #
@@ -405,9 +346,7 @@ if __name__ == "__main__":
         code.append("}")
         code.append("")
         
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoContainer.cpp_Renormalize_fill"))
-    # Write code to output file, using a template if one is provided
-    # write_code(code, "code.cpp", args.output_template)
+    codeWriter.write(code, "FlavoredNeutrinoContainer.cpp_Renormalize_fill")
 
 
     #====================================================#
@@ -417,253 +356,11 @@ if __name__ == "__main__":
     for t in tails:
         f = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
         code.append("p.rdata(PIdx::L"+t+") = "+sympy.cxxcode(sympy.simplify(f.SU_vector_magnitude()))+";" )
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files/FlavoredNeutrinoContainerInit.cpp_set_trace_length"))
+    codeWriter.write(code, "FlavoredNeutrinoContainerInit.cpp_set_trace_length")
 
 
     #================#
     # YlmDiagnostics #
     #================#
-
-    # First, define some helper classes we'll need
-    class YlmAmplitude(object):
-        def __init__(self, base_name, n, m, ctype, i, j, t):
-            self.base_name = base_name
-
-            self.n = n
-            self.m = m
-
-            self.mstring = f"{self.m}"
-            if self.m < 0:
-                self.mstring = f"m{abs(self.m)}"
-            if args.Ylm_sum_m:
-                self.m = "summ"
-                self.mstring = "summ"
-
-            self.ctype = ctype
-            self.i = i
-            self.j = j
-            self.t = t
-            self.set_name()
-
-        def set_name(self):
-            if self.t:
-                tail = f"_{self.t}"
-            else:
-                tail = ""
-            self.name = f"amp_{self.base_name}_{self.n}_{self.mstring}_{self.ctype}_{self.i}{self.j}{tail}"
-
-    class YlmPower(YlmAmplitude):
-        def __init__(self, *args, **kwargs):
-            super(YlmPower, self).__init__(*args, **kwargs)
-
-            self.set_name()
-            self.power_index = 0
-            self.amp_re = YlmAmplitude(self.base_name, self.n, self.m, "Re", self.i, self.j, self.t)
-            self.amp_im = YlmAmplitude(self.base_name, self.n, self.m, "Im", self.i, self.j, self.t)
-
-        def set_index(self, i):
-            self.power_index = i
-
-        def set_name(self):
-            if self.t:
-                tail = f"_{self.t}"
-            else:
-                tail = ""
-            self.name = f"pow_{self.base_name}_{self.n}_{self.mstring}_{self.i}{self.j}{tail}"
-
-    class YlmDiagnostics(object):
-        def __init__(self):
-            self.make_spherical_harmonic_vars()
-
-        def generate(self):
-            self.fill_grid_indices()
-            self.fill_grid_names()
-            self.fill_compute_Ylm()
-            self.fill_setup_reductions_Ylm_power()
-            self.fill_local_reduce_Ylm_power()
-            self.fill_MPI_reduce_Ylm_power()
-            self.fill_write_Ylm_power()
-
-        def gridvar(self, name):
-            return f"sarr(i, j, k, YIdx::{name})"
-
-        def initialize_power_hierarchy(self):
-                if t=="":
-                    self.Ylm_power_hierarchy["neutrinos"] = {}
-                elif t=="bar":
-                    self.Ylm_power_hierarchy["antineutrinos"] = {}
-
-
-        def make_spherical_harmonic_vars(self):
-            # constructs tuples of the form (varname, n, m, Re/Im, i, j, t) for Ynm
-            # corresponding to density matrix component (i,j) for neutrinos (t="")
-            # or antineutrinos (t="bar"). Re/Im is for the spherical harmonic amplitude,
-            # with contributions from both the real and imaginary parts of the density matrix element.
-            self.Ylm_amplitudes = []
-            self.Ylm_powers = []
-            self.Ylm_power_hierarchy = {}
-
-            vars_base = "n"
-            vars_re_im = ["Re", "Im"]
-            tails = ["","bar"]
-            nu_types = {"": "neutrinos", "bar": "antineutrinos"}
-            pidx = 0
-            for t in tails:
-                self.Ylm_power_hierarchy[nu_types[t]] = {}
-                for i in range(args.N):
-                    for j in range(i, args.N):
-                        self.Ylm_power_hierarchy[nu_types[t]][f"flavor_{i}{j}"] = {}
-                        for n in range(args.max_Ylm_degree + 1):
-                            self.Ylm_power_hierarchy[nu_types[t]][f"flavor_{i}{j}"][f"l={n}"] = {}
-                            for m in range(-n, n+1):
-                                if args.Ylm_sum_m:
-                                    m_key = "m=sum"
-                                else:
-                                    m_key = f"m={m}"
-                                power_lm_ijt = YlmPower(vars_base, n, m, "Re", i, j, t)
-                                # we have to keep track of what order we made these power variables
-                                # so we reduce them and save them in the same order
-                                power_lm_ijt.set_index(pidx)
-                                pidx += 1
-                                self.Ylm_power_hierarchy[nu_types[t]][f"flavor_{i}{j}"][f"l={n}"][m_key] = power_lm_ijt
-                                self.Ylm_powers.append(power_lm_ijt)
-                                for ctype in vars_re_im:
-                                    self.Ylm_amplitudes.append(YlmAmplitude(vars_base, n, m, ctype, i, j, t))
-                                if args.Ylm_sum_m:
-                                    break
-
-            self.Ylm_amplitude_names = [d.name for d in self.Ylm_amplitudes]
-
-        def fill_grid_indices(self):
-            #====================================#
-            # YlmDiagnostics.H_grid_indices_fill #
-            #====================================#
-            code = [f"{ci}," for ci in self.Ylm_amplitude_names]
-            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.H_grid_indices_fill"))
-
-        def fill_grid_names(self):
-            #====================================#
-            # YlmDiagnostics.cpp_grid_names_fill #
-            #====================================#
-            code = [f"names.push_back(\"{ci}\");" for ci in self.Ylm_amplitude_names]
-            code.append(f"max_Ylm_degree = {args.max_Ylm_degree};")
-            code.append(f"using_Ylm_sum_m = {str(args.Ylm_sum_m).lower()};")
-            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_grid_names_fill"))
-
-        def fill_compute_Ylm(self):
-            #=====================================#
-            # YlmDiagnostics.cpp_compute_Ylm_fill #
-            #=====================================#
-            #
-            # For each grid variable in the spherical harmonic decomposition,
-            # generate the line of code for any particle's contribution.
-            code = []
-
-            for Alm in self.Ylm_amplitudes:
-                # make symbols for variables defined in the enclosing scope of the C++
-                theta = sympy.Symbol("theta", real=True)
-                phi = sympy.Symbol("phi", real=True)
-                dVi = sympy.Symbol("dVi", real=True)
-
-                # make symbol for number of neutrinos in the particle
-                Np = sympy.Symbol(f"p.rdata(PIdx::N{Alm.t})", real=True)
-
-                # make symbols for the particle density matrix components we will need
-                rho_ij_Re = sympy.Symbol(f"p.rdata(PIdx::f{Alm.i}{Alm.j}_Re{Alm.t})", real=True)
-                rho_ij_Im = sympy.Symbol(f"p.rdata(PIdx::f{Alm.i}{Alm.j}_Im{Alm.t})", real=True)
-                if Alm.i==Alm.j:
-                    rho_ij_Im = 0
-                rho_ij = rho_ij_Re + sympy.I * rho_ij_Im
-
-                # get the quantity we want to deposit into this grid variable matrix component
-                if args.Ylm_sum_m:
-                    mrange = range(-Alm.n, Alm.n+1)
-                else:
-                    mrange = [Alm.m]
-
-                part_n_ij_nm = 0
-                for m in mrange:
-                    part_n_ij_nm += sympy.Ynm(Alm.n, m, theta, phi).conjugate().expand(func=True)
-                part_n_ij_nm = Np * dVi * rho_ij * part_n_ij_nm
-
-                # get real and imaginary parts of the quantity we're depositing
-                part_n_ij_nm_Re, part_n_ij_nm_Im = part_n_ij_nm.as_real_imag()
-
-                dep_n_ij_nm = {"Re": sympy.cxxcode(part_n_ij_nm_Re),
-                               "Im": sympy.cxxcode(part_n_ij_nm_Im)}
-
-                # construct the C++ string for depositing into n_ij_nm_Re or n_ij_nm_Im
-                code.append(f"amrex::Gpu::Atomic::AddNoRet(&{self.gridvar(Alm.name)}, sx(i) * sy(j) * sz(k) * {dep_n_ij_nm[Alm.ctype]});")
-
-            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_compute_Ylm_fill"))
-
-        def fill_setup_reductions_Ylm_power(self):
-            #====================================================#
-            # YlmDiagnostics.cpp_setup_reductions_Ylm_power_fill #
-            #====================================================#
-            num_powers = len(self.Ylm_powers)
-            reduce_ops  = ",".join(["ReduceOpSum"] * num_powers)
-            reduce_data = ",".join(["Real"] * num_powers)
-
-            code = []
-            code.append(f"ReduceOps<{reduce_ops}> reduce_operations;")
-            code.append(f"ReduceData<{reduce_data}> reduce_data(reduce_operations);")
-            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_setup_reductions_Ylm_power_fill"))
-
-        def fill_local_reduce_Ylm_power(self):
-            #================================================#
-            # YlmDiagnostics.cpp_local_reduce_Ylm_power_fill #
-            #================================================#
-            def power_string(Plm):
-                amp_re = self.gridvar(Plm.amp_re.name)
-                amp_im = self.gridvar(Plm.amp_im.name)
-                return f"{amp_re} * {amp_re} + {amp_im} * {amp_im}"
-
-            compute_power = [power_string(Plm) for Plm in self.Ylm_powers]
-            return_power_str = "return {\n" + ",\n".join(compute_power) + "\n};"
-
-            code = []
-            code.append(return_power_str)
-            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_local_reduce_Ylm_power_fill"))
-
-        def fill_MPI_reduce_Ylm_power(self):
-            #==============================================#
-            # YlmDiagnostics.cpp_MPI_reduce_Ylm_power_fill #
-            #==============================================#
-            num_powers = len(self.Ylm_powers)
-
-            code = []
-            for i in range(num_powers):
-                code.append(f"ParallelDescriptor::ReduceRealSum(amrex::get<{i}>(reduced_Ylm_power), IOProc);")
-
-            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_MPI_reduce_Ylm_power_fill"))
-
-        def fill_write_Ylm_power(self):
-            #=========================================#
-            # YlmDiagnostics.cpp_write_Ylm_power_fill #
-            #=========================================#
-            num_powers = len(self.Ylm_powers)
-
-            code = []
-
-            code.append("Group Ylm_power, nu_group, flavor_group, l_group;")
-            code.append("Ylm_power = sphFile.get_group(\"Ylm_power\");")
-
-            for nu_type in self.Ylm_power_hierarchy.keys():
-                code.append(f"nu_group = Ylm_power.get_group(\"{nu_type}\");")
-                Pnu = self.Ylm_power_hierarchy[nu_type]
-                for flavor_component in Pnu.keys():
-                    code.append(f"flavor_group = nu_group.get_group(\"{flavor_component}\");")
-                    Pflavor = Pnu[flavor_component]
-                    for lcomp in Pflavor.keys():
-                        code.append(f"l_group = flavor_group.get_group(\"{lcomp}\");")
-                        Pl = Pflavor[lcomp]
-                        for mcomp in Pl.keys():
-                            P_lm_ijt = Pl[mcomp]
-                            data_lm_ijt = "{" + f"amrex::get<{P_lm_ijt.power_index}>(reduced_Ylm_power)" + "}"
-                            code.append(f"l_group.open_dataset(\"{mcomp}\").append(Data<Real>(\"{mcomp}\", {data_lm_ijt}));")
-
-            write_code(code, os.path.join(args.emu_home, "Source/generated_files", "YlmDiagnostics.cpp_write_Ylm_power_fill"))
-
-    ylm_diags = YlmDiagnostics()
+    ylm_diags = YlmDiagnostics(codeWriter, args.N, args.max_Ylm_degree, args.Ylm_sum_m)
     ylm_diags.generate()
