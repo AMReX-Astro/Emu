@@ -33,9 +33,9 @@ class YlmDiagnostics
     YlmDiagnostics(const amrex::BoxArray& ba, const amrex::DistributionMapping& dm, const amrex::Geometry& geom, const int initial_step);
     void initialize_power_diagnostics(const int initial_step);
     void evaluate(const FlavoredNeutrinoContainer& neutrinos, amrex::Real time, int step);
-    void compute_amplitudes(const FlavoredNeutrinoContainer& neutrinos);
+    void compute_spectrum(const FlavoredNeutrinoContainer& neutrinos);
     void reduce_power(amrex::Real time, int step);
-    void save_amplitudes(amrex::Real time, int step);
+    void save_spectrum(amrex::Real time, int step);
 };
 
 #endif

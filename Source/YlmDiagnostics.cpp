@@ -107,14 +107,14 @@ void YlmDiagnostics::evaluate(const FlavoredNeutrinoContainer& neutrinos,
                               Real time, int step)
 {
     BL_PROFILE("YlmDiagnostics::evaluate()");
-    compute_amplitudes(neutrinos);
+    compute_spectrum(neutrinos);
     reduce_power(time, step);
-    save_amplitudes(time, step);
+    save_spectrum(time, step);
 }
 
-void YlmDiagnostics::compute_amplitudes(const FlavoredNeutrinoContainer& neutrinos)
+void YlmDiagnostics::compute_spectrum(const FlavoredNeutrinoContainer& neutrinos)
 {
-    BL_PROFILE("YlmDiagnostics::compute_amplitudes()");
+    BL_PROFILE("YlmDiagnostics::compute_spectrum()");
     // Compute spherical harmonic spectrum for each grid cell
     const auto plo = grid_geometry.ProbLoArray();
     const auto dxi = grid_geometry.InvCellSizeArray();
@@ -199,9 +199,9 @@ void YlmDiagnostics::reduce_power(Real time, int step)
     }
 }
 
-void YlmDiagnostics::save_amplitudes(Real time, int step)
+void YlmDiagnostics::save_spectrum(Real time, int step)
 {
-    BL_PROFILE("YlmDiagnostics::save_amplitudes()");
+    BL_PROFILE("YlmDiagnostics::save_spectrum()");
 
     const std::string& plotfilename = amrex::Concatenate("Ylm_plt", step);
 
