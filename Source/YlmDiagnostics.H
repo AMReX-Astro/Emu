@@ -19,6 +19,7 @@ namespace YIdx
 
     extern amrex::Vector<std::string> names;
     extern int max_Ylm_degree;
+    extern int num_Ylm_powers;
     extern bool using_Ylm_sum_m;
 
     void Initialize();

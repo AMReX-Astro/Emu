@@ -164,9 +164,7 @@ class YlmDiagnostics(object):
         self.fill_grid_indices()
         self.fill_grid_names()
         self.fill_compute_Ylm()
-        self.fill_setup_reductions_Ylm_power()
         self.fill_local_reduce_Ylm_power()
-        self.fill_MPI_reduce_Ylm_power()
         self.fill_write_Ylm_power()
 
     def gridvar(self, name):
@@ -188,6 +186,7 @@ class YlmDiagnostics(object):
         #====================================#
         code = [f"names.push_back(\"{ci}\");" for ci in self.Ylm.grid_spectrum_names]
         code.append(f"max_Ylm_degree = {self.Ylm.max_Ylm_degree};")
+        code.append(f"num_Ylm_powers = {self.Ylm.num_powers};")
         code.append(f"using_Ylm_sum_m = {str(self.Ylm.Ylm_sum_m).lower()};")
         self.writer.write(code, "YlmDiagnostics.cpp_grid_names_fill")
 
@@ -223,25 +222,13 @@ class YlmDiagnostics(object):
             part_n_ij_nm_Re, part_n_ij_nm_Im = part_n_ij_nm.as_real_imag()
 
             dep_n_ij_nm = [(self.gridvar(Alm.Re.name), sympy.cxxcode(part_n_ij_nm_Re)),
-                            (self.gridvar(Alm.Im.name), sympy.cxxcode(part_n_ij_nm_Im))]
+                           (self.gridvar(Alm.Im.name), sympy.cxxcode(part_n_ij_nm_Im))]
 
             # construct the C++ code for depositing into grid spectrum variable(s)
             for Alm_grid_var, Alm_particle_code in dep_n_ij_nm:
                 code.append(self.pic_deposit(Alm_grid_var, Alm_particle_code))
 
         self.writer.write(code, "YlmDiagnostics.cpp_compute_Ylm_fill")
-
-    def fill_setup_reductions_Ylm_power(self):
-        #====================================================#
-        # YlmDiagnostics.cpp_setup_reductions_Ylm_power_fill #
-        #====================================================#
-        reduce_ops  = ",".join(["ReduceOpSum"] * self.Ylm.num_powers)
-        reduce_data = ",".join(["Real"] * self.Ylm.num_powers)
-
-        code = []
-        code.append(f"ReduceOps<{reduce_ops}> reduce_operations;")
-        code.append(f"ReduceData<{reduce_data}> reduce_data(reduce_operations);")
-        self.writer.write(code, "YlmDiagnostics.cpp_setup_reductions_Ylm_power_fill")
 
     def fill_local_reduce_Ylm_power(self):
         #================================================#
@@ -257,21 +244,13 @@ class YlmDiagnostics(object):
                 code_pows.append(f"{amp_re} * {amp_re} + {amp_im} * {amp_im}")
             return " + ".join(code_pows)
 
-        compute_power = [power_string(Plm) for Plm in self.Ylm.iter_powers()]
-        return_power_str = "return {\n" + ",\n".join(compute_power) + "\n};"
-
-        code = [return_power_str]
-        self.writer.write(code, "YlmDiagnostics.cpp_local_reduce_Ylm_power_fill")
-
-    def fill_MPI_reduce_Ylm_power(self):
-        #==============================================#
-        # YlmDiagnostics.cpp_MPI_reduce_Ylm_power_fill #
-        #==============================================#
         code = []
-        for i in range(self.Ylm.num_powers):
-            code.append(f"ParallelDescriptor::ReduceRealSum(amrex::get<{i}>(reduced_Ylm_power), IOProc);")
 
-        self.writer.write(code, "YlmDiagnostics.cpp_MPI_reduce_Ylm_power_fill")
+        for iP, Plm in enumerate(self.Ylm.iter_powers()):
+            Plm_code = f"power_spectrum_p[{iP}] = {power_string(Plm)};"
+            code.append(Plm_code)
+
+        self.writer.write(code, "YlmDiagnostics.cpp_local_reduce_Ylm_power_fill")
 
     def fill_write_Ylm_power(self):
         #=========================================#
@@ -293,7 +272,7 @@ class YlmDiagnostics(object):
                     Pl = Pflavor[degree_l]
                     for m, degree_m in self.Ylm.iter_Ylm_m_key(n):
                         P_lm_ijt = Pl[degree_m]
-                        data_lm_ijt = "{" + f"amrex::get<{P_lm_ijt.power_index}>(reduced_Ylm_power)" + "}"
+                        data_lm_ijt = "{" + f"power_spectrum[{P_lm_ijt.power_index}]" + "}"
                         code.append(f"l_group.open_dataset(\"{degree_m}\").append(Data<Real>(\"{degree_m}\", {data_lm_ijt}));")
 
         self.writer.write(code, "YlmDiagnostics.cpp_write_Ylm_power_fill")

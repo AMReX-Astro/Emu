@@ -10,6 +10,7 @@ namespace YIdx
 {
     amrex::Vector<std::string> names;
     int max_Ylm_degree;
+    int num_Ylm_powers;
     bool using_Ylm_sum_m;
 
     void Initialize()
@@ -156,31 +157,30 @@ void YlmDiagnostics::compute_spectrum(const FlavoredNeutrinoContainer& neutrinos
 void YlmDiagnostics::reduce_power(Real time, int step)
 {
     BL_PROFILE("YlmDiagnostics::reduce_power()");
+
     // Sum reduce spherical harmonic power to IO Processor
 
-    #include "generated_files/YlmDiagnostics.cpp_setup_reductions_Ylm_power_fill"
-    using ReduceTuple = typename decltype(reduce_data)::Type;
+    Gpu::ManagedVector<Real> power_spectrum(YIdx::num_Ylm_powers, 0.0);
+    auto* power_spectrum_p = power_spectrum.dataPtr();
 
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(grid_Ylm_spectrum, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+    // Using one ManagedVector above in the current implementation prevents tiling this loop
+    for (MFIter mfi(grid_Ylm_spectrum, false); mfi.isValid(); ++mfi)
     {
         const auto& bx = mfi.tilebox();
         const auto& sarr = grid_Ylm_spectrum.array(mfi);
 
-        reduce_operations.eval(bx, reduce_data,
-        [=] AMREX_GPU_DEVICE (const int i, const int j, const int k) -> ReduceTuple
+        ParallelFor(bx, [=] AMREX_GPU_DEVICE (const int i, const int j, const int k)
         {
             #include "generated_files/YlmDiagnostics.cpp_local_reduce_Ylm_power_fill"
         });
     }
 
-    ReduceTuple reduced_Ylm_power = reduce_data.value();
-
     // MPI reduction to the IO Processor
     const int IOProc = ParallelDescriptor::IOProcessorNumber();
-    #include "generated_files/YlmDiagnostics.cpp_MPI_reduce_Ylm_power_fill"
+    ParallelDescriptor::ReduceRealSum(power_spectrum_p, YIdx::num_Ylm_powers, IOProc);
 
     // Write spherical harmonic power spectrum to diagnostic file
     if (ParallelDescriptor::IOProcessor())
