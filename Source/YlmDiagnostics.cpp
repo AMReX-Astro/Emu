@@ -147,6 +147,7 @@ void YlmDiagnostics::compute_spectrum(const FlavoredNeutrinoContainer& neutrinos
         for (int k = sz.first(); k <= sz.last(); ++k) {
             for (int j = sy.first(); j <= sy.last(); ++j) {
                 for (int i = sx.first(); i <= sx.last(); ++i) {
+                    const amrex::Real sijk = sx(i) * sy(j) * sz(k);
                     #include "generated_files/YlmDiagnostics.cpp_compute_Ylm_fill"
                 }
             }
