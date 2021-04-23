@@ -59,7 +59,7 @@ class HermitianMatrix(object):
                     self.H[i,j] += sympy.I * sympy.symbols(self.entry_template.format(i,j,"Im"), real=True)
                     self.H[j,i] = conjugate(self.H[i,j])
                     
-    def anticommutator(self, HermitianA, HermitianB):
+    def commutator(self, HermitianA, HermitianB):
         # Given two HermitianMatrix objects HermitianA, HermitianB
         # set self elements so: self.H = [A,B] = (A*B - B*A)
         
