@@ -1,5 +1,6 @@
 import os
 import sympy
+from CodeGeneration import ExpressionCollection
 
 class YlmBase(object):
     # this is a superclass for the amplitude and power classes that stores
@@ -171,7 +172,7 @@ class YlmDiagnostics(object):
         return f"sarr(i, j, k, YIdx::{name})"
 
     def pic_deposit(self, grid_variable, particle_expression):
-        return f"amrex::Gpu::Atomic::AddNoRet(&{grid_variable}, sx(i) * sy(j) * sz(k) * ({particle_expression}));"
+        return f"amrex::Gpu::Atomic::AddNoRet(&{grid_variable}, sijk * ({particle_expression}));"
 
     def fill_grid_indices(self):
         #====================================#
@@ -196,8 +197,8 @@ class YlmDiagnostics(object):
         #=====================================#
         #
         # For each grid variable in the spherical harmonic decomposition,
-        # generate the line of code for any particle's contribution.
-        code = []
+        # generate the symbolic CodeExpression objects for any particle's contribution.
+        expressions = ExpressionCollection()
 
         for Alm in self.Ylm.iter_amplitudes():
             # make symbols for variables defined in the enclosing scope of the C++
@@ -221,12 +222,15 @@ class YlmDiagnostics(object):
             # get real and imaginary parts of the amplitude we're depositing
             part_n_ij_nm_Re, part_n_ij_nm_Im = part_n_ij_nm.as_real_imag()
 
-            dep_n_ij_nm = [(self.gridvar(Alm.Re.name), sympy.cxxcode(part_n_ij_nm_Re)),
-                           (self.gridvar(Alm.Im.name), sympy.cxxcode(part_n_ij_nm_Im))]
+            dep_n_ij_nm = [(self.gridvar(Alm.Re.name), part_n_ij_nm_Re),
+                           (self.gridvar(Alm.Im.name), part_n_ij_nm_Im)]
 
-            # construct the C++ code for depositing into grid spectrum variable(s)
-            for Alm_grid_var, Alm_particle_code in dep_n_ij_nm:
-                code.append(self.pic_deposit(Alm_grid_var, Alm_particle_code))
+            # construct an Expression representing the C++ code for depositing into grid spectrum variable(s)
+            for Alm_grid_var, Alm_expression in dep_n_ij_nm:
+                expressions.create(lambda e, v=Alm_grid_var: self.pic_deposit(v, e), Alm_expression)
+
+        # Apply common subexpression elimination and generate code
+        code = expressions.generate()
 
         self.writer.write(code, "YlmDiagnostics.cpp_compute_Ylm_fill")
 
