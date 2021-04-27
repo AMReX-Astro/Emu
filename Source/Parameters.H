@@ -42,6 +42,13 @@ struct TestParams : public amrex::Gpu::Managed
     Real st4_ndensbar, st4_thetabar, st4_phibar, st4_fluxfacbar;
     Real st4_amplitude;
 
+    // simulation_type==5
+    Real st5_nnue , st5_nnua , st5_nnux ;
+    Real st5_fxnue, st5_fxnua, st5_fxnux;
+    Real st5_fynue, st5_fynua, st5_fynux;
+    Real st5_fznue, st5_fznua, st5_fznux;
+    Real st5_amplitude;
+
     void Initialize(){
         ParmParse pp;
         pp.get("simulation_type", simulation_type);
@@ -105,6 +112,22 @@ struct TestParams : public amrex::Gpu::Managed
 	  pp.get("st4_fluxfacbar", st4_fluxfacbar);
 	  pp.get("st4_amplitude", st4_amplitude);
 	}
+
+  if(simulation_type==5){
+    pp.get("st5_nnue",st5_nnue);
+    pp.get("st5_nnua",st5_nnua);
+    pp.get("st5_nnux",st5_nnux);
+    pp.get("st5_fxnue",st5_fxnue);
+    pp.get("st5_fxnua",st5_fxnua);
+    pp.get("st5_fxnux",st5_fxnux);
+    pp.get("st5_fynua",st5_fynua);
+    pp.get("st5_fynux",st5_fynux);
+    pp.get("st5_fynue",st5_fynue);
+    pp.get("st5_fznue",st5_fznue);
+    pp.get("st5_fznua",st5_fznua);
+    pp.get("st5_fznux",st5_fznux);
+    pp.get("st5_amplitude",st5_amplitude);
+  }
     }
 };
 
