@@ -11,20 +11,20 @@ tasks:
       pushd 2-Flavors
 
       mkdir bipolar
-      ln -s *.ex bipolar/.
-      ln -s ../../sample_inputs/inputs_bipolar_test bipolar/.
+      cp *.ex bipolar/.
+      cp ../../sample_inputs/inputs_bipolar_test bipolar/.
 
       mkdir msw
-      ln -s *.ex msw/.
-      ln -s ../../sample_inputs/inputs_msw_test msw/.
+      cp *.ex msw/.
+      cp ../../sample_inputs/inputs_msw_test msw/.
 
       mkdir FFI_zero_wavenumber
-      ln -s *.ex FFI_zero_wavenumber/.
-      ln -s ../../sample_inputs/inputs_fast_flavor FFI_zero_wavenumber/
+      cp *.ex FFI_zero_wavenumber/.
+      cp ../../sample_inputs/inputs_fast_flavor FFI_zero_wavenumber/
 
       mkdir FFI
-      ln -s *.ex FFI/.
-      ln -s ../../sample_inputs/inputs_fast_flavor_nonzerok FFI/
+      cp *.ex FFI/.
+      cp ../../sample_inputs/inputs_fast_flavor_nonzerok FFI/
 
       popd
 
@@ -36,8 +36,8 @@ tasks:
       pushd 3-Flavors
 
       mkdir FFI
-      ln -s *.ex FFI/.
-      ln -s ../../sample_inputs/inputs_1d_fiducial FFI/
+      cp *.ex FFI/.
+      cp ../../sample_inputs/inputs_1d_fiducial FFI/
 
       popd
 
