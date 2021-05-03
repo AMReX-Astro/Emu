@@ -1,0 +1,64 @@
+tasks:
+  - init: |-
+      sudo apt -y install gfortran libopenmpi3 libopenmpi-dev
+      pip install sympy numpy matplotlib
+      cd Exec
+
+      make generate NUM_FLAVORS=2
+      make -j NUM_FLAVORS=2
+      mkdir 2-Flavors
+      mv *.ex 2-Flavors/.
+      pushd 2-Flavors
+
+      mkdir bipolar
+      ln -s *.ex bipolar/.
+      ln -s ../../sample_inputs/inputs_bipolar_test bipolar/.
+
+      mkdir msw
+      ln -s *.ex msw/.
+      ln -s ../../sample_inputs/inputs_msw_test msw/.
+
+      mkdir FFI_zero_wavenumber
+      ln -s *.ex FFI_zero_wavenumber/.
+      ln -s ../../sample_inputs/inputs_fast_flavor FFI_zero_wavenumber/
+
+      mkdir FFI
+      ln -s *.ex FFI/.
+      ln -s ../../sample_inputs/inputs_fast_flavor_nonzerok FFI/
+
+      popd
+
+      make realclean
+      make generate NUM_FLAVORS=3
+      make -j NUM_FLAVORS=3
+      mkdir 3-Flavors
+      mv *.ex 3-Flavors/.
+      pushd 3-Flavors
+
+      mkdir FFI
+      ln -s *.ex FFI/.
+      ln -s ../../sample_inputs/inputs_1d_fiducial FFI/
+
+      popd
+
+      make realclean
+
+github:
+  prebuilds:
+    # enable for the master/default branch (defaults to true)
+    master: true
+    # enable for all branches in this repo (defaults to false)
+    branches: false
+    # enable for pull requests coming from this repo (defaults to true)
+    pullRequests: false
+    # enable for pull requests coming from forks (defaults to false)
+    pullRequestsFromForks: false
+    # add a check to pull requests (defaults to true)
+    addCheck: true
+    # add a "Review in Gitpod" button as a comment to pull requests (defaults to false)
+    addComment: true
+    # add a "Review in Gitpod" button to the pull request's description (defaults to false)
+    addBadge: true
+    # add a label once the prebuild is ready to pull requests (defaults to false)
+    addLabel: false
+
