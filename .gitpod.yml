@@ -5,6 +5,11 @@ tasks:
   - init: |-
       sudo apt -y install gfortran libopenmpi3 libopenmpi-dev
       pip install sympy numpy matplotlib
+
+      pushd Scripts/visualization
+      python setup.py install
+      popd
+
       cd Exec
 
       make generate NUM_FLAVORS=2
