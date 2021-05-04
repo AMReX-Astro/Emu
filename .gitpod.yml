@@ -1,3 +1,6 @@
+image:
+  file: .gitpod.dockerfile
+
 tasks:
   - init: |-
       sudo apt -y install gfortran libopenmpi3 libopenmpi-dev
@@ -42,6 +45,11 @@ tasks:
       popd
 
       make realclean
+
+      mkdir Examples
+      mv 2-Flavors Examples/.
+      mv 3-Flavors Examples/.
+      mv Examples ../.
 
 github:
   prebuilds:
