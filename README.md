@@ -30,7 +30,7 @@ parallelized with MPI + OpenMP for CPUs and MPI + CUDA for GPUs.
 To quickly try Emu out using your browser, you can
 [open an interactive Emu workspace in Gitpod!](https://gitpod.io/#https://github.com/AMReX-Astro/Emu)
 
-Emu's prebuilt Gitpod image tracks the current release branch, and you can find pre-compiled examples in the `Examples` directory.
+Emu's prebuilt Gitpod workspace tracks the current release branch, and you can find pre-compiled examples in the `Examples` directory.
 
 For example, to run and visualize the MSW setup:
 
