@@ -4,6 +4,9 @@ image:
 tasks:
   - init: |-
       sudo apt -y install gfortran libopenmpi3 libopenmpi-dev
+      mkdir /workspace/python
+      python -m venv /workspace/python/emu --system-site-packages
+      source /workspace/python/emu/bin/activate
       pip install sympy numpy matplotlib
 
       pushd Scripts/visualization
@@ -67,6 +70,12 @@ tasks:
       mv 2-Flavors Examples/.
       mv 3-Flavors Examples/.
       mv Examples ../.
+
+      clear
+
+  - command: |-
+      source /workspace/python/emu/bin/activate
+      clear
 
 github:
   prebuilds:
