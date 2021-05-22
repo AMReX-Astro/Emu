@@ -69,10 +69,9 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
 	Real dt_flavor_stupid   = PhysConst::hbar/Vmax_stupid  *flavor_cfl_factor;
 
 	// pick the appropriate timestep
-	if(dt_flavor_adaptive*max_adaptive_speedup > dt_flavor_stupid)
-	  dt_flavor = dt_flavor_adaptive;
-	else
-	  dt_flavor = dt_flavor_stupid;
+        dt_flavor = dt_flavor_stupid;
+	if(max_adaptive_speedup>1)
+	  dt_flavor = min(dt_flavor_stupid*max_adaptive_speedup, dt_flavor_adaptive);
     }
 
     Real dt = 0.0;
