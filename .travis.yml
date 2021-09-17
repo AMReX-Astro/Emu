@@ -27,7 +27,7 @@ addons:
 
 install:
 - git submodule init; git submodule update
-- cp makefiles/GNUmakefile_travis Exec/GNUmakefile; cd Exec; make
+- cp makefiles/GNUmakefile_travis Exec/GNUmakefile; cd Exec; make generate; make -j
 
 script:
 - cd Exec; mpirun -np 2 ./main3d.gnu.DEBUG.TPROF.MPI.ex ../sample_inputs/inputs_msw_test; python ../Scripts/tests/msw_test.py
