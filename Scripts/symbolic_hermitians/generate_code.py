@@ -7,6 +7,7 @@ import sympy
 from sympy.codegen.ast import Assignment
 from HermitianUtils import HermitianMatrix,SU_vector_ideal_magnitude
 import shutil
+import math
 
 parser = argparse.ArgumentParser(description="Generates code for calculating C = i * [A,B] for symbolic NxN Hermitian matrices A, B, C, using real-valued Real and Imaginary components.")
 parser.add_argument("N", type=int, help="Size of NxN Hermitian matrices.")
@@ -215,16 +216,26 @@ if __name__ == "__main__":
         U = U23*U13*U12*P
 
     # create M2 matrix in Evolve.H
-    M2 = sympy.zeros(args.N,args.N)
+    M2_massbasis = sympy.zeros(args.N,args.N)
     for i in range(args.N):
-        M2[i,i] = sympy.symbols('parms->mass'+str(i+1),real=True)**2
-    M2 = U*M2*Dagger(U)
+        M2_massbasis[i,i] = sympy.symbols('parms->mass'+str(i+1),real=True)**2
+    M2 = U*M2_massbasis*Dagger(U)
     massmatrix = HermitianMatrix(args.N, "M2matrix{}{}_{}")
     massmatrix.H = M2
     code = massmatrix.code()
     code = ["double "+code[i] for i in range(len(code))]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files","Evolve.H_M2_fill"))
 
+    #=============================================#
+    # FlavoredNeutrinoContainerInit.cpp_Vvac_fill #
+    #=============================================#
+    code = []
+    massmatrix_massbasis = HermitianMatrix(args.N, "M2massbasis{}{}_{}")
+    massmatrix_massbasis.H = M2_massbasis
+    M2length = massmatrix_massbasis.SU_vector_magnitude()
+    code.append("Vvac_max = "+sympy.cxxcode(sympy.simplify(M2length))+"*PhysConst::c4/pupt_min;")
+    write_code(code, os.path.join(args.emu_home,"Source/generated_files","FlavoredNeutrinoContainerInit.cpp_Vvac_fill"))
+    
     #======================#
     # Evolve.cpp_Vvac_fill #
     #======================#
@@ -247,11 +258,39 @@ if __name__ == "__main__":
     # Evolve.cpp_compute_dt_fill #
     #============================#
     code = []
-    for t in tails:
-        for i in range(args.N):
-            line = "N_diag_max = max(N_diag_max, state.max(GIdx::N"+str(i)+str(i)+"_Re"+t+"));"
-            code.append(line)
-    code.append("N_diag_max *= 2*"+str(args.N)+";") # overestimate of net neutrino+antineutrino number density
+    length = sympy.symbols("length",real=True)
+    cell_volume = sympy.symbols("cell_volume",real=True)
+    rho = sympy.symbols("fab(i\,j\,k\,GIdx\:\:rho)",real=True)
+    Ye = sympy.symbols("fab(i\,j\,k\,GIdx\:\:Ye)",real=True)
+    mp = sympy.symbols("PhysConst\:\:Mp",real=True)
+    sqrt2GF = sympy.symbols("M_SQRT2*PhysConst\:\:GF",real=True)
+
+    # spherically symmetric part
+    N    = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::N{}{}_{})")
+    Nbar = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::N{}{}_{}bar)")
+    HSI  = (N-Nbar.conjugate())
+    HSI.H[0,0] += rho*Ye/mp * cell_volume
+    V_adaptive2 = HSI.SU_vector_magnitude2()
+    code.append("V_adaptive2 += "+sympy.cxxcode(sympy.simplify(V_adaptive2))+";")
+
+    # flux part
+    for component in ["x","y","z"]:
+        F    = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::F"+component+"{}{}_{})")
+        Fbar = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::F"+component+"{}{}_{}bar)")
+        HSI  = (F-Fbar)
+        V_adaptive2 = HSI.SU_vector_magnitude2()
+        code.append("V_adaptive2 += "+sympy.cxxcode(sympy.simplify(V_adaptive2))+";")
+
+    # put in the units
+    code.append("V_adaptive = sqrt(V_adaptive2)*"+sympy.cxxcode(sqrt2GF/cell_volume)+";")
+
+    # old "stupid" way of computing the timestep.
+    # the factor of 2 accounts for potential worst-case effects of neutrinos and antineutrinos
+    for i in range(args.N):
+        code.append("V_stupid = max(V_stupid,"+sympy.cxxcode(N.H[i,i])+");")
+        code.append("V_stupid = max(V_stupid,"+sympy.cxxcode(Nbar.H[i,i])+");")
+    code.append("V_stupid = max(V_stupid,"+sympy.cxxcode(rho*Ye/mp*cell_volume)+");")
+    code.append("V_stupid *= "+sympy.cxxcode(2.0*args.N*sqrt2GF/cell_volume)+";")
     write_code(code, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_compute_dt_fill"))
 
     #=======================================#
@@ -362,7 +401,12 @@ if __name__ == "__main__":
         for fii in fdlist:
             code.append("sumP += " + fii + ";")
         code.append("error = sumP-1.0;")
-        code.append("if( std::abs(error) > 100.*parms->maxError) amrex::Abort();")
+        code.append('if( std::abs(error) > 100.*parms->maxError) {')
+        code.append("std::ostringstream Convert;")
+        code.append('Convert << "Matrix trace (SumP) is not equal to 1, trace error exceeds 100*maxError: " << std::abs(error) << " > " << 100.*parms->maxError;')
+        code.append("std::string Trace_Error = Convert.str();")
+        code.append('amrex::Error(Trace_Error);')
+        code.append("}")
         code.append("if( std::abs(error) > parms->maxError ) {")
         for fii in fdlist:
             code.append(fii + " -= error/"+str(args.N)+";")
@@ -371,7 +415,12 @@ if __name__ == "__main__":
 
         # make sure diagonals are positive
         for fii in fdlist:
-            code.append("if("+fii+"<-100.*parms->maxError) amrex::Abort();")
+            code.append('if('+fii+'<-100.*parms->maxError) {')
+            code.append("std::ostringstream Convert;")
+            code.append('Convert << "Diagonal element '+fii[14:20]+' is negative, less than -100*maxError: " << '+fii+' << " < " << -100.*parms->maxError;')
+            code.append("std::string Sign_Error = Convert.str();")
+            code.append('amrex::Error(Sign_Error);')
+            code.append("}")
             code.append("if("+fii+"<-parms->maxError) "+fii+"=0;")
         code.append("")
 
@@ -381,7 +430,12 @@ if __name__ == "__main__":
         target_length = "p.rdata(PIdx::L"+t+")"
         code.append("length = "+sympy.cxxcode(sympy.simplify(length))+";")
         code.append("error = length-"+str(target_length)+";")
-        code.append("if( std::abs(error) > 100.*parms->maxError) amrex::Abort();")
+        code.append('if( std::abs(error) > 100.*parms->maxError) {')
+        code.append("std::ostringstream Convert;")
+        code.append('Convert << "flavor vector length differs from target length by more than 100*maxError: " << std::abs(error) << " > " << 100.*parms->maxError;')
+        code.append("std::string Length_Error = Convert.str();")
+        code.append('amrex::Error(Length_Error);')
+        code.append("}")
         code.append("if( std::abs(error) > parms->maxError) {")
         for fii in flist:
             code.append(fii+" /= length/"+str(target_length)+";")

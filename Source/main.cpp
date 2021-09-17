@@ -194,7 +194,7 @@ void evolve_flavor(const TestParams* parms)
         // Note: this won't be the same as the new-time grid data
         // because the last deposit_to_mesh call was at either the old time (forward Euler)
         // or the final RK stage, if using Runge-Kutta.
-        const Real dt = compute_dt(geom,parms->cfl_factor,state,parms->flavor_cfl_factor);
+        const Real dt = compute_dt(geom,parms->cfl_factor,state,neutrinos,parms->flavor_cfl_factor,parms->max_adaptive_speedup);
         integrator.set_timestep(dt);
     };
 
@@ -203,7 +203,7 @@ void evolve_flavor(const TestParams* parms)
     integrator.set_post_timestep(post_timestep_fun);
 
     // Get a starting timestep
-    const Real starting_dt = compute_dt(geom,parms->cfl_factor,state,parms->flavor_cfl_factor);
+    const Real starting_dt = compute_dt(geom,parms->cfl_factor,state,neutrinos_old,parms->flavor_cfl_factor, parms->max_adaptive_speedup);
 
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
@@ -229,6 +229,11 @@ void evolve_flavor(const TestParams* parms)
 int main(int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
+
+    // write build information to screen
+    if (ParallelDescriptor::IOProcessor()) {
+        writeBuildInfo();
+    }
 
     // by default amrex initializes rng deterministically
     // this uses the time for a different run each time

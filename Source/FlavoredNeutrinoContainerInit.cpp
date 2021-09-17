@@ -36,6 +36,49 @@ Gpu::ManagedVector<GpuArray<Real,3> > uniform_sphere_xyz(int nphi_at_equator){
 	return xyz;
 }
 
+// residual for the root finder
+// Z needs to be bigger if residual is positive
+// Minerbo (1978) (unfortunately under Elsevier paywall)
+// Can also see Richers (2020) https://ui.adsabs.harvard.edu/abs/2020PhRvD.102h3017R
+//     Eq.41 (where a is Z), but in the non-degenerate limit
+//     k->0, eta->0, N->Z/(4pi sinh(Z)) (just to make it integrate to 1)
+//     minerbo_residual is the "f" equation between eq.42 and 43
+Real minerbo_residual(const Real fluxfac, const Real Z){
+	return fluxfac - 1.0/std::tanh(Z) + 1.0 / Z;
+}
+Real minerbo_residual_derivative(const Real fluxfac, const Real Z){
+	return 1.0/(std::sinh(Z)*std::sinh(Z)) - 1.0/(Z*Z);
+}
+Real minerbo_Z(const Real fluxfac){
+	// hard-code in these parameters because they are not
+	// really very important...
+	Real maxresidual = 1e-6;
+	Real maxcount = 20;
+	Real minfluxfac = 1e-3;
+
+	// set the initial conditions
+	Real Z = 1.0;
+
+	// catch the small flux factor case to prevent nans
+	if(fluxfac < minfluxfac)
+		Z = 3.*fluxfac;
+	else{
+		Real residual = 1.0;
+		int count = 0;
+		while(std::abs(residual)>maxresidual and count<maxcount){
+			residual = minerbo_residual(fluxfac, Z);
+			Real slope = minerbo_residual_derivative(fluxfac, Z);
+			Z -= residual/slope;
+			count++;
+		}
+		if(residual>maxresidual)
+			amrex::Error("Failed to converge on a solution.");
+	}
+	
+	amrex::Print() << "fluxfac="<<fluxfac<<" Z=" << Z<<std::endl;
+	return Z;
+}
+
 namespace
 {    
     AMREX_GPU_HOST_DEVICE void get_position_unit_cell(Real* r, const IntVect& nppc, int i_part)
@@ -69,6 +112,16 @@ namespace
     *Usymmetric = 2. * (amrex::Random()-0.5);
   }
 
+// angular structure as determined by the Minerbo closure
+// Z is a parameter determined by the flux factor
+// mu is the cosine of the angle relative to the flux direction
+// Coefficients set such that the expectation value is 1
+  AMREX_GPU_HOST_DEVICE void minerbo_closure(Real* result, const Real Z, const Real mu){
+	Real minfluxfac = 1e-3;
+	*result = std::exp(Z*mu);
+	if(Z/3.0 > minfluxfac)
+		*result *= Z/std::sinh(Z);
+  }
 }
 
 FlavoredNeutrinoContainer::
@@ -101,6 +154,27 @@ InitParticles(const TestParams* parms)
     amrex::Print() << "Using " << ndirs_per_loc << " directions based on " << parms->nphi_equator << " directions at the equator." << std::endl;
 
     const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell/ndirs_per_loc;
+
+	// get the Z parameters for the Minerbo closure if using simuation type 5
+	Real Ze, Za, Zx;
+	Real fluxfac_e, fluxfac_a, fluxfac_x;
+	if(parms->simulation_type==5){
+		fluxfac_e = std::sqrt(
+			parms->st5_fxnue*parms->st5_fxnue + 
+			parms->st5_fynue*parms->st5_fynue + 
+			parms->st5_fznue*parms->st5_fznue );
+		fluxfac_a = std::sqrt(
+			parms->st5_fxnua*parms->st5_fxnua + 
+			parms->st5_fynua*parms->st5_fynua + 
+			parms->st5_fznua*parms->st5_fznua );
+		fluxfac_x = std::sqrt(
+			parms->st5_fxnux*parms->st5_fxnux + 
+			parms->st5_fynux*parms->st5_fynux + 
+			parms->st5_fznux*parms->st5_fznux );
+		Ze = minerbo_Z(fluxfac_e);
+		Za = minerbo_Z(fluxfac_a);
+		Zx = minerbo_Z(fluxfac_x);
+	}
 
 #ifdef _OPENMP
 #pragma omp parallel
@@ -248,7 +322,7 @@ InitParticles(const TestParams* parms)
 		  // set all particles to start in electron state (and anti-state)
 		  // Set N to be small enough that self-interaction is not important
 		  // Set all particle momenta to be such that one oscillation wavelength is 1cm
-		  AMREX_ASSERT(NUM_FLAVORS==2);
+		  AMREX_ASSERT(NUM_FLAVORS==3 or NUM_FLAVORS==2);
 
 		  // Set particle flavor
 		  p.rdata(PIdx::N) = 1.0;
@@ -261,6 +335,19 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Rebar) = 0.0;
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
+
+#if (NUM_FLAVORS==3)
+		  p.rdata(PIdx::f22_Re)    = 0.0;
+		  p.rdata(PIdx::f22_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Re)    = 0.0;
+		  p.rdata(PIdx::f02_Im)    = 0.0;
+		  p.rdata(PIdx::f12_Re)    = 0.0;
+		  p.rdata(PIdx::f12_Im)    = 0.0;
+		  p.rdata(PIdx::f02_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Imbar) = 0.0;
+		  p.rdata(PIdx::f12_Rebar) = 0.0;
+		  p.rdata(PIdx::f12_Imbar) = 0.0;
+#endif
 
 		  // set momentum so that a vacuum oscillation wavelength occurs over a distance of 1cm
 		  // Set particle velocity to c in a random direction
@@ -275,7 +362,7 @@ InitParticles(const TestParams* parms)
 		// BIPOLAR OSCILLATION TEST //
 		//==========================//
 		else if(parms->simulation_type==1){
-		  AMREX_ASSERT(NUM_FLAVORS==2);
+		  AMREX_ASSERT(NUM_FLAVORS==3 or NUM_FLAVORS==2);
 		  
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
@@ -286,6 +373,19 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Rebar) = 0.0;
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
+
+#if (NUM_FLAVORS==3)
+		  p.rdata(PIdx::f22_Re)    = 0.0;
+		  p.rdata(PIdx::f22_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Re)    = 0.0;
+		  p.rdata(PIdx::f02_Im)    = 0.0;
+		  p.rdata(PIdx::f12_Re)    = 0.0;
+		  p.rdata(PIdx::f12_Im)    = 0.0;
+		  p.rdata(PIdx::f02_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Imbar) = 0.0;
+		  p.rdata(PIdx::f12_Rebar) = 0.0;
+		  p.rdata(PIdx::f12_Imbar) = 0.0;
+#endif
 
 		  // set energy to 50 MeV to match Richers+(2019)
 		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
@@ -307,7 +407,7 @@ InitParticles(const TestParams* parms)
 		// 2-BEAM FAST FLAVOR TEST//
 		//========================//
 		else if(parms->simulation_type==2){
-		  AMREX_ASSERT(NUM_FLAVORS==2);
+		  AMREX_ASSERT(NUM_FLAVORS==3 or NUM_FLAVORS==2);
 		  
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
@@ -318,6 +418,19 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Rebar) = 0.0;
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
+
+#if (NUM_FLAVORS==3)
+		  p.rdata(PIdx::f22_Re)    = 0.0;
+		  p.rdata(PIdx::f22_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Re)    = 0.0;
+		  p.rdata(PIdx::f02_Im)    = 0.0;
+		  p.rdata(PIdx::f12_Re)    = 0.0;
+		  p.rdata(PIdx::f12_Im)    = 0.0;
+		  p.rdata(PIdx::f02_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Imbar) = 0.0;
+		  p.rdata(PIdx::f12_Rebar) = 0.0;
+		  p.rdata(PIdx::f12_Imbar) = 0.0;
+#endif
 
 		  // set energy to 50 MeV to match Richers+(2019)
 		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
@@ -340,7 +453,7 @@ InitParticles(const TestParams* parms)
 		// 3- k!=0 BEAM FAST FLAVOR TEST //
 		//===============================//
 		else if(parms->simulation_type==3){
-		  AMREX_ASSERT(NUM_FLAVORS==2);
+		  AMREX_ASSERT(NUM_FLAVORS==3 or NUM_FLAVORS==2);
 
 		  // perturbation parameters
 		  Real lambda = domain_length_z/(Real)parms->st3_wavelength_fraction_of_domain;
@@ -355,6 +468,20 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Rebar) = parms->st3_amplitude*sin(k*p.pos(2));
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
+
+#if (NUM_FLAVORS==3) 
+		  //just perturbing the electron-muon flavor state, other terms can stay = 0.0 for simplicity
+		  p.rdata(PIdx::f22_Re)    = 0.0;
+		  p.rdata(PIdx::f22_Rebar) = 0.0;
+		  p.rdata(PIdx::f02_Re)    = 0.0; 
+		  p.rdata(PIdx::f02_Im)    = 0.0; 
+		  p.rdata(PIdx::f12_Re)    = 0.0;
+		  p.rdata(PIdx::f12_Im)    = 0.0;
+		  p.rdata(PIdx::f02_Rebar) = 0.0; 
+		  p.rdata(PIdx::f02_Imbar) = 0.0; 
+		  p.rdata(PIdx::f12_Rebar) = 0.0;
+		  p.rdata(PIdx::f12_Imbar) = 0.0;
+#endif
 
 		  // set energy to 50 MeV to match Richers+(2019)
 		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
@@ -441,6 +568,82 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::Nbar) = ndensbar*scale_fac * (1. + 3.*parms->st4_fluxfacbar*costhetabar);
 		}
 
+		//====================//
+		// 5- Minerbo Closure //
+		//====================//
+		else if(parms->simulation_type==5){
+		  AMREX_ASSERT(NUM_FLAVORS==3 or NUM_FLAVORS==2);
+
+		  // set energy to 50 MeV
+		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
+		  
+		  // get the cosine of the angle between the direction and each flavor's flux vector
+		  Real mue = fluxfac_e>0 ? (parms->st5_fxnue*u[0] + parms->st5_fynue*u[1] + parms->st5_fznue*u[2])/fluxfac_e : 0;
+		  Real mua = fluxfac_a>0 ? (parms->st5_fxnua*u[0] + parms->st5_fynua*u[1] + parms->st5_fznua*u[2])/fluxfac_a : 0;
+		  Real mux = fluxfac_x>0 ? (parms->st5_fxnux*u[0] + parms->st5_fynux*u[1] + parms->st5_fznux*u[2])/fluxfac_x : 0;
+
+		  // get the number of each flavor in this particle.
+          // parms->st5_nnux contains the number density of mu+tau neutrinos+antineutrinos
+		  // Nnux_thisparticle contains the number of EACH of mu/tau anti/neutrinos (hence the factor of 4)
+		  Real angular_factor;
+		  minerbo_closure(&angular_factor, Ze, mue);
+		  Real Nnue_thisparticle = parms->st5_nnue*scale_fac * angular_factor;
+		  minerbo_closure(&angular_factor, Za, mua);
+		  Real Nnua_thisparticle = parms->st5_nnua*scale_fac * angular_factor;
+		  minerbo_closure(&angular_factor, Zx, mux);
+		  Real Nnux_thisparticle = parms->st5_nnux*scale_fac * angular_factor / 4.0;
+
+		  // set total number of neutrinos the particle has as the sum of the flavors
+		  p.rdata(PIdx::N   ) = Nnue_thisparticle + Nnux_thisparticle;
+		  p.rdata(PIdx::Nbar) = Nnua_thisparticle + Nnux_thisparticle;
+#if NUM_FLAVORS==3
+		  p.rdata(PIdx::N   ) += Nnux_thisparticle;
+		  p.rdata(PIdx::Nbar) += Nnux_thisparticle;
+#endif
+
+		  // set on-diagonals to have relative proportion of each flavor
+		  p.rdata(PIdx::f00_Re)    = Nnue_thisparticle / p.rdata(PIdx::N   );
+		  p.rdata(PIdx::f11_Re)    = Nnux_thisparticle / p.rdata(PIdx::N   );
+		  p.rdata(PIdx::f00_Rebar) = Nnua_thisparticle / p.rdata(PIdx::Nbar);
+		  p.rdata(PIdx::f11_Rebar) = Nnux_thisparticle / p.rdata(PIdx::Nbar);
+#if NUM_FLAVORS==3
+		  p.rdata(PIdx::f22_Re)    = Nnux_thisparticle / p.rdata(PIdx::N   );
+		  p.rdata(PIdx::f22_Rebar) = Nnux_thisparticle / p.rdata(PIdx::Nbar);
+#endif
+
+		  // random perturbations to the off-diagonals
+		  Real rand;
+		  symmetric_uniform(&rand);
+		  p.rdata(PIdx::f01_Re)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f11_Re   ));
+		  symmetric_uniform(&rand);
+		  p.rdata(PIdx::f01_Im)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f11_Re   ));
+		  symmetric_uniform(&rand);
+		  p.rdata(PIdx::f01_Rebar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f11_Rebar));
+		  symmetric_uniform(&rand);
+		  p.rdata(PIdx::f01_Imbar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f11_Rebar));
+#if NUM_FLAVORS==3
+		  symmetric_uniform(&rand);
+		  p.rdata(PIdx::f02_Re)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f22_Re   ));
+		  symmetric_uniform(&rand);
+		  p.rdata(PIdx::f02_Im)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f22_Re   ));
+		  symmetric_uniform(&rand);
+		  p.rdata(PIdx::f12_Re)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Re   ) - p.rdata(PIdx::f22_Re   ));
+		  symmetric_uniform(&rand);
+		  p.rdata(PIdx::f12_Im)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Re   ) - p.rdata(PIdx::f22_Re   ));
+		  symmetric_uniform(&rand);
+		  p.rdata(PIdx::f02_Rebar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f22_Rebar));
+		  symmetric_uniform(&rand);
+		  p.rdata(PIdx::f02_Imbar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f22_Rebar));
+		  symmetric_uniform(&rand);
+		  p.rdata(PIdx::f12_Rebar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Rebar) - p.rdata(PIdx::f22_Rebar));
+		  symmetric_uniform(&rand);
+		  p.rdata(PIdx::f12_Imbar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Rebar) - p.rdata(PIdx::f22_Rebar));
+#endif
+		}
+
 		else{
             amrex::Error("Invalid simulation type");
 		}
@@ -450,4 +653,9 @@ InitParticles(const TestParams* parms)
         }
         });
     }
+
+    // get the minimum neutrino energy for calculating the timestep
+    Real pupt_min = amrex::ReduceMin(*this, [=] AMREX_GPU_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p) -> Real { return p.rdata(PIdx::pupt); });
+    ParallelDescriptor::ReduceRealMin(pupt_min);
+    #include "generated_files/FlavoredNeutrinoContainerInit.cpp_Vvac_fill"
 }

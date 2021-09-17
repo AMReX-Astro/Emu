@@ -37,18 +37,41 @@ class HermitianMatrix(object):
         self.construct()
     
     def __mul__(self, other):
-        result = copy.deepcopy(other)
-        result.H = self.H * other.H
+        result = copy.deepcopy(self)
+        if isinstance(other, self.__class__):
+            result.H = self.H * other.H
+        else:
+            for i in range(self.size):
+                for j in range(self.size):
+                    result.H[i,j] *= other
+        return result
+
+    def __truediv__(self, other):
+        result = copy.deepcopy(self)
+        if isinstance(other, self.__class__):
+            raise ArithmeticError
+        else:
+            for i in range(self.size):
+                for j in range(self.size):
+                    result.H[i,j] /= other
         return result
 
     def __add__(self, other):
-        result = copy.deepcopy(other)
-        result.H = self.H + other.H
+        result = copy.deepcopy(self)
+        if isinstance(other, self.__class__):
+            result.H = self.H + other.H
+        else:
+            for i in range(self.size):
+                result.H[i,i] += other
         return result
 
     def __sub__(self, other):
-        result = copy.deepcopy(other)
-        result.H = self.H - other.H
+        result = copy.deepcopy(self)
+        if isinstance(other, self.__class__):
+            result.H = self.H - other.H
+        else:
+            for i in range(self.size):
+                result.H[i,i] -= other
         return result
 
     def construct(self):
@@ -70,16 +93,19 @@ class HermitianMatrix(object):
         return self
 
     def conjugate(self):
-        self.H = Conjugate(self.H)
+        for i in range(self.size):
+            for j in range(self.size):
+                self.H[i,j] = conjugate(self.H[i,j])
         return self
     
     # return the length of the SU(n) vector
-    def SU_vector_magnitude(self):
+    def SU_vector_magnitude2(self):
         # first get the sum of the square of the off-diagonal elements
         mag2 = 0
         for i in range(self.size):
             for j in range(i+1,self.size):
-                mag2 += self.H[i,j]*self.H[j,i]
+                re,im = self.H[i,j].as_real_imag()
+                mag2 += re**2 + im**2
 
         # Now get the contribution from the diagonals
         # See wolfram page for generalization of Gell-Mann matrices
@@ -91,7 +117,10 @@ class HermitianMatrix(object):
             basis_coefficient *= sympy.sqrt(2./(l*(l+1.)))
             mag2 += (basis_coefficient/2.)**2
 
-        return sympy.sqrt(mag2)
+        return mag2
+
+    def SU_vector_magnitude(self):
+        return sympy.sqrt(self.SU_vector_magnitude2())
     
     def trace(self):
         result = 0
