@@ -655,7 +655,7 @@ InitParticles(const TestParams* parms)
     }
 
     // get the minimum neutrino energy for calculating the timestep
-    Real pupt_min = amrex::ReduceMin(*this, [=] AMREX_GPU_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p) -> Real { return p.rdata(PIdx::pupt); });
+    Real pupt_min = amrex::ReduceMin(*this, [=] AMREX_GPU_HOST_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p) -> Real { return p.rdata(PIdx::pupt); });
     ParallelDescriptor::ReduceRealMin(pupt_min);
     #include "generated_files/FlavoredNeutrinoContainerInit.cpp_Vvac_fill"
 }
