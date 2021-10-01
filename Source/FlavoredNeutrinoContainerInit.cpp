@@ -129,7 +129,7 @@ namespace
  AMREX_GPU_HOST_DEVICE void gaussian_profile(Real* result, const Real sigma, const Real mu, const Real mu0){
    Real Ainverse = sigma * std::sqrt(M_PI/2.0) * std::erf(std::sqrt(2)/sigma);
    Real A = 1.0 / Ainverse;
-   *result = std::exp(-(mu-mu0)*(mu-mu0) / (2.0*sigma*sigma));
+   *result = 2.0 * A * std::exp(-(mu-mu0)*(mu-mu0) / (2.0*sigma*sigma));
  }
 
 FlavoredNeutrinoContainer::
@@ -165,8 +165,12 @@ InitParticles(const TestParams* parms)
     // array of random numbers, one for each grid cell
     int nrandom = parms->ncell[0] * parms->ncell[1] * parms->ncell[2];
     Gpu::ManagedVector<Real> random_numbers(nrandom);
-    for(int i=0; i<nrandom; i++) symmetric_uniform(&random_numbers[i]);
+    if (ParallelDescriptor::IOProcessor())
+      for(int i=0; i<nrandom; i++)
+	symmetric_uniform(&random_numbers[i]);
     auto* random_numbers_p = random_numbers.dataPtr();
+    ParallelDescriptor::Bcast(random_numbers_p, random_numbers.size(),
+			      ParallelDescriptor::IOProcessorNumber());
 
     const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell/ndirs_per_loc;
 
@@ -700,8 +704,8 @@ InitParticles(const TestParams* parms)
 		    Real ka = 2.*M_PI * a / parms->Lz;
 		    Real phase = ka*z + 2.*M_PI*random_numbers_p[a+Nz/2];
 		    Real B = parms->st6_amplitude / std::abs(float(a));
-		    p.rdata(PIdx::f01_Re) += B * cos(phase);
-		    p.rdata(PIdx::f01_Im) += B * sin(phase);
+		    p.rdata(PIdx::f01_Re) += 0.5 * B * cos(phase);
+		    p.rdata(PIdx::f01_Im) += 0.5 * B * sin(phase);
 		  }
 
 		  // Perturb the antineutrinos in a way that preserves the symmetries of the neutrino hamiltonian
