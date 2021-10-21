@@ -709,8 +709,8 @@ InitParticles(const TestParams* parms)
 		  }
 
 		  // Perturb the antineutrinos in a way that preserves the symmetries of the neutrino hamiltonian
-		  p.rdata(PIdx::f01_Rebar) = -p.rdata(PIdx::f01_Re);
-		  p.rdata(PIdx::f01_Imbar) =  p.rdata(PIdx::f01_Im);
+		  p.rdata(PIdx::f01_Rebar) =  p.rdata(PIdx::f01_Re);
+		  p.rdata(PIdx::f01_Imbar) = -p.rdata(PIdx::f01_Im);
 		}
 
 		else{
