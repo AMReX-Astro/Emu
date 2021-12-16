@@ -575,7 +575,7 @@ InitParticles(const TestParams* parms)
 		  AMREX_ASSERT(NUM_FLAVORS==3 or NUM_FLAVORS==2);
 
 		  // set energy to 50 MeV
-		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupt) = parms->st5_avgE_MeV * 1e6*CGSUnitsConst::eV;
 		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);

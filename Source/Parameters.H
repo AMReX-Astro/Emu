@@ -47,6 +47,7 @@ struct TestParams : public amrex::Gpu::Managed
     Real st5_fxnue, st5_fxnua, st5_fxnux;
     Real st5_fynue, st5_fynua, st5_fynux;
     Real st5_fznue, st5_fznua, st5_fznux;
+    Real st5_avgE_MeV;
     Real st5_amplitude;
 
     void Initialize(){
@@ -126,6 +127,7 @@ struct TestParams : public amrex::Gpu::Managed
     pp.get("st5_fznue",st5_fznue);
     pp.get("st5_fznua",st5_fznua);
     pp.get("st5_fznux",st5_fznux);
+    pp.get("st5_avgE_MeV",st5_avgE_MeV);
     pp.get("st5_amplitude",st5_amplitude);
   }
     }
