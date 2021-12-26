@@ -713,6 +713,51 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Imbar) = -p.rdata(PIdx::f01_Im);
 		}
 
+		//==============================//
+		// 7 - Code Comparison Gaussian //
+		//==============================//
+		else if(parms->simulation_type==7){
+		  AMREX_ASSERT(NUM_FLAVORS==2);
+		  AMREX_ASSERT(parms->ncell[0] == 1);
+		  AMREX_ASSERT(parms->ncell[1] == 1);
+
+		  // set energy to 50 MeV
+		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
+		  
+		  // get the number of each flavor in this particle.
+		  Real angular_factor;
+		  gaussian_profile(&angular_factor, parms->st7_sigma   , u[2], parms->st7_mu0   );
+		  Real Nnue_thisparticle = parms->st7_nnue*scale_fac * angular_factor;
+		  gaussian_profile(&angular_factor, parms->st7_sigmabar, u[2], parms->st7_mu0bar);
+		  Real Nnua_thisparticle = parms->st7_nnua*scale_fac * angular_factor;
+
+// 		  // set total number of neutrinos the particle has as the sum of the flavors
+		  p.rdata(PIdx::N   ) = Nnue_thisparticle;
+		  p.rdata(PIdx::Nbar) = Nnua_thisparticle;
+
+// 		  // set on-diagonals to have relative proportion of each flavor
+		  p.rdata(PIdx::f00_Re)    = 1;
+		  p.rdata(PIdx::f11_Re)    = 0;
+		  p.rdata(PIdx::f00_Rebar) = 1;
+		  p.rdata(PIdx::f11_Rebar) = 0;
+
+// 		  // random perturbations to the off-diagonals
+		  p.rdata(PIdx::f01_Re) = 0;
+		  p.rdata(PIdx::f01_Im) = 0;
+		  int Nz = parms->ncell[2];
+		  Real zprime = z - parms->Lz;
+		  Real P1 = parms->st7_amplitude * std::exp(-zprime*zprime/(2.*parms->st7_sigma_pert*parms->st7_sigma_pert));
+		  p.rdata(PIdx::f01_Re) = P1 / 2.0;
+		  p.rdata(PIdx::f01_Im) = 0;
+
+		  // Perturb the antineutrinos in a way that preserves the symmetries of the neutrino hamiltonian
+		  p.rdata(PIdx::f01_Rebar) =  p.rdata(PIdx::f01_Re);
+		  p.rdata(PIdx::f01_Imbar) = -p.rdata(PIdx::f01_Im);
+		}
+
 		else{
             amrex::Error("Invalid simulation type");
 		}

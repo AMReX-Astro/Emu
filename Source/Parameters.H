@@ -56,6 +56,13 @@ struct TestParams : public amrex::Gpu::Managed
     Real st6_amplitude;
     Real st6_amax;
 
+    // simulation_type==7
+    Real st7_nnue , st7_nnua;
+    Real st7_sigma, st7_sigmabar;
+    Real st7_mu0, st7_mu0bar;
+    Real st7_amplitude;
+    Real st7_sigma_pert;
+
     void Initialize(){
         ParmParse pp;
         pp.get("simulation_type", simulation_type);
@@ -145,6 +152,16 @@ struct TestParams : public amrex::Gpu::Managed
     pp.get("st6_sigmabar",st6_sigmabar);
     pp.get("st6_mu0",st6_mu0);
     pp.get("st6_mu0bar",st6_mu0bar);
+  }
+  if(simulation_type==7){
+    pp.get("st7_amplitude",st7_amplitude);
+    pp.get("st7_nnue",st7_nnue);
+    pp.get("st7_nnua",st7_nnua);
+    pp.get("st7_sigma",st7_sigma);
+    pp.get("st7_sigmabar",st7_sigmabar);
+    pp.get("st7_mu0",st7_mu0);
+    pp.get("st7_mu0bar",st7_mu0bar);
+    pp.get("st7_sigma_pert",st7_sigma_pert);
   }
     }
 };
