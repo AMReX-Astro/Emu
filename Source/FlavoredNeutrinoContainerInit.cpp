@@ -718,7 +718,7 @@ PerturbParticles(const TestParams* parms)
         
         Gpu::ManagedVector<unsigned int> offsets(tile_box.numPts());
         unsigned int* poffset = offsets.dataPtr();
-        
+/*        
         // Determine how many particles to add to the particle tile per cell
         amrex::ParallelFor(tile_box,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
@@ -750,7 +750,7 @@ PerturbParticles(const TestParams* parms)
                 pcount[cellid] += ndirs_per_loc;
             }
         });
-
+*/
         // Determine total number of particles to add to the particle tile
         Gpu::inclusive_scan(counts.begin(), counts.end(), offsets.begin());
 
