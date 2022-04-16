@@ -755,7 +755,7 @@ PerturbParticles(const TestParams* parms)
         Gpu::inclusive_scan(counts.begin(), counts.end(), offsets.begin());
 
         int num_to_add = offsets[tile_box.numPts()-1];
-        if (num_to_add == 0) continue;
+        if (not num_to_add == 0) continue;
 
         // this will be the particle ID for the first new particle in the tile
         long new_pid;
