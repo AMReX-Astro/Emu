@@ -40,3 +40,4 @@ Scripts/symbolic_hermitians/__pycache__
 .settings
 .vscode
 Source/generated_files
+Emu_scripts
