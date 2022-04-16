@@ -820,7 +820,7 @@ PerturbParticles(const TestParams* parms)
                     // Get the Particle data corresponding to our particle index in pidx
                     const int pidx = poffset[cellid] - poffset[0] + i_loc*ndirs_per_loc + i_direction;
                     ParticleType& p = pstruct[pidx];
-
+/*
                     // Set particle ID using the ID for the first of the new particles in this tile
                     // plus our zero-based particle index
                     p.id()   = new_pid + pidx;
@@ -1174,7 +1174,64 @@ PerturbParticles(const TestParams* parms)
 		else{
             amrex::Error("Invalid simulation type");
 		}
-
+*/
+        //add a perturbation to the density matrix and normalizes the traze
+        #if (NUM_FLAVORS==2)
+                double f00_Re_Perturb    = parms->f00_Re_Perturbation;
+                double f01_Re_Perturb    = parms->f01_Re_Perturbation;
+                double f01_Im_Perturb    = parms->f01_Im_Perturbation;
+                double f11_Re_Perturb    = parms->f11_Re_Perturbation;
+                double f00_Rebar_Perturb = parms->f00_Rebar_Perturbation;
+                double f01_Rebar_Perturb = parms->f01_Rebar_Perturbation;
+                double f01_Imbar_Perturb = parms->f01_Imbar_Perturbation;
+                double f11_Rebar_Perturb = parms->f11_Rebar_Perturbation;
+		          p.rdata(PIdx::f00_Re)    = (p.rdata(PIdx::f00_Re)+f00_Re_Perturb)/(1.0+f00_Re_Perturb+f11_Re_Perturb);
+		          p.rdata(PIdx::f01_Re)    = p.rdata(PIdx::f01_Re)+f01_Re_Perturb;
+		          p.rdata(PIdx::f01_Im)    = p.rdata(PIdx::f01_Im)+f01_Im_Perturb;
+		          p.rdata(PIdx::f11_Re)    = (p.rdata(PIdx::f11_Re)+f11_Re_Perturb)/(1.0+f00_Re_Perturb+f11_Re_Perturb);
+		          p.rdata(PIdx::f00_Rebar) = (p.rdata(PIdx::f00_Rebar)+f00_Rebar_Perturb)/(1+f00_Rebar_Perturb+f11_Rebar_Perturb);
+		          p.rdata(PIdx::f01_Rebar) = p.rdata(PIdx::f01_Rebar)+f01_Rebar_Perturb;
+		          p.rdata(PIdx::f01_Imbar) = p.rdata(PIdx::f01_Imbar)+f01_Imbar_Perturb;
+		          p.rdata(PIdx::f11_Rebar) = (p.rdata(PIdx::f11_Rebar)+f11_Rebar_Perturb)/(1+f00_Rebar_Perturb+f11_Rebar_Perturb);
+        #endif
+        #if (NUM_FLAVORS==3)
+                double f00_Re_Perturb    = parms->f00_Re_Perturbation;
+                double f01_Re_Perturb    = parms->f01_Re_Perturbation;
+                double f01_Im_Perturb    = parms->f01_Im_Perturbation;
+                double f11_Re_Perturb    = parms->f11_Re_Perturbation;
+                double f00_Rebar_Perturb = parms->f00_Rebar_Perturbation;
+                double f01_Rebar_Perturb = parms->f01_Rebar_Perturbation;
+                double f01_Imbar_Perturb = parms->f01_Imbar_Perturbation;
+                double f11_Rebar_Perturb = parms->f11_Rebar_Perturbation;
+                double f22_Re_Perturb    = parms->f22_Re_Perturbation;
+                double f22_Rebar_Perturb = parms->f22_Rebar_Perturbation;
+                double f02_Re_Perturb    = parms->f02_Re_Perturbation;
+                double f02_Im_Perturb    = parms->f02_Im_Perturbation;
+                double f12_Re_Perturb    = parms->f12_Re_Perturbation;
+                double f12_Im_Perturb    = parms->f12_Im_Perturbation;
+                double f02_Rebar_Perturb = parms->f02_Rebar_Perturbation;
+                double f02_Imbar_Perturb = parms->f02_Imbar_Perturbation;
+                double f12_Rebar_Perturb = parms->f12_Rebar_Perturbation;
+                double f12_Imbar_Perturb = parms->f12_Imbar_Perturbation;
+		          p.rdata(PIdx::f00_Re)    = (p.rdata(PIdx::f00_Re)+f00_Re_Perturb)/(1.0+f00_Re_Perturb+f11_Re_Perturb+f22_Re_Perturb);
+		          p.rdata(PIdx::f01_Re)    = p.rdata(PIdx::f01_Re)+f01_Re_Perturb;
+		          p.rdata(PIdx::f01_Im)    = p.rdata(PIdx::f01_Im)+f01_Im_Perturb;
+		          p.rdata(PIdx::f11_Re)    = (p.rdata(PIdx::f11_Re)+f11_Re_Perturb)/(1.0+f00_Re_Perturb+f11_Re_Perturb+f22_Re_Perturb);
+		          p.rdata(PIdx::f00_Rebar) = (p.rdata(PIdx::f00_Rebar)+f00_Rebar_Perturb)/(1+f00_Rebar_Perturb+f11_Rebar_Perturb+f22_Rebar_Perturb);
+		          p.rdata(PIdx::f01_Rebar) = p.rdata(PIdx::f01_Rebar)+f01_Rebar_Perturb;
+		          p.rdata(PIdx::f01_Imbar) = p.rdata(PIdx::f01_Imbar)+f01_Imbar_Perturb;
+		          p.rdata(PIdx::f11_Rebar) = (p.rdata(PIdx::f11_Rebar)+f11_Rebar_Perturb)/(1+f00_Rebar_Perturb+f11_Rebar_Perturb+f22_Rebar_Perturb);
+		          p.rdata(PIdx::f22_Re)    = (p.rdata(PIdx::f22_Re)+f22_Re_Perturb)/(1.0+f00_Re_Perturb+f11_Re_Perturb+f22_Re_Perturb);
+		          p.rdata(PIdx::f22_Rebar) = (p.rdata(PIdx::f22_Rebar)+f22_Rebar_Perturb)/(1+f00_Rebar_Perturb+f11_Rebar_Perturb+f22_Rebar_Perturb);
+		          p.rdata(PIdx::f02_Re)    = p.rdata(PIdx::f02_Re)+f02_Re_Perturb;
+		          p.rdata(PIdx::f02_Im)    = p.rdata(PIdx::f02_Im)+f02_Im_Perturb;
+		          p.rdata(PIdx::f12_Re)    = p.rdata(PIdx::f12_Re)+f12_Re_Perturb;
+		          p.rdata(PIdx::f12_Im)    = p.rdata(PIdx::f12_Im)+f12_Im_Perturb;
+		          p.rdata(PIdx::f02_Rebar) = p.rdata(PIdx::f02_Rebar)+f02_Rebar_Perturb;
+		          p.rdata(PIdx::f02_Imbar) = p.rdata(PIdx::f02_Imbar)+f02_Imbar_Perturb;
+		          p.rdata(PIdx::f12_Rebar) = p.rdata(PIdx::f12_Rebar)+f12_Rebar_Perturb;
+		          p.rdata(PIdx::f12_Imbar) = p.rdata(PIdx::f12_Imbar)+f12_Imbar_Perturb;
+        #endif
 		#include "generated_files/FlavoredNeutrinoContainerInit.cpp_set_trace_length"
             }
         }
