@@ -109,6 +109,11 @@ void evolve_flavor(const TestParams* parms)
     	neutrinos_old.InitParticles(parms);
     }
 
+    if(parms->do_restart){
+        // perturb the density matrix
+    	neutrinos_old.PerturbParticles(parms);
+    }
+
     // Copy particles from old data to new data
     // (the second argument is true to indicate particle container data is local
     //  and we can skip calling Redistribute() after copying the particles)
