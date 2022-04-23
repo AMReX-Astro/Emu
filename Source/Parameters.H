@@ -34,24 +34,7 @@ struct TestParams : public amrex::Gpu::Managed
     Real deltaCP; // CP violating phases in radians
 
     //perturbation to density matrix parameters
-    Real f00_Re_Perturbation;
-    Real f01_Re_Perturbation;
-    Real f01_Im_Perturbation;
-    Real f11_Re_Perturbation;
-    Real f00_Rebar_Perturbation;
-    Real f01_Rebar_Perturbation;
-    Real f01_Imbar_Perturbation;
-    Real f11_Rebar_Perturbation;
-    Real f22_Re_Perturbation;
-    Real f22_Rebar_Perturbation;
-    Real f02_Re_Perturbation;
-    Real f02_Im_Perturbation;
-    Real f12_Re_Perturbation;
-    Real f12_Im_Perturbation;
-    Real f02_Rebar_Perturbation;
-    Real f02_Imbar_Perturbation;
-    Real f12_Rebar_Perturbation;
-    Real f12_Imbar_Perturbation;
+    Real Perturbation_Amplitud;
 
     // simulation_type==3
     int st3_wavelength_fraction_of_domain;
@@ -105,24 +88,7 @@ struct TestParams : public amrex::Gpu::Managed
         alpha1 *= M_PI/180.;
 
         // perturbation parameters
-        pp.get("f00_Re_Perturbation", f00_Re_Perturbation);
-        pp.get("f01_Re_Perturbation", f01_Re_Perturbation);
-        pp.get("f01_Im_Perturbation", f01_Im_Perturbation);
-        pp.get("f11_Re_Perturbation", f11_Re_Perturbation);
-        pp.get("f00_Rebar_Perturbation", f00_Rebar_Perturbation);
-        pp.get("f01_Rebar_Perturbation", f01_Rebar_Perturbation);
-        pp.get("f01_Imbar_Perturbation", f01_Imbar_Perturbation);
-        pp.get("f11_Rebar_Perturbation", f11_Rebar_Perturbation);
-        pp.get("f22_Re_Perturbation", f22_Re_Perturbation);
-        pp.get("f22_Rebar_Perturbation", f22_Rebar_Perturbation);
-        pp.get("f02_Re_Perturbation", f02_Re_Perturbation);
-        pp.get("f02_Im_Perturbation", f02_Im_Perturbation);
-        pp.get("f12_Re_Perturbation", f12_Re_Perturbation);
-        pp.get("f12_Im_Perturbation", f12_Im_Perturbation);
-        pp.get("f02_Rebar_Perturbation", f02_Rebar_Perturbation);
-        pp.get("f02_Imbar_Perturbation", f02_Imbar_Perturbation);
-        pp.get("f12_Rebar_Perturbation", f12_Rebar_Perturbation);
-        pp.get("f12_Imbar_Perturbation", f12_Imbar_Perturbation);
+        pp.get("Perturbation_Amplitud", Perturbation_Amplitud);
 
         if(NUM_FLAVORS>=2){
         	pp.get("mass3_eV", mass3);

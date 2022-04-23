@@ -55,24 +55,7 @@ do_restart = 0
 restart_dir = ""
 
 # perturbations parameters
-f00_Re_Perturbation    = 0.0
-f01_Re_Perturbation    = 0.0
-f01_Im_Perturbation    = 0.0
-f11_Re_Perturbation    = 0.0
-f00_Rebar_Perturbation = 0.0
-f01_Rebar_Perturbation = 0.0
-f01_Imbar_Perturbation = 0.0
-f11_Rebar_Perturbation = 0.0
-f22_Re_Perturbation    = 0.0
-f22_Rebar_Perturbation = 0.0
-f02_Re_Perturbation    = 0.0
-f02_Im_Perturbation    = 0.0
-f12_Re_Perturbation    = 0.0
-f12_Im_Perturbation    = 0.0
-f02_Rebar_Perturbation = 0.0
-f02_Imbar_Perturbation = 0.0
-f12_Rebar_Perturbation = 0.0
-f12_Imbar_Perturbation = 0.0
+Perturbation_Amplitud  = 0.0
 
 ###############################
 # NEUTRINO PHYSICS PARAMETERS #
