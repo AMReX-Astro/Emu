@@ -97,20 +97,20 @@ namespace
         r[2] = (0.5+iz_part)/nz;
     }
 
-    AMREX_GPU_HOST_DEVICE void get_random_direction(Real* u) {
+    AMREX_GPU_HOST_DEVICE void get_random_direction(Real* u, amrex::RandomEngine const& engine) {
         // Returns components of u normalized so |u| = 1
         // in random directions in 3D space
 
-        Real theta = amrex::Random() * MathConst::pi;       // theta from [0, pi)
-        Real phi   = amrex::Random() * 2.0 * MathConst::pi; // phi from [0, 2*pi)
+        Real theta = amrex::Random(engine) * MathConst::pi;       // theta from [0, pi)
+        Real phi   = amrex::Random(engine) * 2.0 * MathConst::pi; // phi from [0, 2*pi)
 
         u[0] = std::sin(theta) * std::cos(phi);
         u[1] = std::sin(theta) * std::sin(phi);
         u[2] = std::cos(theta);
     }
 
-  AMREX_GPU_HOST_DEVICE void symmetric_uniform(Real* Usymmetric){
-    *Usymmetric = 2. * (amrex::Random()-0.5);
+  AMREX_GPU_HOST_DEVICE void symmetric_uniform(Real* Usymmetric, amrex::RandomEngine const& engine){
+    *Usymmetric = 2. * (amrex::Random(engine)-0.5);
   }
 
 // angular structure as determined by the Minerbo closure
@@ -279,8 +279,8 @@ InitParticles(const TestParams* parms)
 	Real domain_length_z = Geom(lev).ProbLength(2);
 
         // Initialize particle data in the particle tile
-        amrex::ParallelFor(tile_box,
-        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        amrex::ParallelForRNG(tile_box,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept
         {
             int ix = i - lo.x;
             int iy = j - lo.y;
@@ -332,7 +332,7 @@ InitParticles(const TestParams* parms)
                     p.rdata(PIdx::time) = 0;
 
                     const GpuArray<Real,3> u = direction_vectors_p[i_direction];
-                    //get_random_direction(u);
+                    //get_random_direction(u, engine);
 
 		//=========================//
 		// VACUUM OSCILLATION TEST //
@@ -527,10 +527,10 @@ InitParticles(const TestParams* parms)
 
 		  // Set particle flavor
 		  Real rand1, rand2, rand3, rand4;
-		  symmetric_uniform(&rand1);
-		  symmetric_uniform(&rand2);
-		  symmetric_uniform(&rand3);
-		  symmetric_uniform(&rand4);
+		  symmetric_uniform(&rand1, engine);
+		  symmetric_uniform(&rand2, engine);
+		  symmetric_uniform(&rand3, engine);
+		  symmetric_uniform(&rand4, engine);
 		  p.rdata(PIdx::f00_Re)    = 1.0;
 		  p.rdata(PIdx::f01_Re)    = parms->st4_amplitude*rand1;
 		  p.rdata(PIdx::f01_Im)    = parms->st4_amplitude*rand2;
@@ -540,10 +540,10 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Imbar) = parms->st4_amplitude*rand4;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
 #if (NUM_FLAVORS==3)
-		  symmetric_uniform(&rand1);
-		  symmetric_uniform(&rand2);
-		  symmetric_uniform(&rand3);
-		  symmetric_uniform(&rand4);
+		  symmetric_uniform(&rand1, engine);
+		  symmetric_uniform(&rand2, engine);
+		  symmetric_uniform(&rand3, engine);
+		  symmetric_uniform(&rand4, engine);
 		  p.rdata(PIdx::f22_Re)    = 0.0;
 		  p.rdata(PIdx::f22_Rebar) = 0.0;
 		  p.rdata(PIdx::f02_Re)    = parms->st4_amplitude*rand1;
@@ -635,30 +635,30 @@ InitParticles(const TestParams* parms)
 
 		  // random perturbations to the off-diagonals
 		  Real rand;
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f01_Re)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f11_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f01_Im)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f11_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f01_Rebar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f11_Rebar));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f01_Imbar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f11_Rebar));
 #if NUM_FLAVORS==3
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f02_Re)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f22_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f02_Im)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f22_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f12_Re)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Re   ) - p.rdata(PIdx::f22_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f12_Im)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Re   ) - p.rdata(PIdx::f22_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f02_Rebar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f22_Rebar));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f02_Imbar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f22_Rebar));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f12_Rebar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Rebar) - p.rdata(PIdx::f22_Rebar));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f12_Imbar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Rebar) - p.rdata(PIdx::f22_Rebar));
 #endif
 		}
