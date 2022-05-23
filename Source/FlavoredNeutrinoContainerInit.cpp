@@ -47,7 +47,7 @@ Gpu::ManagedVector<GpuArray<Real,3> > uniform_sphere_xyz(int nphi_at_equator){
 Real minerbo_residual(const Real fluxfac, const Real Z){
 	return fluxfac - 1.0/std::tanh(Z) + 1.0 / Z;
 }
-Real minerbo_residual_derivative(const Real fluxfac, const Real Z){
+Real minerbo_residual_derivative(const Real /* fluxfac */, const Real Z){
 	return 1.0/(std::sinh(Z)*std::sinh(Z)) - 1.0/(Z*Z);
 }
 Real minerbo_Z(const Real fluxfac){
@@ -97,6 +97,7 @@ namespace
         r[2] = (0.5+iz_part)/nz;
     }
 
+/*  // Commented only to avoid compiler warning -- we currently do not use this function
     AMREX_GPU_HOST_DEVICE void get_random_direction(Real* u, amrex::RandomEngine const& engine) {
         // Returns components of u normalized so |u| = 1
         // in random directions in 3D space
@@ -108,6 +109,7 @@ namespace
         u[1] = std::sin(theta) * std::sin(phi);
         u[2] = std::cos(theta);
     }
+*/
 
   AMREX_GPU_HOST_DEVICE void symmetric_uniform(Real* Usymmetric, amrex::RandomEngine const& engine){
     *Usymmetric = 2. * (amrex::Random(engine)-0.5);
@@ -415,9 +417,9 @@ InitParticles(const TestParams* parms)
 		  // set particle weight such that density is
 		  // 10 dm2 c^4 / (2 sqrt(2) GF E)
 		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
-		  double omega = dm2*PhysConst::c4 / (2.*p.rdata(PIdx::pupt));
+		  // double omega = dm2*PhysConst::c4 / (2.*p.rdata(PIdx::pupt));
 		  double ndens = 10. * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
-		  double mu = sqrt(2.)*PhysConst::GF * ndens;
+		  // double mu = sqrt(2.)*PhysConst::GF * ndens;
 		  p.rdata(PIdx::N) = ndens * scale_fac;
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac;
 		}
@@ -476,15 +478,15 @@ InitParticles(const TestParams* parms)
 
 		  // perturbation parameters
 		  Real lambda = domain_length_z/(Real)parms->st3_wavelength_fraction_of_domain;
-		  Real k = (2.*M_PI) / lambda;
+		  Real nu_k = (2.*M_PI) / lambda;
 
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
-		  p.rdata(PIdx::f01_Re)    = parms->st3_amplitude*sin(k*p.pos(2));
+		  p.rdata(PIdx::f01_Re)    = parms->st3_amplitude*sin(nu_k*p.pos(2));
 		  p.rdata(PIdx::f01_Im)    = 0.0;
 		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
-		  p.rdata(PIdx::f01_Rebar) = parms->st3_amplitude*sin(k*p.pos(2));
+		  p.rdata(PIdx::f01_Rebar) = parms->st3_amplitude*sin(nu_k*p.pos(2));
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
 
@@ -514,7 +516,7 @@ InitParticles(const TestParams* parms)
 		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
 		  Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
 		  Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
-		  Real ndens = (omega+k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
+		  Real ndens = (omega+nu_k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
 		}

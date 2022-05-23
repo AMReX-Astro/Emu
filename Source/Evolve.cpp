@@ -19,7 +19,7 @@ namespace GIdx
     }
 }
 
-Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& state, const FlavoredNeutrinoContainer& neutrinos, const Real flavor_cfl_factor, const Real max_adaptive_speedup)
+Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& state, const FlavoredNeutrinoContainer& /* neutrinos */, const Real flavor_cfl_factor, const Real max_adaptive_speedup)
 {
     AMREX_ASSERT(cfl_factor > 0.0 || flavor_cfl_factor > 0.0);
 

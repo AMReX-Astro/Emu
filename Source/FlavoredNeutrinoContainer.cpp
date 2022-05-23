@@ -91,9 +91,6 @@ Renormalize(const TestParams* parms)
 
     const int lev = 0;
 
-    const auto dxi = Geom(lev).InvCellSizeArray();
-    const auto plo = Geom(lev).ProbLoArray();
-
 #ifdef _OPENMP
 #pragma omp parallel
 #endif

@@ -129,7 +129,7 @@ void evolve_flavor(const TestParams* parms)
     TimeIntegrator<FlavoredNeutrinoContainer> integrator(neutrinos_old);
 
     // Create a RHS source function we will integrate
-    auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, const FlavoredNeutrinoContainer& neutrinos, Real time) {
+    auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, const FlavoredNeutrinoContainer& neutrinos, Real /* time */) {
         /* Evaluate the neutrino distribution matrix RHS */
 
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
