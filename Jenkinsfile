@@ -51,7 +51,7 @@ pipeline {
 
     post {
         always {
-	    cleanWS(
+	    cleanWs(
 	        cleanWhenNotBuilt: true,
 		deleteDirs: true,
 		disableDeferredWipeout: false,
