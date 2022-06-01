@@ -50,6 +50,20 @@ struct TestParams : public amrex::Gpu::Managed
     Real st5_avgE_MeV;
     Real st5_amplitude;
 
+    // simulation_type==6
+    Real st6_nnue , st6_nnua;
+    Real st6_sigma, st6_sigmabar;
+    Real st6_mu0, st6_mu0bar;
+    Real st6_amplitude;
+    Real st6_amax;
+
+    // simulation_type==7
+    Real st7_nnue , st7_nnua;
+    Real st7_sigma, st7_sigmabar;
+    Real st7_mu0, st7_mu0bar;
+    Real st7_amplitude;
+    Real st7_sigma_pert;
+
     void Initialize(){
         ParmParse pp;
         pp.get("simulation_type", simulation_type);
@@ -129,6 +143,27 @@ struct TestParams : public amrex::Gpu::Managed
     pp.get("st5_fznux",st5_fznux);
     pp.get("st5_avgE_MeV",st5_avgE_MeV);
     pp.get("st5_amplitude",st5_amplitude);
+  }
+
+  if(simulation_type==6){
+    pp.get("st6_amplitude",st6_amplitude);
+    pp.get("st6_amax",st6_amax);
+    pp.get("st6_nnue",st6_nnue);
+    pp.get("st6_nnua",st6_nnua);
+    pp.get("st6_sigma",st6_sigma);
+    pp.get("st6_sigmabar",st6_sigmabar);
+    pp.get("st6_mu0",st6_mu0);
+    pp.get("st6_mu0bar",st6_mu0bar);
+  }
+  if(simulation_type==7){
+    pp.get("st7_amplitude",st7_amplitude);
+    pp.get("st7_nnue",st7_nnue);
+    pp.get("st7_nnua",st7_nnua);
+    pp.get("st7_sigma",st7_sigma);
+    pp.get("st7_sigmabar",st7_sigmabar);
+    pp.get("st7_mu0",st7_mu0);
+    pp.get("st7_mu0bar",st7_mu0bar);
+    pp.get("st7_sigma_pert",st7_sigma_pert);
   }
     }
 };

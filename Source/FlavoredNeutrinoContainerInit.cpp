@@ -1,6 +1,7 @@
 #include "FlavoredNeutrinoContainer.H"
  #include "Constants.H"
 #include <random>
+#include <cmath>
 
 using namespace amrex;
 
@@ -124,6 +125,13 @@ namespace
   }
 }
 
+// angular structure as determined by the gaussian profile of Martin et al (2019).
+ AMREX_GPU_HOST_DEVICE void gaussian_profile(Real* result, const Real sigma, const Real mu, const Real mu0){
+   Real Ainverse = sigma * std::sqrt(M_PI/2.0) * std::erf(std::sqrt(2)/sigma);
+   Real A = 1.0 / Ainverse;
+   *result = 2.0 * A * std::exp(-(mu-mu0)*(mu-mu0) / (2.0*sigma*sigma));
+ }
+
 FlavoredNeutrinoContainer::
 FlavoredNeutrinoContainer(const Geometry            & a_geom,
                           const DistributionMapping & a_dmap,
@@ -147,11 +155,22 @@ InitParticles(const TestParams* parms)
     const int nlocs_per_cell = AMREX_D_TERM( parms->nppc[0],
                                      *parms->nppc[1],
                                      *parms->nppc[2]);
-    
+
+    // array of direction vectors
     Gpu::ManagedVector<GpuArray<Real,3> > direction_vectors = uniform_sphere_xyz(parms->nphi_equator);
     auto* direction_vectors_p = direction_vectors.dataPtr();
     int ndirs_per_loc = direction_vectors.size();
     amrex::Print() << "Using " << ndirs_per_loc << " directions based on " << parms->nphi_equator << " directions at the equator." << std::endl;
+
+    // array of random numbers, one for each grid cell
+    int nrandom = parms->ncell[0] * parms->ncell[1] * parms->ncell[2];
+    Gpu::ManagedVector<Real> random_numbers(nrandom);
+    if (ParallelDescriptor::IOProcessor())
+      for(int i=0; i<nrandom; i++)
+	symmetric_uniform(&random_numbers[i]);
+    auto* random_numbers_p = random_numbers.dataPtr();
+    ParallelDescriptor::Bcast(random_numbers_p, random_numbers.size(),
+			      ParallelDescriptor::IOProcessorNumber());
 
     const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell/ndirs_per_loc;
 
@@ -642,6 +661,101 @@ InitParticles(const TestParams* parms)
 		  symmetric_uniform(&rand);
 		  p.rdata(PIdx::f12_Imbar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Rebar) - p.rdata(PIdx::f22_Rebar));
 #endif
+		}
+
+		//============================//
+		// 6 - Code Comparison Random //
+		//============================//
+		else if(parms->simulation_type==6){
+		  AMREX_ASSERT(NUM_FLAVORS==2);
+		  AMREX_ASSERT(parms->ncell[0] == 1);
+		  AMREX_ASSERT(parms->ncell[1] == 1);
+
+		  // set energy to 50 MeV
+		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
+		  
+		  // get the number of each flavor in this particle.
+		  Real angular_factor;
+		  gaussian_profile(&angular_factor, parms->st6_sigma   , u[2], parms->st6_mu0   );
+		  Real Nnue_thisparticle = parms->st6_nnue*scale_fac * angular_factor;
+		  gaussian_profile(&angular_factor, parms->st6_sigmabar, u[2], parms->st6_mu0bar);
+		  Real Nnua_thisparticle = parms->st6_nnua*scale_fac * angular_factor;
+
+// 		  // set total number of neutrinos the particle has as the sum of the flavors
+		  p.rdata(PIdx::N   ) = Nnue_thisparticle;
+		  p.rdata(PIdx::Nbar) = Nnua_thisparticle;
+
+// 		  // set on-diagonals to have relative proportion of each flavor
+		  p.rdata(PIdx::f00_Re)    = 1;
+		  p.rdata(PIdx::f11_Re)    = 0;
+		  p.rdata(PIdx::f00_Rebar) = 1;
+		  p.rdata(PIdx::f11_Rebar) = 0;
+
+// 		  // random perturbations to the off-diagonals
+		  p.rdata(PIdx::f01_Re) = 0;
+		  p.rdata(PIdx::f01_Im) = 0;
+		  int Nz = parms->ncell[2];
+		  int amax = parms->st6_amax * Nz/2;
+		  for(int a=-amax; a<=amax; a++){
+		    if(a==0) continue;
+		    Real ka = 2.*M_PI * a / parms->Lz;
+		    Real phase = ka*z + 2.*M_PI*random_numbers_p[a+Nz/2];
+		    Real B = parms->st6_amplitude / std::abs(float(a));
+		    p.rdata(PIdx::f01_Re) += 0.5 * B * cos(phase);
+		    p.rdata(PIdx::f01_Im) += 0.5 * B * sin(phase);
+		  }
+
+		  // Perturb the antineutrinos in a way that preserves the symmetries of the neutrino hamiltonian
+		  p.rdata(PIdx::f01_Rebar) =  p.rdata(PIdx::f01_Re);
+		  p.rdata(PIdx::f01_Imbar) = -p.rdata(PIdx::f01_Im);
+		}
+
+		//==============================//
+		// 7 - Code Comparison Gaussian //
+		//==============================//
+		else if(parms->simulation_type==7){
+		  AMREX_ASSERT(NUM_FLAVORS==2);
+		  AMREX_ASSERT(parms->ncell[0] == 1);
+		  AMREX_ASSERT(parms->ncell[1] == 1);
+
+		  // set energy to 50 MeV
+		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
+		  
+		  // get the number of each flavor in this particle.
+		  Real angular_factor;
+		  gaussian_profile(&angular_factor, parms->st7_sigma   , u[2], parms->st7_mu0   );
+		  Real Nnue_thisparticle = parms->st7_nnue*scale_fac * angular_factor;
+		  gaussian_profile(&angular_factor, parms->st7_sigmabar, u[2], parms->st7_mu0bar);
+		  Real Nnua_thisparticle = parms->st7_nnua*scale_fac * angular_factor;
+
+// 		  // set total number of neutrinos the particle has as the sum of the flavors
+		  p.rdata(PIdx::N   ) = Nnue_thisparticle;
+		  p.rdata(PIdx::Nbar) = Nnua_thisparticle;
+
+// 		  // set on-diagonals to have relative proportion of each flavor
+		  p.rdata(PIdx::f00_Re)    = 1;
+		  p.rdata(PIdx::f11_Re)    = 0;
+		  p.rdata(PIdx::f00_Rebar) = 1;
+		  p.rdata(PIdx::f11_Rebar) = 0;
+
+// 		  // random perturbations to the off-diagonals
+		  p.rdata(PIdx::f01_Re) = 0;
+		  p.rdata(PIdx::f01_Im) = 0;
+		  int Nz = parms->ncell[2];
+		  Real zprime = z - parms->Lz;
+		  Real P1 = parms->st7_amplitude * std::exp(-zprime*zprime/(2.*parms->st7_sigma_pert*parms->st7_sigma_pert));
+		  p.rdata(PIdx::f01_Re) = P1 / 2.0;
+		  p.rdata(PIdx::f01_Im) = 0;
+
+		  // Perturb the antineutrinos in a way that preserves the symmetries of the neutrino hamiltonian
+		  p.rdata(PIdx::f01_Rebar) =  p.rdata(PIdx::f01_Re);
+		  p.rdata(PIdx::f01_Imbar) = -p.rdata(PIdx::f01_Im);
 		}
 
 		else{
