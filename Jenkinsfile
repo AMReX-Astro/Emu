@@ -9,7 +9,7 @@ pipeline {
     	stage('Prerequisites'){ steps{
 	    sh 'mpicc -v'
 	    sh 'nvidia-smi'
-	    sh 'nvcc -v'
+	    sh 'nvcc -V'
 	    sh 'git submodule update --init'
 	    sh 'cp makefiles/GNUmakefile_jenkins Exec/GNUmakefile'
 	    dir('Exec'){
