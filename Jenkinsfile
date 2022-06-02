@@ -1,7 +1,6 @@
 pipeline {
     triggers { pollSCM('') }  // Run tests whenever a new commit is detected.
-    agent { dockerfile true
-    	    args '--gpus all'} // Use the Dockerfile defined in the root Flash-X directory
+    agent { dockerfile {args '--gpus all'}} // Use the Dockerfile defined in the root Flash-X directory
     stages {
 
         //=============================//
