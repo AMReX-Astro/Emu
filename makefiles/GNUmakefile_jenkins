@@ -9,7 +9,7 @@ SHAPE_FACTOR_ORDER = 2
 
 COMP = gnu
 
-DEBUG	= TRUE
+DEBUG	= FALSE
 
 USE_MPI       = TRUE
 USE_OMP       = FALSE

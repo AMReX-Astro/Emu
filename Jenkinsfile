@@ -23,27 +23,27 @@ pipeline {
 	//=======//
 	stage('MSW'){ steps{
 	    dir('Exec'){
-	        sh 'mpirun -np 4 ./main3d.gnu.DEBUG.TPROF.MPI.ex ../sample_inputs/inputs_msw_test'
+	        sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_msw_test'
 	        sh 'python ../Scripts/tests/msw_test.py'
 	    }
 	}}
 
 	stage('Bipolar'){ steps{
 	    dir('Exec'){
-	        sh 'mpirun -np 4 ./main3d.gnu.DEBUG.TPROF.MPI.ex ../sample_inputs/inputs_bipolar_test'
+	        sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_bipolar_test'
 	    }
 	}}
 
 	stage('Fast Flavor'){ steps{
 	    dir('Exec'){
-	        sh 'mpirun -np 4 ./main3d.gnu.DEBUG.TPROF.MPI.ex ../sample_inputs/inputs_fast_flavor'
+	        sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fast_flavor'
 	        sh 'python ../Scripts/tests/fast_flavor_test.py'
 	    }
 	}}
 
 	stage('Fast Flavor k'){ steps{
 	    dir('Exec'){
-	        sh 'mpirun -np 4 ./main3d.gnu.DEBUG.TPROF.MPI.ex ../sample_inputs/inputs_fast_flavor_nonzerok'
+	        sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fast_flavor_nonzerok'
 	        sh 'python ../Scripts/tests/fast_flavor_k_test.py'
 	    }
 	}}
