@@ -1,6 +1,7 @@
 pipeline {
     triggers { pollSCM('') }  // Run tests whenever a new commit is detected.
-    agent { dockerfile true } // Use the Dockerfile defined in the root Flash-X directory
+    agent { dockerfile true
+    	    args '--gpus all'} // Use the Dockerfile defined in the root Flash-X directory
     stages {
 
         //=============================//
@@ -13,6 +14,7 @@ pipeline {
 	        sh 'make generate; make -j12'
 	    }
 	    sh 'mpicc -v'
+	    sh 'nvidia-smi'
 	}}
 
 
