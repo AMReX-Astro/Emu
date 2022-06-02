@@ -7,13 +7,14 @@ pipeline {
     	// Set up submodules and amrex //
         //=============================//
     	stage('Prerequisites'){ steps{
+	    sh 'mpicc -v'
+	    sh 'nvidia-smi'
+	    sh 'nvcc -v'
 	    sh 'git submodule update --init'
 	    sh 'cp makefiles/GNUmakefile_jenkins Exec/GNUmakefile'
 	    dir('Exec'){
 	        sh 'make generate; make -j12'
 	    }
-	    sh 'mpicc -v'
-	    sh 'nvidia-smi'
 	}}
 
 
