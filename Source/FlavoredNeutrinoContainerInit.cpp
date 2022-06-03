@@ -167,12 +167,15 @@ InitParticles(const TestParams* parms)
     // array of random numbers, one for each grid cell
     int nrandom = parms->ncell[0] * parms->ncell[1] * parms->ncell[2];
     Gpu::ManagedVector<Real> random_numbers(nrandom);
-    if (ParallelDescriptor::IOProcessor())
-      for(int i=0; i<nrandom; i++)
-	symmetric_uniform(&random_numbers[i]);
+    if (ParallelDescriptor::IOProcessor()) {
+      RandomEngine engine;
+      for (int i=0; i<nrandom; i++) {
+        symmetric_uniform(&random_numbers[i], engine);
+      }
+    }
     auto* random_numbers_p = random_numbers.dataPtr();
     ParallelDescriptor::Bcast(random_numbers_p, random_numbers.size(),
-			      ParallelDescriptor::IOProcessorNumber());
+                              ParallelDescriptor::IOProcessorNumber());
 
     const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell/ndirs_per_loc;
 
