@@ -6,6 +6,8 @@ TOP := $(EMU_HOME)
 
 EBASE := main
 
+CXXSTD := c++17
+
 include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 
 Bdirs   := Source

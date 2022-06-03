@@ -126,10 +126,10 @@ void evolve_flavor(const TestParams* parms)
 
     amrex::Print() << "Done. " << std::endl;
 
-    TimeIntegrator<FlavoredNeutrinoContainer> integrator(neutrinos_old, neutrinos_new, initial_time, initial_step);
+    TimeIntegrator<FlavoredNeutrinoContainer> integrator(neutrinos_old);
 
     // Create a RHS source function we will integrate
-    auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, const FlavoredNeutrinoContainer& neutrinos, Real time) {
+    auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, const FlavoredNeutrinoContainer& neutrinos, Real /* time */) {
         /* Evaluate the neutrino distribution matrix RHS */
 
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
@@ -155,8 +155,8 @@ void evolve_flavor(const TestParams* parms)
     auto post_timestep_fun = [&] () {
         /* Post-timestep function. The integrator new-time data is the latest data available. */
 
-        // Get the latest neutrino data
-        auto& neutrinos = integrator.get_new_data();
+        // Use the latest-time neutrino data
+        auto& neutrinos = neutrinos_new;
 
         // Update the new time particle locations in the domain with their
         // integrated coordinates.
@@ -210,7 +210,7 @@ void evolve_flavor(const TestParams* parms)
 
     Real start_time = amrex::second();
 
-    integrator.integrate(starting_dt, parms->end_time, parms->nsteps);
+    integrator.integrate(neutrinos_old, neutrinos_new, initial_time, starting_dt, parms->end_time, initial_step, parms->nsteps);
 
     Real stop_time = amrex::second();
     Real advance_time = stop_time - start_time;
@@ -229,6 +229,8 @@ void evolve_flavor(const TestParams* parms)
 int main(int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
+
+    MFIter::allowMultipleMFIters(true);
 
     // write build information to screen
     if (ParallelDescriptor::IOProcessor()) {

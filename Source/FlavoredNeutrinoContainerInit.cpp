@@ -47,7 +47,7 @@ Gpu::ManagedVector<GpuArray<Real,3> > uniform_sphere_xyz(int nphi_at_equator){
 Real minerbo_residual(const Real fluxfac, const Real Z){
 	return fluxfac - 1.0/std::tanh(Z) + 1.0 / Z;
 }
-Real minerbo_residual_derivative(const Real fluxfac, const Real Z){
+Real minerbo_residual_derivative(const Real /* fluxfac */, const Real Z){
 	return 1.0/(std::sinh(Z)*std::sinh(Z)) - 1.0/(Z*Z);
 }
 Real minerbo_Z(const Real fluxfac){
@@ -97,20 +97,22 @@ namespace
         r[2] = (0.5+iz_part)/nz;
     }
 
-    AMREX_GPU_HOST_DEVICE void get_random_direction(Real* u) {
+/*  // Commented only to avoid compiler warning -- we currently do not use this function
+    AMREX_GPU_HOST_DEVICE void get_random_direction(Real* u, amrex::RandomEngine const& engine) {
         // Returns components of u normalized so |u| = 1
         // in random directions in 3D space
 
-        Real theta = amrex::Random() * MathConst::pi;       // theta from [0, pi)
-        Real phi   = amrex::Random() * 2.0 * MathConst::pi; // phi from [0, 2*pi)
+        Real theta = amrex::Random(engine) * MathConst::pi;       // theta from [0, pi)
+        Real phi   = amrex::Random(engine) * 2.0 * MathConst::pi; // phi from [0, 2*pi)
 
         u[0] = std::sin(theta) * std::cos(phi);
         u[1] = std::sin(theta) * std::sin(phi);
         u[2] = std::cos(theta);
     }
+*/
 
-  AMREX_GPU_HOST_DEVICE void symmetric_uniform(Real* Usymmetric){
-    *Usymmetric = 2. * (amrex::Random()-0.5);
+  AMREX_GPU_HOST_DEVICE void symmetric_uniform(Real* Usymmetric, amrex::RandomEngine const& engine){
+    *Usymmetric = 2. * (amrex::Random(engine)-0.5);
   }
 
 // angular structure as determined by the Minerbo closure
@@ -165,12 +167,15 @@ InitParticles(const TestParams* parms)
     // array of random numbers, one for each grid cell
     int nrandom = parms->ncell[0] * parms->ncell[1] * parms->ncell[2];
     Gpu::ManagedVector<Real> random_numbers(nrandom);
-    if (ParallelDescriptor::IOProcessor())
-      for(int i=0; i<nrandom; i++)
-	symmetric_uniform(&random_numbers[i]);
+    if (ParallelDescriptor::IOProcessor()) {
+      RandomEngine engine;
+      for (int i=0; i<nrandom; i++) {
+        symmetric_uniform(&random_numbers[i], engine);
+      }
+    }
     auto* random_numbers_p = random_numbers.dataPtr();
     ParallelDescriptor::Bcast(random_numbers_p, random_numbers.size(),
-			      ParallelDescriptor::IOProcessorNumber());
+                              ParallelDescriptor::IOProcessorNumber());
 
     const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell/ndirs_per_loc;
 
@@ -279,8 +284,8 @@ InitParticles(const TestParams* parms)
 	Real domain_length_z = Geom(lev).ProbLength(2);
 
         // Initialize particle data in the particle tile
-        amrex::ParallelFor(tile_box,
-        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        amrex::ParallelForRNG(tile_box,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept
         {
             int ix = i - lo.x;
             int iy = j - lo.y;
@@ -332,7 +337,7 @@ InitParticles(const TestParams* parms)
                     p.rdata(PIdx::time) = 0;
 
                     const GpuArray<Real,3> u = direction_vectors_p[i_direction];
-                    //get_random_direction(u);
+                    //get_random_direction(u, engine);
 
 		//=========================//
 		// VACUUM OSCILLATION TEST //
@@ -415,9 +420,9 @@ InitParticles(const TestParams* parms)
 		  // set particle weight such that density is
 		  // 10 dm2 c^4 / (2 sqrt(2) GF E)
 		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
-		  double omega = dm2*PhysConst::c4 / (2.*p.rdata(PIdx::pupt));
+		  // double omega = dm2*PhysConst::c4 / (2.*p.rdata(PIdx::pupt));
 		  double ndens = 10. * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
-		  double mu = sqrt(2.)*PhysConst::GF * ndens;
+		  // double mu = sqrt(2.)*PhysConst::GF * ndens;
 		  p.rdata(PIdx::N) = ndens * scale_fac;
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac;
 		}
@@ -476,15 +481,15 @@ InitParticles(const TestParams* parms)
 
 		  // perturbation parameters
 		  Real lambda = domain_length_z/(Real)parms->st3_wavelength_fraction_of_domain;
-		  Real k = (2.*M_PI) / lambda;
+		  Real nu_k = (2.*M_PI) / lambda;
 
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
-		  p.rdata(PIdx::f01_Re)    = parms->st3_amplitude*sin(k*p.pos(2));
+		  p.rdata(PIdx::f01_Re)    = parms->st3_amplitude*sin(nu_k*p.pos(2));
 		  p.rdata(PIdx::f01_Im)    = 0.0;
 		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
-		  p.rdata(PIdx::f01_Rebar) = parms->st3_amplitude*sin(k*p.pos(2));
+		  p.rdata(PIdx::f01_Rebar) = parms->st3_amplitude*sin(nu_k*p.pos(2));
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
 
@@ -514,7 +519,7 @@ InitParticles(const TestParams* parms)
 		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
 		  Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
 		  Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
-		  Real ndens = (omega+k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
+		  Real ndens = (omega+nu_k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
 		}
@@ -527,10 +532,10 @@ InitParticles(const TestParams* parms)
 
 		  // Set particle flavor
 		  Real rand1, rand2, rand3, rand4;
-		  symmetric_uniform(&rand1);
-		  symmetric_uniform(&rand2);
-		  symmetric_uniform(&rand3);
-		  symmetric_uniform(&rand4);
+		  symmetric_uniform(&rand1, engine);
+		  symmetric_uniform(&rand2, engine);
+		  symmetric_uniform(&rand3, engine);
+		  symmetric_uniform(&rand4, engine);
 		  p.rdata(PIdx::f00_Re)    = 1.0;
 		  p.rdata(PIdx::f01_Re)    = parms->st4_amplitude*rand1;
 		  p.rdata(PIdx::f01_Im)    = parms->st4_amplitude*rand2;
@@ -540,10 +545,10 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Imbar) = parms->st4_amplitude*rand4;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
 #if (NUM_FLAVORS==3)
-		  symmetric_uniform(&rand1);
-		  symmetric_uniform(&rand2);
-		  symmetric_uniform(&rand3);
-		  symmetric_uniform(&rand4);
+		  symmetric_uniform(&rand1, engine);
+		  symmetric_uniform(&rand2, engine);
+		  symmetric_uniform(&rand3, engine);
+		  symmetric_uniform(&rand4, engine);
 		  p.rdata(PIdx::f22_Re)    = 0.0;
 		  p.rdata(PIdx::f22_Rebar) = 0.0;
 		  p.rdata(PIdx::f02_Re)    = parms->st4_amplitude*rand1;
@@ -635,30 +640,30 @@ InitParticles(const TestParams* parms)
 
 		  // random perturbations to the off-diagonals
 		  Real rand;
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f01_Re)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f11_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f01_Im)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f11_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f01_Rebar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f11_Rebar));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f01_Imbar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f11_Rebar));
 #if NUM_FLAVORS==3
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f02_Re)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f22_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f02_Im)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f22_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f12_Re)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Re   ) - p.rdata(PIdx::f22_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f12_Im)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Re   ) - p.rdata(PIdx::f22_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f02_Rebar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f22_Rebar));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f02_Imbar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f22_Rebar));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f12_Rebar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Rebar) - p.rdata(PIdx::f22_Rebar));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f12_Imbar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Rebar) - p.rdata(PIdx::f22_Rebar));
 #endif
 		}

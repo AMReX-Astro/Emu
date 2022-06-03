@@ -19,8 +19,6 @@ WritePlotFile (const amrex::MultiFab& state,
     BoxArray grids = state.boxArray();
     grids.convert(IntVect());
 
-    const DistributionMapping& dmap = state.DistributionMap();
-
     const std::string& plotfilename = amrex::Concatenate("plt", step);
 
     amrex::Print() << "  Writing plotfile " << plotfilename << "\n";
