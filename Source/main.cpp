@@ -230,6 +230,8 @@ int main(int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
 
+    MFIter::allowMultipleMFIters(true);
+
     // write build information to screen
     if (ParallelDescriptor::IOProcessor()) {
         writeBuildInfo();
