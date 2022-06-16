@@ -23,9 +23,6 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
 {
     AMREX_ASSERT(cfl_factor > 0.0 || flavor_cfl_factor > 0.0);
 
-    const auto dx = geom.CellSizeArray();
-    const Real cell_volume = dx[0]*dx[1]*dx[2];
-
 	// translation part of timestep limit
     const auto dxi = geom.CellSizeArray();
     Real dt_translation = 0.0;
@@ -92,6 +89,7 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
 {
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
+    const Real inv_cell_volume = dxi[0]*dxi[1]*dxi[2];
 
     // Create an alias of the MultiFab so ParticleToMesh only erases the quantities
     // that will be set by the neutrinos.
@@ -129,7 +127,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
 {
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
-    const Real inv_cell_volume = dxi[0]*dxi[1]*dxi[2];
 
     const int shape_factor_order_x = geom.Domain().length(0) > 1 ? SHAPE_FACTOR_ORDER : 0;
     const int shape_factor_order_y = geom.Domain().length(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
