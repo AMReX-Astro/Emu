@@ -1,6 +1,7 @@
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_buildInfo.H>
+#include "hdf5.h"
 
 #include "FlavoredNeutrinoContainer.H"
 #include "IO.H"
@@ -23,12 +24,59 @@ WritePlotFile (const amrex::MultiFab& state,
 
     amrex::Print() << "  Writing plotfile " << plotfilename << "\n";
 
+#ifdef AMREX_USE_HDF5
+    hid_t file, attr, aid;
+
+    // write the grid file
+    amrex::WriteSingleLevelPlotfileHDF5(plotfilename, state, GIdx::names, geom, time, step);
+
+    // create attribute dataspace
+    aid = H5Screate(H5S_SCALAR);
+
+    // open the freshly created file
+    std::string hdf5plotfilename(plotfilename);
+    hdf5plotfilename.append(".h5");
+    file = H5Fopen(hdf5plotfilename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+
+    // write the step count and snapshot time
+    attr = H5Acreate(file, "step", H5T_NATIVE_INT, aid, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(attr, H5T_NATIVE_INT, &step);
+    attr = H5Acreate(file, "time(s)", H5T_NATIVE_DOUBLE, aid, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(attr, H5T_NATIVE_DOUBLE, &time);
+
+    // close the file
+    H5Fclose(file);
+#else
     amrex::WriteSingleLevelPlotfile(plotfilename, state, GIdx::names, geom, time, step);
+#endif
 
     if (write_plot_particles == 1)
     {
         auto neutrino_varnames = neutrinos.get_attribute_names();
+#ifdef AMREX_USE_HDF5
+	// create standard amrex checkpoint file
+        neutrinos.CheckpointHDF5(plotfilename, "neutrinos", true, neutrino_varnames);
+
+	// open the freshly-written hdf5 file
+	std::string checkpointfilename = plotfilename;
+	checkpointfilename.append("/neutrinos/neutrinos.h5");
+
+	// open the freshly created file
+	hid_t file = H5Fopen(checkpointfilename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+
+	// write the step count and snapshot time
+	attr = H5Acreate(file, "step", H5T_NATIVE_INT, aid, H5P_DEFAULT, H5P_DEFAULT);
+	H5Awrite(attr, H5T_NATIVE_INT, &step);
+	attr = H5Acreate(file, "time(s)", H5T_NATIVE_DOUBLE, aid, H5P_DEFAULT, H5P_DEFAULT);
+	H5Awrite(attr, H5T_NATIVE_DOUBLE, &time);
+
+	// close all the pointers
+	H5Aclose(attr);
+	H5Fclose(file);
+	H5Sclose(aid);
+#else
         neutrinos.Checkpoint(plotfilename, "neutrinos", true, neutrino_varnames);
+#endif
     }
 
     // write job information
@@ -41,6 +89,32 @@ RecoverParticles (const std::string& dir,
 				  amrex::Real& time, int& step)
 {
     BL_PROFILE("RecoverParticles()");
+
+#ifdef AMREX_USE_HDF5
+    // initialize our particle container from the plotfile
+    std::string checkpointfilename("neutrinos/neutrinos");
+    neutrinos.RestartHDF5(dir, checkpointfilename);
+
+    // open the same hdf5 file again (with different string conventions...argh)
+    checkpointfilename = dir;
+    checkpointfilename.append("/neutrinos/neutrinos.h5");
+    hid_t file = H5Fopen(checkpointfilename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+
+    // read the attributes to get step number
+    hid_t attr = H5Aopen(file, "step", H5P_DEFAULT);
+    H5Aread(attr, H5T_NATIVE_INT, &step);
+    H5Aclose(attr);
+
+    // read the attributes to get the current time
+    attr = H5Aopen(file, "time(s)", H5P_DEFAULT);
+    H5Aread(attr, H5T_NATIVE_DOUBLE, &time);
+    H5Aclose(attr);
+
+    // close all the pointers
+    H5Fclose(file);
+#else
+    // initialize our particle container from the plotfile
+    std::string checkpointfilename("neutrinos");
 
     // load the metadata from this plotfile
     PlotFileData plotfile(dir);
@@ -55,6 +129,7 @@ RecoverParticles (const std::string& dir,
 	// initialize our particle container from the plotfile
 	std::string file("neutrinos");
 	neutrinos.Restart(dir, file);
+#endif
 
 	// print the step/time for the restart
 	amrex::Print() << "Restarting after time step: " << step-1 << " t = " << time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;

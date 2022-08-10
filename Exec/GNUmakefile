@@ -12,7 +12,10 @@ USE_MPI       = TRUE
 USE_OMP       = FALSE
 USE_ACC       = FALSE
 USE_CUDA      = FALSE
-USE_HDF5      = FALSE
+AMREX_CUDA_ARCH=60
+
+USE_HDF5=FALSE
+HDF5_HOME=/usr/local/hdf5-1.12.2_gnu9.4.0
 
 TINY_PROFILE  = TRUE
 USE_PARTICLES = TRUE
@@ -21,12 +24,5 @@ PRECISION     = DOUBLE
 
 Bpack   :=
 Blocs   := .
-
-ifeq ($(USE_HDF5), TRUE)
-HDF5_HOME =
-DEFINES += -DAMREX_USE_HDF5
-INCLUDE_LOCATIONS += $(HDF5_HOME)/include
-LIBRARIES         += -L$(HDF5_HOME)/lib -lhdf5 -lz -ldl
-endif
 
 include $(EMU_HOME)/Make.Emu
