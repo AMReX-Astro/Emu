@@ -38,30 +38,7 @@ WritePlotFile (const amrex::MultiFab& state,
     {
         auto neutrino_varnames = neutrinos.get_attribute_names();
 #ifdef AMREX_USE_HDF5
-	// create standard amrex checkpoint file
         neutrinos.CheckpointHDF5(plotfilename, "neutrinos", true, neutrino_varnames);
-
-	// open the freshly-written hdf5 file
-	std::string checkpointfilename = plotfilename;
-	checkpointfilename.append("/neutrinos/neutrinos.h5");
-
-	// open the freshly created file and prepare the group property
-	hid_t file = H5Fopen(checkpointfilename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-	hid_t group = H5Gopen(file, "level_0", H5P_DEFAULT);
-	hid_t aid = H5Screate(H5S_SCALAR);
-
-	// write the step count and snapshot time
-	hid_t attr;
-	attr = H5Acreate(group, "steps", H5T_NATIVE_INT, aid, H5P_DEFAULT, H5P_DEFAULT);
-	H5Awrite(attr, H5T_NATIVE_INT, &step);
-	attr = H5Acreate(group, "time", H5T_NATIVE_DOUBLE, aid, H5P_DEFAULT, H5P_DEFAULT);
-	H5Awrite(attr, H5T_NATIVE_DOUBLE, &time);
-
-	// close all the pointers
-	H5Gclose(group);
-	H5Aclose(attr);
-	H5Fclose(file);
-	H5Sclose(aid);
 #else
         neutrinos.Checkpoint(plotfilename, "neutrinos", true, neutrino_varnames);
 #endif
@@ -79,14 +56,10 @@ RecoverParticles (const std::string& dir,
     BL_PROFILE("RecoverParticles()");
 
 #ifdef AMREX_USE_HDF5
-    // initialize our particle container from the plotfile
-    std::string checkpointfilename("neutrinos/neutrinos");
-    neutrinos.RestartHDF5(dir, checkpointfilename);
-
-    // open the same hdf5 file again (with different string conventions...argh)
-    checkpointfilename = dir;
-    checkpointfilename.append("/neutrinos/neutrinos.h5");
-    hid_t file = H5Fopen(checkpointfilename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    // open the plotfile to get the metadata
+    std::string plotfilename = dir;
+    plotfilename.append(".h5");
+    hid_t file = H5Fopen(plotfilename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
     hid_t group = H5Gopen(file, "level_0", H5P_DEFAULT);
 
     // read the attributes to get step number
@@ -102,6 +75,10 @@ RecoverParticles (const std::string& dir,
     // close all the pointers
     H5Fclose(file);
     H5Gclose(group);
+
+    // initialize our particle container from the plotfile
+    std::string checkpointfilename("neutrinos/neutrinos");
+    neutrinos.RestartHDF5(dir, checkpointfilename);
 #else
     // load the metadata from this plotfile
     PlotFileData plotfile(dir);
