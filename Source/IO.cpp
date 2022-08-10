@@ -1,7 +1,10 @@
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_buildInfo.H>
+
+#ifdef AMREX_USE_HDF5
 #include "hdf5.h"
+#endif
 
 #include "FlavoredNeutrinoContainer.H"
 #include "IO.H"
@@ -24,28 +27,9 @@ WritePlotFile (const amrex::MultiFab& state,
 
     amrex::Print() << "  Writing plotfile " << plotfilename << "\n";
 
-#ifdef AMREX_USE_HDF5
-    hid_t file, attr, aid;
-
     // write the grid file
+#ifdef AMREX_USE_HDF5
     amrex::WriteSingleLevelPlotfileHDF5(plotfilename, state, GIdx::names, geom, time, step);
-
-    // create attribute dataspace
-    aid = H5Screate(H5S_SCALAR);
-
-    // open the freshly created file
-    std::string hdf5plotfilename(plotfilename);
-    hdf5plotfilename.append(".h5");
-    file = H5Fopen(hdf5plotfilename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-
-    // write the step count and snapshot time
-    attr = H5Acreate(file, "step", H5T_NATIVE_INT, aid, H5P_DEFAULT, H5P_DEFAULT);
-    H5Awrite(attr, H5T_NATIVE_INT, &step);
-    attr = H5Acreate(file, "time(s)", H5T_NATIVE_DOUBLE, aid, H5P_DEFAULT, H5P_DEFAULT);
-    H5Awrite(attr, H5T_NATIVE_DOUBLE, &time);
-
-    // close the file
-    H5Fclose(file);
 #else
     amrex::WriteSingleLevelPlotfile(plotfilename, state, GIdx::names, geom, time, step);
 #endif
@@ -61,16 +45,20 @@ WritePlotFile (const amrex::MultiFab& state,
 	std::string checkpointfilename = plotfilename;
 	checkpointfilename.append("/neutrinos/neutrinos.h5");
 
-	// open the freshly created file
+	// open the freshly created file and prepare the group property
 	hid_t file = H5Fopen(checkpointfilename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+	hid_t group = H5Gopen(file, "level_0", H5P_DEFAULT);
+	hid_t aid = H5Screate(H5S_SCALAR);
 
 	// write the step count and snapshot time
-	attr = H5Acreate(file, "step", H5T_NATIVE_INT, aid, H5P_DEFAULT, H5P_DEFAULT);
+	hid_t attr;
+	attr = H5Acreate(group, "steps", H5T_NATIVE_INT, aid, H5P_DEFAULT, H5P_DEFAULT);
 	H5Awrite(attr, H5T_NATIVE_INT, &step);
-	attr = H5Acreate(file, "time(s)", H5T_NATIVE_DOUBLE, aid, H5P_DEFAULT, H5P_DEFAULT);
+	attr = H5Acreate(group, "time", H5T_NATIVE_DOUBLE, aid, H5P_DEFAULT, H5P_DEFAULT);
 	H5Awrite(attr, H5T_NATIVE_DOUBLE, &time);
 
 	// close all the pointers
+	H5Gclose(group);
 	H5Aclose(attr);
 	H5Fclose(file);
 	H5Sclose(aid);
@@ -99,19 +87,21 @@ RecoverParticles (const std::string& dir,
     checkpointfilename = dir;
     checkpointfilename.append("/neutrinos/neutrinos.h5");
     hid_t file = H5Fopen(checkpointfilename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    hid_t group = H5Gopen(file, "level_0", H5P_DEFAULT);
 
     // read the attributes to get step number
-    hid_t attr = H5Aopen(file, "step", H5P_DEFAULT);
+    hid_t attr = H5Aopen(group, "steps", H5P_DEFAULT);
     H5Aread(attr, H5T_NATIVE_INT, &step);
     H5Aclose(attr);
 
     // read the attributes to get the current time
-    attr = H5Aopen(file, "time(s)", H5P_DEFAULT);
+    attr = H5Aopen(group, "time", H5P_DEFAULT);
     H5Aread(attr, H5T_NATIVE_DOUBLE, &time);
     H5Aclose(attr);
 
     // close all the pointers
     H5Fclose(file);
+    H5Gclose(group);
 #else
     // load the metadata from this plotfile
     PlotFileData plotfile(dir);
