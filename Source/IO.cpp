@@ -113,9 +113,6 @@ RecoverParticles (const std::string& dir,
     // close all the pointers
     H5Fclose(file);
 #else
-    // initialize our particle container from the plotfile
-    std::string checkpointfilename("neutrinos");
-
     // load the metadata from this plotfile
     PlotFileData plotfile(dir);
 
