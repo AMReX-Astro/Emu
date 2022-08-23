@@ -361,6 +361,30 @@ InitParticles(const TestParams* parms)
 		    p.rdata(PIdx::pupz) = momentum[2];
 		    p.rdata(PIdx::pupt) = momentum[3];
 
+		    // set all flavor components to zero by default
+		    p.rdata(PIdx::N   ) = 0.0;
+		    p.rdata(PIdx::Nbar) = 0.0;
+		    p.rdata(PIdx::f00_Re)    = 0.0;
+		    p.rdata(PIdx::f01_Re)    = 0.0;
+		    p.rdata(PIdx::f01_Im)    = 0.0;
+		    p.rdata(PIdx::f11_Re)    = 0.0;
+		    p.rdata(PIdx::f00_Rebar) = 0.0;
+		    p.rdata(PIdx::f01_Rebar) = 0.0;
+		    p.rdata(PIdx::f01_Imbar) = 0.0;
+		    p.rdata(PIdx::f11_Rebar) = 0.0;
+#if (NUM_FLAVORS==3)
+		    p.rdata(PIdx::f22_Re)    = 0.0;
+		    p.rdata(PIdx::f22_Rebar) = 0.0;
+		    p.rdata(PIdx::f02_Re)    = 0.0;
+		    p.rdata(PIdx::f02_Im)    = 0.0;
+		    p.rdata(PIdx::f12_Re)    = 0.0;
+		    p.rdata(PIdx::f12_Im)    = 0.0;
+		    p.rdata(PIdx::f02_Rebar) = 0.0;
+		    p.rdata(PIdx::f02_Imbar) = 0.0;
+		    p.rdata(PIdx::f12_Rebar) = 0.0;
+		    p.rdata(PIdx::f12_Imbar) = 0.0;
+#endif
+
 		//=========================//
 		// VACUUM OSCILLATION TEST //
 		//=========================//
@@ -374,27 +398,7 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::N) = 1.0;
 		  p.rdata(PIdx::Nbar) = 1.0;
 		  p.rdata(PIdx::f00_Re)    = 1.0;
-		  p.rdata(PIdx::f01_Re)    = 0.0;
-		  p.rdata(PIdx::f01_Im)    = 0.0;
-		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
-		  p.rdata(PIdx::f01_Rebar) = 0.0;
-		  p.rdata(PIdx::f01_Imbar) = 0.0;
-		  p.rdata(PIdx::f11_Rebar) = 0.0;
-
-#if (NUM_FLAVORS==3)
-		  p.rdata(PIdx::f22_Re)    = 0.0;
-		  p.rdata(PIdx::f22_Rebar) = 0.0;
-		  p.rdata(PIdx::f02_Re)    = 0.0;
-		  p.rdata(PIdx::f02_Im)    = 0.0;
-		  p.rdata(PIdx::f12_Re)    = 0.0;
-		  p.rdata(PIdx::f12_Im)    = 0.0;
-		  p.rdata(PIdx::f02_Rebar) = 0.0;
-		  p.rdata(PIdx::f02_Imbar) = 0.0;
-		  p.rdata(PIdx::f12_Rebar) = 0.0;
-		  p.rdata(PIdx::f12_Imbar) = 0.0;
-#endif
-
 		}
 
 		//==========================//
@@ -405,26 +409,7 @@ InitParticles(const TestParams* parms)
 		  
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
-		  p.rdata(PIdx::f01_Re)    = 0.0;
-		  p.rdata(PIdx::f01_Im)    = 0.0;
-		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
-		  p.rdata(PIdx::f01_Rebar) = 0.0;
-		  p.rdata(PIdx::f01_Imbar) = 0.0;
-		  p.rdata(PIdx::f11_Rebar) = 0.0;
-
-#if (NUM_FLAVORS==3)
-		  p.rdata(PIdx::f22_Re)    = 0.0;
-		  p.rdata(PIdx::f22_Rebar) = 0.0;
-		  p.rdata(PIdx::f02_Re)    = 0.0;
-		  p.rdata(PIdx::f02_Im)    = 0.0;
-		  p.rdata(PIdx::f12_Re)    = 0.0;
-		  p.rdata(PIdx::f12_Im)    = 0.0;
-		  p.rdata(PIdx::f02_Rebar) = 0.0;
-		  p.rdata(PIdx::f02_Imbar) = 0.0;
-		  p.rdata(PIdx::f12_Rebar) = 0.0;
-		  p.rdata(PIdx::f12_Imbar) = 0.0;
-#endif
 
 		  // set particle weight such that density is
 		  // 10 dm2 c^4 / (2 sqrt(2) GF E)
@@ -444,26 +429,7 @@ InitParticles(const TestParams* parms)
 		  
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
-		  p.rdata(PIdx::f01_Re)    = 0.0;
-		  p.rdata(PIdx::f01_Im)    = 0.0;
-		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
-		  p.rdata(PIdx::f01_Rebar) = 0.0;
-		  p.rdata(PIdx::f01_Imbar) = 0.0;
-		  p.rdata(PIdx::f11_Rebar) = 0.0;
-
-#if (NUM_FLAVORS==3)
-		  p.rdata(PIdx::f22_Re)    = 0.0;
-		  p.rdata(PIdx::f22_Rebar) = 0.0;
-		  p.rdata(PIdx::f02_Re)    = 0.0;
-		  p.rdata(PIdx::f02_Im)    = 0.0;
-		  p.rdata(PIdx::f12_Re)    = 0.0;
-		  p.rdata(PIdx::f12_Im)    = 0.0;
-		  p.rdata(PIdx::f02_Rebar) = 0.0;
-		  p.rdata(PIdx::f02_Imbar) = 0.0;
-		  p.rdata(PIdx::f12_Rebar) = 0.0;
-		  p.rdata(PIdx::f12_Imbar) = 0.0;
-#endif
 
 		  // set particle weight such that density is
 		  // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
@@ -489,26 +455,8 @@ InitParticles(const TestParams* parms)
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
 		  p.rdata(PIdx::f01_Re)    = parms->st3_amplitude*sin(nu_k*p.pos(2));
-		  p.rdata(PIdx::f01_Im)    = 0.0;
-		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
 		  p.rdata(PIdx::f01_Rebar) = parms->st3_amplitude*sin(nu_k*p.pos(2));
-		  p.rdata(PIdx::f01_Imbar) = 0.0;
-		  p.rdata(PIdx::f11_Rebar) = 0.0;
-
-#if (NUM_FLAVORS==3) 
-		  //just perturbing the electron-muon flavor state, other terms can stay = 0.0 for simplicity
-		  p.rdata(PIdx::f22_Re)    = 0.0;
-		  p.rdata(PIdx::f22_Rebar) = 0.0;
-		  p.rdata(PIdx::f02_Re)    = 0.0; 
-		  p.rdata(PIdx::f02_Im)    = 0.0; 
-		  p.rdata(PIdx::f12_Re)    = 0.0;
-		  p.rdata(PIdx::f12_Im)    = 0.0;
-		  p.rdata(PIdx::f02_Rebar) = 0.0; 
-		  p.rdata(PIdx::f02_Imbar) = 0.0; 
-		  p.rdata(PIdx::f12_Rebar) = 0.0;
-		  p.rdata(PIdx::f12_Imbar) = 0.0;
-#endif
 
 		  // set particle weight such that density is
 		  // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
@@ -536,26 +484,18 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f00_Re)    = 1.0;
 		  p.rdata(PIdx::f01_Re)    = parms->st4_amplitude*rand1;
 		  p.rdata(PIdx::f01_Im)    = parms->st4_amplitude*rand2;
-		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
 		  p.rdata(PIdx::f01_Rebar) = parms->st4_amplitude*rand3;
 		  p.rdata(PIdx::f01_Imbar) = parms->st4_amplitude*rand4;
-		  p.rdata(PIdx::f11_Rebar) = 0.0;
 #if (NUM_FLAVORS==3)
 		  symmetric_uniform(&rand1, engine);
 		  symmetric_uniform(&rand2, engine);
 		  symmetric_uniform(&rand3, engine);
 		  symmetric_uniform(&rand4, engine);
-		  p.rdata(PIdx::f22_Re)    = 0.0;
-		  p.rdata(PIdx::f22_Rebar) = 0.0;
 		  p.rdata(PIdx::f02_Re)    = parms->st4_amplitude*rand1;
 		  p.rdata(PIdx::f02_Im)    = parms->st4_amplitude*rand2;
-		  p.rdata(PIdx::f12_Re)    = 0;
-		  p.rdata(PIdx::f12_Im)    = 0;
 		  p.rdata(PIdx::f02_Rebar) = parms->st4_amplitude*rand3;
 		  p.rdata(PIdx::f02_Imbar) = parms->st4_amplitude*rand4;
-		  p.rdata(PIdx::f12_Rebar) = 0;
-		  p.rdata(PIdx::f12_Imbar) = 0;
 #endif
 
 		  // set particle weight such that density is
@@ -674,9 +614,7 @@ InitParticles(const TestParams* parms)
 
 // 		  // set on-diagonals to have relative proportion of each flavor
 		  p.rdata(PIdx::f00_Re)    = 1;
-		  p.rdata(PIdx::f11_Re)    = 0;
 		  p.rdata(PIdx::f00_Rebar) = 1;
-		  p.rdata(PIdx::f11_Rebar) = 0;
 
 // 		  // random perturbations to the off-diagonals
 		  p.rdata(PIdx::f01_Re) = 0;
@@ -718,18 +656,13 @@ InitParticles(const TestParams* parms)
 
 // 		  // set on-diagonals to have relative proportion of each flavor
 		  p.rdata(PIdx::f00_Re)    = 1;
-		  p.rdata(PIdx::f11_Re)    = 0;
 		  p.rdata(PIdx::f00_Rebar) = 1;
-		  p.rdata(PIdx::f11_Rebar) = 0;
 
 // 		  // random perturbations to the off-diagonals
-		  p.rdata(PIdx::f01_Re) = 0;
-		  p.rdata(PIdx::f01_Im) = 0;
 		  int Nz = parms->ncell[2];
 		  Real zprime = z - parms->Lz;
 		  Real P1 = parms->st7_amplitude * std::exp(-zprime*zprime/(2.*parms->st7_sigma_pert*parms->st7_sigma_pert));
 		  p.rdata(PIdx::f01_Re) = P1 / 2.0;
-		  p.rdata(PIdx::f01_Im) = 0;
 
 		  // Perturb the antineutrinos in a way that preserves the symmetries of the neutrino hamiltonian
 		  p.rdata(PIdx::f01_Rebar) =  p.rdata(PIdx::f01_Re);
