@@ -160,19 +160,43 @@ InitParticles(const TestParams* parms)
                                      *parms->nppc[2]);
 
     // set the energy of each particle
-    Real energy_erg = 50. * 1e6*CGSUnitsConst::eV;
+    Real Ze, Za, Zx;
+    Real fluxfac_e, fluxfac_a, fluxfac_x;
+    Real energy_erg = 50. * 1e6*CGSUnitsConst::eV; // set energy to 50 MeV to match Richers+(2019)
     if(parms->simulation_type==0){
+      // set energy so that a vacuum oscillation wavelength occurs over a distance of 1cm
       Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
       energy_erg = dm2*PhysConst::c4 * sin(2.*parms->theta12) / (8.*M_PI*PhysConst::hbarc); // *1cm for units
     }
-    if(parms->simulation_type==5)
+    if(parms->simulation_type==5){
       energy_erg = parms->st5_avgE_MeV * 1e6*CGSUnitsConst::eV;
+
+      // get the Z parameters for the Minerbo closure
+      fluxfac_e = std::sqrt(
+			    parms->st5_fxnue*parms->st5_fxnue + 
+			    parms->st5_fynue*parms->st5_fynue + 
+			    parms->st5_fznue*parms->st5_fznue );
+      fluxfac_a = std::sqrt(
+			    parms->st5_fxnua*parms->st5_fxnua + 
+			    parms->st5_fynua*parms->st5_fynua + 
+			    parms->st5_fznua*parms->st5_fznua );
+      fluxfac_x = std::sqrt(
+			    parms->st5_fxnux*parms->st5_fxnux + 
+			    parms->st5_fynux*parms->st5_fynux + 
+			    parms->st5_fznux*parms->st5_fznux );
+      Ze = minerbo_Z(fluxfac_e);
+      Za = minerbo_Z(fluxfac_a);
+      Zx = minerbo_Z(fluxfac_x);
+    }
 
     // array of direction vectors
     Gpu::ManagedVector<GpuArray<Real,4> > momentum_vectors = uniform_sphere_momenta(parms->nphi_equator, energy_erg);
     auto* momentum_vectors_p = momentum_vectors.dataPtr();
+    
+    // determine the number of directions per location
     int ndirs_per_loc = momentum_vectors.size();
-    amrex::Print() << "Using " << ndirs_per_loc << " directions based on " << parms->nphi_equator << " directions at the equator." << std::endl;
+    amrex::Print() << "Using " << ndirs_per_loc << " directions." << std::endl;
+    const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell/ndirs_per_loc;
 
     // array of random numbers, one for each grid cell
     int nrandom = parms->ncell[0] * parms->ncell[1] * parms->ncell[2];
@@ -187,28 +211,7 @@ InitParticles(const TestParams* parms)
     ParallelDescriptor::Bcast(random_numbers_p, random_numbers.size(),
                               ParallelDescriptor::IOProcessorNumber());
 
-    const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell/ndirs_per_loc;
 
-	// get the Z parameters for the Minerbo closure if using simuation type 5
-	Real Ze, Za, Zx;
-	Real fluxfac_e, fluxfac_a, fluxfac_x;
-	if(parms->simulation_type==5){
-		fluxfac_e = std::sqrt(
-			parms->st5_fxnue*parms->st5_fxnue + 
-			parms->st5_fynue*parms->st5_fynue + 
-			parms->st5_fznue*parms->st5_fznue );
-		fluxfac_a = std::sqrt(
-			parms->st5_fxnua*parms->st5_fxnua + 
-			parms->st5_fynua*parms->st5_fynua + 
-			parms->st5_fznua*parms->st5_fznua );
-		fluxfac_x = std::sqrt(
-			parms->st5_fxnux*parms->st5_fxnux + 
-			parms->st5_fynux*parms->st5_fynux + 
-			parms->st5_fznux*parms->st5_fznux );
-		Ze = minerbo_Z(fluxfac_e);
-		Za = minerbo_Z(fluxfac_a);
-		Zx = minerbo_Z(fluxfac_x);
-	}
 
 #ifdef _OPENMP
 #pragma omp parallel
@@ -352,6 +355,12 @@ InitParticles(const TestParams* parms)
 					     momentum[2]/momentum[3]};
                     //get_random_direction(u, engine);
 
+		    // set particle's momentum components
+		    p.rdata(PIdx::pupx) = momentum[0];
+		    p.rdata(PIdx::pupy) = momentum[1];
+		    p.rdata(PIdx::pupz) = momentum[2];
+		    p.rdata(PIdx::pupt) = momentum[3];
+
 		//=========================//
 		// VACUUM OSCILLATION TEST //
 		//=========================//
@@ -386,12 +395,6 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f12_Imbar) = 0.0;
 #endif
 
-		  // set momentum so that a vacuum oscillation wavelength occurs over a distance of 1cm
-		  // Set particle velocity to c in a random direction
-		  p.rdata(PIdx::pupt) = energy_erg;
-		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
 		}
 
 		//==========================//
@@ -422,12 +425,6 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f12_Rebar) = 0.0;
 		  p.rdata(PIdx::f12_Imbar) = 0.0;
 #endif
-
-		  // set energy to 50 MeV to match Richers+(2019)
-		  p.rdata(PIdx::pupt) = energy_erg;
-		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
 
 		  // set particle weight such that density is
 		  // 10 dm2 c^4 / (2 sqrt(2) GF E)
@@ -467,12 +464,6 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f12_Rebar) = 0.0;
 		  p.rdata(PIdx::f12_Imbar) = 0.0;
 #endif
-
-		  // set energy to 50 MeV to match Richers+(2019)
-		  p.rdata(PIdx::pupt) = energy_erg;
-		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
 
 		  // set particle weight such that density is
 		  // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
@@ -518,12 +509,6 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f12_Rebar) = 0.0;
 		  p.rdata(PIdx::f12_Imbar) = 0.0;
 #endif
-
-		  // set energy to 50 MeV to match Richers+(2019)
-		  p.rdata(PIdx::pupt) = energy_erg;
-		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
 
 		  // set particle weight such that density is
 		  // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
@@ -573,12 +558,6 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f12_Imbar) = 0;
 #endif
 
-		  // set energy to 50 MeV to match Richers+(2019)
-		  p.rdata(PIdx::pupt) = energy_erg;
-		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
-
 		  // set particle weight such that density is
 		  // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
 		  // to get maximal growth according to Chakraborty 2016 Equation 2.10
@@ -610,12 +589,6 @@ InitParticles(const TestParams* parms)
 		else if(parms->simulation_type==5){
 		  AMREX_ASSERT(NUM_FLAVORS==3 or NUM_FLAVORS==2);
 
-		  // set energy to 50 MeV
-		  p.rdata(PIdx::pupt) = energy_erg;
-		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
-		  
 		  // get the cosine of the angle between the direction and each flavor's flux vector
 		  Real mue = fluxfac_e>0 ? (parms->st5_fxnue*u[0] + parms->st5_fynue*u[1] + parms->st5_fznue*u[2])/fluxfac_e : 0;
 		  Real mua = fluxfac_a>0 ? (parms->st5_fxnua*u[0] + parms->st5_fynua*u[1] + parms->st5_fznua*u[2])/fluxfac_a : 0;
@@ -688,12 +661,6 @@ InitParticles(const TestParams* parms)
 		  AMREX_ASSERT(parms->ncell[0] == 1);
 		  AMREX_ASSERT(parms->ncell[1] == 1);
 
-		  // set energy to 50 MeV
-		  p.rdata(PIdx::pupt) = energy_erg;
-		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
-		  
 		  // get the number of each flavor in this particle.
 		  Real angular_factor;
 		  gaussian_profile(&angular_factor, parms->st6_sigma   , u[2], parms->st6_mu0   );
@@ -738,12 +705,6 @@ InitParticles(const TestParams* parms)
 		  AMREX_ASSERT(parms->ncell[0] == 1);
 		  AMREX_ASSERT(parms->ncell[1] == 1);
 
-		  // set energy to 50 MeV
-		  p.rdata(PIdx::pupt) = energy_erg;
-		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
-		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
-		  
 		  // get the number of each flavor in this particle.
 		  Real angular_factor;
 		  gaussian_profile(&angular_factor, parms->st7_sigma   , u[2], parms->st7_mu0   );
