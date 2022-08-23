@@ -7,12 +7,12 @@ using namespace amrex;
 
 // generate an array of theta,phi pairs that uniformily cover the surface of a sphere
 // based on DOI: 10.1080/10586458.2003.10504492 section 3.3 but specifying n_j=0 instead of n
-Gpu::ManagedVector<GpuArray<Real,3> > uniform_sphere_xyz(int nphi_at_equator){
+Gpu::ManagedVector<GpuArray<Real,4> > uniform_sphere_momenta(int nphi_at_equator, Real energy_erg){
 	AMREX_ASSERT(nphi_at_equator>0);
 	
 	Real dtheta = M_PI*std::sqrt(3)/nphi_at_equator;
 
-	Gpu::ManagedVector<GpuArray<Real,3> > xyz;
+	Gpu::ManagedVector<GpuArray<Real,4> > xyzt;
 	Real theta = 0;
 	Real phi0 = 0;
 	while(theta < M_PI/2.){
@@ -22,19 +22,20 @@ Gpu::ManagedVector<GpuArray<Real,3> > uniform_sphere_xyz(int nphi_at_equator){
 
 		for(int iphi=0; iphi<nphi; iphi++){
 			Real phi = phi0 + iphi*dphi;
-			Real x = std::cos(theta) * std::cos(phi);
-			Real y = std::cos(theta) * std::sin(phi);
-			Real z = std::sin(theta);
-			xyz.push_back(GpuArray<Real,3>{x,y,z});
+			Real x = energy_erg * std::cos(theta) * std::cos(phi);
+			Real y = energy_erg * std::cos(theta) * std::sin(phi);
+			Real z = energy_erg * std::sin(theta);
+			Real t = energy_erg;
+			xyzt.push_back(GpuArray<Real,4>{x,y,z,t});
 			// construct exactly opposing vectors to limit subtractive cancellation errors
 			// and be able to represent isotropy exactly (all odd moments == 0)
-			if(theta>0) xyz.push_back(GpuArray<Real,3>{-x,-y,-z});
+			if(theta>0) xyzt.push_back(GpuArray<Real,4>{-x,-y,-z,t});
 		}
 		theta += dtheta;
 		phi0 = phi0 + 0.5*dphi; // offset by half step so adjacent latitudes are not always aligned in longitude
 	}
 
-	return xyz;
+	return xyzt;
 }
 
 // residual for the root finder
@@ -158,10 +159,19 @@ InitParticles(const TestParams* parms)
                                      *parms->nppc[1],
                                      *parms->nppc[2]);
 
+    // set the energy of each particle
+    Real energy_erg = 50. * 1e6*CGSUnitsConst::eV;
+    if(parms->simulation_type==0){
+      Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
+      energy_erg = dm2*PhysConst::c4 * sin(2.*parms->theta12) / (8.*M_PI*PhysConst::hbarc); // *1cm for units
+    }
+    if(parms->simulation_type==5)
+      energy_erg = parms->st5_avgE_MeV * 1e6*CGSUnitsConst::eV;
+
     // array of direction vectors
-    Gpu::ManagedVector<GpuArray<Real,3> > direction_vectors = uniform_sphere_xyz(parms->nphi_equator);
-    auto* direction_vectors_p = direction_vectors.dataPtr();
-    int ndirs_per_loc = direction_vectors.size();
+    Gpu::ManagedVector<GpuArray<Real,4> > momentum_vectors = uniform_sphere_momenta(parms->nphi_equator, energy_erg);
+    auto* momentum_vectors_p = momentum_vectors.dataPtr();
+    int ndirs_per_loc = momentum_vectors.size();
     amrex::Print() << "Using " << ndirs_per_loc << " directions based on " << parms->nphi_equator << " directions at the equator." << std::endl;
 
     // array of random numbers, one for each grid cell
@@ -336,7 +346,10 @@ InitParticles(const TestParams* parms)
                     p.rdata(PIdx::z) = z;
                     p.rdata(PIdx::time) = 0;
 
-                    const GpuArray<Real,3> u = direction_vectors_p[i_direction];
+		    const GpuArray<Real,4> momentum = momentum_vectors_p[i_direction];
+                    const GpuArray<Real,3> u{momentum[0]/momentum[3],
+					     momentum[1]/momentum[3],
+					     momentum[2]/momentum[3]};
                     //get_random_direction(u, engine);
 
 		//=========================//
@@ -375,8 +388,7 @@ InitParticles(const TestParams* parms)
 
 		  // set momentum so that a vacuum oscillation wavelength occurs over a distance of 1cm
 		  // Set particle velocity to c in a random direction
-		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
-		  p.rdata(PIdx::pupt) = dm2*PhysConst::c4 * sin(2.*parms->theta12) / (8.*M_PI*PhysConst::hbarc); // *1cm for units
+		  p.rdata(PIdx::pupt) = energy_erg;
 		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
@@ -412,7 +424,7 @@ InitParticles(const TestParams* parms)
 #endif
 
 		  // set energy to 50 MeV to match Richers+(2019)
-		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupt) = energy_erg;
 		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
@@ -457,7 +469,7 @@ InitParticles(const TestParams* parms)
 #endif
 
 		  // set energy to 50 MeV to match Richers+(2019)
-		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupt) = energy_erg;
 		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
@@ -508,7 +520,7 @@ InitParticles(const TestParams* parms)
 #endif
 
 		  // set energy to 50 MeV to match Richers+(2019)
-		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupt) = energy_erg;
 		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
@@ -562,7 +574,7 @@ InitParticles(const TestParams* parms)
 #endif
 
 		  // set energy to 50 MeV to match Richers+(2019)
-		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupt) = energy_erg;
 		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
@@ -599,7 +611,7 @@ InitParticles(const TestParams* parms)
 		  AMREX_ASSERT(NUM_FLAVORS==3 or NUM_FLAVORS==2);
 
 		  // set energy to 50 MeV
-		  p.rdata(PIdx::pupt) = parms->st5_avgE_MeV * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupt) = energy_erg;
 		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
@@ -677,7 +689,7 @@ InitParticles(const TestParams* parms)
 		  AMREX_ASSERT(parms->ncell[1] == 1);
 
 		  // set energy to 50 MeV
-		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupt) = energy_erg;
 		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
@@ -727,7 +739,7 @@ InitParticles(const TestParams* parms)
 		  AMREX_ASSERT(parms->ncell[1] == 1);
 
 		  // set energy to 50 MeV
-		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupt) = energy_erg;
 		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
 		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
