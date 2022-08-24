@@ -38,13 +38,10 @@ struct TestParams : public amrex::Gpu::Managed
     Real deltaCP; // CP violating phases in radians
 
     // simulation_type==3
-    int st3_wavelength_fraction_of_domain;
-    Real st3_amplitude;
   
     // simulation_type==4
     Real st4_ndens   , st4_theta   , st4_phi   , st4_fluxfac   ;
     Real st4_ndensbar, st4_thetabar, st4_phibar, st4_fluxfacbar;
-    Real st4_amplitude;
 
     // simulation_type==5
     Real st5_nnue , st5_nnua , st5_nnux ;
@@ -52,24 +49,14 @@ struct TestParams : public amrex::Gpu::Managed
     Real st5_fynue, st5_fynua, st5_fynux;
     Real st5_fznue, st5_fznua, st5_fznux;
     Real st5_avgE_MeV;
-    Real st5_amplitude;
     Real st5_Ze, st5_Za, st5_Zx;
     Real st5_fluxfac_e, st5_fluxfac_a, st5_fluxfac_x;
 
-    // simulation_type==6
-    Real st6_nnue , st6_nnua;
-    Real st6_sigma, st6_sigmabar;
-    Real st6_mu0, st6_mu0bar;
-    Real st6_amplitude;
-    Real st6_amax;
-
-    // simulation_type==7
-    Real st7_nnue , st7_nnua;
-    Real st7_sigma, st7_sigmabar;
-    Real st7_mu0, st7_mu0bar;
-    Real st7_amplitude;
-    Real st7_sigma_pert;
-
+    // perturbation parameters
+    int perturbation_type;
+    int perturbation_wavelength_fraction_of_domain;
+    Real perturbation_amplitude;
+    
     void Initialize(){
         ParmParse pp;
         pp.get("simulation_type", simulation_type);
@@ -94,6 +81,12 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("restart_dir", restart_dir);
         pp.get("maxError", maxError);
 
+	// perturbation parameters
+	pp.get("perturbation_amplitude", perturbation_amplitude);
+	pp.get("perturbation_type", perturbation_type);
+	if(perturbation_type == 1)
+	  pp.get("perturbation_wavelength_fraction_of_domain", perturbation_wavelength_fraction_of_domain);
+	
         // neutrino physics parameters for 2-flavor
         pp.get("mass1_eV", mass1);
         pp.get("mass2_eV", mass2);
@@ -117,11 +110,6 @@ struct TestParams : public amrex::Gpu::Managed
         	deltaCP *= M_PI/180.;
         }
 
-	if(simulation_type==3){
-	  pp.get("st3_amplitude", st3_amplitude);
-	  pp.get("st3_wavelength_fraction_of_domain", st3_wavelength_fraction_of_domain);
-	}
-	
 	if(simulation_type==4){
 	  pp.get("st4_theta"   , st4_theta   );
 	  pp.get("st4_thetabar", st4_thetabar);
@@ -131,7 +119,6 @@ struct TestParams : public amrex::Gpu::Managed
 	  pp.get("st4_ndensbar", st4_ndensbar);
 	  pp.get("st4_fluxfac"   , st4_fluxfac);
 	  pp.get("st4_fluxfacbar", st4_fluxfacbar);
-	  pp.get("st4_amplitude", st4_amplitude);
 	}
 
   if(simulation_type==5){
@@ -148,7 +135,6 @@ struct TestParams : public amrex::Gpu::Managed
     pp.get("st5_fznua",st5_fznua);
     pp.get("st5_fznux",st5_fznux);
     pp.get("st5_avgE_MeV",st5_avgE_MeV);
-    pp.get("st5_amplitude",st5_amplitude);
 
     // calculate flux factors
     st5_fluxfac_e = std::sqrt(

@@ -7,7 +7,8 @@ st4_ndens = 4.891290819e+32
 st4_ndensbar = 4.891290819e+32
 st4_fluxfac = .333333333333333
 st4_fluxfacbar = .333333333333333
-st4_amplitude = 1e-6
+perturbation_type = 0
+perturbation_amplitude = 1e-6
 
 cfl_factor = 0.5
 flavor_cfl_factor = 0.5
