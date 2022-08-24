@@ -4,6 +4,9 @@ max_adaptive_speedup = 0
 flavor_cfl_factor = .5
 maxError = 1e-6
 
+perturbation_type = 0
+perturbation_amplitude = 0
+
 integration.type = 1
 integration.rk.type = 4
 
