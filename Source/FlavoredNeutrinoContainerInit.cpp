@@ -368,15 +368,9 @@ InitParticles(const TestParams* parms)
 	    // 3- k!=0 BEAM FAST FLAVOR TEST //
 	    //===============================//
 	    else if(parms->simulation_type==3){
-	      // perturbation parameters
-	      Real lambda = domain_length_z/(Real)parms->st3_wavelength_fraction_of_domain;
-	      Real nu_k = (2.*M_PI) / lambda;
-
 	      // Set particle flavor
 	      p.rdata(PIdx::f00_Re)    = 1.0;
-	      p.rdata(PIdx::f01_Re)    = parms->st3_amplitude*sin(nu_k*p.pos(2));
 	      p.rdata(PIdx::f00_Rebar) = 1.0;
-	      p.rdata(PIdx::f01_Rebar) = parms->st3_amplitude*sin(nu_k*p.pos(2));
 
 	      // set particle weight such that density is
 	      // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
