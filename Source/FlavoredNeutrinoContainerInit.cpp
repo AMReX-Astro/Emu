@@ -2,6 +2,7 @@
 #include "Constants.H"
 #include <random>
 #include <cmath>
+#include <string>
 
 using namespace amrex;
 
@@ -39,6 +40,10 @@ Gpu::ManagedVector<GpuArray<Real,4> > uniform_sphere_momenta(int nphi_at_equator
   }
 
   return xyzt;
+}
+
+Gpu::ManagedVector<GpuArray<Real,4> > read_particle_momenta(std::string filename){
+
 }
 
 //=======================================//
@@ -133,7 +138,10 @@ InitParticles(const TestParams* parms)
     energy_erg = parms->st5_avgE_MeV * 1e6*CGSUnitsConst::eV;
 
   // array of direction vectors
-  Gpu::ManagedVector<GpuArray<Real,4> > momentum_vectors = uniform_sphere_momenta(parms->nphi_equator, energy_erg);
+  if(parms->angular_grid_type==0)
+    Gpu::ManagedVector<GpuArray<Real,4> > momentum_vectors = uniform_sphere_momenta(parms->nphi_equator, energy_erg);
+  if(parms->angular_grid_type==1)
+    Gpu::ManagedVector<GpuArray<Real,4> > momentum_vectors = read_particle_momenta(parms->particle_data_filename);
   auto* momentum_vectors_p = momentum_vectors.dataPtr();
     
   // determine the number of directions per location

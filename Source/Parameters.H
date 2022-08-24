@@ -16,7 +16,6 @@ struct TestParams : public amrex::Gpu::Managed
 {
     IntVect ncell;      // num cells in domain
     IntVect nppc;       // number of particles per cell in each dim
-    int nphi_equator;   // number of directions in x-y plane.
     Real Lx, Ly, Lz;
     int max_grid_size;
     int nsteps;
@@ -31,6 +30,11 @@ struct TestParams : public amrex::Gpu::Managed
     std::string restart_dir;
     Real maxError;
 
+    // angular grid
+    int angular_grid_type;
+    std::string particle_data_filename;
+    int nphi_equator;   // number of directions in x-y plane.
+  
     // neutrino physics parameters. See first column of table 14.7 in http://pdg.lbl.gov/2019/reviews/rpp2019-rev-neutrino-mixing.pdf
     Real mass1, mass2, mass3; // neutrino masses in grams
     Real theta12, theta13, theta23; // neutrino mixing angles in radians
@@ -65,7 +69,6 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("Ly", Ly);
         pp.get("Lz", Lz);
         pp.get("nppc",  nppc);
-        pp.get("nphi_equator",  nphi_equator);
         pp.get("max_grid_size", max_grid_size);
         pp.get("nsteps", nsteps);
         pp.get("end_time", end_time);
@@ -81,6 +84,13 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("restart_dir", restart_dir);
         pp.get("maxError", maxError);
 
+	// angular grid
+	pp.get("angular_grid_type",angular_grid_type);
+	if(angular_grid_type==1)
+	  pp.get("nphi_equator",  nphi_equator);
+	if(angular_grid_type==2)
+	  pp.get("particle_data_filename",particle_data_filename);
+	
 	// perturbation parameters
 	pp.get("perturbation_amplitude", perturbation_amplitude);
 	pp.get("perturbation_type", perturbation_type);

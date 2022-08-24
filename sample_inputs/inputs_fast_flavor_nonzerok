@@ -19,6 +19,7 @@ Lz = 1.0
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
+angular_grid_type = 0
 nphi_equator = 1
 
 # Maximum size of each grid in the domain
