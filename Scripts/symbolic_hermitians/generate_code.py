@@ -152,7 +152,7 @@ if __name__ == "__main__":
     #=================================#
     tails = ["","bar"]
     string1 = "amrex::Gpu::Atomic::AddNoRet(&sarr(i, j, k, GIdx::"
-    string2 = "-start_comp), sx(i) * sy(j) * sz(k) * p.rdata(PIdx::"
+    string2 = "-start_comp), sx(i) * sy(j) * sz(k) * inv_cell_volume * p.rdata(PIdx::"
     string4 = [");",
                "*p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt));",
                "*p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt));",
@@ -259,7 +259,6 @@ if __name__ == "__main__":
     #============================#
     code = []
     length = sympy.symbols("length",real=True)
-    cell_volume = sympy.symbols("cell_volume",real=True)
     rho = sympy.symbols("fab(i\,j\,k\,GIdx\:\:rho)",real=True)
     Ye = sympy.symbols("fab(i\,j\,k\,GIdx\:\:Ye)",real=True)
     mp = sympy.symbols("PhysConst\:\:Mp",real=True)
@@ -269,7 +268,7 @@ if __name__ == "__main__":
     N    = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::N{}{}_{})")
     Nbar = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::N{}{}_{}bar)")
     HSI  = (N-Nbar.conjugate())
-    HSI.H[0,0] += rho*Ye/mp * cell_volume
+    HSI.H[0,0] += rho*Ye/mp
     V_adaptive2 = HSI.SU_vector_magnitude2()
     code.append("V_adaptive2 += "+sympy.cxxcode(sympy.simplify(V_adaptive2))+";")
 
@@ -282,15 +281,15 @@ if __name__ == "__main__":
         code.append("V_adaptive2 += "+sympy.cxxcode(sympy.simplify(V_adaptive2))+";")
 
     # put in the units
-    code.append("V_adaptive = sqrt(V_adaptive2)*"+sympy.cxxcode(sqrt2GF/cell_volume)+";")
+    code.append("V_adaptive = sqrt(V_adaptive2)*"+sympy.cxxcode(sqrt2GF)+";")
 
     # old "stupid" way of computing the timestep.
     # the factor of 2 accounts for potential worst-case effects of neutrinos and antineutrinos
     for i in range(args.N):
         code.append("V_stupid = max(V_stupid,"+sympy.cxxcode(N.H[i,i])+");")
         code.append("V_stupid = max(V_stupid,"+sympy.cxxcode(Nbar.H[i,i])+");")
-    code.append("V_stupid = max(V_stupid,"+sympy.cxxcode(rho*Ye/mp*cell_volume)+");")
-    code.append("V_stupid *= "+sympy.cxxcode(2.0*args.N*sqrt2GF/cell_volume)+";")
+    code.append("V_stupid = max(V_stupid,"+sympy.cxxcode(rho*Ye/mp)+");")
+    code.append("V_stupid *= "+sympy.cxxcode(2.0*args.N*sqrt2GF)+";")
     write_code(code, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_compute_dt_fill"))
 
     #=======================================#
@@ -309,7 +308,7 @@ if __name__ == "__main__":
     Vlist = HermitianMatrix(args.N, "V{}{}_{}").header()
     Nlist = HermitianMatrix(args.N, "N{}{}_{}").header()
     Flist = [HermitianMatrix(args.N, "F"+d+"{}{}_{}").header() for d in direction]
-    rhoye = string_interp+"rho)*"+string_interp+"Ye)/PhysConst::Mp/inv_cell_volume"
+    rhoye = string_interp+"rho)*"+string_interp+"Ye)/PhysConst::Mp"
     code.append("double SI_partial, SI_partialbar, inside_parentheses;")
     code.append("")
 
@@ -351,7 +350,7 @@ if __name__ == "__main__":
             else:
                 line += " -= "
 
-            line += "sqrt(2.) * PhysConst::GF * inv_cell_volume * sx(i) * sy(j) * sz(k) * (inside_parentheses);"
+            line += "sqrt(2.) * PhysConst::GF * sx(i) * sy(j) * sz(k) * (inside_parentheses);"
             code.append(line)
             code.append("")
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_interpolate_from_mesh_fill"))
