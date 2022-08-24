@@ -5,6 +5,9 @@
 
 using namespace amrex;
 
+//=========================================//
+// Particle distribution in momentum space //
+//=========================================//
 // generate an array of theta,phi pairs that uniformily cover the surface of a sphere
 // based on DOI: 10.1080/10586458.2003.10504492 section 3.3 but specifying n_j=0 instead of n
 Gpu::ManagedVector<GpuArray<Real,4> > uniform_sphere_momenta(int nphi_at_equator, Real energy_erg){
@@ -38,6 +41,9 @@ Gpu::ManagedVector<GpuArray<Real,4> > uniform_sphere_momenta(int nphi_at_equator
 	return xyzt;
 }
 
+//=======================================//
+// Functions needed within particle loop //
+//=======================================//
 namespace
 {    
     AMREX_GPU_HOST_DEVICE void get_position_unit_cell(Real* r, const IntVect& nppc, int i_part)
@@ -73,25 +79,28 @@ namespace
     *Usymmetric = 2. * (amrex::Random(engine)-0.5);
   }
 
-// angular structure as determined by the Minerbo closure
-// Z is a parameter determined by the flux factor
-// mu is the cosine of the angle relative to the flux direction
-// Coefficients set such that the expectation value is 1
+  // angular structure as determined by the Minerbo closure
+  // Z is a parameter determined by the flux factor
+  // mu is the cosine of the angle relative to the flux direction
+  // Coefficients set such that the expectation value is 1
   AMREX_GPU_HOST_DEVICE void minerbo_closure(Real* result, const Real Z, const Real mu){
 	Real minfluxfac = 1e-3;
 	*result = std::exp(Z*mu);
 	if(Z/3.0 > minfluxfac)
 		*result *= Z/std::sinh(Z);
   }
+
+  // angular structure as determined by the gaussian profile of Martin et al (2019).
+  AMREX_GPU_HOST_DEVICE void gaussian_profile(Real* result, const Real sigma, const Real mu, const Real mu0){
+    Real Ainverse = sigma * std::sqrt(M_PI/2.0) * std::erf(std::sqrt(2)/sigma);
+    Real A = 1.0 / Ainverse;
+    *result = 2.0 * A * std::exp(-(mu-mu0)*(mu-mu0) / (2.0*sigma*sigma));
+  }
 }
 
-// angular structure as determined by the gaussian profile of Martin et al (2019).
- AMREX_GPU_HOST_DEVICE void gaussian_profile(Real* result, const Real sigma, const Real mu, const Real mu0){
-   Real Ainverse = sigma * std::sqrt(M_PI/2.0) * std::erf(std::sqrt(2)/sigma);
-   Real A = 1.0 / Ainverse;
-   *result = 2.0 * A * std::exp(-(mu-mu0)*(mu-mu0) / (2.0*sigma*sigma));
- }
-
+//=======================================//
+// FlavoredNeutrinoContainer initializer //
+//=======================================//
 FlavoredNeutrinoContainer::
 FlavoredNeutrinoContainer(const Geometry            & a_geom,
                           const DistributionMapping & a_dmap,
@@ -101,6 +110,10 @@ FlavoredNeutrinoContainer(const Geometry            & a_geom,
     #include "generated_files/FlavoredNeutrinoContainerInit.H_particle_varnames_fill"
 }
 
+
+//==================================//
+// Main Initial Conditions Function //
+//==================================//
 void
 FlavoredNeutrinoContainer::
 InitParticles(const TestParams* parms)
