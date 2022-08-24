@@ -368,6 +368,8 @@ InitParticles(const TestParams* parms)
 	    // 3- k!=0 BEAM FAST FLAVOR TEST //
 	    //===============================//
 	    else if(parms->simulation_type==3){
+	      AMREX_ASSERT(perturbation_type==1);
+
 	      // Set particle flavor
 	      p.rdata(PIdx::f00_Re)    = 1.0;
 	      p.rdata(PIdx::f00_Rebar) = 1.0;
@@ -378,6 +380,8 @@ InitParticles(const TestParams* parms)
 	      Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
 	      Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
 	      Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
+	      Real lambda = domain_length_z/(Real)parms->perturbation_wavelength_fraction_of_domain;
+	      Real nu_k = (2.*M_PI) / lambda;
 	      Real ndens = (omega+nu_k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
 	      p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 	      p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
