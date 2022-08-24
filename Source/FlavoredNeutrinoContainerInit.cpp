@@ -38,49 +38,6 @@ Gpu::ManagedVector<GpuArray<Real,4> > uniform_sphere_momenta(int nphi_at_equator
 	return xyzt;
 }
 
-// residual for the root finder
-// Z needs to be bigger if residual is positive
-// Minerbo (1978) (unfortunately under Elsevier paywall)
-// Can also see Richers (2020) https://ui.adsabs.harvard.edu/abs/2020PhRvD.102h3017R
-//     Eq.41 (where a is Z), but in the non-degenerate limit
-//     k->0, eta->0, N->Z/(4pi sinh(Z)) (just to make it integrate to 1)
-//     minerbo_residual is the "f" equation between eq.42 and 43
-Real minerbo_residual(const Real fluxfac, const Real Z){
-	return fluxfac - 1.0/std::tanh(Z) + 1.0 / Z;
-}
-Real minerbo_residual_derivative(const Real /* fluxfac */, const Real Z){
-	return 1.0/(std::sinh(Z)*std::sinh(Z)) - 1.0/(Z*Z);
-}
-Real minerbo_Z(const Real fluxfac){
-	// hard-code in these parameters because they are not
-	// really very important...
-	Real maxresidual = 1e-6;
-	Real maxcount = 20;
-	Real minfluxfac = 1e-3;
-
-	// set the initial conditions
-	Real Z = 1.0;
-
-	// catch the small flux factor case to prevent nans
-	if(fluxfac < minfluxfac)
-		Z = 3.*fluxfac;
-	else{
-		Real residual = 1.0;
-		int count = 0;
-		while(std::abs(residual)>maxresidual and count<maxcount){
-			residual = minerbo_residual(fluxfac, Z);
-			Real slope = minerbo_residual_derivative(fluxfac, Z);
-			Z -= residual/slope;
-			count++;
-		}
-		if(residual>maxresidual)
-			amrex::Error("Failed to converge on a solution.");
-	}
-	
-	amrex::Print() << "fluxfac="<<fluxfac<<" Z=" << Z<<std::endl;
-	return Z;
-}
-
 namespace
 {    
     AMREX_GPU_HOST_DEVICE void get_position_unit_cell(Real* r, const IntVect& nppc, int i_part)
@@ -160,34 +117,14 @@ InitParticles(const TestParams* parms)
                                      *parms->nppc[2]);
 
     // set the energy of each particle
-    Real Ze, Za, Zx;
-    Real fluxfac_e, fluxfac_a, fluxfac_x;
     Real energy_erg = 50. * 1e6*CGSUnitsConst::eV; // set energy to 50 MeV to match Richers+(2019)
     if(parms->simulation_type==0){
       // set energy so that a vacuum oscillation wavelength occurs over a distance of 1cm
       Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
       energy_erg = dm2*PhysConst::c4 * sin(2.*parms->theta12) / (8.*M_PI*PhysConst::hbarc); // *1cm for units
     }
-    if(parms->simulation_type==5){
+    if(parms->simulation_type==5)
       energy_erg = parms->st5_avgE_MeV * 1e6*CGSUnitsConst::eV;
-
-      // get the Z parameters for the Minerbo closure
-      fluxfac_e = std::sqrt(
-			    parms->st5_fxnue*parms->st5_fxnue + 
-			    parms->st5_fynue*parms->st5_fynue + 
-			    parms->st5_fznue*parms->st5_fznue );
-      fluxfac_a = std::sqrt(
-			    parms->st5_fxnua*parms->st5_fxnua + 
-			    parms->st5_fynua*parms->st5_fynua + 
-			    parms->st5_fznua*parms->st5_fznua );
-      fluxfac_x = std::sqrt(
-			    parms->st5_fxnux*parms->st5_fxnux + 
-			    parms->st5_fynux*parms->st5_fynux + 
-			    parms->st5_fznux*parms->st5_fznux );
-      Ze = minerbo_Z(fluxfac_e);
-      Za = minerbo_Z(fluxfac_a);
-      Zx = minerbo_Z(fluxfac_x);
-    }
 
     // array of direction vectors
     Gpu::ManagedVector<GpuArray<Real,4> > momentum_vectors = uniform_sphere_momenta(parms->nphi_equator, energy_erg);
@@ -530,19 +467,19 @@ InitParticles(const TestParams* parms)
 		  AMREX_ASSERT(NUM_FLAVORS==3 or NUM_FLAVORS==2);
 
 		  // get the cosine of the angle between the direction and each flavor's flux vector
-		  Real mue = fluxfac_e>0 ? (parms->st5_fxnue*u[0] + parms->st5_fynue*u[1] + parms->st5_fznue*u[2])/fluxfac_e : 0;
-		  Real mua = fluxfac_a>0 ? (parms->st5_fxnua*u[0] + parms->st5_fynua*u[1] + parms->st5_fznua*u[2])/fluxfac_a : 0;
-		  Real mux = fluxfac_x>0 ? (parms->st5_fxnux*u[0] + parms->st5_fynux*u[1] + parms->st5_fznux*u[2])/fluxfac_x : 0;
+		  Real mue = parms->st5_fluxfac_e>0 ? (parms->st5_fxnue*u[0] + parms->st5_fynue*u[1] + parms->st5_fznue*u[2])/parms->st5_fluxfac_e : 0;
+		  Real mua = parms->st5_fluxfac_a>0 ? (parms->st5_fxnua*u[0] + parms->st5_fynua*u[1] + parms->st5_fznua*u[2])/parms->st5_fluxfac_a : 0;
+		  Real mux = parms->st5_fluxfac_x>0 ? (parms->st5_fxnux*u[0] + parms->st5_fynux*u[1] + parms->st5_fznux*u[2])/parms->st5_fluxfac_x : 0;
 
 		  // get the number of each flavor in this particle.
           // parms->st5_nnux contains the number density of mu+tau neutrinos+antineutrinos
 		  // Nnux_thisparticle contains the number of EACH of mu/tau anti/neutrinos (hence the factor of 4)
 		  Real angular_factor;
-		  minerbo_closure(&angular_factor, Ze, mue);
+		  minerbo_closure(&angular_factor, parms->st5_Ze, mue);
 		  Real Nnue_thisparticle = parms->st5_nnue*scale_fac * angular_factor;
-		  minerbo_closure(&angular_factor, Za, mua);
+		  minerbo_closure(&angular_factor, parms->st5_Za, mua);
 		  Real Nnua_thisparticle = parms->st5_nnua*scale_fac * angular_factor;
-		  minerbo_closure(&angular_factor, Zx, mux);
+		  minerbo_closure(&angular_factor, parms->st5_Zx, mux);
 		  Real Nnux_thisparticle = parms->st5_nnux*scale_fac * angular_factor / 4.0;
 
 		  // set total number of neutrinos the particle has as the sum of the flavors
