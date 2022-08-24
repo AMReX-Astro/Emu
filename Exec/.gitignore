@@ -6,4 +6,3 @@ tmp_build_dir
 Backtrace.*
 *.png
 inputs
-for_exploring_data.py
