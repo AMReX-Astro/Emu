@@ -212,27 +212,6 @@ struct TestParams : public amrex::Gpu::Managed
     st5_Za = minerbo_Z(st5_fluxfac_a);
     st5_Zx = minerbo_Z(st5_fluxfac_x);
   }
-
-  if(simulation_type==6){
-    pp.get("st6_amplitude",st6_amplitude);
-    pp.get("st6_amax",st6_amax);
-    pp.get("st6_nnue",st6_nnue);
-    pp.get("st6_nnua",st6_nnua);
-    pp.get("st6_sigma",st6_sigma);
-    pp.get("st6_sigmabar",st6_sigmabar);
-    pp.get("st6_mu0",st6_mu0);
-    pp.get("st6_mu0bar",st6_mu0bar);
-  }
-  if(simulation_type==7){
-    pp.get("st7_amplitude",st7_amplitude);
-    pp.get("st7_nnue",st7_nnue);
-    pp.get("st7_nnua",st7_nnua);
-    pp.get("st7_sigma",st7_sigma);
-    pp.get("st7_sigmabar",st7_sigmabar);
-    pp.get("st7_mu0",st7_mu0);
-    pp.get("st7_mu0bar",st7_mu0bar);
-    pp.get("st7_sigma_pert",st7_sigma_pert);
-  }
     }
 };
 
