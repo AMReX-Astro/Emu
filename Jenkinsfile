@@ -13,7 +13,7 @@ pipeline {
 	    sh 'git submodule update --init'
 	    sh 'cp makefiles/GNUmakefile_jenkins Exec/GNUmakefile'
 	    dir('Exec'){
-	        sh 'make generate; make -j12'
+	        sh 'make generate; make -j'
 	    }
 	}}
 
