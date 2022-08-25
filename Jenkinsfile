@@ -32,6 +32,7 @@ pipeline {
 
 	stage('Bipolar'){ steps{
 	    dir('Exec'){
+		sh 'python ../Scripts/initial_conditions/st0_bipolar_test.py'
 	        sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_bipolar_test'
 	    }
 	}}
