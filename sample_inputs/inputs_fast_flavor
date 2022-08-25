@@ -18,8 +18,7 @@ Lz = 1e7
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
-angular_grid_type = 0
-nphi_equator = 1
+particle_data_filename = "particle_input.dat"
 
 # Maximum size of each grid in the domain
 max_grid_size = 64
