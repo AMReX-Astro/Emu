@@ -58,7 +58,7 @@ struct TestParams : public amrex::Gpu::Managed
 
     // perturbation parameters
     int perturbation_type;
-    int perturbation_wavelength_fraction_of_domain;
+    Real perturbation_wavelength_cm;
     Real perturbation_amplitude;
     
     void Initialize(){
@@ -86,16 +86,16 @@ struct TestParams : public amrex::Gpu::Managed
 
 	// angular grid
 	pp.get("angular_grid_type",angular_grid_type);
-	if(angular_grid_type==1)
+	if(angular_grid_type==0)
 	  pp.get("nphi_equator",  nphi_equator);
-	if(angular_grid_type==2)
+	if(angular_grid_type==1)
 	  pp.get("particle_data_filename",particle_data_filename);
 	
 	// perturbation parameters
 	pp.get("perturbation_amplitude", perturbation_amplitude);
 	pp.get("perturbation_type", perturbation_type);
 	if(perturbation_type == 1)
-	  pp.get("perturbation_wavelength_fraction_of_domain", perturbation_wavelength_fraction_of_domain);
+	  pp.get("perturbation_wavelength_cm", perturbation_wavelength_cm);
 	
         // neutrino physics parameters for 2-flavor
         pp.get("mass1_eV", mass1);

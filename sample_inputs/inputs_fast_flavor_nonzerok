@@ -1,7 +1,7 @@
 simulation_type = 3
 perturbation_type = 1
 perturbation_amplitude = 1e-6
-perturbation_wavelength_fraction_of_domain = 1
+perturbation_wavelength_cm = 1
 
 cfl_factor = 0.5
 flavor_cfl_factor = 0.5

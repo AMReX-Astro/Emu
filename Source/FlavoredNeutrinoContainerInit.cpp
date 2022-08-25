@@ -234,8 +234,6 @@ InitParticles(const TestParams* parms)
 
       int procID = ParallelDescriptor::MyProc();
 
-      Real domain_length_z = Geom(lev).ProbLength(2);
-
       //===============================================//
       // Initialize particle data in the particle tile //
       //===============================================//
@@ -391,8 +389,7 @@ InitParticles(const TestParams* parms)
 	      Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
 	      Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
 	      Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
-	      Real lambda = domain_length_z/(Real)parms->perturbation_wavelength_fraction_of_domain;
-	      Real nu_k = (2.*M_PI) / lambda;
+	      Real nu_k = (2.*M_PI) / parms->perturbation_wavelength_cm;
 	      Real ndens = (omega+nu_k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
 	      p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 	      p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
@@ -509,8 +506,7 @@ InitParticles(const TestParams* parms)
 	    }
 	    if(parms->perturbation_type == 1){
 	      // Perturb real part of e-mu component only sinusoidally in z
-	      Real lambda = domain_length_z/(Real)parms->perturbation_wavelength_fraction_of_domain;
-	      Real nu_k = (2.*M_PI) / lambda;
+	      Real nu_k = (2.*M_PI) / parms->perturbation_wavelength_cm;
 	      p.rdata(PIdx::f01_Re)    = parms->perturbation_amplitude*sin(nu_k*p.pos(2)) * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f11_Re   ));
 	      p.rdata(PIdx::f01_Rebar) = parms->perturbation_amplitude*sin(nu_k*p.pos(2)) * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f11_Rebar));
 	    }
