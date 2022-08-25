@@ -9,43 +9,37 @@ using namespace amrex;
 //=========================================//
 // Particle distribution in momentum space //
 //=========================================//
-// generate an array of theta,phi pairs that uniformily cover the surface of a sphere
-// based on DOI: 10.1080/10586458.2003.10504492 section 3.3 but specifying n_j=0 instead of n
-Gpu::ManagedVector<GpuArray<Real,4> > uniform_sphere_momenta(int nphi_at_equator, Real energy_erg){
-  AMREX_ASSERT(nphi_at_equator>0);
-	
-  Real dtheta = M_PI*std::sqrt(3)/nphi_at_equator;
 
-  Gpu::ManagedVector<GpuArray<Real,4> > xyzt;
-  Real theta = 0;
-  Real phi0 = 0;
-  while(theta < M_PI/2.){
-    int nphi = theta==0 ? nphi_at_equator : lround(nphi_at_equator * std::cos(theta));
-    Real dphi = 2.*M_PI/nphi;
-    if(nphi==1) theta = M_PI/2.;
+Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs> > read_particle_data(std::string filename){
+  Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs> > particle_data;
 
-    for(int iphi=0; iphi<nphi; iphi++){
-      Real phi = phi0 + iphi*dphi;
-      Real x = energy_erg * std::cos(theta) * std::cos(phi);
-      Real y = energy_erg * std::cos(theta) * std::sin(phi);
-      Real z = energy_erg * std::sin(theta);
-      Real t = energy_erg;
-      xyzt.push_back(GpuArray<Real,4>{x,y,z,t});
-      // construct exactly opposing vectors to limit subtractive cancellation errors
-      // and be able to represent isotropy exactly (all odd moments == 0)
-      if(theta>0) xyzt.push_back(GpuArray<Real,4>{-x,-y,-z,t});
-    }
-    theta += dtheta;
-    phi0 = phi0 + 0.5*dphi; // offset by half step so adjacent latitudes are not always aligned in longitude
+  // open the file as a stream
+  std::ifstream file(filename);
+
+  // temporary string/stream
+  std::string line;
+  std::stringstream ss;
+
+  // create zero particle
+  GpuArray<Real,PIdx::nattribs> temp_particle;
+  for(int i=0; i<PIdx::nattribs; i++) temp_particle[i] = 0;
+  
+  // read the number of flavors from the first line
+  std::getline(file, line);
+  ss = std::stringstream(line);
+  int NF_in;
+  ss >> NF_in;
+  AMREX_ASSERT(NF_in == NUM_FLAVORS);
+  
+  while(std::getline(file, line)){
+    ss = std::stringstream(line);
+
+    // skip over the first four attributes (x,y,z,t)
+    for(int i=4; i<PIdx::nattribs; i++) ss >> temp_particle[i];
+    particle_data.push_back(temp_particle);
   }
 
-  return xyzt;
-}
-
-Gpu::ManagedVector<GpuArray<Real,4> > read_particle_momenta(std::string filename){
-  Gpu::ManagedVector<GpuArray<Real,4> > xyzt;
-  return xyzt;
-
+  return particle_data;
 }
 
 //=======================================//
@@ -86,16 +80,6 @@ namespace
     *Usymmetric = 2. * (amrex::Random(engine)-0.5);
   }
 
-  // angular structure as determined by the Minerbo closure
-  // Z is a parameter determined by the flux factor
-  // mu is the cosine of the angle relative to the flux direction
-  // Coefficients set such that the expectation value is 1
-  AMREX_GPU_HOST_DEVICE void minerbo_closure(Real* result, const Real Z, const Real mu){
-    Real minfluxfac = 1e-3;
-    *result = std::exp(Z*mu);
-    if(Z/3.0 > minfluxfac)
-      *result *= Z/std::sinh(Z);
-  }
 }
 
 //=======================================//
@@ -131,26 +115,17 @@ InitParticles(const TestParams* parms)
 
   // set the energy of each particle
   Real energy_erg = 50. * 1e6*CGSUnitsConst::eV; // set energy to 50 MeV to match Richers+(2019)
-  if(parms->simulation_type==0){
-    // set energy so that a vacuum oscillation wavelength occurs over a distance of 1cm
-    Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
-    energy_erg = dm2*PhysConst::c4 * sin(2.*parms->theta12) / (8.*M_PI*PhysConst::hbarc); // *1cm for units
-  }
   if(parms->simulation_type==5)
     energy_erg = parms->st5_avgE_MeV * 1e6*CGSUnitsConst::eV;
 
   // array of direction vectors
-  Gpu::ManagedVector<GpuArray<Real,4> > momentum_vectors;
-  if(parms->angular_grid_type==0)
-    momentum_vectors = uniform_sphere_momenta(parms->nphi_equator, energy_erg);
-  if(parms->angular_grid_type==1)
-    momentum_vectors = read_particle_momenta(parms->particle_data_filename);
-  auto* momentum_vectors_p = momentum_vectors.dataPtr();
+  Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs> > particle_data = read_particle_data(parms->particle_data_filename);;
+  auto* particle_data_p = particle_data.dataPtr();
     
   // determine the number of directions per location
-  int ndirs_per_loc = momentum_vectors.size();
+  int ndirs_per_loc = particle_data.size();
   amrex::Print() << "Using " << ndirs_per_loc << " directions." << std::endl;
-  const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell/ndirs_per_loc;
+  const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell;
 
 
   // Loop over multifabs //
@@ -276,6 +251,29 @@ InitParticles(const TestParams* parms)
 	    // Set CPU ID
 	    p.cpu()  = procID;
 
+	    // copy over all particle data from the angular distribution
+	    for(int i_attrib=0; i_attrib<PIdx::nattribs; i_attrib++) p.rdata(i_attrib) = particle_data_p[i_direction][i_attrib];
+
+	    // basic checks
+	    AMREX_ASSERT(p.rdata(PIdx::N        ) >= 0);
+	    AMREX_ASSERT(p.rdata(PIdx::Nbar     ) >= 0);
+	    AMREX_ASSERT(p.rdata(PIdx::L        ) >= 0);
+	    AMREX_ASSERT(p.rdata(PIdx::Lbar     ) >= 0);
+	    AMREX_ASSERT(p.rdata(PIdx::f00_Re   ) >= 0);
+	    AMREX_ASSERT(p.rdata(PIdx::f11_Re   ) >= 0);
+	    AMREX_ASSERT(p.rdata(PIdx::f00_Rebar) >= 0);
+	    AMREX_ASSERT(p.rdata(PIdx::f11_Rebar) >= 0);
+	    Real trace    = p.rdata(PIdx::f00_Re   ) + p.rdata(PIdx::f11_Re   );
+	    Real tracebar = p.rdata(PIdx::f00_Rebar) + p.rdata(PIdx::f11_Rebar);
+#if NUM_FLAVORS==3
+	    AMREX_ASSERT(p.rdata(PIdx::f22_Re   ) >= 0);
+	    AMREX_ASSERT(p.rdata(PIdx::f22_Rebar) >= 0);
+	    trace    += p.rdata(PIdx::f22_Re   );
+	    tracebar += p.rdata(PIdx::f22_Rebar);
+#endif
+	    AMREX_ASSERT(std::abs(trace   -1)<1e-6);
+	    AMREX_ASSERT(std::abs(tracebar-1)<1e-6);
+
 	    // Set particle position
 	    p.pos(0) = x;
 	    p.pos(1) = y;
@@ -287,189 +285,9 @@ InitParticles(const TestParams* parms)
 	    p.rdata(PIdx::z) = z;
 	    p.rdata(PIdx::time) = 0;
 
-	    const GpuArray<Real,4> momentum = momentum_vectors_p[i_direction];
-	    const GpuArray<Real,3> u{momentum[0]/momentum[3],
-				     momentum[1]/momentum[3],
-				     momentum[2]/momentum[3]};
-	    //get_random_direction(u, engine);
-
-	    // set particle's momentum components
-	    p.rdata(PIdx::pupx) = momentum[0];
-	    p.rdata(PIdx::pupy) = momentum[1];
-	    p.rdata(PIdx::pupz) = momentum[2];
-	    p.rdata(PIdx::pupt) = momentum[3];
-
-	    // set all flavor components to zero by default
-	    p.rdata(PIdx::N   ) = 0.0;
-	    p.rdata(PIdx::Nbar) = 0.0;
-	    p.rdata(PIdx::f00_Re)    = 0.0;
-	    p.rdata(PIdx::f01_Re)    = 0.0;
-	    p.rdata(PIdx::f01_Im)    = 0.0;
-	    p.rdata(PIdx::f11_Re)    = 0.0;
-	    p.rdata(PIdx::f00_Rebar) = 0.0;
-	    p.rdata(PIdx::f01_Rebar) = 0.0;
-	    p.rdata(PIdx::f01_Imbar) = 0.0;
-	    p.rdata(PIdx::f11_Rebar) = 0.0;
-#if (NUM_FLAVORS==3)
-	    p.rdata(PIdx::f22_Re)    = 0.0;
-	    p.rdata(PIdx::f22_Rebar) = 0.0;
-	    p.rdata(PIdx::f02_Re)    = 0.0;
-	    p.rdata(PIdx::f02_Im)    = 0.0;
-	    p.rdata(PIdx::f12_Re)    = 0.0;
-	    p.rdata(PIdx::f12_Im)    = 0.0;
-	    p.rdata(PIdx::f02_Rebar) = 0.0;
-	    p.rdata(PIdx::f02_Imbar) = 0.0;
-	    p.rdata(PIdx::f12_Rebar) = 0.0;
-	    p.rdata(PIdx::f12_Imbar) = 0.0;
-#endif
-
-	    //=========================//
-	    // VACUUM OSCILLATION TEST //
-	    //=========================//
-	    if(parms->simulation_type==0){
-	      // set all particles to start in electron state (and anti-state)
-	      // Set N to be small enough that self-interaction is not important
-	      // Set all particle momenta to be such that one oscillation wavelength is 1cm
-	      p.rdata(PIdx::N) = 1.0;
-	      p.rdata(PIdx::Nbar) = 1.0;
-	      p.rdata(PIdx::f00_Re)    = 1.0;
-	      p.rdata(PIdx::f00_Rebar) = 1.0;
-	    }
-
-	    //==========================//
-	    // BIPOLAR OSCILLATION TEST //
-	    //==========================//
-	    else if(parms->simulation_type==1){
-	      // Set particle flavor
-	      p.rdata(PIdx::f00_Re)    = 1.0;
-	      p.rdata(PIdx::f00_Rebar) = 1.0;
-
-	      // set particle weight such that density is
-	      // 10 dm2 c^4 / (2 sqrt(2) GF E)
-	      Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
-	      // double omega = dm2*PhysConst::c4 / (2.*p.rdata(PIdx::pupt));
-	      double ndens = 10. * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
-	      // double mu = sqrt(2.)*PhysConst::GF * ndens;
-	      p.rdata(PIdx::N) = ndens * scale_fac;
-	      p.rdata(PIdx::Nbar) = ndens * scale_fac;
-	    }
-
-	    //========================//
-	    // 2-BEAM FAST FLAVOR TEST//
-	    //========================//
-	    else if(parms->simulation_type==2){
-	      // Set particle flavor
-	      p.rdata(PIdx::f00_Re)    = 1.0;
-	      p.rdata(PIdx::f00_Rebar) = 1.0;
-
-	      // set particle weight such that density is
-	      // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
-	      // to get maximal growth according to Chakraborty 2016 Equation 2.10
-	      Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
-	      Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
-	      Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
-	      double ndens = omega / (2.*mu_ndens); // want omega/2mu to be 1
-	      p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
-	      p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
-	    }
-
-	    //===============================//
-	    // 3- k!=0 BEAM FAST FLAVOR TEST //
-	    //===============================//
-	    else if(parms->simulation_type==3){
-	      AMREX_ASSERT(perturbation_type==1);
-
-	      // Set particle flavor
-	      p.rdata(PIdx::f00_Re)    = 1.0;
-	      p.rdata(PIdx::f00_Rebar) = 1.0;
-
-	      // set particle weight such that density is
-	      // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
-	      // to get maximal growth according to Chakraborty 2016 Equation 2.10
-	      Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
-	      Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
-	      Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
-	      Real nu_k = (2.*M_PI) / parms->perturbation_wavelength_cm;
-	      Real ndens = (omega+nu_k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
-	      p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
-	      p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
-	    }
-
-	    //====================//
-	    // 4- k!=0 RANDOMIZED //
-	    //====================//
-	    else if(parms->simulation_type==4){
-	      p.rdata(PIdx::f00_Re)    = 1.0;
-	      p.rdata(PIdx::f00_Rebar) = 1.0;
-
-	      // set particle weight such that density is
-	      // 0.5 dm2 c^4 / (2 sqrt(2) GF E)
-	      // to get maximal growth according to Chakraborty 2016 Equation 2.10
-	      //Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
-	      //Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
-	      //Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
-	      //Real k_expected = (2.*M_PI)/1.0;// corresponding to wavelength of 1cm
-	      //Real ndens_fiducial = (omega+k_expected*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
-	      //amrex::Print() << "fiducial ndens would be " << ndens_fiducial << std::endl;
-		  
-	      Real ndens    = parms->st4_ndens;
-	      Real ndensbar = parms->st4_ndensbar;
-	      Real fhat[3]    = {cos(parms->st4_phi)   *sin(parms->st4_theta   ),
-				 sin(parms->st4_phi)   *sin(parms->st4_theta   ),
-				 cos(parms->st4_theta   )};
-	      Real fhatbar[3] = {cos(parms->st4_phibar)*sin(parms->st4_thetabar),
-				 sin(parms->st4_phibar)*sin(parms->st4_thetabar),
-				 cos(parms->st4_thetabar)};
-	      Real costheta    = fhat   [0]*u[0] + fhat   [1]*u[1] + fhat   [2]*u[2];
-	      Real costhetabar = fhatbar[0]*u[0] + fhatbar[1]*u[1] + fhatbar[2]*u[2];
-		  
-	      p.rdata(PIdx::N   ) = ndens   *scale_fac * (1. + 3.*parms->st4_fluxfac   *costheta   );
-	      p.rdata(PIdx::Nbar) = ndensbar*scale_fac * (1. + 3.*parms->st4_fluxfacbar*costhetabar);
-	    }
-
-	    //====================//
-	    // 5- Minerbo Closure //
-	    //====================//
-	    else if(parms->simulation_type==5){
-	      // get the cosine of the angle between the direction and each flavor's flux vector
-	      Real mue = parms->st5_fluxfac_e>0 ? (parms->st5_fxnue*u[0] + parms->st5_fynue*u[1] + parms->st5_fznue*u[2])/parms->st5_fluxfac_e : 0;
-	      Real mua = parms->st5_fluxfac_a>0 ? (parms->st5_fxnua*u[0] + parms->st5_fynua*u[1] + parms->st5_fznua*u[2])/parms->st5_fluxfac_a : 0;
-	      Real mux = parms->st5_fluxfac_x>0 ? (parms->st5_fxnux*u[0] + parms->st5_fynux*u[1] + parms->st5_fznux*u[2])/parms->st5_fluxfac_x : 0;
-
-	      // get the number of each flavor in this particle.
-	      // parms->st5_nnux contains the number density of mu+tau neutrinos+antineutrinos
-	      // Nnux_thisparticle contains the number of EACH of mu/tau anti/neutrinos (hence the factor of 4)
-	      Real angular_factor;
-	      minerbo_closure(&angular_factor, parms->st5_Ze, mue);
-	      Real Nnue_thisparticle = parms->st5_nnue*scale_fac * angular_factor;
-	      minerbo_closure(&angular_factor, parms->st5_Za, mua);
-	      Real Nnua_thisparticle = parms->st5_nnua*scale_fac * angular_factor;
-	      minerbo_closure(&angular_factor, parms->st5_Zx, mux);
-	      Real Nnux_thisparticle = parms->st5_nnux*scale_fac * angular_factor / 4.0;
-
-	      // set total number of neutrinos the particle has as the sum of the flavors
-	      p.rdata(PIdx::N   ) = Nnue_thisparticle + Nnux_thisparticle;
-	      p.rdata(PIdx::Nbar) = Nnua_thisparticle + Nnux_thisparticle;
-#if NUM_FLAVORS==3
-	      p.rdata(PIdx::N   ) += Nnux_thisparticle;
-	      p.rdata(PIdx::Nbar) += Nnux_thisparticle;
-#endif
-
-	      // set on-diagonals to have relative proportion of each flavor
-	      p.rdata(PIdx::f00_Re)    = Nnue_thisparticle / p.rdata(PIdx::N   );
-	      p.rdata(PIdx::f11_Re)    = Nnux_thisparticle / p.rdata(PIdx::N   );
-	      p.rdata(PIdx::f00_Rebar) = Nnua_thisparticle / p.rdata(PIdx::Nbar);
-	      p.rdata(PIdx::f11_Rebar) = Nnux_thisparticle / p.rdata(PIdx::Nbar);
-#if NUM_FLAVORS==3
-	      p.rdata(PIdx::f22_Re)    = Nnux_thisparticle / p.rdata(PIdx::N   );
-	      p.rdata(PIdx::f22_Rebar) = Nnux_thisparticle / p.rdata(PIdx::Nbar);
-#endif
-
-	    }
-
-	    else{
-	      amrex::Error("Invalid simulation type");
-	    } // if else selecting simulation type
+	    // scale particle numbers based on number of points per cell and the cell volume
+	    p.rdata(PIdx::N   ) *= scale_fac;
+	    p.rdata(PIdx::Nbar) *= scale_fac;
 
 	    //=====================//
 	    // Apply Perturbations //

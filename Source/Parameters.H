@@ -31,9 +31,7 @@ struct TestParams : public amrex::Gpu::Managed
     Real maxError;
 
     // angular grid
-    int angular_grid_type;
     std::string particle_data_filename;
-    int nphi_equator;   // number of directions in x-y plane.
   
     // neutrino physics parameters. See first column of table 14.7 in http://pdg.lbl.gov/2019/reviews/rpp2019-rev-neutrino-mixing.pdf
     Real mass1, mass2, mass3; // neutrino masses in grams
@@ -41,8 +39,6 @@ struct TestParams : public amrex::Gpu::Managed
     Real alpha1, alpha2; // Majorana phases, radians
     Real deltaCP; // CP violating phases in radians
 
-    // simulation_type==3
-  
     // simulation_type==4
     Real st4_ndens   , st4_theta   , st4_phi   , st4_fluxfac   ;
     Real st4_ndensbar, st4_thetabar, st4_phibar, st4_fluxfacbar;
@@ -85,11 +81,7 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("maxError", maxError);
 
 	// angular grid
-	pp.get("angular_grid_type",angular_grid_type);
-	if(angular_grid_type==0)
-	  pp.get("nphi_equator",  nphi_equator);
-	if(angular_grid_type==1)
-	  pp.get("particle_data_filename",particle_data_filename);
+	pp.get("particle_data_filename",particle_data_filename);
 	
 	// perturbation parameters
 	pp.get("perturbation_amplitude", perturbation_amplitude);
