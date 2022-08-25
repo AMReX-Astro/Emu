@@ -47,6 +47,7 @@ pipeline {
 
 	stage('Fast Flavor k'){ steps{
 	    dir('Exec'){
+		sh 'python ../Scripts/initial_conditions/st3_2beam_fast_flavor_nonzerok.py'
 	        sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fast_flavor_nonzerok'
 	        sh 'python ../Scripts/tests/fast_flavor_k_test.py'
 	    }
