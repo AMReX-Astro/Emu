@@ -1,13 +1,5 @@
-simulation_type = 4
-st4_theta = 0
-st4_thetabar = 3.14159265359
-st4_phi = 0
-st4_phibar=0
-st4_ndens = 4.891290819e+32
-st4_ndensbar = 4.891290819e+32
-st4_fluxfac = .333333333333333
-st4_fluxfacbar = .333333333333333
-st4_amplitude = 1e-6
+perturbation_type = 0
+perturbation_amplitude = 1e-6
 
 cfl_factor = 0.5
 flavor_cfl_factor = 0.5
@@ -25,7 +17,7 @@ Lz = 64.0
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
-nphi_equator = 16
+particle_data_filename = "particle_input.dat"
 
 # Maximum size of each grid in the domain
 max_grid_size = 16

@@ -9,7 +9,7 @@ eV = 1.60218e-12 # erg
 mp = 1.6726219e-24 # g
 GF = 1.1663787e-5 / (1e9*eV)**2 * (hbar*clight)**3 #erg cm^3
 
-def get_particle_keys():
+def get_particle_keys(ignore_pos=False):
     real_quantities = ["pos_x",
                        "pos_y",
                        "pos_z",
@@ -33,6 +33,7 @@ def get_particle_keys():
                        "f01_Rebar",
                        "f01_Imbar",
                        "f11_Rebar"]
+    if ignore_pos: real_quantities = real_quantities[7:]
 
     rkey = {}
     for i, rlabel in enumerate(real_quantities):
@@ -44,7 +45,7 @@ def get_particle_keys():
 
     return rkey, ikey
 
-def get_3flavor_particle_keys():
+def get_3flavor_particle_keys(ignore_pos=False):
     real_quantities = ["pos_x",
                        "pos_y",
                        "pos_z",
@@ -78,6 +79,7 @@ def get_3flavor_particle_keys():
                        "f12_Rebar",
                        "f12_Imbar",
                        "f22_Rebar"]
+    if ignore_pos: real_quantities = real_quantities[7:]
 
     rkey = {}
     for i, rlabel in enumerate(real_quantities):

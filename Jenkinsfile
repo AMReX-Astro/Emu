@@ -13,7 +13,7 @@ pipeline {
 	    sh 'git submodule update --init'
 	    sh 'cp makefiles/GNUmakefile_jenkins Exec/GNUmakefile'
 	    dir('Exec'){
-	        sh 'make generate; make -j12'
+	        sh 'make generate; make -j'
 	    }
 	}}
 
@@ -24,6 +24,7 @@ pipeline {
 	//=======//
 	stage('MSW'){ steps{
 	    dir('Exec'){
+		sh 'python ../Scripts/initial_conditions/st0_msw_test.py'
 	        sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_msw_test'
 	        sh 'python ../Scripts/tests/msw_test.py'
 	    }
@@ -31,12 +32,14 @@ pipeline {
 
 	stage('Bipolar'){ steps{
 	    dir('Exec'){
+		sh 'python ../Scripts/initial_conditions/st1_bipolar_test.py'
 	        sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_bipolar_test'
 	    }
 	}}
 
 	stage('Fast Flavor'){ steps{
 	    dir('Exec'){
+		sh 'python ../Scripts/initial_conditions/st2_2beam_fast_flavor.py'
 	        sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fast_flavor'
 	        sh 'python ../Scripts/tests/fast_flavor_test.py'
 	    }
@@ -44,6 +47,7 @@ pipeline {
 
 	stage('Fast Flavor k'){ steps{
 	    dir('Exec'){
+		sh 'python ../Scripts/initial_conditions/st3_2beam_fast_flavor_nonzerok.py'
 	        sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fast_flavor_nonzerok'
 	        sh 'python ../Scripts/tests/fast_flavor_k_test.py'
 	    }
