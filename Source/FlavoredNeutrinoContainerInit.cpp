@@ -113,11 +113,6 @@ InitParticles(const TestParams* parms)
 					   *parms->nppc[1],
 					   *parms->nppc[2]);
 
-  // set the energy of each particle
-  Real energy_erg = 50. * 1e6*CGSUnitsConst::eV; // set energy to 50 MeV to match Richers+(2019)
-  if(parms->simulation_type==5)
-    energy_erg = parms->st5_avgE_MeV * 1e6*CGSUnitsConst::eV;
-
   // array of direction vectors
   Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs> > particle_data = read_particle_data(parms->particle_data_filename);;
   auto* particle_data_p = particle_data.dataPtr();
