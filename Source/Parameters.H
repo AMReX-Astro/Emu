@@ -39,10 +39,6 @@ struct TestParams : public amrex::Gpu::Managed
     Real alpha1, alpha2; // Majorana phases, radians
     Real deltaCP; // CP violating phases in radians
 
-    // simulation_type==4
-    Real st4_ndens   , st4_theta   , st4_phi   , st4_fluxfac   ;
-    Real st4_ndensbar, st4_thetabar, st4_phibar, st4_fluxfacbar;
-
     // simulation_type==5
     Real st5_nnue , st5_nnua , st5_nnux ;
     Real st5_fxnue, st5_fxnua, st5_fxnux;
@@ -111,17 +107,6 @@ struct TestParams : public amrex::Gpu::Managed
         	alpha2 *= M_PI/180.;
         	deltaCP *= M_PI/180.;
         }
-
-	if(simulation_type==4){
-	  pp.get("st4_theta"   , st4_theta   );
-	  pp.get("st4_thetabar", st4_thetabar);
-	  pp.get("st4_phi"   , st4_phi);
-	  pp.get("st4_phibar", st4_phibar);
-	  pp.get("st4_ndens"   , st4_ndens);
-	  pp.get("st4_ndensbar", st4_ndensbar);
-	  pp.get("st4_fluxfac"   , st4_fluxfac);
-	  pp.get("st4_fluxfacbar", st4_fluxfacbar);
-	}
 
   if(simulation_type==5){
     pp.get("st5_nnue",st5_nnue);
