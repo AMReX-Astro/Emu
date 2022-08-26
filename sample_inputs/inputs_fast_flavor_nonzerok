@@ -1,4 +1,3 @@
-simulation_type = 3
 perturbation_type = 1
 perturbation_amplitude = 1e-6
 perturbation_wavelength_cm = 1

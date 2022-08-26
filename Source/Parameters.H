@@ -23,7 +23,6 @@ struct TestParams : public amrex::Gpu::Managed
     int write_plot_every;
     int write_plot_particles_every;
     Real rho_in, Ye_in, T_in; // g/ccm, 1, MeV
-    int simulation_type;
     Real cfl_factor, flavor_cfl_factor;
     Real max_adaptive_speedup;
     bool do_restart;
@@ -46,7 +45,6 @@ struct TestParams : public amrex::Gpu::Managed
     
     void Initialize(){
         ParmParse pp;
-        pp.get("simulation_type", simulation_type);
         pp.get("ncell", ncell);
         pp.get("Lx", Lx);
         pp.get("Ly", Ly);
