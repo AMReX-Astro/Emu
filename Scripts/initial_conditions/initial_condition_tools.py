@@ -48,9 +48,9 @@ def grid_sphere(nphi):
     xyz = []
     for imu in range(nmu):
         for iphi in range(nphi):
-            x = costheta[imu] * cosphi[iphi]
-            y = costheta[imu] * sinphi[iphi]
-            z = sintheta[imu]
+            x = sintheta[imu] * cosphi[iphi]
+            y = sintheta[imu] * sinphi[iphi]
+            z = costheta[imu]
             xyz.append(np.array([x,y,z]))
     return np.array(xyz)
 
