@@ -32,6 +32,29 @@ def uniform_sphere(nphi_at_equator):
     return np.array(xyz)
 
 
+# generate an array of theta,phi pairs that cover a sphere evenly in phi and cos(theta)
+def grid_sphere(nphi):
+    assert(nphi > 0)
+    nmu = nphi // 2
+
+    mu_grid = np.linspace(-1,1,num=nmu+1)
+    costheta = np.array([ (mu_grid[i]+mu_grid[i+1])/2. for i in range(nmu)])
+    sintheta = np.sqrt(1. - costheta**2)
+
+    phi_mid = np.linspace(0, 2.*np.pi, num=nphi, endpoint=False)
+    cosphi = np.cos(phi_mid)
+    sinphi = np.sin(phi_mid)
+
+    xyz = []
+    for imu in range(nmu):
+        for iphi in range(nphi):
+            x = costheta[imu] * cosphi[iphi]
+            y = costheta[imu] * sinphi[iphi]
+            z = sintheta[imu]
+            xyz.append(np.array([x,y,z]))
+    return np.array(xyz)
+
+
 def write_particles(p, NF, filename):
     with open(filename, "w") as f:
         # write the number of flavors
