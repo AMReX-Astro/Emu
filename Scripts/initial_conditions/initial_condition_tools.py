@@ -117,3 +117,47 @@ def minerbo_Z(fluxfac):
 
     print("fluxfac=",fluxfac," Z=",Z)
     return Z
+
+# angular structure as determined by the Levermore closure
+# from assuming that radiation is isotropic in some frame
+# v is the velocity of this frame
+# sign of v chosen so distribution is large when mu==1
+def levermore_closure(v, mu):
+    gamma2 = 1/(1-v**2)
+    result = 1/(2*gamma2*(1-v*mu)**2)
+    return result
+
+
+# residual for root finder to get v from the fluxfac
+def levermore_residual(fluxfac, v):
+    return fluxfac - ( v-(1-v**2)*np.arctanh(v) ) / v**2
+def levermore_residual_derivative(fluxfac, v):
+    return 2*(v-np.arctanh(v))/v**3
+
+def levermore_v(fluxfac):
+    # hard-code in these parameters because they are not
+    # really very important...
+    maxresidual = 1e-6
+    maxcount = 20
+    minfluxfac = 1e-3
+
+    # initial condition
+    v = 0.5
+
+    # catch the small flux factor case to prevent nans
+    if(fluxfac < minfluxfac):
+        v = 3*f/2
+    else:
+        residual = 1.0
+        count = 0
+        while(abs(residual)>maxresidual and count<maxcount):
+            residual = levermore_residual(fluxfac, v)
+            slope = levermore_residual_derivative(fluxfac, v)
+            v -= residual / slope
+            count += 1
+        if residual>maxresidual:
+            print("Failed to converge on a solution.")
+            assert(False)
+
+    print("fluxfac=",fluxfac," v=",v)
+    return v
