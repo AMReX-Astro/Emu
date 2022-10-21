@@ -11,8 +11,6 @@ os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import numpy as np
-import matplotlib.pyplot as plt
-import yt
 import glob
 import multiprocessing as mp
 import h5py
@@ -21,42 +19,8 @@ import emu_yt_module as emu
 from multiprocessing import Pool
 import scipy.special
 
-##########
-# INPUTS #
-##########
-nproc = 4
-do_average = True
-do_fft     = False
-
-do_angular = False
-nl = 0 # number of spherical harmonics to evaluate
-
-do_MPI = False
-
-data_format = "Emu" # "FLASH" or "Emu"
-
-########################
-# format peculiarities #
-########################
-if(data_format=="FLASH"):
-    assert(not do_angular)
-    yt_descriptor = "flash"
-    energyGroup = "01"
-    e01_energy = 50.0 # MeV
-
-    MeV_to_codeenergy = 1.60217733e-6*5.59424238e-55 #code energy/MeV
-    cm_to_codelength = 6.77140812e-06 #code length/cm
-    convert_N_to_inv_ccm = 4.0*np.pi/(e01_energy*MeV_to_codeenergy/cm_to_codelength**3)#1/cm^3
-
-    output_base = "NSM_sim_hdf5_chk_"
-    directories = sorted(glob.glob(output_base+"*"))
-    
-if(data_format=="Emu"):
-    yt_descriptor = "boxlib"
-    convert_N_to_inv_ccm = 1.0
-    directories = sorted(glob.glob("plt?????"))
-
 def dataset_name(moment, nu_nubar, i, j, ReIm):
+    data_format = format_dict["data_format"]
     # make sure the inputs make sense
     assert(i>=0)
     assert(j>=0)
@@ -99,7 +63,7 @@ def dataset_name(moment, nu_nubar, i, j, ReIm):
         return momentFlash+componentFlash+energyGroup
 
 # N is the corresponding flavor's number density (already converted to the proper units)
-def convert_F_to_inv_ccm(N):
+def convert_F_to_inv_ccm(N, data_format):
     if(data_format=="Emu"):   return 1.0
     if(data_format=="FLASH"): return N
     
@@ -163,7 +127,9 @@ def fft_power(fft, cleft, cright, ileft, iright, kmid):
 #########################
 # average preliminaries #
 #########################
-def get_matrix(moment,nu_nubar):
+def get_matrix(ad,moment,nu_nubar):
+    NF = format_dict["NF"]
+    yt_descriptor = format_dict["yt_descriptor"]
     f00  = ad[yt_descriptor, dataset_name(moment, nu_nubar, 0, 0, "Re")]
     f01  = ad[yt_descriptor, dataset_name(moment, nu_nubar, 0, 1, "Re")]
     f01I = ad[yt_descriptor, dataset_name(moment, nu_nubar, 0, 1, "Im")]
@@ -184,6 +150,7 @@ def get_matrix(moment,nu_nubar):
     return fR, fI
 
 def averaged_N(N, NI):
+    NF = format_dict["NF"]
     R=0
     I=1
     
@@ -196,6 +163,7 @@ def averaged_N(N, NI):
     return np.array(Nout)
 
 def averaged_F(F, FI):
+    NF = format_dict["NF"]
     R=0
     I=1
     
@@ -210,6 +178,7 @@ def averaged_F(F, FI):
     return Fout
 
 def offdiagMag(f):
+    NF = format_dict["NF"]
     R = 0
     I = 1
     result = 0
@@ -241,7 +210,6 @@ class GridData(object):
         self.nx = int((self.xmax - self.xmin) / self.dx + 0.5)
         self.ny = int((self.ymax - self.ymin) / self.dy + 0.5)
         self.nz = int((self.zmax - self.zmin) / self.dz + 0.5)
-        print(self.nx, self.ny, self.nz)
         
 
     # particle cell id ON THE CURRENT GRID
@@ -264,7 +232,6 @@ class GridData(object):
         ny = np.max(iy)+1
         nz = np.max(iz)+1
         idlist = (iz + nz*iy + nz*ny*ix).astype(int)
-
         return idlist
 
 # get the number of particles per cell
@@ -308,52 +275,66 @@ def sort_rdata_chunk(p):
     # return the sorted array
     return p
 
-def Ylm_indices(l):
-    start = l**2
-    stop = (l+1)**2
-    return start,stop
 
-def create_shared_Ylm_star(rdata):
-    nparticles = len(rdata)
+# class containing the set of coefficients to be multiplied by particle quantities
+# compute once and use many times
+class DiscreteSphericalHarmonic:
+    global Ylm_star_shared
 
-    # create local arrays that use this memory for easy modification
-    Ylm_star = np.frombuffer(Ylm_star_shared, dtype='complex').reshape( ( (nl+1)**2, nparticles) )
+    @staticmethod
+    def Ylm_indices(l):
+        start = l**2
+        stop = (l+1)**2
+        return start,stop
+
+    # phat is the array of neutrino direction unit vectors in a single grid cell [particle, xyz]
+    # nl is the number of spherical harmonics to evaluate
+    def __init__(self, nl, nppc):
+        self.nl = nl
+        self.nppc = nppc
+
+        # create shared object
+        # double the size for real+imaginary parts
+        global Ylm_star_shared
+        Ylm_star_shared = mp.RawArray('d', int(2 * (self.nl+1)**2 * self.nppc))
+
+    def precompute(self, phat):
+        # create local arrays that use this memory for easy modification
+        Ylm_star = np.frombuffer(Ylm_star_shared, dtype='complex').reshape( ( (self.nl+1)**2, self.nppc) )
     
-    # get direction coordinates
-    pupx = rdata[:,rkey["pupx"]]
-    pupy = rdata[:,rkey["pupy"]]
-    pupz = rdata[:,rkey["pupz"]]
-    pupt = rdata[:,rkey["pupt"]]
-    xhat = pupx/pupt
-    yhat = pupy/pupt
-    zhat = pupz/pupt            
-    theta = np.arccos(zhat)
-    phi = np.arctan2(yhat,xhat)
+        # get direction coordinates
+        theta = np.arccos(phat[:,2])
+        phi = np.arctan2(phat[:,1],phat[:,0])
                 
-    # evaluate spherical harmonic amplitudes
-    for l in range(nl):
-        start,stop = Ylm_indices(l)
-        nm = stop-start
-        mlist = np.array(range(nm))-l
-        Ylm_star_thisl = [np.conj(scipy.special.sph_harm(m, l, phi, theta)) for m in mlist]
-        Ylm_star[start:stop] = np.array( Ylm_star_thisl )
+        # evaluate spherical harmonic amplitudes
+        for l in range(self.nl):
+            start,stop = self.Ylm_indices(l)
+            nm = stop-start
+            mlist = np.array(range(nm))-l
+            Ylm_star_thisl = [np.conj(scipy.special.sph_harm(m, l, phi, theta)) for m in mlist]
+            Ylm_star[start:stop] = np.array( Ylm_star_thisl )
 
-def get_shared_Ylm_star(l,nparticles):
-    start, stop = Ylm_indices(l)
-    Ylm_star = np.frombuffer(Ylm_star_shared, dtype='complex').reshape( ( (nl+1)**2, nparticles) )
-    return Ylm_star[start:stop]
+    def get_shared_Ylm_star(self,l):
+        assert(l<self.nl)
+        start, stop = self.Ylm_indices(l)
+        Ylm_star = np.frombuffer(Ylm_star_shared, dtype='complex').reshape( ( (self.nl+1)**2, self.nppc) )
+        return Ylm_star[start:stop]
 
-# use scipy.special.sph_harm(m, l, azimuthal_angle, polar_angle)
-# np.arctan2(y,x)
-def spherical_harmonic_power_spectrum_singlel(l, Nrho):
-    nparticles = np.shape(Nrho)[2]
-    Ylm_star = get_shared_Ylm_star(l,nparticles)
-    Nrholm_integrand = np.array([Nrho*Ylm_star[im,:] for im in range(len(Ylm_star))])
-    Nrholm = np.sum(Nrholm_integrand, axis=3)
-    result = np.sum(np.abs(Nrholm)**2, axis=0)
-    return result
+    # use scipy.special.sph_harm(m, l, azimuthal_angle, polar_angle)
+    # np.arctan2(y,x)
+    def spherical_harmonic_power_spectrum_singlel(self, l, Nrho):
+        Ylm_star = self.get_shared_Ylm_star(l)
+        Nrholm_integrand = np.array([Nrho*Ylm_star[im,:] for im in range(len(Ylm_star))])
+        Nrholm = np.sum(Nrholm_integrand, axis=3)
+        result = np.sum(np.abs(Nrholm)**2, axis=0)
+        return result
+
+    def spherical_harmonic_power_spectrum(self, Nrho):
+        spectrum = np.array([self.spherical_harmonic_power_spectrum_singlel(l, Nrho) for l in range(self.nl)])
+        return spectrum
 
 def get_Nrho(p):
+    NF = format_dict["NF"]
     # build Nrho complex values
     nparticles = len(p)
     if NF==2:
@@ -380,278 +361,250 @@ def get_Nrho(p):
         Nrho[1,5,:] = p[:,rkey["Nbar"]] * ( p[:,rkey["f22_Rebar"]] + 1j*0                      )
     return Nrho
 
-def spherical_harmonic_power_spectrum(Nrho):
-    spectrum = np.array([spherical_harmonic_power_spectrum_singlel(l, Nrho) for l in range(nl)])
-    return spectrum
+#===========================#
+# MAIN REDUCE DATA FUNCTION #
+#===========================#
+# nl = number of spherical harmonics
+def reduce_data(directory=".", nproc=1, do_average=True, do_fft=True, do_angular=True, nl=4, do_MPI=False, data_format='Emu'):
+    ########################
+    # format peculiarities #
+    ########################
+    if(data_format=="FLASH"):
+        assert(not do_angular)
+        yt_descriptor = "flash"
+        energyGroup = "01"
+        e01_energy = 50.0 # MeV
 
-#########################
-# loop over directories #
-#########################
-if do_MPI:
-    from mpi4py import MPI
-    comm = MPI.COMM_WORLD
-    mpi_rank = comm.Get_rank()
-    mpi_size = comm.Get_size()
-else:
-    mpi_rank = 0
-    mpi_size = 1
+        MeV_to_codeenergy = 1.60217733e-6*5.59424238e-55 #code energy/MeV
+        cm_to_codelength = 6.77140812e-06 #code length/cm
+        convert_N_to_inv_ccm = 4.0*np.pi/(e01_energy*MeV_to_codeenergy/cm_to_codelength**3)#1/cm^3
 
-# get NF
-eds = emu.EmuDataset(directories[0])
-NF = eds.get_num_flavors()
-if NF==2:
-    rkey, ikey = amrex.get_particle_keys()
-if NF==3:
-    rkey, ikey = amrex.get_3flavor_particle_keys()
-
-if( (not do_average) and (not do_fft)):
-    directories = []
-for d in directories[mpi_rank::mpi_size]:
-    print("# rank",mpi_rank,"is working on", d)
-    eds = emu.EmuDataset(d)
-    t = eds.ds.current_time
-    ad = eds.ds.all_data()
-
-    ################
-    # average work #
-    ################
-    # write averaged data
-    outputfilename = d+"_reduced_data.h5"
-    already_done = len(glob.glob(outputfilename))>0
-    if do_average and not already_done:
-        thisN, thisNI = get_matrix("N",""   )
-        N = averaged_N(thisN,thisNI) * convert_N_to_inv_ccm
-
-        thisFx, thisFxI = get_matrix("Fx","") 
-        thisFy, thisFyI = get_matrix("Fy","")
-        thisFz, thisFzI = get_matrix("Fz","")
-        Ftmp  = np.array([thisFx , thisFy , thisFz ])
-        FtmpI = np.array([thisFxI, thisFyI, thisFzI])
-        F = averaged_F(Ftmp, FtmpI) * convert_F_to_inv_ccm(N)
+        output_base = "NSM_sim_hdf5_chk_"
+        directories = sorted(glob.glob(output_base+"*"))
     
-        thisN, thisNI = get_matrix("N","bar")
-        Nbar = averaged_N(thisN,thisNI) * convert_N_to_inv_ccm
+    if(data_format=="Emu"):
+        yt_descriptor = "boxlib"
+        convert_N_to_inv_ccm = 1.0
+        directories = sorted(glob.glob("plt?????"))
 
-        thisFx, thisFxI = get_matrix("Fx","bar")
-        thisFy, thisFyI = get_matrix("Fy","bar")
-        thisFz, thisFzI = get_matrix("Fz","bar")
-        Ftmp  = np.array([thisFx , thisFy , thisFz ])
-        FtmpI = np.array([thisFxI, thisFyI, thisFzI])
-        Fbar = averaged_F(Ftmp, FtmpI) * convert_F_to_inv_ccm(Nbar)
+    # get NF
+    eds = emu.EmuDataset(directories[0])
+    NF = eds.get_num_flavors()
+    global rkey
+    if NF==2:
+        rkey, ikey = amrex.get_particle_keys()
+    if NF==3:
+        rkey, ikey = amrex.get_3flavor_particle_keys()
 
-        print("# rank",mpi_rank,"writing",outputfilename)
-        avgData = h5py.File(outputfilename,"w")
-        avgData["N_avg_mag(1|ccm)"] = [N,]
-        avgData["Nbar_avg_mag(1|ccm)"] = [Nbar,]
-        avgData["F_avg_mag(1|ccm)"] = [F,]
-        avgData["Fbar_avg_mag(1|ccm)"] = [Fbar,]
-        avgData["t(s)"] = [t,]
-        avgData.close()
+    global format_dict
+    format_dict = {"data_format":data_format,
+                   "yt_descriptor":yt_descriptor,
+                   "convert_N_to_inv_ccm":convert_N_to_inv_ccm,
+                   "directories":directories,
+                   "NF":NF}
 
-    ############
-    # FFT work #
-    ############
-    outputfilename = d+"_reduced_data_fft_power.h5"
-    already_done = len(glob.glob(outputfilename))>0
-    if do_fft and not already_done:
+    #########################
+    # loop over directories #
+    #########################
+    if do_MPI:
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        mpi_rank = comm.Get_rank()
+        mpi_size = comm.Get_size()
+    else:
+        mpi_rank = 0
+        mpi_size = 1
 
-        print("# rank",mpi_rank,"writing",outputfilename)
-        fout = h5py.File(outputfilename,"w")
-        fout["t(s)"] = [np.array(t),]
-
-        fft = eds.fourier(dataset_name("N", "", 0, 0, "Re"),nproc=nproc)
-        fout["k(1|cm)"] = get_kmid(fft)
-        cleft, cright, ileft, iright, kmid = fft_coefficients(fft)
-        N00_FFT = fft_power(fft, cleft, cright, ileft, iright, kmid)
-        fft = eds.fourier(dataset_name("N", "", 1, 1, "Re"),nproc=nproc)
-        N11_FFT = fft_power(fft, cleft, cright, ileft, iright, kmid)
-        fft = eds.fourier(dataset_name("N", "", 0, 1, "Re"),
-                          dataset_name("N", "", 0, 1, "Im"),nproc=nproc)
-        N01_FFT = fft_power(fft, cleft, cright, ileft, iright, kmid)
-        fout["N00_FFT(cm^-2)"] = [np.array(N00_FFT),]
-        fout["N11_FFT(cm^-2)"] = [np.array(N11_FFT),]
-        fout["N01_FFT(cm^-2)"] = [np.array(N01_FFT),]
-        if NF>2:
-            fft = eds.fourier(dataset_name("N", "", 2, 2, "Re"),nproc=nproc)
-            N22_FFT = fft_power(fft, cleft, cright, ileft, iright, kmid)
-            fft = eds.fourier(dataset_name("N", "", 0, 2, "Re"),
-                              dataset_name("N", "", 0, 2, "Im"),nproc=nproc)
-            N02_FFT = fft_power(fft, cleft, cright, ileft, iright, kmid)
-            fft = eds.fourier(dataset_name("N", "", 1, 2, "Re"),
-                              dataset_name("N", "", 1, 2, "Im"),nproc=nproc)
-            N12_FFT = fft_power(fft, cleft, cright, ileft, iright, kmid)
-            fout["N22_FFT(cm^-2)"] = [np.array(N22_FFT),]
-            fout["N02_FFT(cm^-2)"] = [np.array(N02_FFT),]
-            fout["N12_FFT(cm^-2)"] = [np.array(N12_FFT),]
-        
-        #fft = eds.fourier("Fx00_Re")
-        #Fx00_FFT.append(fft_power(fft))
-        #fft = eds.fourier("Fx11_Re")
-        #Fx11_FFT.append(fft_power(fft))
-        #fft = eds.fourier("Fx01_Re","Fx01_Im")
-        #Fx01_FFT.append(fft_power(fft))
-        #fout["Fx00_FFT"] = [np.array(Fx00_FFT),]
-        #fout["Fx11_FFT"] = [np.array(Fx11_FFT),]
-        #fout["Fx01_FFT"] = [np.array(Fx01_FFT),]
-        #if NF>2:
-            #fft = eds.fourier("Fx22_Re")
-            #Fx22_FFT.append(fft_power(fft))
-            #fft = eds.fourier("Fx02_Re","Fx02_Im")
-            #Fx02_FFT.append(fft_power(fft))
-            #fft = eds.fourier("Fx12_Re","Fx12_Im")
-            #Fx12_FFT.append(fft_power(fft))
-            #fout["Fx22_FFT"] = [np.array(Fx22_FFT),]
-            #fout["Fx02_FFT"] = [np.array(Fx02_FFT),]
-            #fout["Fx12_FFT"] = [np.array(Fx12_FFT),]
-        
-        #fft = eds.fourier("Fy00_Re")
-        #Fy00_FFT.append(fft_power(fft))
-        #fft = eds.fourier("Fy11_Re")
-        #Fy11_FFT.append(fft_power(fft))
-        #fft = eds.fourier("Fy01_Re","Fy01_Im")
-        #Fy01_FFT.append(fft_power(fft))
-        #fout["Fy00_FFT"] = [np.array(Fy00_FFT),]
-        #fout["Fy11_FFT"] = [np.array(Fy11_FFT),]
-        #fout["Fy01_FFT"] = [np.array(Fy01_FFT),]
-        #if NF>2:
-            #fft = eds.fourier("Fy22_Re")
-            #Fy22_FFT.append(fft_power(fft))
-            #fft = eds.fourier("Fy02_Re","Fy02_Im")
-            #Fy02_FFT.append(fft_power(fft))
-            #fft = eds.fourier("Fy12_Re","Fy12_Im")
-            #Fy12_FFT.append(fft_power(fft))
-            #fout["Fy22_FFT"] = [np.array(Fy22_FFT),]
-            #fout["Fy02_FFT"] = [np.array(Fy02_FFT),]
-            #fout["Fy12_FFT"] = [np.array(Fy12_FFT),]
-        
-        #fft = eds.fourier("Fz00_Re")
-        #Fz00_FFT.append(fft_power(fft))
-        #fft = eds.fourier("Fz11_Re")
-        #Fz11_FFT.append(fft_power(fft))
-        #fft = eds.fourier("Fz01_Re","Fz01_Im")
-        #Fz01_FFT.append(fft_power(fft))
-        #fout["Fz00_FFT"] = [np.array(Fz00_FFT),]
-        #fout["Fz11_FFT"] = [np.array(Fz11_FFT),]
-        #fout["Fz01_FFT"] = [np.array(Fz01_FFT),]
-        #if NF>2:
-            #fft = eds.fourier("Fz22_Re")
-            #Fz22_FFT.append(fft_power(fft))
-            #fft = eds.fourier("Fz02_Re","Fz02_Im")
-            #Fz02_FFT.append(fft_power(fft))
-            #fft = eds.fourier("Fz12_Re","Fz12_Im")
-            #Fz12_FFT.append(fft_power(fft))
-            #fout["Fz22_FFT"] = [np.array(Fz22_FFT),]
-            #fout["Fz02_FFT"] = [np.array(Fz02_FFT),]
-            #fout["Fz12_FFT"] = [np.array(Fz12_FFT),]
-
-        fout.close()
-
-if(do_angular):
-    # separate loop for angular spectra so there is no aliasing and better load balancing
-    directories = sorted(glob.glob("plt*/neutrinos"))
-    directories = [directories[i].split('/')[0] for i in range(len(directories))] # remove "neutrinos"
-    
-    # get number of particles to be able to construct 
-    nppc = get_nppc(directories[-1])
-    
-    # create shared object
-    # double the size for real+imaginary parts
-    Ylm_star_shared = mp.RawArray('d', int(2 * (nl+1)**2 * nppc))
-
-
-if __name__ == '__main__' and do_angular:
-    pool = Pool(nproc)
-    for d in directories:
-        if mpi_rank==0:
-            print("# working on", d)
+    if( (not do_average) and (not do_fft)):
+        directories = []
+    for d in directories[mpi_rank::mpi_size]:
+        print("# rank",mpi_rank,"is working on", d)
         eds = emu.EmuDataset(d)
         t = eds.ds.current_time
         ad = eds.ds.all_data()
 
         ################
-        # angular work #
+        # average work #
         ################
-        outputfilename = d+"/reduced_data_angular_power_spectrum.h5"
+        # write averaged data
+        outputfilename = d+"_reduced_data.h5"
         already_done = len(glob.glob(outputfilename))>0
-        if not already_done:
+        if do_average and not already_done:
+            thisN, thisNI = get_matrix(ad,"N",""   )
+            N = averaged_N(thisN,thisNI) * convert_N_to_inv_ccm
+            
+            thisFx, thisFxI = get_matrix(ad,"Fx","") 
+            thisFy, thisFyI = get_matrix(ad,"Fy","")
+            thisFz, thisFzI = get_matrix(ad,"Fz","")
+            Ftmp  = np.array([thisFx , thisFy , thisFz ])
+            FtmpI = np.array([thisFxI, thisFyI, thisFzI])
+            F = averaged_F(Ftmp, FtmpI) * convert_F_to_inv_ccm(N,data_format)
+            
+            thisN, thisNI = get_matrix(ad,"N","bar")
+            Nbar = averaged_N(thisN,thisNI) * convert_N_to_inv_ccm
+            
+            thisFx, thisFxI = get_matrix(ad,"Fx","bar")
+            thisFy, thisFyI = get_matrix(ad,"Fy","bar")
+            thisFz, thisFzI = get_matrix(ad,"Fz","bar")
+            Ftmp  = np.array([thisFx , thisFy , thisFz ])
+            FtmpI = np.array([thisFxI, thisFyI, thisFzI])
+            Fbar = averaged_F(Ftmp, FtmpI) * convert_F_to_inv_ccm(Nbar,data_format)
 
+            print("# rank",mpi_rank,"writing",outputfilename)
+            avgData = h5py.File(outputfilename,"w")
+            avgData["N_avg_mag(1|ccm)"] = [N,]
+            avgData["Nbar_avg_mag(1|ccm)"] = [Nbar,]
+            avgData["F_avg_mag(1|ccm)"] = [F,]
+            avgData["Fbar_avg_mag(1|ccm)"] = [Fbar,]
+            avgData["t(s)"] = [t,]
+            avgData.close()
+            
+        ############
+        # FFT work #
+        ############
+        outputfilename = d+"_reduced_data_fft_power.h5"
+        already_done = len(glob.glob(outputfilename))>0
+        if do_fft and not already_done and len(eds.cg["N00_Re"][:,:,:].d.flatten())>1:
+
+            print("# rank",mpi_rank,"writing",outputfilename)
+            fout = h5py.File(outputfilename,"w")
+            fout["t(s)"] = [np.array(t),]
+
+            fft = eds.fourier(dataset_name("N", "", 0, 0, "Re"),nproc=nproc)
+            fout["k(1|cm)"] = get_kmid(fft)
+            cleft, cright, ileft, iright, kmid = fft_coefficients(fft)
+            N00_FFT = fft_power(fft, cleft, cright, ileft, iright, kmid)
+            fft = eds.fourier(dataset_name("N", "", 1, 1, "Re"),nproc=nproc)
+            N11_FFT = fft_power(fft, cleft, cright, ileft, iright, kmid)
+            fft = eds.fourier(dataset_name("N", "", 0, 1, "Re"),
+                              dataset_name("N", "", 0, 1, "Im"),nproc=nproc)
+            N01_FFT = fft_power(fft, cleft, cright, ileft, iright, kmid)
+            fout["N00_FFT(cm^-2)"] = [np.array(N00_FFT),]
+            fout["N11_FFT(cm^-2)"] = [np.array(N11_FFT),]
+            fout["N01_FFT(cm^-2)"] = [np.array(N01_FFT),]
+            if format_dict["NF"]>2:
+                fft = eds.fourier(dataset_name("N", "", 2, 2, "Re"),nproc=nproc)
+                N22_FFT = fft_power(fft, cleft, cright, ileft, iright, kmid)
+                fft = eds.fourier(dataset_name("N", "", 0, 2, "Re"),
+                                  dataset_name("N", "", 0, 2, "Im"),nproc=nproc)
+                N02_FFT = fft_power(fft, cleft, cright, ileft, iright, kmid)
+                fft = eds.fourier(dataset_name("N", "", 1, 2, "Re"),
+                                  dataset_name("N", "", 1, 2, "Im"),nproc=nproc)
+                N12_FFT = fft_power(fft, cleft, cright, ileft, iright, kmid)
+                fout["N22_FFT(cm^-2)"] = [np.array(N22_FFT),]
+                fout["N02_FFT(cm^-2)"] = [np.array(N02_FFT),]
+                fout["N12_FFT(cm^-2)"] = [np.array(N12_FFT),]
+                
+            fout.close()
+
+    if do_angular:
+        # separate loop for angular spectra so there is no aliasing and better load balancing
+        directories = sorted(glob.glob("plt*/neutrinos"))
+        directories = [directories[i].split('/')[0] for i in range(len(directories))] # remove "neutrinos"
+    
+        # get number of particles to be able to construct
+        # must build Ylm before pool or the internal shared memory will not be declared in pool subprocesses
+        nppc = get_nppc(directories[-1])
+        Ylm = DiscreteSphericalHarmonic(nl,nppc)
+
+        pool = Pool(nproc)
+        for d in directories:
             if mpi_rank==0:
-                print("Computing up to l =",nl-1)
+                print("# working on", d)
+            eds = emu.EmuDataset(d)
+            t = eds.ds.current_time
+            ad = eds.ds.all_data()
 
-            header = amrex.AMReXParticleHeader(d+"/neutrinos/Header")
-            grid_data = GridData(ad)
-            nlevels = len(header.grids)
-            assert nlevels==1
-            level = 0
-            ngrids = len(header.grids[level])
-        
-            # average the angular power spectrum over many cells
-            # loop over all cells within each grid
-            if NF==2:
-                ncomps = 3
-            if NF==3:
-                ncomps = 6
-            spectrum = np.zeros((nl,2,ncomps))
-            Nrho_avg = np.zeros((2,ncomps,nppc))*1j
-            total_ncells = 0
-            for gridID in range(mpi_rank,ngrids,mpi_size):
-                print("    rank",mpi_rank,"grid",gridID+1,"/",ngrids)
+            ################
+            # angular work #
+            ################
+            outputfilename = d+"_reduced_data_angular_power_spectrum.h5"
+            already_done = len(glob.glob(outputfilename))>0
+            if not already_done:
+
+                if mpi_rank==0:
+                    print("Computing up to l =",nl-1)
+
+                header = amrex.AMReXParticleHeader(d+"/neutrinos/Header")
+                grid_data = GridData(ad)
+                nlevels = len(header.grids)
+                assert nlevels==1
+                level = 0
+                ngrids = len(header.grids[level])
+                
+                # average the angular power spectrum over many cells
+                # loop over all cells within each grid
+                if format_dict["NF"]==2:
+                    ncomps = 3
+                if format_dict["NF"]==3:
+                    ncomps = 6
+                spectrum = np.zeros((nl,2,ncomps))
+                Nrho_avg = np.zeros((2,ncomps,nppc))*1j
+                total_ncells = 0
+                for gridID in range(mpi_rank,ngrids,mpi_size):
+                    print("    rank",mpi_rank,"grid",gridID+1,"/",ngrids)
             
-                # read particle data on a single grid
-                idata, rdata = amrex.read_particle_data(d, ptype="neutrinos", level_gridID=(level,gridID))
+                    # read particle data on a single grid
+                    # [particleID, quantity]
+                    idata, rdata = amrex.read_particle_data(d, ptype="neutrinos", level_gridID=(level,gridID))
+                    
+                    # get list of cell ids
+                    idlist = grid_data.get_particle_cell_ids(rdata)
+                    
+                    # sort rdata based on id list
+                    # still [particleID, quantity]
+                    sorted_indices = idlist.argsort()
+                    rdata = rdata[sorted_indices]
+                    idlist = idlist[sorted_indices]
+                    
+                    # split up the data into cell chunks
+                    # [cellID][particleID, quantity]
+                    ncells = np.max(idlist)+1
+                    rdata  = [ rdata[icell*nppc:(icell+1)*nppc,:] for icell in range(ncells)] # 
+                    chunksize = ncells//nproc
+                    if ncells % nproc != 0:
+                        chunksize += 1
                 
-                # get list of cell ids
-                idlist = grid_data.get_particle_cell_ids(rdata)
-                
-                # sort rdata based on id list
-                sorted_indices = idlist.argsort()
-                rdata = rdata[sorted_indices]
-                idlist = idlist[sorted_indices]
-                
-                # split up the data into cell chunks
-                ncells = np.max(idlist)+1
-                nppc = len(idlist) // ncells
-                rdata  = [ rdata[icell*nppc:(icell+1)*nppc,:] for icell in range(ncells)]
-                chunksize = ncells//nproc
-                if ncells % nproc != 0:
-                    chunksize += 1
-                
-                # sort particles in each chunk
-                rdata = pool.map(sort_rdata_chunk, rdata, chunksize=chunksize)
-                
-                # create the spherical harmonic grid
-                if gridID == mpi_rank:
-                    create_shared_Ylm_star(rdata[0])
-                    phat = rdata[0][:,rkey["pupx"]:rkey["pupz"]+1] / rdata[0][:,rkey["pupt"]][:,np.newaxis]
+                    # sort particles in each chunk
+                    # still [cellID][particleID, quantity]
+                    rdata = pool.map(sort_rdata_chunk, rdata, chunksize=chunksize)
+                    
+                    # initialize the shared data class.
+                    #Only need to compute for one grid cell, since the angular grid is the same in every cell.
+                    if gridID==mpi_rank:
+                        phat = rdata[0][:,rkey["pupx"]:rkey["pupz"]+1] / rdata[0][:,rkey["pupt"]][:,np.newaxis]
+                        Ylm.precompute(phat)
 
-                # accumulate the spatial average of the angular distribution
-                Nrho = pool.map(get_Nrho,rdata, chunksize=chunksize)
-                Nrho_avg += np.sum(Nrho, axis=0)
+                    # accumulate the spatial average of the angular distribution
+                    Nrho = pool.map(get_Nrho,rdata, chunksize=chunksize)
+                    Nrho_avg += sum(Nrho)
                 
-                # accumulate a spectrum from each cell
-                spectrum_each_cell = pool.map(spherical_harmonic_power_spectrum, Nrho, chunksize=chunksize)
-                spectrum += np.sum(spectrum_each_cell, axis=0)
-
-                # count the total number of cells
-                total_ncells += ncells
+                    # accumulate a spectrum from each cell
+                    spectrum_each_cell = pool.map(Ylm.spherical_harmonic_power_spectrum, Nrho, chunksize=chunksize)
+                    spectrum += sum(spectrum_each_cell)
+                    
+                    # count the total number of cells
+                    total_ncells += ncells
             
-            if do_MPI:
-                comm.Barrier()
-                spectrum     = comm.reduce(spectrum    , op=MPI.SUM, root=0)
-                Nrho_avg     = comm.reduce(Nrho_avg    , op=MPI.SUM, root=0)
-                total_ncells = comm.reduce(total_ncells, op=MPI.SUM, root=0)
-
-            # write averaged data
-            if mpi_rank==0:
-                spectrum /= total_ncells
-                Nrho_avg /= total_ncells
-            
-                print("# writing",outputfilename)
-                avgData = h5py.File(outputfilename,"w")
-                avgData["angular_spectrum"] = [spectrum,]
-                avgData["Nrho (1|ccm)"] = [Nrho_avg,]
-                avgData["phat"] = phat
-                avgData["t(s)"] = [t,]
-                avgData.close()
+                if do_MPI:
+                    comm.Barrier()
+                    spectrum     = comm.reduce(spectrum    , op=MPI.SUM, root=0)
+                    Nrho_avg     = comm.reduce(Nrho_avg    , op=MPI.SUM, root=0)
+                    total_ncells = comm.reduce(total_ncells, op=MPI.SUM, root=0)
+                    
+                # write averaged data
+                if mpi_rank==0:
+                    spectrum /= total_ncells
+                    Nrho_avg /= total_ncells
+                    
+                    print("# writing",outputfilename)
+                    avgData = h5py.File(outputfilename,"w")
+                    avgData["angular_spectrum"] = [spectrum,]
+                    avgData["Nrho(1|ccm)"] = [Nrho_avg,]
+                    avgData["phat"] = phat
+                    avgData["t(s)"] = [t,]
+                    avgData.close()
 
     
+if __name__ == "__main__":
+    reduce_data()
