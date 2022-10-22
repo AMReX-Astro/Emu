@@ -123,6 +123,7 @@ def minerbo_Z(fluxfac):
 # from assuming that radiation is isotropic in some frame
 # v is the velocity of this frame
 # sign of v chosen so distribution is large when mu==1
+# Coefficients set such that the expectation value is 1
 def levermore_closure(v, mu):
     gamma2 = 1/(1-v**2)
     result = 1/(2*gamma2*(1-v*mu)**2)
@@ -165,6 +166,7 @@ def levermore_v(fluxfac):
 
 # interpolate the levermore closure
 # mu is the cosine of the angle of the direction relative to the flux direction
+# the expectation value of the result is 1
 def levermore_interpolate(fluxfac, mu):
     assert(fluxfac >= 0 and fluxfac <= 1)
     
@@ -173,11 +175,19 @@ def levermore_interpolate(fluxfac, mu):
 
 # interpolate the Minerbo closure
 # mu is the cosine of the angle of the direction relative to the flux direction
+# the expectation value of the result is 1
 def minerbo_interpolate(fluxfac, mu):
     assert(fluxfac >= 0 and fluxfac <= 1)
 
     Z = minerbo_Z(fluxfac)
     return minerbo_closure(Z, mu)
+
+# interpolate linearly
+# mu is the cosine of the angle of the direction relative to the flux direction
+# the expectation value of the result is 1
+def linear_interpolate(fluxfac, mu):
+    assert(fluxfac>=0 and fluxfac<=1/3)
+    return 1 + mu
 
 # generate a list of particle data
 # NF is the number of flavors
@@ -185,7 +195,7 @@ def minerbo_interpolate(fluxfac, mu):
 # nnu is an array of neutrino number density of lenth NF and units 1/ccm [nu/nubar, iflavor]
 # fnu is an array of neutrino flux density of shape [nu/nubar, iflavor, xyz] and units of 1/ccm
 # direction_generator is either uniform_sphere or grid_sphere
-# interpolate_function is either levermore_interpolate or minerbo_interpolate
+# interpolate_function is either levermore_interpolate or minerbo_interpolate or linear_interpolate
 # for each nu/nubar and flavor, the interpolant adds up to 1 and approximates the flux
 def moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, direction_generator, interpolate_function):
     # number of neutrino flavors
@@ -194,9 +204,11 @@ def moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, direction_g
     # flux magnitude and flux factor [nu/nubar, flavor]
     fluxmag = np.sqrt(np.sum(fnu**2, axis=2))
     fluxfac = fluxmag / nnu
+    fluxfac[np.where(nnu==0)] = 0
 
     # direction unit vector of fluxes [nu/nubar, flavor, xyz]
     fhat = fnu / fluxmag[:,:,np.newaxis]
+    fhat[np.where(fhat!=fhat)] = 0
     
     # generate list of momenta and direction cosines 
     phat = direction_generator(nphi_equator) # [iparticle, xyz]
@@ -213,7 +225,7 @@ def moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, direction_g
 
     # determine the number of each flavor for each particle [particle, nu/nubar, flavor]
     n_particle = interpolant * nnu[np.newaxis,:,:]
-
+    
     # get variable keys
     rkey, ikey = amrex.get_particle_keys(ignore_pos=True)
     nelements = len(rkey)
@@ -228,11 +240,20 @@ def moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, direction_g
     # save the total number density of neutrinos for each particle
     n_flavorsummed = np.sum(n_particle, axis=2) # [particle, nu/nubar]
     for nu_nubar, suffix in zip(range(2), ["","bar"]):
-        varname = "N"+suffix
-        particles[:,rkey[varname]] = n_flavorsummed[:,nu_nubar]
+        nvarname = "N"+suffix
+        particles[:,rkey[nvarname]] = n_flavorsummed[:,nu_nubar]
     
         for flavor in range(NF):
-            varname = "f"+str(flavor)+str(flavor)+"_Re"+suffix
-            particles[:,rkey[varname]] = n_particle[:,nu_nubar, flavor] / n_flavorsummed[:,nu_nubar]
+            fvarname = "f"+str(flavor)+str(flavor)+"_Re"+suffix
+            particles[:,rkey[fvarname]] = n_particle[:,nu_nubar, flavor] / n_flavorsummed[:,nu_nubar]
+            particles[:,rkey[fvarname]][np.where(n_flavorsummed[:,nu_nubar]==0)] = 0
+           
+            # double check that the number densities are correct
+            particle_n = np.sum(particles[:,rkey[nvarname]] * particles[:,rkey[fvarname]])
+            particle_fmag = np.sum(particles[:,rkey[nvarname]] * particles[:,rkey[fvarname]] * mu[:,nu_nubar, flavor])
+            print("nu/nubar,flavor =", nu_nubar, flavor)
+            print("output/input ndens =",particle_n, nnu[nu_nubar,flavor])
+            print("output/input fluxfac =",particle_fmag / particle_n, fluxfac[nu_nubar,flavor])
+            print()
 
     return particles
