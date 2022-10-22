@@ -2,7 +2,8 @@ import numpy as np
 import sys
 import os
 importpath = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(importpath+"/../visualization")
+sys.path.append(importpath+"/../data_reduction")
+import amrex_plot_tools as amrex
 
 # generate an array of theta,phi pairs that uniformily cover the surface of a sphere
 # based on DOI: 10.1080/10586458.2003.10504492 section 3.3 but specifying n_j=0 instead of n
@@ -161,3 +162,77 @@ def levermore_v(fluxfac):
 
     print("fluxfac=",fluxfac," v=",v)
     return v
+
+# interpolate the levermore closure
+# mu is the cosine of the angle of the direction relative to the flux direction
+def levermore_interpolate(fluxfac, mu):
+    assert(fluxfac >= 0 and fluxfac <= 1)
+    
+    v = levermore_v(fluxfac)
+    return levermore_closure(v, mu)
+
+# interpolate the Minerbo closure
+# mu is the cosine of the angle of the direction relative to the flux direction
+def minerbo_interpolate(fluxfac, mu):
+    assert(fluxfac >= 0 and fluxfac <= 1)
+
+    Z = minerbo_Z(fluxfac)
+    return minerbo_closure(Z, mu)
+
+# generate a list of particle data
+# NF is the number of flavors
+# nphi_equator is the number of directions in the xhat-yhat plane
+# nnu is an array of neutrino number density of lenth NF and units 1/ccm [nu/nubar, iflavor]
+# fnu is an array of neutrino flux density of shape [nu/nubar, iflavor, xyz] and units of 1/ccm
+# direction_generator is either uniform_sphere or grid_sphere
+# interpolate_function is either levermore_interpolate or minerbo_interpolate
+# for each nu/nubar and flavor, the interpolant adds up to 1 and approximates the flux
+def moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, direction_generator, interpolate_function):
+    # number of neutrino flavors
+    NF = nnu.shape[1]
+
+    # flux magnitude and flux factor [nu/nubar, flavor]
+    fluxmag = np.sqrt(np.sum(fnu**2, axis=2))
+    fluxfac = fluxmag / nnu
+
+    # direction unit vector of fluxes [nu/nubar, flavor, xyz]
+    fhat = fnu / fluxmag[:,:,np.newaxis]
+    
+    # generate list of momenta and direction cosines 
+    phat = direction_generator(nphi_equator) # [iparticle, xyz]
+    mu = np.sum(phat[:,np.newaxis,np.newaxis,:] * fhat[np.newaxis,:,:,:],axis=3) # [iparticle, nu/nubar, flavor]
+    
+    # generate interpolant # [particle, nu/nubar, flavor]
+    nparticles = mu.shape[0]
+    interpolant = np.array( [ [ interpolate_function(fluxfac[nu_nubar,flavor], mu[:,nu_nubar,flavor])  for nu_nubar in range(2)]  for flavor in range(NF)] ) # [flavor, nu/nubar, particle]
+    interpolant = np.swapaxes(interpolant, 0, 2)
+
+    # make sure the interpolant adds up to 1
+    norm = np.sum(interpolant, axis=(0)) # [nu/nubar, flavor]
+    interpolant /= norm[np.newaxis,:,:]
+
+    # determine the number of each flavor for each particle [particle, nu/nubar, flavor]
+    n_particle = interpolant * nnu[np.newaxis,:,:]
+
+    # get variable keys
+    rkey, ikey = amrex.get_particle_keys(ignore_pos=True)
+    nelements = len(rkey)
+    
+    # generate the list of particle info
+    particles = np.zeros((nparticles,nelements))
+
+    # save particle momenta
+    particles[:,rkey["pupt"]               ] = energy_erg
+    particles[:,rkey["pupx"]:rkey["pupz"]+1] = energy_erg * phat
+
+    # save the total number density of neutrinos for each particle
+    n_flavorsummed = np.sum(n_particle, axis=2) # [particle, nu/nubar]
+    for nu_nubar, suffix in zip(range(2), ["","bar"]):
+        varname = "N"+suffix
+        particles[:,rkey[varname]] = n_flavorsummed[:,nu_nubar]
+    
+        for flavor in range(NF):
+            varname = "f"+str(flavor)+str(flavor)+"_Re"+suffix
+            particles[:,rkey[varname]] = n_particle[:,nu_nubar, flavor] / n_flavorsummed[:,nu_nubar]
+
+    return particles
