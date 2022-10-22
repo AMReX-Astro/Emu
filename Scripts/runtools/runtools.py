@@ -28,6 +28,11 @@ def write_inputfile(directory, inputs_dict, filename="inputs"):
         f.write("\n")
     f.close()
 
+def clean_string(s):
+    for character in ["\"","\'"," ","\n"]:
+        s = s.replace(character,"")
+    return s
+    
 # given a run directory and an optional inputs filename,
 # return a dictionary with key-value pairs for the parameters
 # keys and values are both returned as strings
@@ -45,9 +50,26 @@ def read_inputfile(directory, filename="inputs"):
 
         # split line into key/value
         key,value = line.split("=")
+
+        # get the format
+        is_string = any((c in value) for c in ['\"','\''])
+        is_list = "(" in value
+        is_float = (not is_string) and (("." in value) or ("e" in value) )
+        is_int = (not is_float) and (not is_string)
+        
+        if(is_int): cast_func = int
+        if(is_float): cast_func = float
+        if(is_string): cast_func = clean_string
+
+        if is_list:
+            value = value.replace("(","")
+            value = value.replace(")","")
+            value = value.split(",")
+            value = [cast_func(v) for v in value]
+        else:
+            value = cast_func(value)
+            
         key = key.strip()
-        for character in ["\""," ","\n"]:
-            value = value.replace(character,"")
 
         # append to the dictionary
         inputs_dict[key] = value
@@ -59,13 +81,14 @@ def read_inputfile(directory, filename="inputs"):
 # Refuse to overwrite unless overwrite==True
 # note that the simulation still lacks a particle file! Must be created separately.
 def create_new_simulation(directory, inputs_dict, executable_path, overwrite=False):
-
+    
     # check whether the directory already exiss
     if os.path.exists(directory):
         if not overwrite:
             raise(directory+" already exists. Cannot create ")
         else:
             os.system('rm -rf '+directory)
+    print("   Creating",directory)
 
     # create the new directories
     os.mkdir(directory)
@@ -78,16 +101,20 @@ def create_new_simulation(directory, inputs_dict, executable_path, overwrite=Fal
     # write the inputs file
     write_inputfile(subdir, inputs_dict)
 
+    return subdir
+
 
 # create a new run subdirectory based on the previous one
 # replace the parameters and executable as necessary
 def create_restart_simulation(directory, replace_inputs_dict=None, executable_path=None):
     # determine new run dir
     rundirlist = sorted(glob.glob(directory+"/"+rundir_base+"*"))
+    assert(len(rundirlist)>0)
     lastrun = int(rundirlist[-1].split("/")[-1].replace(rundir_base,"").strip("0"))
     nextrundir = directory+"/"+rundir_base+str(lastrun+1).zfill(n_digits_rundir)
     os.mkdir(nextrundir)
-    print(nextrundir)
+
+    print("   Restarting",directory,"at",nextrundir)
     
     # get inputs dict from previous simulation
     inputs_dict = read_inputfile(rundirlist[-1])
@@ -102,4 +129,5 @@ def create_restart_simulation(directory, replace_inputs_dict=None, executable_pa
     if executable_path==None:
         executable_path = rundirlist[-1]+"/*.ex"
     os.system("cp "+executable_path+" "+nextrundir)
-    
+
+    return nextrundir
