@@ -257,3 +257,112 @@ def moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, direction_g
             print()
 
     return particles
+
+# create a random distribution defined by number and flux densities
+# NF is the number of flavors
+# n is normalized such that the sum of all ns is 1
+def random_moments(NF):
+    bad_distro = True
+    count = 0
+
+    # create random number densities, normalize to 1
+    n = np.random.rand(2,NF)
+    n /= np.sum(n)
+
+    # randomly sample flux directions
+    mu  = np.random.rand(2,NF)*2. - 1
+    phi = np.random.rand(2,NF)*2.*np.pi
+    mag = np.random.rand(2,NF) * n
+
+    f = np.zeros((2,NF,3))
+    sintheta = np.sqrt(1-mu**2)
+    f[:,:,0] = mag * sintheta * np.cos(phi)
+    f[:,:,1] = mag * sintheta * np.sin(phi)
+    f[:,:,2] = mag * mu
+
+    return n, f
+
+# v has 3 components
+# v is dimensionless velocity
+def lorentz_transform(v):
+    v2 = np.sum(v**2)
+    gamma = 1/np.sqrt(1-v2)
+
+    L = np.identity(4)
+    L[3,3] = gamma
+    L[0:3,3] = -gamma * v
+    L[3,0:3] = -gamma * v
+    L[0:3, 0:3] += (gamma-1) * np.outer(v,v) / v2
+
+    return L
+
+# returns a rotation matrix that rotates along axis u by angle costheta
+def axis_angle_rotation_matrix(u, costheta):
+    costheta_2 = np.sqrt((1+costheta)/2.)
+    sintheta_2 = np.sqrt((1-costheta)/2.)
+
+    # get rotation quaternion
+    q = np.array([costheta_2,
+                  sintheta_2 * u[0],
+                  sintheta_2 * u[1],
+                  sintheta_2 * u[2]
+    ])
+    
+    # construct rotation matrix ala wikipedia
+    R = np.zeros((4,4))
+    for i in range(3):
+        # R[0,0] = q0^2 + q1^2 - q2^2 - q3^2
+        #  = costheta^2 + 2q1^2 - sintheta^2 (assuming u is a unit vector)
+        # Let the loop over j take into accout the 2q1^2
+        R[i,i] = 2.*costheta_2**2 - 1.
+        
+        for j in range(3):
+            R[i,j] += 2.*q[i+1]*q[j+1] # indexing = q is size 4
+    R[0,1] -= 2.*q[0]*q[2+1]
+    R[1,0] += 2.*q[0]*q[2+1]
+    R[0,2] += 2.*q[0]*q[1+1]
+    R[2,0] -= 2.*q[0]*q[1+1]
+    R[1,2] -= 2.*q[0]*q[0+1]
+    R[2,1] += 2.*q[0]*q[0+1]
+
+    R[3,3] = 1
+
+    return R
+
+# return a matrix that transforms a set of four-fluxes
+# such that the net flux is zero
+# and the ELN points along the z axis
+# n = [nu/nubar, flavor]
+# f = [nu/nubar, flavor, xyz]
+def poincare_transform_0flux_elnZ(n,f):
+    # number of flavors
+    NF = n.shape[1]
+
+    # construct the four-flux of all flavors
+    f4 = np.zeros((2,NF,4))
+    f4[:,:,0:3] = f
+    f4[:,:,  3] = n
+    f4 = np.moveaxis(f4, 2, 0) # [xyzt, nu/nubar, NF]
+
+    # net flux factor
+    netf4 = np.sum(f4, axis=(1,2))
+    average_velocity = netf4[0:3] / netf4[3]
+    L = lorentz_transform(average_velocity)
+    f4 = np.tensordot(L,f4, axes=1)
+    
+    # get the angle of rotation to the z axis
+    f4_flavorsum = np.sum(f4, axis=2) # [xyzt, nu/nubar]
+    f4_eln = f4_flavorsum[:,0] - f4_flavorsum[:,1] # [xyz]
+    fn_eln_mag = np.sqrt(np.sum(f4_eln[:3]**2))
+    costheta = f4_eln[2] / fn_eln_mag
+    
+    # get axis of rotation (the axis normal to the e and a fluxes)
+    u = np.cross(f4_eln[:3], np.array([0,0,1]), axisa=0, axisc=0)
+    u /= np.sqrt(np.sum(u**2))
+
+    R = axis_angle_rotation_matrix(u, costheta)    
+    f4 = np.tensordot(R,f4, axes=1)
+
+    f4 = np.moveaxis(f4, 0, 2) # [nu/nubar, flavor, xyzt]
+
+    return f4[:,:,3], f4[:,:,0:3]
