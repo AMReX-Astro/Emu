@@ -103,6 +103,16 @@ def create_new_simulation(directory, inputs_dict, executable_path, overwrite=Fal
 
     return subdir
 
+def out_step_list(directory,subdir=None):
+    search_string = directory+"/plt?????"
+    if subdir==None:
+        dirlist = glob.glob(search_string)
+        steplist = sorted([int(d.split("/")[-1][3:]) for d in dirlist])
+    else:
+        search_string = search_string+"/"+subdir
+        dirlist = glob.glob(search_string)
+        steplist = sorted([int(d.split("/")[-2][3:]) for d in dirlist])
+    return steplist
 
 # create a new run subdirectory based on the previous one
 # replace the parameters and executable as necessary
@@ -114,15 +124,31 @@ def create_restart_simulation(directory, replace_inputs_dict=None, executable_pa
     nextrundir = directory+"/"+rundir_base+str(lastrun+1).zfill(n_digits_rundir)
     os.mkdir(nextrundir)
 
+    # print some diagnostics
     print("   Restarting",directory,"at",nextrundir)
-    
+    last_step_list = out_step_list(rundirlist[-1])
+    print("      "+rundirlist[-1]+" outputs grid data from",str(last_step_list[0]),"to",str(last_step_list[-1]))
+    particle_step_list = out_step_list(rundirlist[-1],"neutrinos")
+    print("      "+rundirlist[-1]+" outputs particle data from",str(particle_step_list[0]),"to",str(particle_step_list[-1]))
+    assert(len(particle_step_list)>0)
+
     # get inputs dict from previous simulation
     inputs_dict = read_inputfile(rundirlist[-1])
+    
+    # activate restarting
+    inputs_dict["do_restart"] = 1
+
+    # set restart directory
+    inputs_dict["restart_dir"] = "../"+rundirlist[-1].split("/")[-1]+"/plt"+str(particle_step_list[-1]).zfill(5)
+
+    # use replace_inputs_dict last to override anything else
     if replace_inputs_dict != None:
         print("replacing dict")
         for key in replace_inputs_dict:
             print(key in inputs_dict)
             inputs_dict[key] = replace_inputs_dict[key]
+
+    # write the inputs file
     write_inputfile(nextrundir,inputs_dict)
 
     # copy in executable
