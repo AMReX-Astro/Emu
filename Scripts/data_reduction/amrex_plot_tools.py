@@ -9,103 +9,75 @@ eV = 1.60218e-12 # erg
 mp = 1.6726219e-24 # g
 GF = 1.1663787e-5 / (1e9*eV)**2 * (hbar*clight)**3 #erg cm^3
 
-def get_basic_particle_keys(ignore_pos=False):
-    real_quantities = ["pos_x",
-                       "pos_y",
-                       "pos_z",
-                       "time",
-                       "x",
-                       "y",
-                       "z",
-                       "pupx",
-                       "pupy",
-                       "pupz",
-                       "pupt"]
+# NF is the number of flavors
+# ignore_pos causes the first three elements to be ignored
+# xp_only returns the position and momentum keys, but not the f keys
+def get_particle_keys(NF, ignore_pos=False, xp_only=False):
+    assert(NF==2 or NF==3)
+    if(NF==2):
+        real_quantities = ["pos_x",
+                           "pos_y",
+                           "pos_z",
+                           "time",
+                           "x",
+                           "y",
+                           "z",
+                           "pupx",
+                           "pupy",
+                           "pupz",
+                           "pupt",
+                           "N",
+                           "L",
+                           "f00_Re",
+                           "f01_Re",
+                           "f01_Im",
+                           "f11_Re",
+                           "Nbar",
+                           "Lbar",
+                           "f00_Rebar",
+                           "f01_Rebar",
+                           "f01_Imbar",
+                           "f11_Rebar"]
+    if(NF==3):
+        real_quantities = ["pos_x",
+                           "pos_y",
+                           "pos_z",
+                           "time",
+                           "x",
+                           "y",
+                           "z",
+                           "pupx",
+                           "pupy",
+                           "pupz",
+                           "pupt",
+                           "N",
+                           "L",
+                           "f00_Re",
+                           "f01_Re",
+                           "f01_Im",
+                           "f02_Re",
+                           "f02_Im",
+                           "f11_Re",
+                           "f12_Re",
+                           "f12_Im",
+                           "f22_Re",
+                           "Nbar",
+                           "Lbar",
+                           "f00_Rebar",
+                           "f01_Rebar",
+                           "f01_Imbar",
+                           "f02_Rebar",
+                           "f02_Imbar",
+                           "f11_Rebar",
+                           "f12_Rebar",
+                           "f12_Imbar",
+                           "f22_Rebar"]
+
+    if xp_only: real_quantities = real_quantities[:11]
+    if ignore_pos: real_quantities = real_quantities[3:]
+    
     rkey = {}
-    start = 3 if ignore_pos else 0
-    for i, rlabel in enumerate(real_quantities[start:]):
-        rkey[rlabel] = i
-
-    ikey = {
-        # no ints are stored
-    }
-
-    return rkey, ikey
-
-def get_particle_keys(ignore_pos=False):
-    real_quantities = ["pos_x",
-                       "pos_y",
-                       "pos_z",
-                       "time",
-                       "x",
-                       "y",
-                       "z",
-                       "pupx",
-                       "pupy",
-                       "pupz",
-                       "pupt",
-                       "N",
-                       "L",
-                       "f00_Re",
-                       "f01_Re",
-                       "f01_Im",
-                       "f11_Re",
-                       "Nbar",
-                       "Lbar",
-                       "f00_Rebar",
-                       "f01_Rebar",
-                       "f01_Imbar",
-                       "f11_Rebar"]
-
-    rkey = {}
-    start = 3 if ignore_pos else 0
-    for i, rlabel in enumerate(real_quantities[start:]):
-        rkey[rlabel] = i
-
-    ikey = {
-        # no ints are stored
-    }
-
-    return rkey, ikey
-
-def get_3flavor_particle_keys(ignore_pos=False):
-    real_quantities = ["pos_x",
-                       "pos_y",
-                       "pos_z",
-                       "time",
-                       "x",
-                       "y",
-                       "z",
-                       "pupx",
-                       "pupy",
-                       "pupz",
-                       "pupt",
-                       "N",
-                       "L",
-                       "f00_Re",
-                       "f01_Re",
-                       "f01_Im",
-                       "f02_Re",
-                       "f02_Im",
-                       "f11_Re",
-                       "f12_Re",
-                       "f12_Im",
-                       "f22_Re",
-                       "Nbar",
-                       "Lbar",
-                       "f00_Rebar",
-                       "f01_Rebar",
-                       "f01_Imbar",
-                       "f02_Rebar",
-                       "f02_Imbar",
-                       "f11_Rebar",
-                       "f12_Rebar",
-                       "f12_Imbar",
-                       "f22_Rebar"]
-
-    rkey = {}
-    start = 3 if ignore_pos else 0
-    for i, rlabel in enumerate(real_quantities[start:]):
+    for i, rlabel in enumerate(real_quantities):
         rkey[rlabel] = i
 
     ikey = {

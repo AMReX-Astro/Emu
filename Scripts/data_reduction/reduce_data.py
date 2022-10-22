@@ -391,10 +391,7 @@ def reduce_data(directory=".", nproc=1, do_average=True, do_fft=True, do_angular
     eds = emu.EmuDataset(directories[0])
     NF = eds.get_num_flavors()
     global rkey
-    if NF==2:
-        rkey, ikey = amrex.get_particle_keys()
-    if NF==3:
-        rkey, ikey = amrex.get_3flavor_particle_keys()
+    rkey, ikey = amrex.get_particle_keys(NF)
 
     global format_dict
     format_dict = {"data_format":data_format,
