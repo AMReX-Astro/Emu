@@ -74,7 +74,7 @@ def get_particle_keys(NF, ignore_pos=False, xp_only=False):
                            "f22_Rebar"]
 
     if xp_only: real_quantities = real_quantities[:11]
-    if ignore_pos: real_quantities = real_quantities[3:]
+    if ignore_pos: real_quantities = real_quantities[7:]
     
     rkey = {}
     for i, rlabel in enumerate(real_quantities):
