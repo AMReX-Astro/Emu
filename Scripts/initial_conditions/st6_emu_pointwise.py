@@ -161,7 +161,7 @@ print("|fluxfac_ee| =",np.sqrt(Fx[0]**2+Fy[0]**2+Fz[0]**2))
 print("|fluxfac_eebar| =",np.sqrt(Fx[1]**2+Fy[1]**2+Fz[1]**2))
 
 # get variable keys
-rkey, ikey = amrex.get_particle_keys(ignore_pos=True)
+rkey, ikey = amrex.get_particle_keys(NF,ignore_pos=True)
 nelements = len(rkey)
 
 # generate list of particles

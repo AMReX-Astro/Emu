@@ -22,7 +22,7 @@ dm2 = (m2-m1)**2 #g^2
 energy_erg = dm2*amrex.clight**4 * np.sin(2.*theta12) / (8.*np.pi*amrex.hbar*amrex.clight) # *1cm for units
 
 # get variable keys
-rkey, ikey = amrex.get_particle_keys(ignore_pos=True)
+rkey, ikey = amrex.get_particle_keys(NF,ignore_pos=True)
 nelements = len(rkey)
 
 # generate the grid of direction coordinates
