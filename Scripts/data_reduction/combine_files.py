@@ -29,7 +29,7 @@ def combine_files(directory, filename_base, filename_tail):
     print("Outputting datasets to "+output_filename)
     f = h5py.File(filename_base+filename_tail,"w")
     for i, key in enumerate(keylist):
-        if key=="k" or key=="phat":
+        if key=="k(1|cm)" or key=="phat":
             datasets[i] = datasets[i][0]
         else:
             datasets[i] = np.concatenate(datasets[i], axis=0)
