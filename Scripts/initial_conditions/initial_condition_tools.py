@@ -227,7 +227,7 @@ def moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, direction_g
     n_particle = interpolant * nnu[np.newaxis,:,:]
     
     # get variable keys
-    rkey, ikey = amrex.get_particle_keys(ignore_pos=True)
+    rkey, ikey = amrex.get_particle_keys(NF, ignore_pos=True)
     nelements = len(rkey)
     
     # generate the list of particle info
