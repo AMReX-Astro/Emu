@@ -183,7 +183,7 @@ def offdiagMag(f):
     I = 1
     result = 0
     for f0 in range(NF):
-        for f1 in range(f0+1,NF):
+        for f1 in range(f0,NF):
             result += f[:,f0,f1,R]**2 + f[:,f0,f1,I]**2
     return np.sqrt(result)
 
@@ -365,7 +365,7 @@ def get_Nrho(p):
 # MAIN REDUCE DATA FUNCTION #
 #===========================#
 # nl = number of spherical harmonics
-def reduce_data(directory=".", nproc=1, do_average=True, do_fft=True, do_angular=True, nl=4, do_MPI=False, data_format='Emu'):
+def reduce_data(directory=".", nproc=4, do_average=True, do_fft=True, do_angular=False, nl=4, do_MPI=False, data_format='Emu'):
     ########################
     # format peculiarities #
     ########################
