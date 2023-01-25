@@ -30,14 +30,15 @@ mpl.rcParams['axes.linewidth'] = 2
 
 
 def makeplot(v,f,data):
-    plt.close('all')
-    fig, ax = plt.subplots(1,1, figsize=(8,6))
 
     # get appropriate data
-    t=data["t"]
-    k=data["k"]
-    fft = data[v+f+"_FFT"]
+    t=np.array(data["t(s)"])
+    k=np.array(data["k(1|cm)"])
+    fft = data[v+f+"_FFT(cm^-2)"]
     total_power = np.sum(fft)
+
+    plt.close('all')
+    fig, ax = plt.subplots(1,1, figsize=(8,6))
     for it in range(len(t)):
         ax.semilogy(k, fft[it,:-1]/total_power, color=cmap(t[it]/t[-1]))
     
@@ -58,13 +59,13 @@ def makeplot(v,f,data):
     ax.minorticks_on()
     ax.grid(which='both')
     
-    plt.savefig(v+f+"_FFT_power.pdf", bbox_inches='tight')
+    plt.savefig(v+f+"_FFT_power.png", bbox_inches='tight')
 
-data = h5py.File("reduced_data_fft_power.h5","r")
+data = h5py.File("plt_reduced_data_fft_power.h5","r")
 
 for v in variables:
     for f in flavors:
-        if v+f+"_FFT" in data:
+        if v+f+"_FFT(cm^-2)" in data:
             print(v+f)
             makeplot(v,f, data)
 

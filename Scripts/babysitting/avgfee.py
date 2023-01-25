@@ -53,7 +53,7 @@ fig, ax = plt.subplots(1,1, figsize=(6,5))
 # formatting #
 ##############
 ax.axhline(1./3., color="green")
-ax.set_ylabel(r"$\langle N_{ee}\rangle /\mathrm{Tr}(N)$")
+ax.set_ylabel(r"$\langle N\rangle$ (cm$^{-3}$)")
 ax.set_xlabel(r"$t\,(10^{-9}\,\mathrm{s})$")
 ax.tick_params(axis='both', which='both', direction='in', right=True,top=True)
 ax.xaxis.set_minor_locator(AutoMinorLocator())
