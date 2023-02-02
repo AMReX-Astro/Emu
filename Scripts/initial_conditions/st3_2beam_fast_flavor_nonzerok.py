@@ -32,7 +32,7 @@ ndens = (omega + nu_k*amrex.hbar*amrex.clight) / (2.*mu_ndens) # want omega/2mu 
 ndens_per_particle = ndens / nparticles # cm^-3
 
 # get variable keys
-rkey, ikey = amrex.get_particle_keys(ignore_pos=True)
+rkey, ikey = amrex.get_particle_keys(NF,ignore_pos=True)
 nelements = len(rkey)
 
 

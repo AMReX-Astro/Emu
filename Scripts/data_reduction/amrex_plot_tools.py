@@ -9,78 +9,73 @@ eV = 1.60218e-12 # erg
 mp = 1.6726219e-24 # g
 GF = 1.1663787e-5 / (1e9*eV)**2 * (hbar*clight)**3 #erg cm^3
 
-def get_particle_keys(ignore_pos=False):
-    real_quantities = ["pos_x",
-                       "pos_y",
-                       "pos_z",
-                       "time",
-                       "x",
-                       "y",
-                       "z",
-                       "pupx",
-                       "pupy",
-                       "pupz",
-                       "pupt",
-                       "N",
-                       "L",
-                       "f00_Re",
-                       "f01_Re",
-                       "f01_Im",
-                       "f11_Re",
-                       "Nbar",
-                       "Lbar",
-                       "f00_Rebar",
-                       "f01_Rebar",
-                       "f01_Imbar",
-                       "f11_Rebar"]
+# NF is the number of flavors
+# ignore_pos causes the first three elements to be ignored
+# xp_only returns the position and momentum keys, but not the f keys
+def get_particle_keys(NF, ignore_pos=False, xp_only=False):
+    assert(NF==2 or NF==3)
+    if(NF==2):
+        real_quantities = ["pos_x",
+                           "pos_y",
+                           "pos_z",
+                           "time",
+                           "x",
+                           "y",
+                           "z",
+                           "pupx",
+                           "pupy",
+                           "pupz",
+                           "pupt",
+                           "N",
+                           "L",
+                           "f00_Re",
+                           "f01_Re",
+                           "f01_Im",
+                           "f11_Re",
+                           "Nbar",
+                           "Lbar",
+                           "f00_Rebar",
+                           "f01_Rebar",
+                           "f01_Imbar",
+                           "f11_Rebar"]
+    if(NF==3):
+        real_quantities = ["pos_x",
+                           "pos_y",
+                           "pos_z",
+                           "time",
+                           "x",
+                           "y",
+                           "z",
+                           "pupx",
+                           "pupy",
+                           "pupz",
+                           "pupt",
+                           "N",
+                           "L",
+                           "f00_Re",
+                           "f01_Re",
+                           "f01_Im",
+                           "f02_Re",
+                           "f02_Im",
+                           "f11_Re",
+                           "f12_Re",
+                           "f12_Im",
+                           "f22_Re",
+                           "Nbar",
+                           "Lbar",
+                           "f00_Rebar",
+                           "f01_Rebar",
+                           "f01_Imbar",
+                           "f02_Rebar",
+                           "f02_Imbar",
+                           "f11_Rebar",
+                           "f12_Rebar",
+                           "f12_Imbar",
+                           "f22_Rebar"]
+
+    if xp_only: real_quantities = real_quantities[:11]
     if ignore_pos: real_quantities = real_quantities[7:]
-
-    rkey = {}
-    for i, rlabel in enumerate(real_quantities):
-        rkey[rlabel] = i
-
-    ikey = {
-        # no ints are stored
-    }
-
-    return rkey, ikey
-
-def get_3flavor_particle_keys(ignore_pos=False):
-    real_quantities = ["pos_x",
-                       "pos_y",
-                       "pos_z",
-                       "time",
-                       "x",
-                       "y",
-                       "z",
-                       "pupx",
-                       "pupy",
-                       "pupz",
-                       "pupt",
-                       "N",
-                       "L",
-                       "f00_Re",
-                       "f01_Re",
-                       "f01_Im",
-                       "f02_Re",
-                       "f02_Im",
-                       "f11_Re",
-                       "f12_Re",
-                       "f12_Im",
-                       "f22_Re",
-                       "Nbar",
-                       "Lbar",
-                       "f00_Rebar",
-                       "f01_Rebar",
-                       "f01_Imbar",
-                       "f02_Rebar",
-                       "f02_Imbar",
-                       "f11_Rebar",
-                       "f12_Rebar",
-                       "f12_Imbar",
-                       "f22_Rebar"]
-    if ignore_pos: real_quantities = real_quantities[7:]
-
+    
     rkey = {}
     for i, rlabel in enumerate(real_quantities):
         rkey[rlabel] = i
@@ -158,7 +153,7 @@ class AMReXParticleHeader(object):
                     self.grids[level_num].append(tuple(entry))
 
 
-def read_particle_data(fn, ptype="particle0"):
+def read_particle_data(fn, ptype="particle0", level_gridID=None):
     '''
 
     This function returns the particle data stored in a particular
@@ -183,11 +178,22 @@ def read_particle_data(fn, ptype="particle0"):
     elif header.real_type == np.float32:
         fdtype = "(%d,)f4" % header.num_real
 
-    idata = np.empty((header.num_particles, header.num_int ))
-    rdata = np.empty((header.num_particles, header.num_real))
+    if level_gridID==None:
+        level_gridlist = enumerate(header.grids)
+        idata = np.empty((header.num_particles, header.num_int ))
+        rdata = np.empty((header.num_particles, header.num_real))
+    else:
+        level = level_gridID[0]
+        gridID = level_gridID[1]
+        level_grid = header.grids[level][gridID]
+        which, count, where = level_grid
+        level_gridlist = enumerate([[level_grid,],])
+        idata = np.empty((count, header.num_int ))
+        rdata = np.empty((count, header.num_real))
+        
 
     ip = 0
-    for lvl, level_grids in enumerate(header.grids):
+    for lvl, level_grids in level_gridlist:
         for (which, count, where) in level_grids:
             if count == 0: continue
             fn = base_fn + "/Level_%d/DATA_%05d" % (lvl, which)
