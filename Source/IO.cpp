@@ -12,6 +12,33 @@
 
 using namespace amrex;
 
+const char* filename0D = "reduced0D.dat";
+
+void
+InitializeReducedData0D()
+{
+  std::ofstream outfile;
+  outfile.open(filename0D, std::ofstream::out);
+  outfile << "1:step\t";
+  outfile << "2:time(s)\t";
+  outfile << std::endl;
+  outfile.close();
+}
+
+void
+WriteReducedData0D(const amrex::MultiFab& state,
+		   const FlavoredNeutrinoContainer& neutrinos,
+		   const amrex::Geometry& geom, amrex::Real time,
+		   int step)
+{
+  std::ofstream outfile;
+  outfile.open(filename0D, std::ofstream::app);
+  outfile << step << "\t";
+  outfile << time << "\t";
+  outfile << std::endl;
+  outfile.close();
+}
+
 void
 WritePlotFile (const amrex::MultiFab& state,
                const FlavoredNeutrinoContainer& neutrinos,

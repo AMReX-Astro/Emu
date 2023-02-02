@@ -7,6 +7,15 @@
 #include <AMReX_Vector.H>
 
 void
+InitializeReducedData0D();
+
+void
+WriteReducedData0D(const amrex::MultiFab& state,
+		   const FlavoredNeutrinoContainer& neutrinos,
+		   const amrex::Geometry& geom, amrex::Real time,
+		   int step);
+
+void
 WritePlotFile (const amrex::MultiFab& state,
                const FlavoredNeutrinoContainer& neutrinos,
                const amrex::Geometry& geom, amrex::Real time,
