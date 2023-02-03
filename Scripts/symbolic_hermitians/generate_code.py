@@ -168,6 +168,28 @@ if __name__ == "__main__":
                 code.append(string1+deplist[icomp]+string2+flist[icomp]+string3+string4[ivar])
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_deposit_to_mesh_fill"))
 
+    #======================#
+    # DataReducer.cpp_fill #
+    #======================#
+    tails = ["","bar"]
+    code = []
+    for t in tails:
+        # diagonal averages
+        N = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::N{}{}_{}"+t+")")
+        Nlist = N.header_diagonals();
+        for i in range(len(Nlist)):
+            code.append("Ndiag"+t+"["+str(i)+"] = "+Nlist[i]+";")
+
+        # off-diagonal magnitude
+        mag2 = 0
+        for i in range(N.size):
+            for j in range(i+1,N.size):
+                re,im = N.H[i,j].as_real_imag()
+                mag2 += re**2 + im**2
+        code.append("offdiag_mag2 += "+sympy.cxxcode(sympy.simplify(mag2))+";")
+
+    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "DataReducer.cpp_fill"))
+
     #==================#
     # Evolve.H_M2_fill #
     #==================#
