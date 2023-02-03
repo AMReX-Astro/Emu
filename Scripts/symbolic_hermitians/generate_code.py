@@ -168,6 +168,20 @@ if __name__ == "__main__":
                 code.append(string1+deplist[icomp]+string2+flist[icomp]+string3+string4[ivar])
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_deposit_to_mesh_fill"))
 
+    #================================#
+    # DataReducer.cpp_fill_particles #
+    #================================#
+    tails = ["","bar"]
+    code = []
+    for t in tails:
+        # diagonal averages
+        N = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
+        Nlist = N.header_diagonals();
+        for i in range(len(Nlist)):
+            code.append("tracerho += "+Nlist[i]+";")
+
+    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "DataReducer.cpp_fill_particles"))
+
     #======================#
     # DataReducer.cpp_fill #
     #======================#

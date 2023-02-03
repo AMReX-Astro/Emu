@@ -40,10 +40,7 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   auto particleResult = amrex::ParticleReduce< ReduceData< amrex::Real> >(neutrinos,
   [=] AMREX_GPU_DEVICE(const PType& p) noexcept -> amrex::GpuTuple<amrex::Real> {
 								    Real tracerho = 0;
-								    tracerho += p.rdata(PIdx::f00_Re);
-								    tracerho += p.rdata(PIdx::f11_Re);
-								    tracerho += p.rdata(PIdx::f00_Rebar);
-								    tracerho += p.rdata(PIdx::f11_Rebar);
+								    #include "generated_files/DataReducer.cpp_fill_particles"
 								    return GpuTuple{tracerho};
 									  }, reduce_ops);
   Real TrRho = amrex::get<0>(particleResult);
