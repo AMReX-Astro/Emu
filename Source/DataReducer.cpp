@@ -21,38 +21,35 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
 				const FlavoredNeutrinoContainer& neutrinos,
 				const amrex::Real time, const int step)
 {
-  // define the reduction operator to get the summed number of neutrinos in each state
-  /*ReduceOps<ReduceOpSum,ReduceOpSum> reduce_op;
-  ReduceData<Real,Real> reduce_data(reduce_op);
-  using ReduceTuple = typename decltype(reduce_data)::Type;
-  for (MFIter mfi(state); mfi.isValid(); ++mfi)
-    {
-      const Box& bx = mfi.fabbox();
-      auto const& fab = state.array(mfi);
-      reduce_op.eval(bx, reduce_data, [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
-	{
-	  Real N00 = fab(i,j,k,GIdx::N00_Re);
-	  Real N11 = fab(i,j,k,GIdx::N11_Re);
-	  return {N00,N11};
-	});
-    }
-  
-  // extract the reduced values from the combined reduced data structure
-  auto rv = reduce_data.value();
-  rd.N00 = amrex::get<0>(rv);
-  rd.N11 = amrex::get<1>(rv);*/
-
-  // reduce across MPI ranks
-  //ParallelDescriptor::ReduceRealMax(rd.N00);
-  //ParallelDescriptor::ReduceRealMax(rd.N11);
-
+  // get index volume of the domain
   int ncells = geom.Domain().volume();
 
-  Real N00 = state.sum(GIdx::N00_Re) / ncells;
-  Real N11 = state.sum(GIdx::N11_Re) / ncells;
-#if NF > 2
-  Real N22 = state.sum(GIdx::N22_Re) / ncells;
-#endif
+  // sample per-particle simple reduction
+  //Real pupt_min = amrex::ReduceMin(*this, [=] AMREX_GPU_HOST_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p) -> Real { return p.rdata(PIdx::pupt); });
+  //ParallelDescriptor::ReduceRealMin(pupt_min);
+
+  // sample grid simple reduction
+  //Real N00 = state.sum(GIdx::N00_Re) / ncells;
+
+  //=============================//
+  // Do reductions over the grid //
+  //=============================//
+  // first, get a reference to the data arrays
+  auto const& ma = state.const_arrays();
+  IntVect nghost(AMREX_D_DECL(0, 0, 0));
+
+  // use the ParReduce function to define reduction operator
+  GpuTuple<Real,Real> result = ParReduce(TypeList<ReduceOpSum,ReduceOpSum>{},
+					 TypeList<Real       ,Real       >{},
+					 state, nghost,
+					 [=] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) noexcept -> GpuTuple<Real,Real> {
+					   Array4<Real const> const& a = ma[box_no];
+					   Real N00 = a(i,j,k,GIdx::N00_Re);
+					   Real N11 = a(i,j,k,GIdx::N11_Re);
+					   return {N00, N11};
+					 });
+  Real N00 = amrex::get<0>(result)/ncells;
+  Real N11 = amrex::get<1>(result)/ncells;
 
   // write to file
   std::ofstream outfile;
