@@ -13,3 +13,4 @@ CEXE_headers += IO.H
 CEXE_headers += Parameters.H
 CEXE_headers += ParticleInterpolator.H
 CEXE_headers += DataReducer.H
+CEXE_headers += ArithmeticArray.H

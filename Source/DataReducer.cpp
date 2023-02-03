@@ -1,6 +1,7 @@
 #include "Evolve.H"
 #include "Constants.H"
 #include "DataReducer.H"
+#include "ArithmeticArray.H"
 #include <cmath>
 
 void
@@ -39,25 +40,25 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   IntVect nghost(AMREX_D_DECL(0, 0, 0));
 
   // use the ParReduce function to define reduction operator
-  GpuTuple<Real,Real> result = ParReduce(TypeList<ReduceOpSum,ReduceOpSum>{},
-					 TypeList<Real       ,Real       >{},
-					 state, nghost,
-					 [=] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) noexcept -> GpuTuple<Real,Real> {
-					   Array4<Real const> const& a = ma[box_no];
-					   Real N00 = a(i,j,k,GIdx::N00_Re);
-					   Real N11 = a(i,j,k,GIdx::N11_Re);
-					   return {N00, N11};
-					 });
-  Real N00 = amrex::get<0>(result)/ncells;
-  Real N11 = amrex::get<1>(result)/ncells;
+  GpuTuple< ArithmeticArray<Real,NUM_FLAVORS> > result = ParReduce(TypeList<ReduceOpSum                  >{},
+								   TypeList<ArithmeticArray<Real,NUM_FLAVORS> >{},
+								   state, nghost,
+  [=] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) noexcept -> GpuTuple<ArithmeticArray<Real,NUM_FLAVORS> > {
+      Array4<Real const> const& a = ma[box_no];
+      ArithmeticArray<Real,NUM_FLAVORS> Ndiag;
+      Ndiag[0] = a(i,j,k,GIdx::N00_Re);
+      Ndiag[1] = a(i,j,k,GIdx::N11_Re);
+      return {Ndiag};
+  });
+  ArithmeticArray<Real,NUM_FLAVORS> N = amrex::get<0>(result) / ncells;
 
   // write to file
   std::ofstream outfile;
   outfile.open(filename0D, std::ofstream::app);
   outfile << step << "\t";
   outfile << time << "\t";
-  outfile << N00 << "\t";
-  outfile << N11 << "\t";
+  outfile << N[0] << "\t";
+  outfile << N[1] << "\t";
   outfile << std::endl;
   outfile.close();
 }
