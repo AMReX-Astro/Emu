@@ -1,4 +1,5 @@
 CEXE_sources += main.cpp
+CEXE_sources += DataReducer.cpp
 CEXE_sources += IO.cpp
 CEXE_sources += FlavoredNeutrinoContainerInit.cpp
 CEXE_sources += Evolve.cpp
@@ -11,3 +12,4 @@ CEXE_headers += Particles.H
 CEXE_headers += IO.H
 CEXE_headers += Parameters.H
 CEXE_headers += ParticleInterpolator.H
+CEXE_headers += DataReducer.H

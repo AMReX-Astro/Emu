@@ -31,6 +31,7 @@
 #include "Evolve.H"
 #include "Constants.H"
 #include "IO.H"
+#include "DataReducer.H"
 
 using namespace amrex;
 
@@ -118,10 +119,12 @@ void evolve_flavor(const TestParams* parms)
     deposit_to_mesh(neutrinos_old, state, geom);
 
     // Write plotfile after initialization
+    DataReducer rd;
     if (not parms->do_restart) {
         // If we have just initialized, then always save the particle data for reference
         const int write_particles_after_init = 1;
         WritePlotFile(state, neutrinos_old, geom, initial_time, initial_step, write_particles_after_init);
+	rd.InitializeFiles();
     }
 
     amrex::Print() << "Done. " << std::endl;
@@ -176,7 +179,7 @@ void evolve_flavor(const TestParams* parms)
         const int step = integrator.get_step_number();
         const Real time = integrator.get_time();
 
-        amrex::Print() << "Completed time step: " << step << " t = " << time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;
+	rd.WriteReducedData0D(geom, state, neutrinos, time, step+1);
 
         run_fom += neutrinos.TotalNumberOfParticles();
 
