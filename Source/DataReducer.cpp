@@ -18,6 +18,7 @@ DataReducer::InitializeFiles(){
     j++; outfile << j << ":N"<<i<<i<<"bar(cm^-3)\t";
   }
   j++; outfile << j<<":N_offdiag(cm^-3)\t";
+  j++; outfile << j<<":sumTrRho\t";
   outfile << std::endl;
   outfile.close();
 }
@@ -30,6 +31,24 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
 {
   // get index volume of the domain
   int ncells = geom.Domain().volume();
+
+  //==================================//
+  // Do reductions over the particles //
+  //==================================//
+  using PType = typename FlavoredNeutrinoContainer::ParticleType;
+  amrex::ReduceOps<ReduceOpSum> reduce_ops;
+  auto particleResult = amrex::ParticleReduce< ReduceData< amrex::Real> >(neutrinos,
+  [=] AMREX_GPU_DEVICE(const PType& p) noexcept -> amrex::GpuTuple<amrex::Real> {
+								    Real tracerho = 0;
+								    tracerho += p.rdata(PIdx::f00_Re);
+								    tracerho += p.rdata(PIdx::f11_Re);
+								    tracerho += p.rdata(PIdx::f00_Rebar);
+								    tracerho += p.rdata(PIdx::f11_Rebar);
+								    return GpuTuple{tracerho};
+									  }, reduce_ops);
+  Real TrRho = amrex::get<0>(particleResult);
+  ParallelDescriptor::ReduceRealSum(TrRho);
+
 
   // sample per-particle simple reduction
   //Real pupt_min = amrex::ReduceMin(*this, [=] AMREX_GPU_HOST_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p) -> Real { return p.rdata(PIdx::pupt); });
@@ -52,32 +71,42 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
 	      state, nghost,
 	      [=] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) noexcept -> GpuTuple<ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, Real > {
       Array4<Real const> const& a = ma[box_no];
+
+      // Doing the actual work
       ArithmeticArray<Real,NUM_FLAVORS> Ndiag, Ndiagbar;
       Real offdiag_mag2 = 0;
       #include "generated_files/DataReducer.cpp_fill"
       return {Ndiag, Ndiagbar, offdiag_mag2};
+
   });
+
+  // retrieve the reduced data values
   ArithmeticArray<Real,NUM_FLAVORS> N    = amrex::get<0>(result) / ncells;
   ArithmeticArray<Real,NUM_FLAVORS> Nbar = amrex::get<1>(result) / ncells;
   Real offdiag_mag = sqrt(amrex::get<2>(result)) / ncells;
 
-  // write to file
-  std::ofstream outfile;
-  Real Ntot=0, Ndiff=0;
-  outfile.open(filename0D, std::ofstream::app);
-  outfile << step << "\t";
-  outfile << time << "\t";
-  for(int i=0; i<NUM_FLAVORS; i++){
-    Ntot += N[i] + Nbar[i];
-    Ndiff += N[i] - Nbar[i];
+  //===============//
+  // write to file //
+  //===============//
+  if(ParallelDescriptor::MyProc()==0){
+    std::ofstream outfile;
+    Real Ntot=0, Ndiff=0;
+    outfile.open(filename0D, std::ofstream::app);
+    outfile << step << "\t";
+    outfile << time << "\t";
+    for(int i=0; i<NUM_FLAVORS; i++){
+      Ntot += N[i] + Nbar[i];
+      Ndiff += N[i] - Nbar[i];
+    }
+    outfile << Ntot << "\t";
+    outfile << Ndiff << "\t";
+    for(int i=0; i<NUM_FLAVORS; i++){
+      outfile << N[i] << "\t";
+      outfile << Nbar[i] << "\t";
+    }
+    outfile << offdiag_mag << "\t";
+    outfile << TrRho << "\t";
+    outfile << std::endl;
+    outfile.close();
   }
-  outfile << Ntot << "\t";
-  outfile << Ndiff << "\t";
-  for(int i=0; i<NUM_FLAVORS; i++){
-    outfile << N[i] << "\t";
-    outfile << Nbar[i] << "\t";
-  }
-  outfile << offdiag_mag << "\t";
-  outfile << std::endl;
-  outfile.close();
 }
