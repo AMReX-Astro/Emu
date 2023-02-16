@@ -1,3 +1,6 @@
 [submodule "amrex"]
 	path = amrex
 	url = https://github.com/dwillcox/amrex.git
+[submodule "submodules/HighFive"]
+	path = submodules/HighFive
+	url = https://github.com/BlueBrain/HighFive.git
