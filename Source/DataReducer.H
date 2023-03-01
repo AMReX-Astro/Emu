@@ -7,12 +7,21 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_ParticleMesh.H>
 #include <FlavoredNeutrinoContainer.H>
+#include <../submodules/HighFive/include/highfive/H5File.hpp>
+#include <../submodules/HighFive/include/highfive/H5DataSpace.hpp>
+#include <../submodules/HighFive/include/highfive/H5DataSet.hpp>
 
 class DataReducer{
 private:
+
+#ifdef AMREX_USE_HDF5
+  const char* filename0D = "reduced0D.h5";
+  const HighFive::DataSpace dataspace = HighFive::DataSpace({0}, {HighFive::DataSpace::UNLIMITED});
+#else
   const char* filename0D = "reduced0D.dat";
+#endif
   
-public:  
+public:
   void
   InitializeFiles();
   

@@ -3,9 +3,38 @@
 #include "DataReducer.H"
 #include "ArithmeticArray.H"
 #include <cmath>
+#ifdef AMREX_USE_HDF5
+#include <../submodules/HighFive/include/highfive/H5File.hpp>
+#include <../submodules/HighFive/include/highfive/H5DataSpace.hpp>
+#include <../submodules/HighFive/include/highfive/H5DataSet.hpp>
+#endif
+
+#ifdef AMREX_USE_HDF5
+// append a single scalar to the specified file and dataset
+template <typename T>
+void append_0D(HighFive::File& file0D, const char* datasetname, const T value){
+  HighFive::DataSet dataset_step = file0D.getDataSet(datasetname);
+  std::vector<size_t> dims = dataset_step.getDimensions();
+  dims[0] ++;
+  dataset_step.resize(dims);
+  dataset_step.select({dims[0]-1},{1}).write((int[1]){value});
+}
+#endif
 
 void
 DataReducer::InitializeFiles(){
+
+#ifdef AMREX_USE_HDF5
+
+  using namespace HighFive;
+  File file0D(filename0D, File::Truncate | File::Create);
+  
+  DataSetCreateProps props;
+  props.add(Chunking(std::vector<hsize_t>{1}));
+  file0D.createDataSet("step", dataspace, create_datatype<int>(), props);
+    
+#else
+    
   std::ofstream outfile;
   outfile.open(filename0D, std::ofstream::out);
   int j=0;
@@ -21,6 +50,8 @@ DataReducer::InitializeFiles(){
   j++; outfile << j<<":sumTrRho\t";
   outfile << std::endl;
   outfile.close();
+  
+#endif
 }
 
 void
@@ -86,6 +117,10 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   // write to file //
   //===============//
   if(ParallelDescriptor::MyProc()==0){
+#ifdef AMREX_USE_HDF5
+    HighFive::File file0D(filename0D, HighFive::File::ReadWrite);
+    append_0D(file0D, "step", step);
+#else
     std::ofstream outfile;
     Real Ntot=0, Ndiff=0;
     outfile.open(filename0D, std::ofstream::app);
@@ -105,5 +140,6 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
     outfile << TrRho << "\t";
     outfile << std::endl;
     outfile.close();
+#endif
   }
 }
