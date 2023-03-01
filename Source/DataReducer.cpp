@@ -3,6 +3,7 @@
 #include "DataReducer.H"
 #include "ArithmeticArray.H"
 #include <cmath>
+#include <string>
 #ifdef AMREX_USE_HDF5
 #include <../submodules/HighFive/include/highfive/H5File.hpp>
 #include <../submodules/HighFive/include/highfive/H5DataSpace.hpp>
@@ -12,12 +13,12 @@
 #ifdef AMREX_USE_HDF5
 // append a single scalar to the specified file and dataset
 template <typename T>
-void append_0D(HighFive::File& file0D, const char* datasetname, const T value){
+void append_0D(HighFive::File& file0D, const std::string& datasetname, const T value){
   HighFive::DataSet dataset_step = file0D.getDataSet(datasetname);
   std::vector<size_t> dims = dataset_step.getDimensions();
   dims[0] ++;
   dataset_step.resize(dims);
-  dataset_step.select({dims[0]-1},{1}).write((int[1]){value});
+  dataset_step.select({dims[0]-1},{1}).write((T[1]){value});
 }
 #endif
 
@@ -32,7 +33,15 @@ DataReducer::InitializeFiles(){
   DataSetCreateProps props;
   props.add(Chunking(std::vector<hsize_t>{1}));
   file0D.createDataSet("step", dataspace, create_datatype<int>(), props);
-    
+  file0D.createDataSet("time(s)", dataspace, create_datatype<amrex::Real>(), props);
+  file0D.createDataSet("Ntot(cm^-3)", dataspace, create_datatype<amrex::Real>(), props);
+  file0D.createDataSet("Ndiff(cm^-3)", dataspace, create_datatype<amrex::Real>(), props);
+  for(int i=0; i<NUM_FLAVORS; i++){
+    file0D.createDataSet(std::string("N")+std::to_string(i)+std::to_string(i)+std::string("(cm^-3)"), dataspace, create_datatype<amrex::Real>(), props);
+    file0D.createDataSet(std::string("N")+std::to_string(i)+std::to_string(i)+std::string("bar(cm^-3)"), dataspace, create_datatype<amrex::Real>(), props);
+  }
+  file0D.createDataSet("N_offdiag(cm^-3)", dataspace, create_datatype<amrex::Real>(), props);
+  file0D.createDataSet("sumTrRho", dataspace, create_datatype<amrex::Real>(), props);
 #else
     
   std::ofstream outfile;
@@ -40,7 +49,7 @@ DataReducer::InitializeFiles(){
   int j=0;
   j++; outfile << j<<":step\t";
   j++; outfile << j<<":time(s)\t";
-  j++; outfile << j<<":tot(cm^-3)\t";
+  j++; outfile << j<<":Ntot(cm^-3)\t";
   j++; outfile << j<<":Ndiff(cm^-3)\t";
   for(int i=0; i<NUM_FLAVORS; i++){
     j++; outfile << j << ":N"<<i<<i<<"(cm^-3)\t";
@@ -113,6 +122,13 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   ArithmeticArray<Real,NUM_FLAVORS> Nbar = amrex::get<1>(result) / ncells;
   Real offdiag_mag = sqrt(amrex::get<2>(result)) / ncells;
 
+  // calculate net number of neutrinos and antineutrinos
+  Real Ntot=0, Ndiff=0;
+  for(int i=0; i<NUM_FLAVORS; i++){
+    Ntot += N[i] + Nbar[i];
+    Ndiff += N[i] - Nbar[i];
+  }
+  
   //===============//
   // write to file //
   //===============//
@@ -120,16 +136,20 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
 #ifdef AMREX_USE_HDF5
     HighFive::File file0D(filename0D, HighFive::File::ReadWrite);
     append_0D(file0D, "step", step);
+    append_0D(file0D, "time(s)", time);
+    append_0D(file0D, "Ntot(cm^-3)", Ntot);
+    append_0D(file0D, "Ndiff(cm^-3)", Ndiff);
+    for(int i=0; i<NUM_FLAVORS; i++){
+      append_0D(file0D, std::string("N")+std::to_string(i)+std::to_string(i)+std::string("(cm^-3)"), N[i]);
+      append_0D(file0D, std::string("N")+std::to_string(i)+std::to_string(i)+std::string("bar(cm^-3)"), Nbar[i]);
+    }
+    append_0D(file0D, "N_offdiag(cm^-3)", offdiag_mag);
+    append_0D(file0D, "sumTrRho", TrRho);
 #else
     std::ofstream outfile;
-    Real Ntot=0, Ndiff=0;
     outfile.open(filename0D, std::ofstream::app);
     outfile << step << "\t";
     outfile << time << "\t";
-    for(int i=0; i<NUM_FLAVORS; i++){
-      Ntot += N[i] + Nbar[i];
-      Ndiff += N[i] - Nbar[i];
-    }
     outfile << Ntot << "\t";
     outfile << Ndiff << "\t";
     for(int i=0; i<NUM_FLAVORS; i++){
