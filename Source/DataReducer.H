@@ -7,9 +7,11 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_ParticleMesh.H>
 #include <FlavoredNeutrinoContainer.H>
+#ifdef AMREX_USE_HDF5
 #include <../submodules/HighFive/include/highfive/H5File.hpp>
 #include <../submodules/HighFive/include/highfive/H5DataSpace.hpp>
 #include <../submodules/HighFive/include/highfive/H5DataSet.hpp>
+#endif
 
 class DataReducer{
 private:

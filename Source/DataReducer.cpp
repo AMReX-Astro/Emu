@@ -41,7 +41,8 @@ DataReducer::InitializeFiles(){
     file0D.createDataSet(std::string("N")+std::to_string(i)+std::to_string(i)+std::string("bar(cm^-3)"), dataspace, create_datatype<amrex::Real>(), props);
   }
   file0D.createDataSet("N_offdiag(cm^-3)", dataspace, create_datatype<amrex::Real>(), props);
-  file0D.createDataSet("sumTrRho", dataspace, create_datatype<amrex::Real>(), props);
+  file0D.createDataSet("sumTrf", dataspace, create_datatype<amrex::Real>(), props);
+  file0D.createDataSet("sumTrHf", dataspace, create_datatype<amrex::Real>(), props);
 #else
     
   std::ofstream outfile;
@@ -56,7 +57,8 @@ DataReducer::InitializeFiles(){
     j++; outfile << j << ":N"<<i<<i<<"bar(cm^-3)\t";
   }
   j++; outfile << j<<":N_offdiag(cm^-3)\t";
-  j++; outfile << j<<":sumTrRho\t";
+  j++; outfile << j<<":sumTrf\t";
+  j++; outfile << j<<":sumTrHf\t";
   outfile << std::endl;
   outfile.close();
   
@@ -76,16 +78,18 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   // Do reductions over the particles //
   //==================================//
   using PType = typename FlavoredNeutrinoContainer::ParticleType;
-  amrex::ReduceOps<ReduceOpSum> reduce_ops;
-  auto particleResult = amrex::ParticleReduce< ReduceData< amrex::Real> >(neutrinos,
-  [=] AMREX_GPU_DEVICE(const PType& p) noexcept -> amrex::GpuTuple<amrex::Real> {
-								    Real tracerho = 0;
-								    #include "generated_files/DataReducer.cpp_fill_particles"
-								    return GpuTuple{tracerho};
-									  }, reduce_ops);
-  Real TrRho = amrex::get<0>(particleResult);
-  ParallelDescriptor::ReduceRealSum(TrRho);
-
+  amrex::ReduceOps<ReduceOpSum,ReduceOpSum> reduce_ops;
+  auto particleResult = amrex::ParticleReduce< ReduceData<amrex::Real, amrex::Real> >(neutrinos,
+      [=] AMREX_GPU_DEVICE(const PType& p) noexcept -> amrex::GpuTuple<amrex::Real, amrex::Real> {
+          Real TrHf = p.rdata(PIdx::TrHf);
+	  Real Trf = 0;
+#include "generated_files/DataReducer.cpp_fill_particles"
+	  return GpuTuple{Trf,TrHf};
+      }, reduce_ops);
+  Real Trf  = amrex::get<0>(particleResult);
+  Real TrHf = amrex::get<1>(particleResult);
+  ParallelDescriptor::ReduceRealSum(Trf);
+  ParallelDescriptor::ReduceRealSum(TrHf);
 
   // sample per-particle simple reduction
   //Real pupt_min = amrex::ReduceMin(*this, [=] AMREX_GPU_HOST_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p) -> Real { return p.rdata(PIdx::pupt); });
@@ -144,7 +148,8 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
       append_0D(file0D, std::string("N")+std::to_string(i)+std::to_string(i)+std::string("bar(cm^-3)"), Nbar[i]);
     }
     append_0D(file0D, "N_offdiag(cm^-3)", offdiag_mag);
-    append_0D(file0D, "sumTrRho", TrRho);
+    append_0D(file0D, "sumTrf", Trf);
+    append_0D(file0D, "sumTrHf", TrHf);
 #else
     std::ofstream outfile;
     outfile.open(filename0D, std::ofstream::app);
@@ -157,7 +162,8 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
       outfile << Nbar[i] << "\t";
     }
     outfile << offdiag_mag << "\t";
-    outfile << TrRho << "\t";
+    outfile << Trf << "\t";
+    outfile << TrHf << "\t";
     outfile << std::endl;
     outfile.close();
 #endif

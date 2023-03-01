@@ -99,6 +99,7 @@ if __name__ == "__main__":
         for v in vars:
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
+    code += ["TrHf"]
 
     code = [code[i]+"," for i in range(len(code))]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoContainer.H_fill"))
@@ -115,6 +116,7 @@ if __name__ == "__main__":
         for v in vars:
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
+    code += ["TrHf"]
     code_string = 'attribute_names = {"time", "x", "y", "z", "pupx", "pupy", "pupz", "pupt", '
     code = ['"{}"'.format(c) for c in code]
     code_string = code_string + ", ".join(code) + "};"
@@ -178,7 +180,7 @@ if __name__ == "__main__":
         N = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
         Nlist = N.header_diagonals();
         for i in range(len(Nlist)):
-            code.append("tracerho += "+Nlist[i]+";")
+            code.append("Trf += "+Nlist[i]+";")
 
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "DataReducer.cpp_fill_particles"))
 
@@ -420,6 +422,11 @@ if __name__ == "__main__":
 
         # Write out dFdt->F
         code.append(dFdt.code())
+
+        # store Tr(H*F) for estimating numerical errors
+        TrHf = (H*F).trace();
+        code.append(["p.rdata(PIdx::TrHf) += "+sympy.cxxcode(sympy.simplify(TrHf))+";"])
+
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))
 
