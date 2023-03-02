@@ -91,13 +91,6 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   ParallelDescriptor::ReduceRealSum(Trf);
   ParallelDescriptor::ReduceRealSum(TrHf);
 
-  // sample per-particle simple reduction
-  //Real pupt_min = amrex::ReduceMin(*this, [=] AMREX_GPU_HOST_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p) -> Real { return p.rdata(PIdx::pupt); });
-  //ParallelDescriptor::ReduceRealMin(pupt_min);
-
-  // sample grid simple reduction
-  //Real N00 = state.sum(GIdx::N00_Re) / ncells;
-
   //=============================//
   // Do reductions over the grid //
   //=============================//
