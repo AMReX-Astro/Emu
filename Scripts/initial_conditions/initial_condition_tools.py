@@ -116,7 +116,7 @@ def minerbo_Z(fluxfac):
             print("Failed to converge on a solution.")
             assert(False)
 
-    print("fluxfac=",fluxfac," Z=",Z)
+    #print("fluxfac=",fluxfac," Z=",Z)
     return Z
 
 # angular structure as determined by the Levermore closure
@@ -161,7 +161,7 @@ def levermore_v(fluxfac):
             print("Failed to converge on a solution.")
             assert(False)
 
-    print("fluxfac=",fluxfac," v=",v)
+    #print("fluxfac=",fluxfac," v=",v)
     return v
 
 # interpolate the levermore closure
@@ -251,10 +251,10 @@ def moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, direction_g
             # double check that the number densities are correct
             particle_n = np.sum(particles[:,rkey[nvarname]] * particles[:,rkey[fvarname]])
             particle_fmag = np.sum(particles[:,rkey[nvarname]] * particles[:,rkey[fvarname]] * mu[:,nu_nubar, flavor])
-            print("nu/nubar,flavor =", nu_nubar, flavor)
-            print("output/input ndens =",particle_n, nnu[nu_nubar,flavor])
-            print("output/input fluxfac =",particle_fmag / particle_n, fluxfac[nu_nubar,flavor])
-            print()
+            #print("nu/nubar,flavor =", nu_nubar, flavor)
+            #print("output/input ndens =",particle_n, nnu[nu_nubar,flavor])
+            #print("output/input fluxfac =",particle_fmag / particle_n, fluxfac[nu_nubar,flavor])
+            #print()
 
     return particles
 
