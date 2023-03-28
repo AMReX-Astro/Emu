@@ -122,7 +122,7 @@ void evolve_flavor(const TestParams* parms)
     DataReducer rd;
     if (not parms->do_restart) {
         // If we have just initialized, then always save the particle data for reference
-        const int write_particles_after_init = 1;
+        const int write_particles_after_init = (parms->write_plot_particles_every>0);
         WritePlotFile(state, neutrinos_old, geom, initial_time, initial_step, write_particles_after_init);
 	rd.InitializeFiles();
     }
