@@ -29,6 +29,7 @@ If you would like to run Emu, first clone Emu with the AMReX submodule:
 
 ```
 git clone --recurse-submodules https://github.com/AMReX-Astro/Emu.git
+git submodule update
 ```
 
 Then change directories to `Emu/Exec`. Before each compilation, you must symbolically generate Emu source code for
@@ -36,7 +37,7 @@ the number of neutrino flavors you wish to use and specify a few other compile-t
 
 Copy in a default makefile. In this file you can specify the number of neutrino flavors, whether to compile for GPUs, etc. We have set the defaults to 2 neutrino flavors, order 2 PIC shape factors, and compiling for a single CPU.
 ```
-cp ../GNUmakefile_default GNUmakefile
+cp ../makefiles/GNUmakefile_default GNUmakefile
 ```
 
 Compiling occurs in two stages. We first have to generate code according to the number of neutrino flavors.
@@ -56,7 +57,7 @@ You should now see a new file called `particle_input.dat`.
 
 The parameters for the simulation are set in input files. These include information about things like the size of the domain, the number of grid cells, and fundamental neutrino properties. Run the fast flavor test simulation using the particle distribution generated previously using one of the test input files stored in `sample_inputs`
 ```
-./main3d.gnu.TPROF.MPI.ex inputs_msw_test
+./main3d.gnu.TPROF.ex ../sample_inputs/inputs_fast_flavor_nonzerok
 ```
 
 We have a number of data reduction, analysis, and visualization scripts in the `Scripts` directory. Generate a PDF file titled `avgfee.pdf` showing the time evolution of the average number density of electron neutrinos using
