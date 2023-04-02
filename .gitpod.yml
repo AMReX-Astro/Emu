@@ -1,0 +1,98 @@
+image:
+  file: .gitpod.dockerfile
+
+tasks:
+  - init: |-
+      sudo apt -y install gfortran libopenmpi3 libopenmpi-dev
+      mkdir /workspace/python
+      python -m venv /workspace/python/emu --system-site-packages
+      source /workspace/python/emu/bin/activate
+      pip install sympy numpy matplotlib
+
+      pushd Scripts/visualization
+      python setup.py install
+      popd
+
+      cd Exec
+
+      make generate NUM_FLAVORS=2
+      make -j NUM_FLAVORS=2
+      mkdir 2-Flavors
+      mv *.ex 2-Flavors/.
+      pushd 2-Flavors
+
+      mkdir bipolar
+      pushd bipolar
+      cp ../*.ex .
+      cp ../../../sample_inputs/inputs_bipolar_test .
+      cp ../../../Scripts/visualization/plot_first_particle.py .
+      popd
+
+      mkdir msw
+      pushd msw
+      cp ../*.ex .
+      cp ../../../sample_inputs/inputs_msw_test .
+      cp ../../../Scripts/visualization/plot_first_particle.py .
+      popd
+
+      mkdir FFI_zero_wavenumber
+      pushd FFI_zero_wavenumber
+      cp ../*.ex .
+      cp ../../../sample_inputs/inputs_fast_flavor .
+      popd
+
+      mkdir FFI
+      pushd FFI
+      cp ../*.ex .
+      cp ../../../sample_inputs/inputs_fast_flavor_nonzerok .
+      popd
+
+      popd
+
+      make realclean
+      make generate NUM_FLAVORS=3
+      make -j NUM_FLAVORS=3
+      mkdir 3-Flavors
+      mv *.ex 3-Flavors/.
+      pushd 3-Flavors
+
+      mkdir FFI
+      pushd FFI
+      cp ../*.ex .
+      cp ../../../sample_inputs/inputs_1d_fiducial .
+      popd
+
+      popd
+
+      make realclean
+
+      mkdir Examples
+      mv 2-Flavors Examples/.
+      mv 3-Flavors Examples/.
+      mv Examples ../.
+
+      clear
+
+  - command: |-
+      source /workspace/python/emu/bin/activate
+      clear
+
+github:
+  prebuilds:
+    # enable for the master/default branch (defaults to true)
+    master: true
+    # enable for all branches in this repo (defaults to false)
+    branches: false
+    # enable for pull requests coming from this repo (defaults to true)
+    pullRequests: false
+    # enable for pull requests coming from forks (defaults to false)
+    pullRequestsFromForks: false
+    # add a check to pull requests (defaults to true)
+    addCheck: true
+    # add a "Review in Gitpod" button as a comment to pull requests (defaults to false)
+    addComment: true
+    # add a "Review in Gitpod" button to the pull request's description (defaults to false)
+    addBadge: true
+    # add a label once the prebuild is ready to pull requests (defaults to false)
+    addLabel: false
+
