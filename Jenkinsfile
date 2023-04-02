@@ -1,6 +1,11 @@
 pipeline {
     triggers { pollSCM('') }  // Run tests whenever a new commit is detected.
     agent { dockerfile {args '--gpus all'}} // Use the Dockerfile defined in the root Flash-X directory
+    environment {
+		// Get rid of Read -1, expected <someNumber>, errno =1 error
+    	// See https://github.com/open-mpi/ompi/issues/4948
+        OMPI_MCA_btl_vader_single_copy_mechanism = 'none'
+    }
     stages {
 
         //=============================//
