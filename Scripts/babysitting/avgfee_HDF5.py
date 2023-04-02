@@ -1,5 +1,5 @@
 # plots <N00> and <N_offdiag> as a function of time
-# without reference to the reduced data file outputs
+# assuming the code was compiled with HDF5 and wrote the file reduced0D.h5
 
 import os
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
@@ -23,12 +23,11 @@ I=1
 ######################
 # read averaged data #
 ######################
-def plotdata(filename,a,b):
-    avgData = h5py.File(filename,"r")
-    t=np.array(avgData["t(s)"])*1e9
-    N=np.array(avgData["N_avg_mag(1|ccm)"])[:,a,b]
-    avgData.close()
-    return t, N
+avgData = h5py.File("reduced0D.h5","r")
+t=np.array(avgData["time(s)"])*1e9
+N00=np.array(avgData["N00(1|ccm)"])
+Noffdiag = np.array(avgData["N_offdiag_mag(1|ccm)"])
+avgData.close()
 
 ################
 # plot options #
@@ -65,9 +64,7 @@ ax.grid(which='both')
 #############
 # plot data #
 #############
-filename = "plt_reduced_data.h5"
-t,N = plotdata(filename,0,0)
-ax.plot(t, N)
+ax.plot(t, N00)
 
 ############
 # save pdf #
@@ -75,6 +72,5 @@ ax.plot(t, N)
 plt.savefig("avgfee.pdf", bbox_inches="tight")
 
 # same for f_e\mu
-t,N = plotdata(filename,0,1)
-ax.semilogy(t, N)
+ax.semilogy(t, Noffdiag)
 plt.savefig("avgfemu.pdf", bbox_inches="tight")
