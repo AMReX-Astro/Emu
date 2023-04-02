@@ -1,8 +1,6 @@
 [![DOI](https://zenodo.org/badge/228717670.svg)](https://zenodo.org/badge/latestdoi/228717670)
 [![AMReX](https://amrex-codes.github.io/badges/powered%20by-AMReX-red.svg)](https://amrex-codes.github.io)
 
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/AMReX-Astro/Emu)
-
 ![Emu](https://github.com/AMReX-Astro/Emu/blob/development/Docs/Emu_logo_transparent.png)
 
 # Emu
@@ -24,23 +22,6 @@ and flux at particle locations.
 Emu is implemented in C++ and is based on the AMReX library for
 high-performance, block-structured adaptive mesh refinement. Emu is
 parallelized with MPI + OpenMP for CPUs and MPI + CUDA for GPUs.
-
-# Try Emu in Your Browser!
-
-To quickly try Emu out using your browser, you can
-[open an interactive Emu workspace in Gitpod!](https://gitpod.io/#https://github.com/AMReX-Astro/Emu)
-
-Emu's prebuilt Gitpod workspace tracks the current release branch, and you can find pre-compiled examples in the `Examples` directory.
-
-For example, to run and visualize the MSW setup:
-
-```
-cd Examples/2-Flavors/msw
-./main3d.gnu.TPROF.MPI.ex inputs_msw_test
-python plot_first_particle.py
-```
-
-And then open the plot through the file browser on the left of the screen.
 
 # Getting Started From Scratch
 
