@@ -23,7 +23,7 @@ particle_data_filename = "particle_input.dat"
 max_grid_size = 16
 
 # Number of steps to run
-nsteps = 5000
+nsteps = 2000
 
 # Simulation end time
 end_time = 5.0e-9
