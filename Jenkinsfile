@@ -97,7 +97,7 @@ pipeline {
 		deleteDirs: true,
 		disableDeferredWipeout: false,
 		notFailBuild: true,
-		patterns: [[pattern: 'amrex', type: 'EXCLUDE']] ) // allow amrex to be cached
+		patterns: [[pattern: 'submodules', type: 'EXCLUDE']] ) // allow submodules to be cached
 	}
     }
 
