@@ -1,3 +1,16 @@
+# 1.4
+
+   * Restructured initial conditions to have python scripts generate particle distributions instead of doing so inside the C++ code. This improves the code's flexibility.
+
+   * Add option to output data in HDF5 format. Post-processing scripts only work with the original binary format, since yt only reads the binary format.
+
+   * Add realtime output of scalar quantities to make basic analysis many times faster than with the post-processing scripts.
+
+   * Include all of the basic post-processing scripts with Emu itself to avoid keeping multiple incompatible copies of them.
+
+# 1.3
+
+   * Incorporated various feature additions used for _Code Comparison for Fast Flavor Instability Simulations_ (https://doi.org/10.1103/PhysRevD.106.043011)
 
 # 1.2
 
