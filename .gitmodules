@@ -1,5 +1,5 @@
 [submodule "amrex"]
-	path = amrex
+	path = submodules/amrex
 	url = https://github.com/dwillcox/amrex.git
 [submodule "submodules/HighFive"]
 	path = submodules/HighFive
