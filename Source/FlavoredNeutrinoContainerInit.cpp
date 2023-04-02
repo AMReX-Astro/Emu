@@ -29,6 +29,7 @@ Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs> > read_particle_data(std::strin
   ss = std::stringstream(line);
   int NF_in;
   ss >> NF_in;
+  if(NF_in != NUM_FLAVORS) amrex::Print() << "Error: number of flavors in particle data file does not match the number of flavors Emu was compiled for." << std::endl;
   AMREX_ASSERT(NF_in == NUM_FLAVORS);
   
   while(std::getline(file, line)){
