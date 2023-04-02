@@ -32,13 +32,15 @@ pipeline {
 		sh 'python ../Scripts/initial_conditions/st0_msw_test.py'
 	        sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_msw_test'
 	        sh 'python ../Scripts/tests/msw_test.py'
+			sh 'rm -rf plt*'
 	    }
 	}}
 
 	stage('Bipolar'){ steps{
 	    dir('Exec'){
-		sh 'python ../Scripts/initial_conditions/st1_bipolar_test.py'
+			sh 'python ../Scripts/initial_conditions/st1_bipolar_test.py'
 	        sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_bipolar_test'
+			sh 'rm -rf plt*'
 	    }
 	}}
 
@@ -47,6 +49,7 @@ pipeline {
 		sh 'python ../Scripts/initial_conditions/st2_2beam_fast_flavor.py'
 	        sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fast_flavor'
 	        sh 'python ../Scripts/tests/fast_flavor_test.py'
+			sh 'rm -rf plt*'
 	    }
 	}}
 
@@ -55,6 +58,7 @@ pipeline {
 		sh 'python ../Scripts/initial_conditions/st3_2beam_fast_flavor_nonzerok.py'
 	        sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fast_flavor_nonzerok'
 	        sh 'python ../Scripts/tests/fast_flavor_k_test.py'
+			sh 'rm -rf plt*'
 	    }
 	}}
 
@@ -70,6 +74,7 @@ pipeline {
 			sh 'python ../Scripts/babysitting/power_spectrum.py'
 			sh 'python ../Scripts/data_reduction/convertToHDF5.py'
 			archiveArtifacts artifacts: '*.pdf'
+			sh 'rm -rf plt*'
 		}
 	}}
 
@@ -79,6 +84,7 @@ pipeline {
 	        sh 'make realclean; make generate; make -j'
 			sh 'python ../Scripts/initial_conditions/st4_linear_moment_ffi.py'
 			sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.ex ../sample_inputs/inputs_1d_fiducial'
+			sh 'rm -rf plt*'
 		}
 	}}
 
