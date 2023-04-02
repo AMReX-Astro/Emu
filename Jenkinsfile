@@ -82,7 +82,7 @@ pipeline {
 		dir('Exec'){
 	    	sh 'cp ../makefiles/GNUmakefile_jenkins_HDF5 GNUmakefile'
 	        sh 'make realclean; make generate; make -j'
-			sh 'python ../Scripts/initial_conditions/st4_linear_moment_ffi.py'
+			sh 'python ../Scripts/initial_conditions/st4_linear_moment_ffi_3F.py'
 			sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.ex ../sample_inputs/inputs_1d_fiducial'
 			sh 'rm -rf plt*'
 		}
