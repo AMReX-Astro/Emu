@@ -8,8 +8,11 @@ DEBUG = FALSE
 USE_MPI       = TRUE
 USE_OMP       = FALSE
 USE_ACC       = FALSE
-USE_CUDA      = TRUE
-AMREX_CUDA_ARCH=75
+USE_CUDA      = FALSE
+AMREX_CUDA_ARCH=60
+
+USE_HDF5=FALSE
+HDF5_HOME=/usr/lib/x86_64-linux-gnu/hdf5/serial
 
 EMU_HOME = ..
 AMREX_HOME = ../submodules/amrex

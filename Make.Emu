@@ -1,6 +1,11 @@
-NUM_FLAVORS ?= 2
-SHAPE_FACTOR_ORDER ?= 2
+# things that used to be defined in the makefile in Exec
 DIM = 3
+TINY_PROFILE  = TRUE
+USE_PARTICLES = TRUE
+PRECISION     = DOUBLE
+Bpack   :=
+Blocs   := .
+
 
 TOP := $(EMU_HOME)
 

@@ -99,6 +99,7 @@ if __name__ == "__main__":
         for v in vars:
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
+    code += ["TrHf"]
 
     code = [code[i]+"," for i in range(len(code))]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoContainer.H_fill"))
@@ -115,6 +116,7 @@ if __name__ == "__main__":
         for v in vars:
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
+    code += ["TrHf"]
     code_string = 'attribute_names = {"time", "x", "y", "z", "pupx", "pupy", "pupz", "pupt", '
     code = ['"{}"'.format(c) for c in code]
     code_string = code_string + ", ".join(code) + "};"
@@ -167,6 +169,51 @@ if __name__ == "__main__":
             for icomp in range(len(flist)):
                 code.append(string1+deplist[icomp]+string2+flist[icomp]+string3+string4[ivar])
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_deposit_to_mesh_fill"))
+
+    #================================#
+    # DataReducer.cpp_fill_particles #
+    #================================#
+    tails = ["","bar"]
+    code = []
+    for t in tails:
+        # diagonal averages
+        N = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
+        Nlist = N.header_diagonals();
+        for i in range(len(Nlist)):
+            code.append("Trf += "+Nlist[i]+";")
+
+    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "DataReducer.cpp_fill_particles"))
+
+    #======================#
+    # DataReducer.cpp_fill #
+    #======================#
+    tails = ["","bar"]
+    code = []
+    for t in tails:
+        # diagonal averages
+        N = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::N{}{}_{}"+t+")")
+        Nlist = N.header_diagonals();
+        Fx = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Fx{}{}_{}"+t+")")
+        Fxlist = Fx.header_diagonals();
+        Fy = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Fy{}{}_{}"+t+")")
+        Fylist = Fy.header_diagonals();
+        Fz = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Fz{}{}_{}"+t+")")
+        Fzlist = Fz.header_diagonals();
+        for i in range(len(Nlist)):
+            code.append("Ndiag"+t+"["+str(i)+"] = "+Nlist[i]+";")
+            code.append("Fxdiag"+t+"["+str(i)+"] = "+Fxlist[i]+";")
+            code.append("Fydiag"+t+"["+str(i)+"] = "+Fylist[i]+";")
+            code.append("Fzdiag"+t+"["+str(i)+"] = "+Fzlist[i]+";")
+
+        # off-diagonal magnitude
+        mag2 = 0
+        for i in range(N.size):
+            for j in range(i+1,N.size):
+                re,im = N.H[i,j].as_real_imag()
+                mag2 += re**2 + im**2
+        code.append("N_offdiag_mag2 += "+sympy.cxxcode(sympy.simplify(mag2))+";")
+
+    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "DataReducer.cpp_fill"))
 
     #==================#
     # Evolve.H_M2_fill #
@@ -384,6 +431,11 @@ if __name__ == "__main__":
 
         # Write out dFdt->F
         code.append(dFdt.code())
+
+        # store Tr(H*F) for estimating numerical errors
+        TrHf = (H*F).trace();
+        code.append(["p.rdata(PIdx::TrHf) += p.rdata(PIdx::N"+t+") * ("+sympy.cxxcode(sympy.simplify(TrHf))+");"])
+
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))
 
