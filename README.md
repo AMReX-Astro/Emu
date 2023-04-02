@@ -35,7 +35,9 @@ Then change directories to `Emu/Exec`. Before each compilation, you must symboli
 the number of neutrino flavors you wish to use and specify a few other compile-time settings in a file called `GNUmakefile`.
 
 Copy in a default makefile. In this file you can specify the number of neutrino flavors, whether to compile for GPUs, etc. We have set the defaults to 2 neutrino flavors, order 2 PIC shape factors, and compiling for a single CPU.
-```cp ../GNUmakefile_default GNUmakefile```
+```
+cp ../GNUmakefile_default GNUmakefile
+```
 
 Compiling occurs in two stages. We first have to generate code according to the number of neutrino flavors.
 ```
@@ -47,7 +49,9 @@ make -j
 ```
 
 The initial particle distribution is set by an ASCII particle data file. You can generate the data file with our initial condition scripts. For instance, if we want to simulate a two-beam fast flavor instability, generate the initial conditions using
-```python3 ../Scripts/initial_conditions/st3_2beam_fast_flavor_nonzerok.py```
+```
+python3 ../Scripts/initial_conditions/st3_2beam_fast_flavor_nonzerok.py
+```
 You should now see a new file called `particle_input.dat`.
 
 The parameters for the simulation are set in input files. These include information about things like the size of the domain, the number of grid cells, and fundamental neutrino properties. Run the fast flavor test simulation using the particle distribution generated previously using one of the test input files stored in `sample_inputs`
