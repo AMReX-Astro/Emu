@@ -22,59 +22,80 @@ void append_0D(HighFive::File& file0D, const std::string& datasetname, const T v
 }
 #endif
 
-void
-DataReducer::InitializeFiles(){
+void DataReducer::InitializeFiles()
+{
+  if (ParallelDescriptor::IOProcessor())
+  {
 
 #ifdef AMREX_USE_HDF5
 
-  using namespace HighFive;
-  File file0D(filename0D, File::Truncate | File::Create);
-  
-  DataSetCreateProps props;
-  props.add(Chunking(std::vector<hsize_t>{1}));
-  file0D.createDataSet("step", dataspace, create_datatype<int>(), props);
-  file0D.createDataSet("time(s)", dataspace, create_datatype<amrex::Real>(), props);
-  file0D.createDataSet("Ntot(1|ccm)", dataspace, create_datatype<amrex::Real>(), props);
-  file0D.createDataSet("Ndiff(1|ccm)", dataspace, create_datatype<amrex::Real>(), props);
-  for(int i=0; i<NUM_FLAVORS; i++){
-    file0D.createDataSet(std::string("N")+std::to_string(i)+std::to_string(i)+std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
-    file0D.createDataSet(std::string("N")+std::to_string(i)+std::to_string(i)+std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
-    file0D.createDataSet(std::string("Fx")+std::to_string(i)+std::to_string(i)+std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
-    file0D.createDataSet(std::string("Fy")+std::to_string(i)+std::to_string(i)+std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
-    file0D.createDataSet(std::string("Fz")+std::to_string(i)+std::to_string(i)+std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
-    file0D.createDataSet(std::string("Fx")+std::to_string(i)+std::to_string(i)+std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
-    file0D.createDataSet(std::string("Fy")+std::to_string(i)+std::to_string(i)+std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
-    file0D.createDataSet(std::string("Fz")+std::to_string(i)+std::to_string(i)+std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
-  }
-  file0D.createDataSet("N_offdiag_mag(1|ccm)", dataspace, create_datatype<amrex::Real>(), props);
-  file0D.createDataSet("sumTrf", dataspace, create_datatype<amrex::Real>(), props);
-  file0D.createDataSet("sumTrHf", dataspace, create_datatype<amrex::Real>(), props);
+    using namespace HighFive;
+    File file0D(filename0D, File::Truncate | File::Create);
+
+    DataSetCreateProps props;
+    props.add(Chunking(std::vector<hsize_t>{1}));
+    file0D.createDataSet("step", dataspace, create_datatype<int>(), props);
+    file0D.createDataSet("time(s)", dataspace, create_datatype<amrex::Real>(), props);
+    file0D.createDataSet("Ntot(1|ccm)", dataspace, create_datatype<amrex::Real>(), props);
+    file0D.createDataSet("Ndiff(1|ccm)", dataspace, create_datatype<amrex::Real>(), props);
+    for (int i = 0; i < NUM_FLAVORS; i++)
+    {
+      file0D.createDataSet(std::string("N") + std::to_string(i) + std::to_string(i) + std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("N") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Fx") + std::to_string(i) + std::to_string(i) + std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Fy") + std::to_string(i) + std::to_string(i) + std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Fz") + std::to_string(i) + std::to_string(i) + std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Fx") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Fy") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Fz") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+    }
+    file0D.createDataSet("N_offdiag_mag(1|ccm)", dataspace, create_datatype<amrex::Real>(), props);
+    file0D.createDataSet("sumTrf", dataspace, create_datatype<amrex::Real>(), props);
+    file0D.createDataSet("sumTrHf", dataspace, create_datatype<amrex::Real>(), props);
+
 #else
-    
-  std::ofstream outfile;
-  outfile.open(filename0D, std::ofstream::out);
-  int j=0;
-  j++; outfile << j<<":step\t";
-  j++; outfile << j<<":time(s)\t";
-  j++; outfile << j<<":Ntot(1|ccm)\t";
-  j++; outfile << j<<":Ndiff(1|ccm)\t";
-  for(int i=0; i<NUM_FLAVORS; i++){
-    j++; outfile << j << ":N"<<i<<i<<"(1|ccm)\t";
-    j++; outfile << j << ":N"<<i<<i<<"bar(1|ccm)\t";
-    j++; outfile << j << ":Fx"<<i<<i<<"(1|ccm)\t";
-    j++; outfile << j << ":Fy"<<i<<i<<"(1|ccm)\t";
-    j++; outfile << j << ":Fz"<<i<<i<<"(1|ccm)\t";
-    j++; outfile << j << ":Fx"<<i<<i<<"bar(1|ccm)\t";
-    j++; outfile << j << ":Fy"<<i<<i<<"bar(1|ccm)\t";
-    j++; outfile << j << ":Fz"<<i<<i<<"bar(1|ccm)\t";
-  }
-  j++; outfile << j<<":N_offdiag_mag(1|ccm)\t";
-  j++; outfile << j<<":sumTrf\t";
-  j++; outfile << j<<":sumTrHf\t";
-  outfile << std::endl;
-  outfile.close();
-  
+
+    std::ofstream outfile;
+    outfile.open(filename0D, std::ofstream::out);
+    int j = 0;
+    j++;
+    outfile << j << ":step\t";
+    j++;
+    outfile << j << ":time(s)\t";
+    j++;
+    outfile << j << ":Ntot(1|ccm)\t";
+    j++;
+    outfile << j << ":Ndiff(1|ccm)\t";
+    for (int i = 0; i < NUM_FLAVORS; i++)
+    {
+      j++;
+      outfile << j << ":N" << i << i << "(1|ccm)\t";
+      j++;
+      outfile << j << ":N" << i << i << "bar(1|ccm)\t";
+      j++;
+      outfile << j << ":Fx" << i << i << "(1|ccm)\t";
+      j++;
+      outfile << j << ":Fy" << i << i << "(1|ccm)\t";
+      j++;
+      outfile << j << ":Fz" << i << i << "(1|ccm)\t";
+      j++;
+      outfile << j << ":Fx" << i << i << "bar(1|ccm)\t";
+      j++;
+      outfile << j << ":Fy" << i << i << "bar(1|ccm)\t";
+      j++;
+      outfile << j << ":Fz" << i << i << "bar(1|ccm)\t";
+    }
+    j++;
+    outfile << j << ":N_offdiag_mag(1|ccm)\t";
+    j++;
+    outfile << j << ":sumTrf\t";
+    j++;
+    outfile << j << ":sumTrHf\t";
+    outfile << std::endl;
+    outfile.close();
+
 #endif
+  }
 }
 
 void
@@ -151,7 +172,7 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   //===============//
   // write to file //
   //===============//
-  if(ParallelDescriptor::MyProc()==0){
+  if(ParallelDescriptor::IOProcessor()){
 #ifdef AMREX_USE_HDF5
     HighFive::File file0D(filename0D, HighFive::File::ReadWrite);
     append_0D(file0D, "step", step);
