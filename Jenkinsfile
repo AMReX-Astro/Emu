@@ -53,6 +53,14 @@ pipeline {
 	    }
 	}}
 
+	stage('Fiducial 2F GPU Binary'){ steps{
+		dir('Exec'){
+			sh 'python ../Scripts/initial_conditions/st4_linear_moment_ffi.py'
+			sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_1d_fiducial'
+			sh 'python ../Scripts/data_reduction/reduce_data.py'
+		}
+	}}
+
     } // stages{
 
     post {
