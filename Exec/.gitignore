@@ -5,3 +5,4 @@ plt*
 tmp_build_dir
 Backtrace.*
 *.png
+*.dat

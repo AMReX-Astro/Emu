@@ -1,15 +1,9 @@
-EMU_HOME ?= ../
-AMREX_HOME ?= ../amrex
-
-DIM	= 3
-
 NUM_FLAVORS = 2
-
 SHAPE_FACTOR_ORDER = 2
 
 COMP = gnu
 
-DEBUG	= FALSE
+DEBUG = FALSE
 
 USE_MPI       = TRUE
 USE_OMP       = FALSE
@@ -17,12 +11,6 @@ USE_ACC       = FALSE
 USE_CUDA      = TRUE
 AMREX_CUDA_ARCH=75
 
-TINY_PROFILE  = TRUE
-USE_PARTICLES = TRUE
-
-PRECISION     = DOUBLE
-
-Bpack   :=
-Blocs   := . 
-
+EMU_HOME = ..
+AMREX_HOME = ../submodules/amrex
 include ../Make.Emu
