@@ -12,7 +12,7 @@ USE_CUDA      = FALSE
 AMREX_CUDA_ARCH=75
 
 USE_HDF5=TRUE
-HDF5_HOME=/usr/lib/x86_64-linux-gnu/hdf5/serial
+HDF5_HOME=/usr/lib/x86_64-linux-gnu/hdf5/openmpi
 
 EMU_HOME = ..
 AMREX_HOME = ../submodules/amrex

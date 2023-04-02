@@ -80,7 +80,7 @@ pipeline {
 
 	stage('Fiducial 3F CPU HDF5'){ steps{
 		dir('Exec'){
-	    	sh 'cp makefiles/GNUmakefile_jenkins GNUmakefile'
+	    	sh 'cp ../makefiles/GNUmakefile_jenkins_HDF5 GNUmakefile'
 	        sh 'make realclean; make generate; make -j'
 			sh 'python ../Scripts/initial_conditions/st4_linear_moment_ffi.py'
 			sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.ex ../sample_inputs/inputs_1d_fiducial'
