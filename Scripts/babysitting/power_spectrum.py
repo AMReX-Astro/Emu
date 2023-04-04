@@ -33,7 +33,7 @@ def makeplot(v,f,data):
 
     # get appropriate data
     t=np.array(data["t(s)"])
-    k=np.array(data["k(1|cm)"])
+    k=np.array(data["k(1|cm, FFT format not including 2 pi)"])
     fft = data[v+f+"_FFT(cm^-2)"]
     total_power = np.sum(fft)
 
