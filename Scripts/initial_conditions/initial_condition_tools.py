@@ -207,8 +207,9 @@ def moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, direction_g
     fluxfac[np.where(nnu==0)] = 0
 
     # direction unit vector of fluxes [nu/nubar, flavor, xyz]
+    # point in arbitrary direction if fluxmag is zero
     fhat = fnu / fluxmag[:,:,np.newaxis]
-    fhat[np.where(fhat!=fhat)] = 0
+    fhat[np.where(fhat!=fhat)] = 1./np.sqrt(3)
     
     # generate list of momenta and direction cosines 
     phat = direction_generator(nphi_equator) # [iparticle, xyz]
@@ -246,7 +247,7 @@ def moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, direction_g
         for flavor in range(NF):
             fvarname = "f"+str(flavor)+str(flavor)+"_Re"+suffix
             particles[:,rkey[fvarname]] = n_particle[:,nu_nubar, flavor] / n_flavorsummed[:,nu_nubar]
-            particles[:,rkey[fvarname]][np.where(n_flavorsummed[:,nu_nubar]==0)] = 0
+            particles[:,rkey[fvarname]][np.where(n_flavorsummed[:,nu_nubar]==0)] = 1./NF # ensure that trace stays equal to 1
            
             # double check that the number densities are correct
             particle_n = np.sum(particles[:,rkey[nvarname]] * particles[:,rkey[fvarname]])
