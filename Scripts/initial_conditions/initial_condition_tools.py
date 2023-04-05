@@ -259,6 +259,50 @@ def moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, direction_g
 
     return particles
 
+# generate a list of particle data, assuming each flavor's flux represents a single beam
+# fnu is an array of neutrino flux density of shape [nu/nubar, iflavor, xyz] and units of 1/ccm
+def beam_particles(fnu, energy_erg):
+    # number of neutrino flavors
+    NF = fnu.shape[1]
+
+    # flux magnitude and flux factor [nu/nubar, flavor]
+    fluxmag = np.sqrt(np.sum(fnu**2, axis=2))
+
+    # direction unit vector of fluxes [nu/nubar, flavor, xyz]
+    # point in arbitrary direction if fluxmag is zero
+    fhat = fnu / fluxmag[:,:,np.newaxis]
+    fhat[np.where(fhat!=fhat)] = 1./np.sqrt(3)
+    
+    # generate interpolant # [particle, nu/nubar, flavor]
+    nparticles = 2*NF
+
+    # get variable keys
+    rkey, ikey = amrex.get_particle_keys(NF, ignore_pos=True)
+    nelements = len(rkey)
+    
+    # generate the list of particle info
+    particles = np.zeros((nparticles,nelements))
+
+    # save the total number density of neutrinos for each particle
+    for flavor in range(NF):
+        fvarname = "f"+str(flavor)+str(flavor)+"_Re"
+        for nu_nubar, suffix in zip(range(2), ["","bar"]):
+            ind = nu_nubar*NF + flavor
+
+            # set only the one flavor-flavor diagonal to 1
+            # Also set an element for the anti-particle to be one so that density matrix still has unit trace, even though it has zero weight
+            particles[ind,rkey[fvarname       ]] = 1
+            particles[ind,rkey[fvarname+"bar"]] = 1
+            
+            # set the number density to be equal to the magnitude of the flux
+            particles[ind,rkey["N"+suffix]] = fluxmag[nu_nubar,flavor]
+
+            # set the direction to be equal to the direction of the flux
+            particles[ind,rkey["pupt"]] = energy_erg
+            particles[ind,rkey["pupx"]:rkey["pupz"]+1] = energy_erg * fhat[nu_nubar,flavor,:]
+           
+    return particles
+
 # create a random distribution defined by number and flux densities
 # NF is the number of flavors
 # n is normalized such that the sum of all ns is 1
