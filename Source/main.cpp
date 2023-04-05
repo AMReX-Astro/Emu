@@ -184,9 +184,9 @@ void evolve_flavor(const TestParams* parms)
         run_fom += neutrinos.TotalNumberOfParticles();
 
         // Write the Mesh Data to Plotfile if required
-        if ((step+1) % parms->write_plot_every == 0 ||
-            (parms->write_plot_particles_every > 0 &&
-             (step+1) % parms->write_plot_particles_every == 0)) {
+	bool write_plotfile       = parms->write_plot_every           > 0 && (step+1) % parms->write_plot_every           == 0;
+	bool write_plot_particles = parms->write_plot_particles_every > 0 && (step+1) % parms->write_plot_particles_every == 0;
+        if (write_plotfile || write_plot_particles) {
             // Only include the Particle Data if write_plot_particles_every is satisfied
             int write_plot_particles = parms->write_plot_particles_every > 0 &&
                                        (step+1) % parms->write_plot_particles_every == 0;
