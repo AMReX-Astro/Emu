@@ -139,7 +139,6 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
 	      [=] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) noexcept ->
 	      GpuTuple<      ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, Real       , ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS> > {
       Array4<Real const> const& a = ma[box_no];
-      std::cout << "box_no = " << box_no << std::endl;
 
       // Doing the actual work
       ArithmeticArray<Real,NUM_FLAVORS>  Ndiag,  Ndiagbar;
