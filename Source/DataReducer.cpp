@@ -134,11 +134,12 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   // use the ParReduce function to define reduction operator
   GpuTuple<            ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, Real       , ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS> > result =
     ParReduce(TypeList<ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum, ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                       >{},
-	      TypeList<ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, Real       , ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS> >{},
+	      TypeList<      ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, Real       , ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS> >{},
 	      state, nghost,
 	      [=] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) noexcept ->
-	      GpuTuple<ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, Real       , ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS> > {
+	      GpuTuple<      ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, Real       , ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS> > {
       Array4<Real const> const& a = ma[box_no];
+      std::cout << "box_no = " << box_no << std::endl;
 
       // Doing the actual work
       ArithmeticArray<Real,NUM_FLAVORS>  Ndiag,  Ndiagbar;
@@ -161,6 +162,19 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   ArithmeticArray<Real,NUM_FLAVORS> Fxbar = amrex::get<6>(result) / ncells;
   ArithmeticArray<Real,NUM_FLAVORS> Fybar = amrex::get<7>(result) / ncells;
   ArithmeticArray<Real,NUM_FLAVORS> Fzbar = amrex::get<8>(result) / ncells;
+
+  // further reduce over mpi ranks
+  for(int i=0; i<NUM_FLAVORS; i++){
+    ParallelDescriptor::ReduceRealSum(N[    i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Nbar[ i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Fx[   i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Fy[   i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Fz[   i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Fxbar[i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Fybar[i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Fzbar[i], ParallelDescriptor::IOProcessorNumber());
+  }
+  ParallelDescriptor::ReduceRealSum(N_offdiag_mag, ParallelDescriptor::IOProcessorNumber());
 
   // calculate net number of neutrinos and antineutrinos
   Real Ntot=0, Ndiff=0;
