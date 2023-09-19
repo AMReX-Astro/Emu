@@ -152,9 +152,9 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   });
 
   // retrieve the reduced data values
-  ArithmeticArray<Real,NUM_FLAVORS> N    = amrex::get<0>(result) / ncells;
-  ArithmeticArray<Real,NUM_FLAVORS> Nbar = amrex::get<1>(result) / ncells;
-  Real N_offdiag_mag = sqrt(amrex::get<2>(result)) / ncells;
+  ArithmeticArray<Real,NUM_FLAVORS> N     = amrex::get<0>(result) / ncells;
+  ArithmeticArray<Real,NUM_FLAVORS> Nbar  = amrex::get<1>(result) / ncells;
+  Real N_offdiag_mag2                     = amrex::get<2>(result) / ncells;
   ArithmeticArray<Real,NUM_FLAVORS> Fx    = amrex::get<3>(result) / ncells;
   ArithmeticArray<Real,NUM_FLAVORS> Fy    = amrex::get<4>(result) / ncells;
   ArithmeticArray<Real,NUM_FLAVORS> Fz    = amrex::get<5>(result) / ncells;
@@ -173,7 +173,10 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
     ParallelDescriptor::ReduceRealSum(Fybar[i], ParallelDescriptor::IOProcessorNumber());
     ParallelDescriptor::ReduceRealSum(Fzbar[i], ParallelDescriptor::IOProcessorNumber());
   }
-  ParallelDescriptor::ReduceRealSum(N_offdiag_mag, ParallelDescriptor::IOProcessorNumber());
+  ParallelDescriptor::ReduceRealSum(N_offdiag_mag2, ParallelDescriptor::IOProcessorNumber());
+
+  // take square root of N_offdiag_mag2
+  Real N_offdiag_mag = std::sqrt(N_offdiag_mag2);
 
   // calculate net number of neutrinos and antineutrinos
   Real Ntot=0, Ndiff=0;
