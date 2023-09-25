@@ -491,14 +491,3 @@ if __name__ == "__main__":
         f = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
         code.append("p.rdata(PIdx::L"+t+") = "+sympy.cxxcode(sympy.simplify(f.SU_vector_magnitude()))+";" )
     write_code(code, os.path.join(args.emu_home, "Source/generated_files/FlavoredNeutrinoContainerInit.cpp_set_trace_length"))
-
-    #=====================================================#
-    # FlavoredNeutrinoContainerInit.cpp_perturb_diagonals #
-    #=====================================================#
-    code = []
-    for i in range(args.N):
-        for t in tails:
-            quantity = "p.rdata(PIdx::f"+str(i)+str(i)+"_Re"+t+")"
-            code.append("symmetric_uniform(&rand, engine);")
-            code.append(quantity + "+= parms->perturbation_amplitude*rand * "+quantity+";")
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files/FlavoredNeutrinoContainerInit.cpp_perturb_diagonals"))
