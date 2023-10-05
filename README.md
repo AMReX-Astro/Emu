@@ -25,7 +25,22 @@ parallelized with MPI + OpenMP for CPUs and MPI + CUDA for GPUs.
 
 # Getting Started From Scratch
 
-If you would like to run Emu on your own machine, first clone Emu with the AMReX submodule:
+If you would like to run Emu on your own machine, there are some modules
+you will need to install. The commands you need to write in the terminal are:
+
+```
+sudo apt-get update
+sudo apt install g++
+sudo apt-get install libopenmpi-dev
+sudo apt install python-3
+pip install sympy
+pip install h5pu
+sudo apt install gfortran
+sudo apt install gnuplot-x11
+sudo apt install emacs --classic
+```
+
+After installing those modules, clone Emu with the AMReX submodule:
 
 ```
 git clone --recurse-submodules https://github.com/AMReX-Astro/Emu.git
