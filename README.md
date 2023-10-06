@@ -31,7 +31,6 @@ you will need to install. The commands you need to write in the terminal are:
 ```
 sudo apt-get install g++ libopenmpi-dev python-3 gfortran gnuplot-x11
 pip install sympy h5py
-
 ```
 
 After installing those modules, clone Emu with the AMReX submodule:
