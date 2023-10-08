@@ -8,6 +8,7 @@ from sympy.codegen.ast import Assignment
 from HermitianUtils import HermitianMatrix,SU_vector_ideal_magnitude
 import shutil
 import math
+from str2bool import str2bool
 
 parser = argparse.ArgumentParser(description="Generates code for calculating C = i * [A,B] for symbolic NxN Hermitian matrices A, B, C, using real-valued Real and Imaginary components.")
 parser.add_argument("N", type=int, help="Size of NxN Hermitian matrices.")
@@ -15,8 +16,10 @@ parser.add_argument("-ot", "--output_template", type=str, default=None, help="Te
 parser.add_argument("-eh", "--emu_home", type=str, default=".", help="Path to Emu home directory.")
 parser.add_argument("-c", "--clean", action="store_true", help="Clean up any previously generated files.")
 parser.add_argument("-rn", "--rhs_normalize", action="store_true", help="Normalize F when applying the RHS update F += dt * dFdt (limits to 2nd order in time).")
+parser.add_argument("-op", "--output_pressure", type=str, default="FALSE", help="Output pressure tensor to file.")
 
 args = parser.parse_args()
+args.output_pressure = str2bool(args.output_pressure)
 
 def write_code(code, output_file, template=None):
     ## If a template file is supplied, this will insert the generated code

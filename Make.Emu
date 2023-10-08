@@ -35,7 +35,7 @@ all: generate $(objEXETempDir)/AMReX_buildInfo.o $(executable)
 	@echo SUCCESS
 
 generate:
-	python3 $(EMU_HOME)/Scripts/symbolic_hermitians/generate_code.py $(NUM_FLAVORS) --emu_home $(EMU_HOME)
+	python3 $(EMU_HOME)/Scripts/symbolic_hermitians/generate_code.py $(NUM_FLAVORS) --emu_home $(EMU_HOME) --output_pressure $(OUTPUT_PRESSURE)
 
 #------------------------------------------------------------------------------
 # build info (from Castro/Exec/Make.auto_source)
