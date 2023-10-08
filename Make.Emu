@@ -29,13 +29,13 @@ Ppack             += $(foreach dir, $(Pdirs), $(AMREX_HOME)/Src/$(dir)/Make.pack
 
 include $(Ppack)
 
-DEFINES += -DNUM_FLAVORS=$(NUM_FLAVORS) -DSHAPE_FACTOR_ORDER=$(SHAPE_FACTOR_ORDER)
+DEFINES += -DNUM_FLAVORS=$(NUM_FLAVORS) -DSHAPE_FACTOR_ORDER=$(SHAPE_FACTOR_ORDER) -DNUM_MOMENTS=$(NUM_MOMENTS)
 
 all: generate $(objEXETempDir)/AMReX_buildInfo.o $(executable)
 	@echo SUCCESS
 
 generate:
-	python3 $(EMU_HOME)/Scripts/symbolic_hermitians/generate_code.py $(NUM_FLAVORS) --emu_home $(EMU_HOME) --output_pressure $(OUTPUT_PRESSURE)
+	python3 $(EMU_HOME)/Scripts/symbolic_hermitians/generate_code.py $(NUM_FLAVORS) --emu_home $(EMU_HOME) --num_moments $(NUM_MOMENTS)
 
 #------------------------------------------------------------------------------
 # build info (from Castro/Exec/Make.auto_source)

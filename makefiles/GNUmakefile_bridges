@@ -2,6 +2,7 @@
 #module load python3/3.5.2_gcc_mkl cuda/10.2 mpi/gcc_openmpi gcc/8.3.0
 
 OUTPUT_PRESSURE = 0
+NUM_MOMENTS = 2
 
 DIM	= 3
 
