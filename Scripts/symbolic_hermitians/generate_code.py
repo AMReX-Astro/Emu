@@ -4,11 +4,8 @@ from sympy.physics.quantum.dagger import Dagger
 import argparse
 import os
 import sympy
-from sympy.codegen.ast import Assignment
-from HermitianUtils import HermitianMatrix,SU_vector_ideal_magnitude
+from HermitianUtils import HermitianMatrix
 import shutil
-import math
-from str2bool import str2bool
 
 parser = argparse.ArgumentParser(description="Generates code for calculating C = i * [A,B] for symbolic NxN Hermitian matrices A, B, C, using real-valued Real and Imaginary components.")
 parser.add_argument("N", type=int, help="Size of NxN Hermitian matrices.")
