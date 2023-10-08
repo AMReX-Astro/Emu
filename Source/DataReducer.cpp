@@ -55,7 +55,7 @@ void DataReducer::InitializeFiles()
       file0D.createDataSet(std::string("Pyy") + std::to_string(i) + std::to_string(i) + std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
       file0D.createDataSet(std::string("Pyz") + std::to_string(i) + std::to_string(i) + std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
       file0D.createDataSet(std::string("Pzz") + std::to_string(i) + std::to_string(i) + std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
-      file0D.createDataSet(std::string("Pzz") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Pxx") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
       file0D.createDataSet(std::string("Pxy") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
       file0D.createDataSet(std::string("Pxz") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
       file0D.createDataSet(std::string("Pyy") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
