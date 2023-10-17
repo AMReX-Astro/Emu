@@ -24,9 +24,11 @@ high-performance, block-structured adaptive mesh refinement. Emu is
 parallelized with MPI + OpenMP for CPUs and MPI + CUDA for GPUs.
 
 # Getting Started From Scratch
-
+* Linux or WSL
 If you would like to run Emu on your own machine, there are some modules
 you will need to install. The commands you need to write in the terminal are:
+* macOS
+...
 
 ```
 sudo apt-get install g++ libopenmpi-dev python-3 gfortran gnuplot-x11
