@@ -41,6 +41,8 @@ pip install sympy h5py
 
 If you are running Emu on macOS...
 
+## Using Emu
+
 
 After installing those modules, clone Emu with the AMReX submodule:
 
