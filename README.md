@@ -24,8 +24,27 @@ high-performance, block-structured adaptive mesh refinement. Emu is
 parallelized with MPI + OpenMP for CPUs and MPI + CUDA for GPUs.
 
 # Getting Started From Scratch
+If you would like to run Emu on your own machine, there are some packages
+you will need to install depending on your operating system.
 
-If you would like to run Emu on your own machine, first clone Emu with the AMReX submodule:
+## Linux or WSL
+
+If you are running Emu on Linux or a WSL, you will need to install the
+following packages:
+
+```
+apt-get install g++ libopenmpi-dev python-3 gfortran gnuplot-x11
+pip install sympy h5py
+```
+
+## macOS
+
+If you are running Emu on macOS...
+
+## Using Emu
+
+
+After installing those modules, clone Emu with the AMReX submodule:
 
 ```
 git clone --recurse-submodules https://github.com/AMReX-Astro/Emu.git
