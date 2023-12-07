@@ -48,6 +48,20 @@ void DataReducer::InitializeFiles()
       file0D.createDataSet(std::string("Fx") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
       file0D.createDataSet(std::string("Fy") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
       file0D.createDataSet(std::string("Fz") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      #if NUM_MOMENTS == 3
+      file0D.createDataSet(std::string("Pxx") + std::to_string(i) + std::to_string(i) + std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Pxy") + std::to_string(i) + std::to_string(i) + std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Pxz") + std::to_string(i) + std::to_string(i) + std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Pyy") + std::to_string(i) + std::to_string(i) + std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Pyz") + std::to_string(i) + std::to_string(i) + std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Pzz") + std::to_string(i) + std::to_string(i) + std::string("(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Pxx") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Pxy") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Pxz") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Pyy") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Pyz") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);
+      file0D.createDataSet(std::string("Pzz") + std::to_string(i) + std::to_string(i) + std::string("bar(1|ccm)"), dataspace, create_datatype<amrex::Real>(), props);      
+      #endif
     }
     file0D.createDataSet("N_offdiag_mag(1|ccm)", dataspace, create_datatype<amrex::Real>(), props);
     file0D.createDataSet("sumTrf", dataspace, create_datatype<amrex::Real>(), props);
@@ -58,32 +72,34 @@ void DataReducer::InitializeFiles()
     std::ofstream outfile;
     outfile.open(filename0D, std::ofstream::out);
     int j = 0;
-    j++;
-    outfile << j << ":step\t";
-    j++;
-    outfile << j << ":time(s)\t";
-    j++;
-    outfile << j << ":Ntot(1|ccm)\t";
-    j++;
-    outfile << j << ":Ndiff(1|ccm)\t";
+    j++; outfile << j << ":step\t";
+    j++; outfile << j << ":time(s)\t";
+    j++; outfile << j << ":Ntot(1|ccm)\t";
+    j++; outfile << j << ":Ndiff(1|ccm)\t";
     for (int i = 0; i < NUM_FLAVORS; i++)
     {
-      j++;
-      outfile << j << ":N" << i << i << "(1|ccm)\t";
-      j++;
-      outfile << j << ":N" << i << i << "bar(1|ccm)\t";
-      j++;
-      outfile << j << ":Fx" << i << i << "(1|ccm)\t";
-      j++;
-      outfile << j << ":Fy" << i << i << "(1|ccm)\t";
-      j++;
-      outfile << j << ":Fz" << i << i << "(1|ccm)\t";
-      j++;
-      outfile << j << ":Fx" << i << i << "bar(1|ccm)\t";
-      j++;
-      outfile << j << ":Fy" << i << i << "bar(1|ccm)\t";
-      j++;
-      outfile << j << ":Fz" << i << i << "bar(1|ccm)\t";
+      j++; outfile << j << ":N" << i << i << "(1|ccm)\t";
+      j++; outfile << j << ":N" << i << i << "bar(1|ccm)\t";
+      j++; outfile << j << ":Fx" << i << i << "(1|ccm)\t";
+      j++; outfile << j << ":Fy" << i << i << "(1|ccm)\t";
+      j++; outfile << j << ":Fz" << i << i << "(1|ccm)\t";
+      j++; outfile << j << ":Fx" << i << i << "bar(1|ccm)\t";
+      j++; outfile << j << ":Fy" << i << i << "bar(1|ccm)\t";
+      j++; outfile << j << ":Fz" << i << i << "bar(1|ccm)\t";
+      #if NUM_MOMENTS == 3
+      j++; outfile << j << ":Pxx" << i << i << "(1|ccm)\t";
+      j++; outfile << j << ":Pxy" << i << i << "(1|ccm)\t";
+      j++; outfile << j << ":Pxz" << i << i << "(1|ccm)\t";
+      j++; outfile << j << ":Pyy" << i << i << "(1|ccm)\t";
+      j++; outfile << j << ":Pyz" << i << i << "(1|ccm)\t";
+      j++; outfile << j << ":Pzz" << i << i << "(1|ccm)\t";
+      j++; outfile << j << ":Pxx" << i << i << "bar(1|ccm)\t";
+      j++; outfile << j << ":Pxy" << i << i << "bar(1|ccm)\t";
+      j++; outfile << j << ":Pxz" << i << i << "bar(1|ccm)\t";
+      j++; outfile << j << ":Pyy" << i << i << "bar(1|ccm)\t";
+      j++; outfile << j << ":Pyz" << i << i << "bar(1|ccm)\t";
+      j++; outfile << j << ":Pzz" << i << i << "bar(1|ccm)\t";
+      #endif
     }
     j++;
     outfile << j << ":N_offdiag_mag(1|ccm)\t";
@@ -132,12 +148,23 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   IntVect nghost(AMREX_D_DECL(0, 0, 0));
 
   // use the ParReduce function to define reduction operator
+  #if NUM_MOMENTS == 2
   GpuTuple<            ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, Real       , ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS> > result =
     ParReduce(TypeList<ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum, ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                       >{},
 	      TypeList<      ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, Real       , ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS> >{},
 	      state, nghost,
 	      [=] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) noexcept ->
 	      GpuTuple<      ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, Real       , ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS> > {
+  #elif NUM_MOMENTS == 3
+  GpuTuple<            ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, Real       , ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS> > result =
+    ParReduce(TypeList<ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum, ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                      , ReduceOpSum                       >{},
+        TypeList<      ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, Real       , ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS> >{},
+        state, nghost,
+        [=] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) noexcept ->
+        GpuTuple<      ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, Real       , ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS>, ArithmeticArray<Real,NUM_FLAVORS> > {
+  #else
+  #error "NUM_MOMENTS must be 2 or 3"
+  #endif
       Array4<Real const> const& a = ma[box_no];
 
       // Doing the actual work
@@ -145,10 +172,25 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
       ArithmeticArray<Real,NUM_FLAVORS> Fxdiag, Fxdiagbar;
       ArithmeticArray<Real,NUM_FLAVORS> Fydiag, Fydiagbar;
       ArithmeticArray<Real,NUM_FLAVORS> Fzdiag, Fzdiagbar;
-      Real N_offdiag_mag2 = 0;
-      #include "generated_files/DataReducer.cpp_fill"
-      return {Ndiag, Ndiagbar, N_offdiag_mag2, Fxdiag, Fydiag, Fzdiag, Fxdiagbar,Fydiagbar,Fzdiagbar};
+      #if NUM_MOMENTS >= 2
+      ArithmeticArray<Real,NUM_FLAVORS>  Pxxdiag, Pxxdiagbar;
+      ArithmeticArray<Real,NUM_FLAVORS>  Pxydiag, Pxydiagbar;
+      ArithmeticArray<Real,NUM_FLAVORS>  Pxzdiag, Pxzdiagbar;
+      ArithmeticArray<Real,NUM_FLAVORS>  Pyydiag, Pyydiagbar;
+      ArithmeticArray<Real,NUM_FLAVORS>  Pyzdiag, Pyzdiagbar;
+      ArithmeticArray<Real,NUM_FLAVORS>  Pzzdiag, Pzzdiagbar;
+      #endif
 
+      Real N_offdiag_mag2 = 0;
+
+      #include "generated_files/DataReducer.cpp_fill"
+      #if NUM_MOMENTS == 2
+      return {Ndiag, Ndiagbar, N_offdiag_mag2, Fxdiag, Fydiag, Fzdiag, Fxdiagbar,Fydiagbar,Fzdiagbar};
+      #elif NUM_MOMENTS == 3
+      return {Ndiag, Ndiagbar, N_offdiag_mag2, Fxdiag, Fydiag, Fzdiag, Fxdiagbar,Fydiagbar,Fzdiagbar, Pxxdiag, Pxydiag, Pxzdiag, Pyydiag, Pyzdiag, Pzzdiag, Pxxdiagbar, Pxydiagbar, Pxzdiagbar, Pyydiagbar, Pyzdiagbar, Pzzdiagbar};
+      #else
+      #error "NUM_MOMENTS must be 2 or 3"
+      #endif
   });
 
   // retrieve the reduced data values
@@ -161,6 +203,20 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   ArithmeticArray<Real,NUM_FLAVORS> Fxbar = amrex::get<6>(result) / ncells;
   ArithmeticArray<Real,NUM_FLAVORS> Fybar = amrex::get<7>(result) / ncells;
   ArithmeticArray<Real,NUM_FLAVORS> Fzbar = amrex::get<8>(result) / ncells;
+  #if NUM_MOMENTS == 3
+  ArithmeticArray<Real,NUM_FLAVORS> Pxx   = amrex::get< 9>(result) / ncells;
+  ArithmeticArray<Real,NUM_FLAVORS> Pxy   = amrex::get<10>(result) / ncells;
+  ArithmeticArray<Real,NUM_FLAVORS> Pxz   = amrex::get<11>(result) / ncells;
+  ArithmeticArray<Real,NUM_FLAVORS> Pyy   = amrex::get<12>(result) / ncells;
+  ArithmeticArray<Real,NUM_FLAVORS> Pyz   = amrex::get<13>(result) / ncells;
+  ArithmeticArray<Real,NUM_FLAVORS> Pzz   = amrex::get<14>(result) / ncells;
+  ArithmeticArray<Real,NUM_FLAVORS> Pxxbar= amrex::get<15>(result) / ncells;
+  ArithmeticArray<Real,NUM_FLAVORS> Pxybar= amrex::get<16>(result) / ncells;
+  ArithmeticArray<Real,NUM_FLAVORS> Pxzbar= amrex::get<17>(result) / ncells;
+  ArithmeticArray<Real,NUM_FLAVORS> Pyybar= amrex::get<18>(result) / ncells;
+  ArithmeticArray<Real,NUM_FLAVORS> Pyzbar= amrex::get<19>(result) / ncells;
+  ArithmeticArray<Real,NUM_FLAVORS> Pzzbar= amrex::get<20>(result) / ncells;
+  #endif
 
   // further reduce over mpi ranks
   for(int i=0; i<NUM_FLAVORS; i++){
@@ -172,6 +228,20 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
     ParallelDescriptor::ReduceRealSum(Fxbar[i], ParallelDescriptor::IOProcessorNumber());
     ParallelDescriptor::ReduceRealSum(Fybar[i], ParallelDescriptor::IOProcessorNumber());
     ParallelDescriptor::ReduceRealSum(Fzbar[i], ParallelDescriptor::IOProcessorNumber());
+    #if NUM_MOMENTS == 3
+    ParallelDescriptor::ReduceRealSum(Pxx[   i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Pxy[   i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Pxz[   i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Pyy[   i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Pyz[   i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Pzz[   i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Pxxbar[i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Pxybar[i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Pxzbar[i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Pyybar[i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Pyzbar[i], ParallelDescriptor::IOProcessorNumber());
+    ParallelDescriptor::ReduceRealSum(Pzzbar[i], ParallelDescriptor::IOProcessorNumber());
+    #endif
   }
   ParallelDescriptor::ReduceRealSum(N_offdiag_mag2, ParallelDescriptor::IOProcessorNumber());
 
@@ -204,6 +274,20 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
       append_0D(file0D, std::string("Fx")+std::to_string(i)+std::to_string(i)+std::string("bar(1|ccm)"), Fxbar[i]);
       append_0D(file0D, std::string("Fy")+std::to_string(i)+std::to_string(i)+std::string("bar(1|ccm)"), Fybar[i]);
       append_0D(file0D, std::string("Fz")+std::to_string(i)+std::to_string(i)+std::string("bar(1|ccm)"), Fzbar[i]);
+      #if NUM_MOMENTS == 3
+      append_0D(file0D, std::string("Pxx")+std::to_string(i)+std::to_string(i)+std::string("(1|ccm)"), Pxx[i]);
+      append_0D(file0D, std::string("Pxy")+std::to_string(i)+std::to_string(i)+std::string("(1|ccm)"), Pxy[i]);
+      append_0D(file0D, std::string("Pxz")+std::to_string(i)+std::to_string(i)+std::string("(1|ccm)"), Pxz[i]);
+      append_0D(file0D, std::string("Pyy")+std::to_string(i)+std::to_string(i)+std::string("(1|ccm)"), Pyy[i]);
+      append_0D(file0D, std::string("Pyz")+std::to_string(i)+std::to_string(i)+std::string("(1|ccm)"), Pyz[i]);
+      append_0D(file0D, std::string("Pzz")+std::to_string(i)+std::to_string(i)+std::string("(1|ccm)"), Pzz[i]);
+      append_0D(file0D, std::string("Pxx")+std::to_string(i)+std::to_string(i)+std::string("bar(1|ccm)"), Pxxbar[i]);
+      append_0D(file0D, std::string("Pxy")+std::to_string(i)+std::to_string(i)+std::string("bar(1|ccm)"), Pxybar[i]);
+      append_0D(file0D, std::string("Pxz")+std::to_string(i)+std::to_string(i)+std::string("bar(1|ccm)"), Pxzbar[i]);
+      append_0D(file0D, std::string("Pyy")+std::to_string(i)+std::to_string(i)+std::string("bar(1|ccm)"), Pyybar[i]);
+      append_0D(file0D, std::string("Pyz")+std::to_string(i)+std::to_string(i)+std::string("bar(1|ccm)"), Pyzbar[i]);
+      append_0D(file0D, std::string("Pzz")+std::to_string(i)+std::to_string(i)+std::string("bar(1|ccm)"), Pzzbar[i]);
+      #endif
     }
     append_0D(file0D, "N_offdiag_mag(1|ccm)", N_offdiag_mag);
     append_0D(file0D, "sumTrf", Trf);
@@ -224,6 +308,20 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
       outfile << Fxbar[i] << "\t";
       outfile << Fybar[i] << "\t";
       outfile << Fzbar[i] << "\t";
+      #if NUM_MOMENTS == 3
+      outfile << Pxx[i] << "\t";
+      outfile << Pxy[i] << "\t";
+      outfile << Pxz[i] << "\t";
+      outfile << Pyy[i] << "\t";
+      outfile << Pyz[i] << "\t";
+      outfile << Pzz[i] << "\t";
+      outfile << Pxxbar[i] << "\t";
+      outfile << Pxybar[i] << "\t";
+      outfile << Pxzbar[i] << "\t";
+      outfile << Pyybar[i] << "\t";
+      outfile << Pyzbar[i] << "\t";
+      outfile << Pzzbar[i] << "\t";
+      #endif
     }
     outfile << N_offdiag_mag << "\t";
     outfile << Trf << "\t";

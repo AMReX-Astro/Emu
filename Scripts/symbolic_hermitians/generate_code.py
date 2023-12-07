@@ -4,10 +4,8 @@ from sympy.physics.quantum.dagger import Dagger
 import argparse
 import os
 import sympy
-from sympy.codegen.ast import Assignment
-from HermitianUtils import HermitianMatrix,SU_vector_ideal_magnitude
+from HermitianUtils import HermitianMatrix
 import shutil
-import math
 
 parser = argparse.ArgumentParser(description="Generates code for calculating C = i * [A,B] for symbolic NxN Hermitian matrices A, B, C, using real-valued Real and Imaginary components.")
 parser.add_argument("N", type=int, help="Size of NxN Hermitian matrices.")
@@ -15,8 +13,14 @@ parser.add_argument("-ot", "--output_template", type=str, default=None, help="Te
 parser.add_argument("-eh", "--emu_home", type=str, default=".", help="Path to Emu home directory.")
 parser.add_argument("-c", "--clean", action="store_true", help="Clean up any previously generated files.")
 parser.add_argument("-rn", "--rhs_normalize", action="store_true", help="Normalize F when applying the RHS update F += dt * dFdt (limits to 2nd order in time).")
+parser.add_argument("-nm", "--num_moments", type=int, default=2, help="Number of moments to compute.")
 
 args = parser.parse_args()
+
+# make sure arguments make sense
+assert(args.N>0)
+assert(args.num_moments>=2) # just N and F
+assert(args.num_moments<=3) # also include P. Higher moments not implemented
 
 def write_code(code, output_file, template=None):
     ## If a template file is supplied, this will insert the generated code
@@ -127,6 +131,8 @@ if __name__ == "__main__":
     # Evolve.H_fill #
     #===============#
     vars = ["N","Fx","Fy","Fz"]
+    if args.num_moments>=3:
+        vars.extend(["Pxx","Pxy","Pxz","Pyy","Pyz","Pzz"])
     tails = ["","bar"]
     code = []
     for v in vars:
@@ -140,6 +146,8 @@ if __name__ == "__main__":
     # Evolve.cpp_grid_names_fill #
     #============================#
     vars = ["N","Fx","Fy","Fz"]
+    if args.num_moments>=3:
+        vars.extend(["Pxx","Pxy","Pxz","Pyy","Pyz","Pzz"])
     tails = ["","bar"]
     code = []
     for v in vars:
@@ -160,6 +168,14 @@ if __name__ == "__main__":
                "*p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt));",
                "*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt));"]
     deposit_vars = ["N","Fx","Fy","Fz"]
+    if args.num_moments >= 3:
+        deposit_vars.extend(["Pxx","Pxy","Pxz","Pyy","Pyz","Pzz"])
+        string4.extend(["*p.rdata(PIdx::pupx)*p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));",
+                        "*p.rdata(PIdx::pupx)*p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));",
+                        "*p.rdata(PIdx::pupx)*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));",
+                        "*p.rdata(PIdx::pupy)*p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));",
+                        "*p.rdata(PIdx::pupy)*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));",
+                        "*p.rdata(PIdx::pupz)*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));"])
     code = []
     for t in tails:
         string3 = ")*p.rdata(PIdx::N"+t+")"
@@ -204,6 +220,27 @@ if __name__ == "__main__":
             code.append("Fxdiag"+t+"["+str(i)+"] = "+Fxlist[i]+";")
             code.append("Fydiag"+t+"["+str(i)+"] = "+Fylist[i]+";")
             code.append("Fzdiag"+t+"["+str(i)+"] = "+Fzlist[i]+";")
+
+        if args.num_moments>=3:
+            Pxx = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pxx{}{}_{}"+t+")")
+            Pxxlist = Pxx.header_diagonals();
+            Pxy = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pxy{}{}_{}"+t+")")
+            Pxylist = Pxy.header_diagonals();
+            Pxz = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pxz{}{}_{}"+t+")")
+            Pxzlist = Pxz.header_diagonals();
+            Pyy = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pyy{}{}_{}"+t+")")
+            Pyylist = Pyy.header_diagonals();
+            Pyz = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pyz{}{}_{}"+t+")")
+            Pyzlist = Pyz.header_diagonals();
+            Pzz = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pzz{}{}_{}"+t+")")
+            Pzzlist = Pzz.header_diagonals();
+            for i in range(len(Nlist)):
+                code.append("Pxxdiag"+t+"["+str(i)+"] = "+Pxxlist[i]+";")
+                code.append("Pxydiag"+t+"["+str(i)+"] = "+Pxylist[i]+";")
+                code.append("Pxzdiag"+t+"["+str(i)+"] = "+Pxzlist[i]+";")
+                code.append("Pyydiag"+t+"["+str(i)+"] = "+Pyylist[i]+";")
+                code.append("Pyzdiag"+t+"["+str(i)+"] = "+Pyzlist[i]+";")
+                code.append("Pzzdiag"+t+"["+str(i)+"] = "+Pzzlist[i]+";")
 
         # off-diagonal magnitude
         mag2 = 0
