@@ -1,0 +1,22 @@
+NUM_FLAVORS = 2
+SHAPE_FACTOR_ORDER = 2
+
+COMP = gnu
+
+DEBUG	= FALSE
+
+USE_MPI  = FALSE
+USE_OMP  = FALSE
+USE_ACC  = FALSE
+USE_CUDA = FALSE
+USE_HDF5 = FALSE
+
+EMU_HOME = ..
+AMREX_HOME = ../submodules/amrex
+include ../Make.Emu
+
+CXX = mpicxx
+CC = mpicc
+FC = gfortran-13
+F90 = gfortran-13
+INCLUDE_LOCATIONS += /usr/local/include

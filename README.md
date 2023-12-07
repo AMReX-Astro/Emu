@@ -37,9 +37,14 @@ apt-get install g++ libopenmpi-dev python-3 gfortran gnuplot-x11
 pip install sympy h5py
 ```
 
-## macOS
+## MacOS
 
-If you are running Emu on macOS...
+If you are running Emu on macOS you will need gcc and a mpi wrapper:
+
+```
+brew install mpich --cc=gcc-13
+```
+
 
 ## Using Emu
 
@@ -55,9 +60,20 @@ Then change directories to `Emu/Exec`. Before each compilation, you must symboli
 the number of neutrino flavors you wish to use and specify a few other compile-time settings in a file called `GNUmakefile`.
 
 Copy in a default makefile. In this file you can specify the number of neutrino flavors, whether to compile for GPUs, etc. We have set the defaults to 2 neutrino flavors, order 2 PIC shape factors, and compiling for a single CPU.
+
+For Linux or WSL:
+
 ```
 cp ../makefiles/GNUmakefile_default GNUmakefile
 ```
+
+For MacOS:
+
+```
+cp ../makefiles/GNUmakefile_macOS GNUmakefile
+```
+
+
 
 Compiling occurs in two stages. We first have to generate code according to the number of neutrino flavors.
 ```
