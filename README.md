@@ -46,7 +46,6 @@ brew install mpich --cc=gcc-13
 ```
 
 
-
 ## Using Emu
 
 
