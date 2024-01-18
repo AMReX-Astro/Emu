@@ -104,23 +104,14 @@ if __name__ == "__main__":
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
     code += ["TrHf"]
+    code += ["Vphase"]
 
-    code = [code[i]+"," for i in range(len(code))]
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoContainer.H_fill"))
+    code_lines = [code[i]+"," for i in range(len(code))]
+    write_code(code_lines, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoContainer.H_fill"))
 
     #========================================================#
     # FlavoredNeutrinoContainerInit.H_particle_varnames_fill #
     #========================================================#
-    vars = ["f"]
-    tails = ["","bar"]
-    code = []
-    for t in tails:
-        code += ["N"+t]
-        code += ["L"+t]
-        for v in vars:
-            A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
-            code += A.header()
-    code += ["TrHf"]
     code_string = 'attribute_names = {"time", "x", "y", "z", "pupx", "pupy", "pupz", "pupt", '
     code = ['"{}"'.format(c) for c in code]
     code_string = code_string + ", ".join(code) + "};"
