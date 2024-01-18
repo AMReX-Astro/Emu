@@ -22,7 +22,7 @@ struct TestParams : public amrex::Gpu::Managed
     Real end_time;
     int write_plot_every;
     int write_plot_particles_every;
-    Real rho_in, Ye_in, T_in; // g/ccm, 1, MeV
+    Real rho_in, Ye_in, kT_in; // g/ccm, 1, erg
     Real cfl_factor, flavor_cfl_factor;
     Real max_adaptive_speedup;
     bool do_restart;
@@ -42,6 +42,12 @@ struct TestParams : public amrex::Gpu::Managed
     int perturbation_type;
     Real perturbation_wavelength_cm;
     Real perturbation_amplitude;
+
+    // absorption opacities and equilibrium neutrino chemical potentials
+    int IMFP_method;
+    Real IMFP_abs[2][NUM_FLAVORS];
+    Real IMFP_scat[2][NUM_FLAVORS];
+    Real munu[2][NUM_FLAVORS]; // equilibrium electron neutrino chemical potential in MeV
     
     void Initialize(){
         ParmParse pp;
@@ -55,7 +61,7 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("end_time", end_time);
         pp.get("rho_g_ccm", rho_in);
         pp.get("Ye", Ye_in);
-        pp.get("T_MeV", T_in);
+        pp.get("T_MeV", kT_in);
         pp.get("cfl_factor", cfl_factor);
         pp.get("flavor_cfl_factor", flavor_cfl_factor);
         pp.get("max_adaptive_speedup", max_adaptive_speedup);
@@ -64,6 +70,9 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("do_restart", do_restart);
         pp.get("restart_dir", restart_dir);
         pp.get("maxError", maxError);
+
+        // convert to cgs
+        kT_in *= 1e6 * CGSUnitsConst::eV; // erg
 
 	// angular grid
 	pp.get("particle_data_filename",particle_data_filename);
@@ -95,6 +104,35 @@ struct TestParams : public amrex::Gpu::Managed
     	alpha2 *= M_PI/180.;
     	deltaCP *= M_PI/180.;
     }
+
+    // absorption opacities and equilibrium neutrino chemical potentials
+    pp.get("IMFP_method", IMFP_method);
+    if(IMFP_method==0){
+    	// do nothing - all values will be set to zero
+    }
+    else if(IMFP_method==1){
+        for(int i=0;i<NUM_FLAVORS;i++){
+            std::string name;
+            name = std::string("IMFP_abs")+std::to_string(i)+std::string("_cm");
+            pp.get(name.c_str(), IMFP_abs[0][i]);
+            name = std::string("IMFP_abs")+std::to_string(i)+std::string("bar_cm");
+            pp.get(name.c_str(), IMFP_abs[1][i]);
+            name = std::string("IMFP_scat")+std::to_string(i)+std::string("_cm");
+            pp.get(name.c_str(), IMFP_scat[0][i]);
+            name = std::string("IMFP_scat")+std::to_string(i)+std::string("bar_cm");
+            pp.get(name.c_str(), IMFP_scat[1][i]);
+            name = std::string("munu")+std::to_string(i)+std::string("_MeV");
+            pp.get(name.c_str(), munu[0][i]);
+            munu[0][i] *= 1e6*CGSUnitsConst::eV;
+            munu[1][i] = -munu[0][i];
+        }
+
+        // convert munu to erg
+        for(int j=0;j<2;j++)
+            for(int i=0;i<NUM_FLAVORS;i++)
+                munu[0][i] *= 1e6*CGSUnitsConst::eV;
+    }
+    else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 1");
 
     }
 };

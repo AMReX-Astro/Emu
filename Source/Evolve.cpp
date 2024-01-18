@@ -154,6 +154,47 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             }
         }
 
+        // determine the IMFPs and equilibrium distribution value
+        // create 2 x NF matrix to store absorption IMFPs
+        // and 2 x NF matrix to store scattering IMFPs
+        // and 2 x NF matrix to store equilibrium distribution values
+        Real IMFP_abs[2][NUM_FLAVORS];
+        Real IMFP_scat[2][NUM_FLAVORS];
+        Real f_eq[2][NUM_FLAVORS]; // equilibrium distribution function (dimensionless)
+        Real munu[2][NUM_FLAVORS]; // equilibrium chemical potential (erg)
+
+        // fill the IMFP values
+        if(parms->IMFP_method==0){
+            // fill with all zeros
+            for (int i=0; i<2; ++i) {
+                for (int j=0; j<NUM_FLAVORS; ++j) {
+                    IMFP_abs[i][j] = 0;
+                    IMFP_scat[i][j] = 0;
+                    f_eq[i][j] = 0;
+                    munu[i][j] = 0;
+                }
+            }
+        } 
+        else if(parms->IMFP_method==1){
+            // use the IMFPs from the input file
+            for(int i=0; i<2; i++){
+                for(int j=0; j<NUM_FLAVORS; j++){
+                    IMFP_abs[i][j] = parms->IMFP_abs[i][j];
+                    IMFP_scat[i][j] = parms->IMFP_scat[i][j];
+                    munu[i][j] = parms->munu[i][j];
+                }
+            }
+        }
+        else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0 or 1");
+
+        // calculate the equilibrium distribution. Really munu and temperature should be interpolated from the grid.
+        for(int i=0; i<2; i++){
+            for(int j=0; j<NUM_FLAVORS; j++){
+                const Real exponent = (p.rdata(PIdx::pupt) - munu[i][j]) / parms->kT_in;
+                f_eq[i][j] = 1. / (1. + exp(exponent));
+            }
+        }
+
         // set the dfdt values into p.rdata
         p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
         p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;

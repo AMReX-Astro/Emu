@@ -82,7 +82,7 @@ void evolve_flavor(const TestParams* parms)
     state.setVal(0.0);
     state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
     state.setVal(parms->Ye_in,GIdx::Ye,1);
-    state.setVal(parms->T_in,GIdx::T,1); // MeV
+    state.setVal(parms->kT_in,GIdx::T,1); // erg
     state.FillBoundary(geom.periodicity());
 
     // initialize the grid variable names

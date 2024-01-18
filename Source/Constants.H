@@ -18,6 +18,7 @@ namespace PhysConst
     static constexpr amrex::Real GF = 1.1663787e-5/*GeV^-2*//(1e9*1e9*CGSUnitsConst::eV*CGSUnitsConst::eV) * hbarc*hbarc*hbarc; //erg cm^3
     static constexpr amrex::Real Mp = 1.6726219e-24; // g
     static constexpr amrex::Real sin2thetaW = 0.23122;
+    static constexpr amrex::Real kB = 1.380658e-16; // erg/K
 }
 
 namespace MathConst

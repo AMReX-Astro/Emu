@@ -78,3 +78,8 @@ alpha2_degrees = 0
 
 # CP-violating phase in degrees [NO:222 IO:285]
 deltaCP_degrees = 222
+
+#################
+# opacity stuff #
+#################
+IMFP_method = 0
