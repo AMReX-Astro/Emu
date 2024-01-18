@@ -460,6 +460,14 @@ if __name__ == "__main__":
         # Write out dFdt->F
         code.append(dFdt.code())
 
+        # evolution equations for N and Nbar, stored as dNdt-->N
+        line = "p.rdata(PIdx::N"+t+") = 0;"
+        code.append([line])
+
+        # evolution equations for L and Lbar, stored as dLdt-->L
+        line = "p.rdata(PIdx::L"+t+") = 0;"
+        code.append([line])
+
         # store Tr(H*F) for estimating numerical errors
         TrHf = (H*F).trace();
         code.append(["p.rdata(PIdx::TrHf) += p.rdata(PIdx::N"+t+") * ("+sympy.cxxcode(sympy.simplify(TrHf))+");"])
