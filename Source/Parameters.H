@@ -74,28 +74,27 @@ struct TestParams : public amrex::Gpu::Managed
 	if(perturbation_type == 1)
 	  pp.get("perturbation_wavelength_cm", perturbation_wavelength_cm);
 	
-        // neutrino physics parameters for 2-flavor
-        pp.get("mass1_eV", mass1);
-        pp.get("mass2_eV", mass2);
-        pp.get("theta12_degrees", theta12);
-        pp.get("alpha1_degrees", alpha1);
-        mass1 *= CGSUnitsConst::eV/PhysConst::c2;
-        mass2 *= CGSUnitsConst::eV/PhysConst::c2;
-        theta12 *= M_PI/180.;
-        alpha1 *= M_PI/180.;
-
-        if(NUM_FLAVORS>=2){
-        	pp.get("mass3_eV", mass3);
-        	pp.get("theta13_degrees", theta13);
-        	pp.get("theta23_degrees", theta23);
-        	pp.get("alpha2_degrees", alpha2);
-        	pp.get("deltaCP_degrees", deltaCP);
-        	mass3 *= CGSUnitsConst::eV/PhysConst::c2;
-        	theta13 *= M_PI/180.;
-        	theta23 *= M_PI/180.;
-        	alpha2 *= M_PI/180.;
-        	deltaCP *= M_PI/180.;
-        }
+    // neutrino physics parameters for 2-flavor
+    pp.get("mass1_eV", mass1);
+    pp.get("mass2_eV", mass2);
+    pp.get("theta12_degrees", theta12);
+    pp.get("alpha1_degrees", alpha1);
+    mass1 *= CGSUnitsConst::eV/PhysConst::c2;
+    mass2 *= CGSUnitsConst::eV/PhysConst::c2;
+    theta12 *= M_PI/180.;
+    alpha1 *= M_PI/180.;
+    if(NUM_FLAVORS>=2){
+    	pp.get("mass3_eV", mass3);
+    	pp.get("theta13_degrees", theta13);
+    	pp.get("theta23_degrees", theta23);
+    	pp.get("alpha2_degrees", alpha2);
+    	pp.get("deltaCP_degrees", deltaCP);
+    	mass3 *= CGSUnitsConst::eV/PhysConst::c2;
+    	theta13 *= M_PI/180.;
+    	theta23 *= M_PI/180.;
+    	alpha2 *= M_PI/180.;
+    	deltaCP *= M_PI/180.;
+    }
 
     }
 };
