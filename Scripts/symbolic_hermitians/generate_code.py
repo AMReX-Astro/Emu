@@ -169,7 +169,7 @@ if __name__ == "__main__":
                         "*p.rdata(PIdx::pupz)*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));"])
     code = []
     for t in tails:
-        string3 = ")*p.rdata(PIdx::N"+t+")"
+        string3 = ")"
         flist = HermitianMatrix(args.N, "f{}{}_{}"+t).header()
         for ivar in range(len(deposit_vars)):
             deplist = HermitianMatrix(args.N, deposit_vars[ivar]+"{}{}_{}"+t).header()
@@ -470,7 +470,7 @@ if __name__ == "__main__":
 
         # store Tr(H*F) for estimating numerical errors
         TrHf = (H*F).trace();
-        code.append(["p.rdata(PIdx::TrHf) += p.rdata(PIdx::N"+t+") * ("+sympy.cxxcode(sympy.simplify(TrHf))+");"])
+        code.append(["p.rdata(PIdx::TrHf) += ("+sympy.cxxcode(sympy.simplify(TrHf))+");"])
 
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))
