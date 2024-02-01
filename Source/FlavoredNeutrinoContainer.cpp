@@ -1,7 +1,5 @@
 #include "FlavoredNeutrinoContainer.H"
 #include "Constants.H"
-#include <sstream>
-#include <string>
 
 using namespace amrex;
 
@@ -92,9 +90,6 @@ Renormalize(const TestParams* parms)
     BL_PROFILE("FlavoredNeutrinoContainer::Renormalize");
 
     const int lev = 0;
-
-    const auto dxi = Geom(lev).InvCellSizeArray();
-    const auto plo = Geom(lev).ProbLoArray();
 
 #ifdef _OPENMP
 #pragma omp parallel

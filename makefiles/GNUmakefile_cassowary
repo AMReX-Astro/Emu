@@ -1,27 +1,20 @@
-EMU_HOME ?= ../
-AMREX_HOME ?= ../amrex
-
-DIM	= 3
-
 NUM_FLAVORS = 2
-
 SHAPE_FACTOR_ORDER = 2
+NUM_MOMENTS=2
 
 COMP = gnu
 
-DEBUG	= TRUE
+DEBUG = FALSE
 
 USE_MPI       = TRUE
 USE_OMP       = FALSE
 USE_ACC       = FALSE
 USE_CUDA      = FALSE
+AMREX_CUDA_ARCH=60
 
-TINY_PROFILE  = TRUE
-USE_PARTICLES = TRUE
+USE_HDF5=FALSE
+HDF5_HOME=/usr/lib/x86_64-linux-gnu/hdf5/serial
 
-PRECISION     = DOUBLE
-
-Bpack   :=
-Blocs   := . 
-
+EMU_HOME = ..
+AMREX_HOME = ../submodules/amrex
 include ../Make.Emu

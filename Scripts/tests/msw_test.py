@@ -4,7 +4,7 @@ import glob
 import EmuReader
 import sys
 import os
-importpath = os.path.dirname(os.path.realpath(__file__))+"/../visualization/"
+importpath = os.path.dirname(os.path.realpath(__file__))+"/../data_reduction/"
 sys.path.append(importpath)
 import amrex_plot_tools as amrex
 
@@ -20,6 +20,7 @@ eV = 1.60218e-12 # erg
 dm21c4 = 7.39e-5 * eV**2 # erg^2
 mp = 1.6726219e-24 # g
 GF = 1.1663787e-5 / (1e9*eV)**2 * (hbar*clight)**3 #erg cm^3
+NF = 2
 
 tolerance = 7e-2
 
@@ -31,7 +32,7 @@ print("rho*Ye shoud be ", rhoYe," g/cm^3")
 
 if __name__ == "__main__":
 
-    rkey, ikey = amrex.get_particle_keys()
+    rkey, ikey = amrex.get_particle_keys(NF)
 
     t = []
     fee = []

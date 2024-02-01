@@ -4,7 +4,7 @@ import glob
 import EmuReader
 import sys
 import os
-importpath = os.path.dirname(os.path.realpath(__file__))+"/../visualization/"
+importpath = os.path.dirname(os.path.realpath(__file__))+"/../data_reduction/"
 sys.path.append(importpath)
 import amrex_plot_tools as amrex
 
@@ -17,6 +17,7 @@ dm21c4 = 0 # parameter file has both masses set to 0
 tolerance = 1e-2
 i0 = 100
 i1 = 160
+NF = 2
 
 # get domain size
 file = open("../sample_inputs/inputs_fast_flavor_nonzerok","r")
@@ -26,7 +27,7 @@ for line in file:
 
 if __name__ == "__main__":
 
-    rkey, ikey = amrex.get_particle_keys()
+    rkey, ikey = amrex.get_particle_keys(NF)
     
     t = []
     fexR = []

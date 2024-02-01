@@ -4,7 +4,7 @@ import glob
 import EmuReader
 import sys
 import os
-importpath = os.path.dirname(os.path.realpath(__file__))+"/../visualization/"
+importpath = os.path.dirname(os.path.realpath(__file__))+"/../data_reduction/"
 sys.path.append(importpath)
 import amrex_plot_tools as amrex
 
@@ -19,10 +19,11 @@ dm21c4 = 7.39e-5 * amrex.eV**2 # erg^2
 tolerance = 2e-2
 i0 = 50
 i1 = 70
+NF=2
 
 if __name__ == "__main__":
 
-    rkey, ikey = amrex.get_particle_keys()
+    rkey, ikey = amrex.get_particle_keys(NF)
 
     t = []
     fexR = []

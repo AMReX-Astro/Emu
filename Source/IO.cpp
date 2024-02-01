@@ -2,6 +2,10 @@
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_buildInfo.H>
 
+#ifdef AMREX_USE_HDF5
+#include "hdf5.h"
+#endif
+
 #include "FlavoredNeutrinoContainer.H"
 #include "IO.H"
 #include "Evolve.H"
@@ -19,18 +23,25 @@ WritePlotFile (const amrex::MultiFab& state,
     BoxArray grids = state.boxArray();
     grids.convert(IntVect());
 
-    const DistributionMapping& dmap = state.DistributionMap();
-
     const std::string& plotfilename = amrex::Concatenate("plt", step);
 
     amrex::Print() << "  Writing plotfile " << plotfilename << "\n";
 
+    // write the grid file
+#ifdef AMREX_USE_HDF5
+    amrex::WriteSingleLevelPlotfileHDF5(plotfilename, state, GIdx::names, geom, time, step);
+#else
     amrex::WriteSingleLevelPlotfile(plotfilename, state, GIdx::names, geom, time, step);
+#endif
 
     if (write_plot_particles == 1)
     {
         auto neutrino_varnames = neutrinos.get_attribute_names();
+#ifdef AMREX_USE_HDF5
+        neutrinos.CheckpointHDF5(plotfilename, "neutrinos", true, neutrino_varnames);
+#else
         neutrinos.Checkpoint(plotfilename, "neutrinos", true, neutrino_varnames);
+#endif
     }
 
     // write job information
@@ -44,6 +55,31 @@ RecoverParticles (const std::string& dir,
 {
     BL_PROFILE("RecoverParticles()");
 
+#ifdef AMREX_USE_HDF5
+    // open the plotfile to get the metadata
+    std::string plotfilename = dir;
+    plotfilename.append(".h5");
+    hid_t file = H5Fopen(plotfilename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    hid_t group = H5Gopen(file, "level_0", H5P_DEFAULT);
+
+    // read the attributes to get step number
+    hid_t attr = H5Aopen(group, "steps", H5P_DEFAULT);
+    H5Aread(attr, H5T_NATIVE_INT, &step);
+    H5Aclose(attr);
+
+    // read the attributes to get the current time
+    attr = H5Aopen(group, "time", H5P_DEFAULT);
+    H5Aread(attr, H5T_NATIVE_DOUBLE, &time);
+    H5Aclose(attr);
+
+    // close all the pointers
+    H5Fclose(file);
+    H5Gclose(group);
+
+    // initialize our particle container from the plotfile
+    std::string checkpointfilename("neutrinos/neutrinos");
+    neutrinos.RestartHDF5(dir, checkpointfilename);
+#else
     // load the metadata from this plotfile
     PlotFileData plotfile(dir);
 
@@ -57,6 +93,7 @@ RecoverParticles (const std::string& dir,
 	// initialize our particle container from the plotfile
 	std::string file("neutrinos");
 	neutrinos.Restart(dir, file);
+#endif
 
 	// print the step/time for the restart
 	amrex::Print() << "Restarting after time step: " << step-1 << " t = " << time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;

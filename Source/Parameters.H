@@ -8,11 +8,14 @@
 
 using namespace amrex;
 
+
+//=========================================//
+// Structure of global parameter variables //
+//=========================================//
 struct TestParams : public amrex::Gpu::Managed
 {
     IntVect ncell;      // num cells in domain
     IntVect nppc;       // number of particles per cell in each dim
-    int nphi_equator;   // number of directions in x-y plane.
     Real Lx, Ly, Lz;
     int max_grid_size;
     int nsteps;
@@ -20,44 +23,33 @@ struct TestParams : public amrex::Gpu::Managed
     int write_plot_every;
     int write_plot_particles_every;
     Real rho_in, Ye_in, T_in; // g/ccm, 1, MeV
-    int simulation_type;
     Real cfl_factor, flavor_cfl_factor;
     Real max_adaptive_speedup;
     bool do_restart;
     std::string restart_dir;
     Real maxError;
 
+    // angular grid
+    std::string particle_data_filename;
+  
     // neutrino physics parameters. See first column of table 14.7 in http://pdg.lbl.gov/2019/reviews/rpp2019-rev-neutrino-mixing.pdf
     Real mass1, mass2, mass3; // neutrino masses in grams
     Real theta12, theta13, theta23; // neutrino mixing angles in radians
     Real alpha1, alpha2; // Majorana phases, radians
     Real deltaCP; // CP violating phases in radians
 
-    // simulation_type==3
-    int st3_wavelength_fraction_of_domain;
-    Real st3_amplitude;
-  
-    // simulation_type==4
-    Real st4_ndens   , st4_theta   , st4_phi   , st4_fluxfac   ;
-    Real st4_ndensbar, st4_thetabar, st4_phibar, st4_fluxfacbar;
-    Real st4_amplitude;
-
-    // simulation_type==5
-    Real st5_nnue , st5_nnua , st5_nnux ;
-    Real st5_fxnue, st5_fxnua, st5_fxnux;
-    Real st5_fynue, st5_fynua, st5_fynux;
-    Real st5_fznue, st5_fznua, st5_fznux;
-    Real st5_amplitude;
-
+    // perturbation parameters
+    int perturbation_type;
+    Real perturbation_wavelength_cm;
+    Real perturbation_amplitude;
+    
     void Initialize(){
         ParmParse pp;
-        pp.get("simulation_type", simulation_type);
         pp.get("ncell", ncell);
         pp.get("Lx", Lx);
         pp.get("Ly", Ly);
         pp.get("Lz", Lz);
         pp.get("nppc",  nppc);
-        pp.get("nphi_equator",  nphi_equator);
         pp.get("max_grid_size", max_grid_size);
         pp.get("nsteps", nsteps);
         pp.get("end_time", end_time);
@@ -73,6 +65,15 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("restart_dir", restart_dir);
         pp.get("maxError", maxError);
 
+	// angular grid
+	pp.get("particle_data_filename",particle_data_filename);
+	
+	// perturbation parameters
+	pp.get("perturbation_amplitude", perturbation_amplitude);
+	pp.get("perturbation_type", perturbation_type);
+	if(perturbation_type == 1)
+	  pp.get("perturbation_wavelength_cm", perturbation_wavelength_cm);
+	
         // neutrino physics parameters for 2-flavor
         pp.get("mass1_eV", mass1);
         pp.get("mass2_eV", mass2);
@@ -96,38 +97,6 @@ struct TestParams : public amrex::Gpu::Managed
         	deltaCP *= M_PI/180.;
         }
 
-	if(simulation_type==3){
-	  pp.get("st3_amplitude", st3_amplitude);
-	  pp.get("st3_wavelength_fraction_of_domain", st3_wavelength_fraction_of_domain);
-	}
-	
-	if(simulation_type==4){
-	  pp.get("st4_theta"   , st4_theta   );
-	  pp.get("st4_thetabar", st4_thetabar);
-	  pp.get("st4_phi"   , st4_phi);
-	  pp.get("st4_phibar", st4_phibar);
-	  pp.get("st4_ndens"   , st4_ndens);
-	  pp.get("st4_ndensbar", st4_ndensbar);
-	  pp.get("st4_fluxfac"   , st4_fluxfac);
-	  pp.get("st4_fluxfacbar", st4_fluxfacbar);
-	  pp.get("st4_amplitude", st4_amplitude);
-	}
-
-  if(simulation_type==5){
-    pp.get("st5_nnue",st5_nnue);
-    pp.get("st5_nnua",st5_nnua);
-    pp.get("st5_nnux",st5_nnux);
-    pp.get("st5_fxnue",st5_fxnue);
-    pp.get("st5_fxnua",st5_fxnua);
-    pp.get("st5_fxnux",st5_fxnux);
-    pp.get("st5_fynua",st5_fynua);
-    pp.get("st5_fynux",st5_fynux);
-    pp.get("st5_fynue",st5_fynue);
-    pp.get("st5_fznue",st5_fznue);
-    pp.get("st5_fznua",st5_fznua);
-    pp.get("st5_fznux",st5_fznux);
-    pp.get("st5_amplitude",st5_amplitude);
-  }
     }
 };
 
