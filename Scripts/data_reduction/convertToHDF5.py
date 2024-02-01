@@ -75,7 +75,7 @@ def convert_to_HDF5(sim_directory, DELETE_ALL_BUT_LAST_RESTART=False):
         allData["it"][-1] = int(d[-5:])
         for v in varlist:
             allData[v].resize(np.shape(allData[v])[0] + 1, axis=0)
-            allData[v][-1,:] = eds.cg[v[:-7]].d / ad['index',"cell_volume"][0]
+            allData[v][-1,:] = eds.cg[v[:-7]].d
 
     if DELETE_ALL_BUT_LAST_RESTART:
         particle_directories = [d[:-10] for d in sorted(glob.glob(sim_directory+"/plt*/neutrinos"))]
