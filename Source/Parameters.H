@@ -48,6 +48,7 @@ struct TestParams : public amrex::Gpu::Managed
     Real IMFP_abs[2][NUM_FLAVORS];
     Real IMFP_scat[2][NUM_FLAVORS];
     Real munu[2][NUM_FLAVORS]; // equilibrium electron neutrino chemical potential in MeV
+    Real delta_E;
     
     void Initialize(){
         ParmParse pp;
@@ -126,6 +127,8 @@ struct TestParams : public amrex::Gpu::Managed
             munu[0][i] *= 1e6*CGSUnitsConst::eV;
             munu[1][i] = -munu[0][i];
         }
+    	pp.get("delta_E", delta_E);
+        delta_E*= 1e6*CGSUnitsConst::eV; // erg
     }
     else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 1");
 
