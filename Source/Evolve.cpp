@@ -195,6 +195,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             }
         }
 
+        #include "generated_files/Evolve.cpp_dfdt_fill"
+
         // set the dfdt values into p.rdata
         p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
         p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
@@ -205,7 +207,5 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         p.rdata(PIdx::pupz) = 0;
         p.rdata(PIdx::pupt) = 0;
         p.rdata(PIdx::Vphase) = 0;
-
-        #include "generated_files/Evolve.cpp_dfdt_fill"
     });
 }
