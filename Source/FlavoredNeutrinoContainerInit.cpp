@@ -285,6 +285,10 @@ InitParticles(const TestParams* parms)
 	    p.rdata(PIdx::N   ) *= scale_fac;
 	    p.rdata(PIdx::Nbar) *= scale_fac;
 
+	    if(parms->IMFP_method == 1){
+			p.rdata(PIdx::Vphase) = dx[0]*dx[1]*dx[2]*4*MathConst::pi*(pow(p.rdata(PIdx::pupt)+parms->delta_E/2,3)-pow(p.rdata(PIdx::pupt)-parms->delta_E/2,3))/(3*ndirs_per_loc*parms->nppc[0]*parms->nppc[1]*parms->nppc[2]);
+		}
+
 		// set f ---> N*rho (before f ---> rho)
 		p.rdata(PIdx::f00_Re)    = p.rdata(PIdx::N    )* p.rdata(PIdx::f00_Re);
 		p.rdata(PIdx::f01_Im)    = p.rdata(PIdx::N    )* p.rdata(PIdx::f01_Im);
