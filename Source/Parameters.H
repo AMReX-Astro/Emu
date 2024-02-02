@@ -126,11 +126,6 @@ struct TestParams : public amrex::Gpu::Managed
             munu[0][i] *= 1e6*CGSUnitsConst::eV;
             munu[1][i] = -munu[0][i];
         }
-
-        // convert munu to erg
-        for(int j=0;j<2;j++)
-            for(int i=0;i<NUM_FLAVORS;i++)
-                munu[0][i] *= 1e6*CGSUnitsConst::eV;
     }
     else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 1");
 
