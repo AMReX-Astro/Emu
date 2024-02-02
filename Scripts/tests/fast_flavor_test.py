@@ -41,6 +41,7 @@ if __name__ == "__main__":
         t.append(p[rkey["time"]])
         fexR.append(p[rkey["f01_Re"]])
         fexI.append(p[rkey["f01_Im"]])
+        p = rdata[1]
         fexRbar.append(p[rkey["f01_Rebar"]])
         fexIbar.append(p[rkey["f01_Imbar"]])
         pupt.append(p[rkey["pupt"]])
