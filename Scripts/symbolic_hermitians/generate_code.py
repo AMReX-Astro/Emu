@@ -452,6 +452,22 @@ if __name__ == "__main__":
         Gdeclare = ["amrex::Real {}".format(line) for line in G.code()]
         code.append(Gdeclare)
 
+        #collision term (emmission and apsortion)
+        s=0
+        if(t == ""): s=0
+        if(t == "bar"): s=1
+
+        code.append(["dfdt00_Re"+t+" += IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] * p.rdata(PIdx::Vphase) * pow( 2 * MathConst::pi / PhysConst::hbar , 3 ) * ( 1 / PhysConst::c2 ) - PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][0] ) / 2 ) * p.rdata(PIdx::f00_Re"+t+");"])        
+        code.append(["dfdt11_Re"+t+" += IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] * p.rdata(PIdx::Vphase) * pow( 2 * MathConst::pi / PhysConst::hbar , 3 ) * ( 1 / PhysConst::c2 ) - PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][1] ) / 2 ) * p.rdata(PIdx::f11_Re"+t+");"])
+        code.append(["dfdt01_Re"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] ) / 2 )  * p.rdata(PIdx::f01_Re"+t+");"])
+        code.append(["dfdt01_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] ) / 2 )  * p.rdata(PIdx::f01_Im"+t+");"])
+        if(args.N == 3):
+            code.append(["dfdt22_Re"+t+" += IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] * p.rdata(PIdx::Vphase) * pow( 2 * MathConst::pi / PhysConst::hbar , 3 ) * ( 1 / PhysConst::c2 ) - PhysConst::c * ( ( IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][2] + IMFP_abs["+str(s)+"][2] ) / 2 ) * p.rdata(PIdx::f22_Re"+t+");"])
+            code.append(["dfdt02_Re"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::f02_Re"+t+");"])
+            code.append(["dfdt02_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::f02_Im"+t+");"])
+            code.append(["dfdt12_Re"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::f02_Re"+t+");"])
+            code.append(["dfdt12_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::f02_Im"+t+");"])        
+
         # Store dFdt back into the particle data for F
         dFdt = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
         Gempty = HermitianMatrix(args.N, "dfdt{}{}_{}"+t)
