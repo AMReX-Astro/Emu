@@ -23,7 +23,7 @@ struct TestParams : public amrex::Gpu::Managed
     int write_plot_every;
     int write_plot_particles_every;
     Real rho_in, Ye_in, kT_in; // g/ccm, 1, erg
-    Real cfl_factor, flavor_cfl_factor;
+    Real cfl_factor, flavor_cfl_factor,collision_cfl_factor;
     Real max_adaptive_speedup;
     bool do_restart;
     std::string restart_dir;
@@ -65,6 +65,7 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("T_MeV", kT_in);
         pp.get("cfl_factor", cfl_factor);
         pp.get("flavor_cfl_factor", flavor_cfl_factor);
+        pp.get("collision_cfl_factor", collision_cfl_factor);
         pp.get("max_adaptive_speedup", max_adaptive_speedup);
         pp.get("write_plot_every", write_plot_every);
         pp.get("write_plot_particles_every", write_plot_particles_every);

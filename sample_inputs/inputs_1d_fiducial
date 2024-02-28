@@ -1,6 +1,7 @@
 perturbation_type = 0
 perturbation_amplitude = 1e-6
 
+collision_cfl_factor = 0.5
 cfl_factor = 0.5
 flavor_cfl_factor = 0.5
 max_adaptive_speedup = 0

@@ -19,7 +19,7 @@ namespace GIdx
     }
 }
 
-Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& state, const FlavoredNeutrinoContainer& /* neutrinos */, const Real flavor_cfl_factor, const Real max_adaptive_speedup)
+Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& state, const FlavoredNeutrinoContainer& /* neutrinos */, const Real flavor_cfl_factor, const Real max_adaptive_speedup, const TestParams* parms)
 {
     AMREX_ASSERT(cfl_factor > 0.0 || flavor_cfl_factor > 0.0);
 
@@ -64,11 +64,37 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
 	// define the dt associated with each method
 	Real dt_flavor_adaptive = PhysConst::hbar/Vmax_adaptive*flavor_cfl_factor;
 	Real dt_flavor_stupid   = PhysConst::hbar/Vmax_stupid  *flavor_cfl_factor;
+	Real dt_flavor_absortion   = PhysConst::hbar/Vmax_stupid  *flavor_cfl_factor; // it will change only if opacity_method is 1
+
+    // get the inverse mean free path for absortion
+    Real IMFP_abs[2][NUM_FLAVORS];
+
+    if(parms->IMFP_method==1){
+        // use the IMFPs from the input file
+        for(int i=0; i<2; i++){
+            for(int j=0; j<NUM_FLAVORS; j++){
+                IMFP_abs[i][j] = parms->IMFP_abs[i][j];
+            }
+        }
+        
+        // this will store the max absortion IMFP
+        double max_IMFP_abs = std::numeric_limits<double>::lowest(); // Initialize max to lowest possible value
+
+        // Iterate through the array and update max_IMFP_abs if a larger value is found
+        for (int i = 0; i < 2; ++i) {
+            for (int j = 0; j < NUM_FLAVORS; ++j) {
+                if (IMFP_abs[i][j] > max_IMFP_abs) {
+                    max_IMFP_abs = IMFP_abs[i][j];
+                }
+            }
+        }
+        dt_flavor_absortion   = (1/(PhysConst::c*max_IMFP_abs)) *parms->collision_cfl_factor;
+    }
 
 	// pick the appropriate timestep
         dt_flavor = dt_flavor_stupid;
 	if(max_adaptive_speedup>1)
-	  dt_flavor = min(dt_flavor_stupid*max_adaptive_speedup, dt_flavor_adaptive);
+	  dt_flavor = min(dt_flavor_stupid*max_adaptive_speedup, dt_flavor_adaptive, dt_flavor_absortion);
     }
 
     Real dt = 0.0;
