@@ -2,6 +2,9 @@ perturbation_type = 1
 perturbation_amplitude = 1e-6
 perturbation_wavelength_cm = 1
 
+# attenuation parameters to time derivative of N due to hamiltonians
+attenuation_hamiltonians = 1
+
 collision_cfl_factor = 0.5
 cfl_factor = 0.5
 flavor_cfl_factor = 0.5

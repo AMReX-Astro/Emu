@@ -452,6 +452,20 @@ if __name__ == "__main__":
         Gdeclare = ["amrex::Real {}".format(line) for line in G.code()]
         code.append(Gdeclare)
 
+        # time derivative due to hamiltonians attenuation parameter
+        code.append(["dfdt00_Re"+t+" *= att_ham;"])
+        code.append(["dfdt11_Re"+t+" *= att_ham;"])
+        code.append(["dfdt01_Re"+t+" *= att_ham;"])
+        code.append(["dfdt01_Im"+t+" *= att_ham;"])
+
+        if(args.N == 3):
+
+            code.append(["dfdt22_Re"+t+" *= att_ham;"])
+            code.append(["dfdt02_Re"+t+" *= att_ham;"])
+            code.append(["dfdt02_Im"+t+" *= att_ham;"])
+            code.append(["dfdt12_Re"+t+" *= att_ham;"])
+            code.append(["dfdt12_Im"+t+" *= att_ham;"])
+
         #collision term (emmission and apsortion)
         s=0
         if(t == ""): s=0

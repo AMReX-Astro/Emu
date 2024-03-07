@@ -188,6 +188,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         Real IMFP_scat[2][NUM_FLAVORS];
         Real f_eq[2][NUM_FLAVORS]; // equilibrium distribution function (dimensionless)
         Real munu[2][NUM_FLAVORS]; // equilibrium chemical potential (erg)
+        Real att_ham = parms->attenuation_hamiltonians;
 
         // fill the IMFP values
         if(parms->IMFP_method==0){

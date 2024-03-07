@@ -49,7 +49,10 @@ struct TestParams : public amrex::Gpu::Managed
     Real IMFP_scat[2][NUM_FLAVORS];
     Real munu[2][NUM_FLAVORS]; // equilibrium electron neutrino chemical potential in MeV
     Real delta_E;
-    
+
+    // attenuation to hamiltonians
+    Real attenuation_hamiltonians;
+
     void Initialize(){
         ParmParse pp;
         pp.get("ncell", ncell);
@@ -106,6 +109,9 @@ struct TestParams : public amrex::Gpu::Managed
     	alpha2 *= M_PI/180.;
     	deltaCP *= M_PI/180.;
     }
+
+    // attenuation to hamiltonians
+    pp.get("attenuation_hamiltonians", attenuation_hamiltonians);
 
     // absorption opacities and equilibrium neutrino chemical potentials
     pp.get("IMFP_method", IMFP_method);
