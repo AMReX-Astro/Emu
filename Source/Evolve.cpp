@@ -62,39 +62,32 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
 	ParallelDescriptor::ReduceRealMax(Vmax_stupid  );
 
 	// define the dt associated with each method
-	Real dt_flavor_adaptive = PhysConst::hbar/Vmax_adaptive*flavor_cfl_factor;
-	Real dt_flavor_stupid   = PhysConst::hbar/Vmax_stupid  *flavor_cfl_factor;
-	Real dt_flavor_absortion   = PhysConst::hbar/Vmax_stupid  *flavor_cfl_factor; // it will change only if opacity_method is 1
+	Real dt_flavor_adaptive   = PhysConst::hbar/Vmax_adaptive*flavor_cfl_factor;
+	Real dt_flavor_stupid     = PhysConst::hbar/Vmax_stupid  *flavor_cfl_factor;
+	Real dt_flavor_absorption = PhysConst::hbar/Vmax_stupid  *flavor_cfl_factor; // it will change only if opacity_method is 1
 
-    // get the inverse mean free path for absortion
-    Real IMFP_abs[2][NUM_FLAVORS];
-
-    if(parms->IMFP_method==1){
-        // use the IMFPs from the input file
-        for(int i=0; i<2; i++){
-            for(int j=0; j<NUM_FLAVORS; j++){
-                IMFP_abs[i][j] = parms->IMFP_abs[i][j];
+    if (parms->IMFP_method == 1) {
+        // Use the IMFPs from the input file and find the maximum absorption IMFP
+        double max_IMFP_abs = std::numeric_limits<double>::lowest(); // Initialize max to lowest possible value
+        for (int i = 0; i < 2; ++i) {
+            for (int j = 0; j < NUM_FLAVORS; ++j) {
+                max_IMFP_abs = std::max(max_IMFP_abs, parms->IMFP_abs[i][j]);
             }
         }
         
-        // this will store the max absortion IMFP
-        double max_IMFP_abs = std::numeric_limits<double>::lowest(); // Initialize max to lowest possible value
+        // Calculate dt_flavor_absorption
+        dt_flavor_absorption = (1 / (PhysConst::c * max_IMFP_abs)) * parms->collision_cfl_factor / 500;
 
-        // Iterate through the array and update max_IMFP_abs if a larger value is found
-        for (int i = 0; i < 2; ++i) {
-            for (int j = 0; j < NUM_FLAVORS; ++j) {
-                if (IMFP_abs[i][j] > max_IMFP_abs) {
-                    max_IMFP_abs = IMFP_abs[i][j];
-                }
-            }
+        if (parms->attenuation_hamiltonians==0){
+            dt_flavor_adaptive = dt_flavor_absorption;
+            dt_flavor_stupid   = dt_flavor_absorption;
         }
-        dt_flavor_absortion   = (1/(PhysConst::c*max_IMFP_abs)) *parms->collision_cfl_factor;
     }
 
 	// pick the appropriate timestep
-        dt_flavor = dt_flavor_stupid;
+    dt_flavor = dt_flavor_stupid;
 	if(max_adaptive_speedup>1)
-	  dt_flavor = min(dt_flavor_stupid*max_adaptive_speedup, dt_flavor_adaptive, dt_flavor_absortion);
+	  dt_flavor = min(dt_flavor_stupid*max_adaptive_speedup, dt_flavor_adaptive, dt_flavor_absorption);
     }
 
     Real dt = 0.0;
