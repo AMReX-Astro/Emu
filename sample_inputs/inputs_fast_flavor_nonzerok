@@ -5,7 +5,7 @@ perturbation_wavelength_cm = 1
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 1
 
-collision_cfl_factor = 0.5
+collision_cfl_factor = 1e-3
 cfl_factor = 0.5
 flavor_cfl_factor = 0.5
 max_adaptive_speedup = 0

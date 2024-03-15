@@ -76,7 +76,7 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
         }
         
         // Calculate dt_flavor_absorption
-        dt_flavor_absorption = (1 / (PhysConst::c * max_IMFP_abs)) * parms->collision_cfl_factor / 500;
+        dt_flavor_absorption = (1 / (PhysConst::c * max_IMFP_abs)) * parms->collision_cfl_factor;
 
         if (parms->attenuation_hamiltonians==0){
             dt_flavor_adaptive = dt_flavor_absorption;

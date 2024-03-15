@@ -1,4 +1,4 @@
-collision_cfl_factor = 0.5
+collision_cfl_factor = 1e-3
 cfl_factor = 0.5
 max_adaptive_speedup = 0
 flavor_cfl_factor = .5
