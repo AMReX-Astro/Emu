@@ -172,9 +172,6 @@ void evolve_flavor(const TestParams* parms)
         // since Redistribute() applies periodic boundary conditions.
         neutrinos.SyncLocation(Sync::PositionToCoordinate);
 
-        // Renormalize the neutrino state
-        neutrinos.Renormalize(parms);
-
         // Get which step the integrator is on
         const int step = integrator.get_step_number();
         const Real time = integrator.get_time();
