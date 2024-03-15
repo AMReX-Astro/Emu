@@ -93,7 +93,7 @@ pipeline {
 	stage('Collisions to equilibrium'){ steps{
 		dir('Exec'){
 			sh 'cp ../makefiles/GNUmakefile_jenkins GNUmakefile'
-	        sh 'make realclean; make generate NUM_FLAVORS=3; make -j'
+	        sh 'make realclean; make generate NUM_FLAVORS=3; make -j NUM_FLAVORS=3'
 			sh 'python ../Scripts/initial_conditions/st7_empty_particles.py'
 			sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_coll_equi_test'
 	        sh 'python ../Scripts/tests/coll_equi_test.py'
