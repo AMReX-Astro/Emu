@@ -64,7 +64,7 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
 	// define the dt associated with each method
 	Real dt_flavor_adaptive   = PhysConst::hbar/Vmax_adaptive*flavor_cfl_factor;
 	Real dt_flavor_stupid     = PhysConst::hbar/Vmax_stupid  *flavor_cfl_factor;
-	Real dt_flavor_absorption = PhysConst::hbar/Vmax_stupid  *flavor_cfl_factor; // it will change only if opacity_method is 1
+	Real dt_flavor_absorption = std::numeric_limits<Real>::infinity(); // it will change only if opacity_method is 1
 
     if (parms->IMFP_method == 1) {
         // Use the IMFPs from the input file and find the maximum absorption IMFP
