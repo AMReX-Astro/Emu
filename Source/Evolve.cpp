@@ -83,7 +83,7 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
         }
 
         // pick the appropriate timestep
-        dt_flavor = dt_flavor_stupid;
+        dt_flavor = min(dt_flavor_stupid, dt_flavor_adaptive, dt_flavor_absorption);
         if(max_adaptive_speedup>1) {
             dt_flavor = min(dt_flavor_stupid*max_adaptive_speedup, dt_flavor_adaptive, dt_flavor_absorption);
         }
