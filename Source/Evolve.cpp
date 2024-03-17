@@ -61,9 +61,14 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
         ParallelDescriptor::ReduceRealMax(Vmax_stupid  );
 
         // define the dt associated with each method
-        Real dt_flavor_adaptive   = PhysConst::hbar/Vmax_adaptive*flavor_cfl_factor;
-        Real dt_flavor_stupid     = PhysConst::hbar/Vmax_stupid  *flavor_cfl_factor;
-        Real dt_flavor_absorption = std::numeric_limits<Real>::infinity(); // it will change only if opacity_method is 1
+        Real dt_flavor_adaptive = std::numeric_limits<Real>::max();
+        Real dt_flavor_stupid = std::numeric_limits<Real>::max();
+        Real dt_flavor_absorption = std::numeric_limits<Real>::max(); // Initialize with infinity
+
+        if (parms->attenuation_hamiltonians != 0) {
+            dt_flavor_adaptive = PhysConst::hbar / Vmax_adaptive * flavor_cfl_factor / parms->attenuation_hamiltonians;
+            dt_flavor_stupid = PhysConst::hbar / Vmax_stupid * flavor_cfl_factor / parms->attenuation_hamiltonians;
+        }
 
         if (parms->IMFP_method == 1) {
             // Use the IMFPs from the input file and find the maximum absorption IMFP
@@ -73,14 +78,8 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
                     max_IMFP_abs = std::max(max_IMFP_abs, parms->IMFP_abs[i][j]);
                 }
             }
-            
             // Calculate dt_flavor_absorption
             dt_flavor_absorption = (1 / (PhysConst::c * max_IMFP_abs)) * parms->collision_cfl_factor;
-
-            if (parms->attenuation_hamiltonians==0){
-                dt_flavor_adaptive = dt_flavor_absorption;
-                dt_flavor_stupid   = dt_flavor_absorption;
-            }
         }
 
         // pick the appropriate timestep
