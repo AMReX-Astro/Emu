@@ -39,10 +39,9 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
         ReduceOps<ReduceOpMax,ReduceOpMax> reduce_op;
         ReduceData<Real,Real> reduce_data(reduce_op);
         using ReduceTuple = typename decltype(reduce_data)::Type;
-        for (MFIter mfi(state); mfi.isValid(); ++mfi)
-        {
+        for (MFIter mfi(state); mfi.isValid(); ++mfi) {
             const Box& bx = mfi.fabbox();
-	    auto const& fab = state.array(mfi);
+	        auto const& fab = state.array(mfi);
             reduce_op.eval(bx, reduce_data,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
             {
@@ -50,44 +49,45 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
                 #include "generated_files/Evolve.cpp_compute_dt_fill"
                 return {V_adaptive, V_stupid};
             });
-	}
+    	}
 
-	// extract the reduced values from the combined reduced data structure
-	auto rv = reduce_data.value();
-	Real Vmax_adaptive = amrex::get<0>(rv) + FlavoredNeutrinoContainer::Vvac_max;
-	Real Vmax_stupid   = amrex::get<1>(rv) + FlavoredNeutrinoContainer::Vvac_max;
+        // extract the reduced values from the combined reduced data structure
+        auto rv = reduce_data.value();
+        Real Vmax_adaptive = amrex::get<0>(rv) + FlavoredNeutrinoContainer::Vvac_max;
+        Real Vmax_stupid   = amrex::get<1>(rv) + FlavoredNeutrinoContainer::Vvac_max;
 
-	// reduce across MPI ranks
-	ParallelDescriptor::ReduceRealMax(Vmax_adaptive);
-	ParallelDescriptor::ReduceRealMax(Vmax_stupid  );
+        // reduce across MPI ranks
+        ParallelDescriptor::ReduceRealMax(Vmax_adaptive);
+        ParallelDescriptor::ReduceRealMax(Vmax_stupid  );
 
-	// define the dt associated with each method
-	Real dt_flavor_adaptive   = PhysConst::hbar/Vmax_adaptive*flavor_cfl_factor;
-	Real dt_flavor_stupid     = PhysConst::hbar/Vmax_stupid  *flavor_cfl_factor;
-	Real dt_flavor_absorption = std::numeric_limits<Real>::infinity(); // it will change only if opacity_method is 1
+        // define the dt associated with each method
+        Real dt_flavor_adaptive   = PhysConst::hbar/Vmax_adaptive*flavor_cfl_factor;
+        Real dt_flavor_stupid     = PhysConst::hbar/Vmax_stupid  *flavor_cfl_factor;
+        Real dt_flavor_absorption = std::numeric_limits<Real>::infinity(); // it will change only if opacity_method is 1
 
-    if (parms->IMFP_method == 1) {
-        // Use the IMFPs from the input file and find the maximum absorption IMFP
-        double max_IMFP_abs = std::numeric_limits<double>::lowest(); // Initialize max to lowest possible value
-        for (int i = 0; i < 2; ++i) {
-            for (int j = 0; j < NUM_FLAVORS; ++j) {
-                max_IMFP_abs = std::max(max_IMFP_abs, parms->IMFP_abs[i][j]);
+        if (parms->IMFP_method == 1) {
+            // Use the IMFPs from the input file and find the maximum absorption IMFP
+            double max_IMFP_abs = std::numeric_limits<double>::lowest(); // Initialize max to lowest possible value
+            for (int i = 0; i < 2; ++i) {
+                for (int j = 0; j < NUM_FLAVORS; ++j) {
+                    max_IMFP_abs = std::max(max_IMFP_abs, parms->IMFP_abs[i][j]);
+                }
+            }
+            
+            // Calculate dt_flavor_absorption
+            dt_flavor_absorption = (1 / (PhysConst::c * max_IMFP_abs)) * parms->collision_cfl_factor;
+
+            if (parms->attenuation_hamiltonians==0){
+                dt_flavor_adaptive = dt_flavor_absorption;
+                dt_flavor_stupid   = dt_flavor_absorption;
             }
         }
-        
-        // Calculate dt_flavor_absorption
-        dt_flavor_absorption = (1 / (PhysConst::c * max_IMFP_abs)) * parms->collision_cfl_factor;
 
-        if (parms->attenuation_hamiltonians==0){
-            dt_flavor_adaptive = dt_flavor_absorption;
-            dt_flavor_stupid   = dt_flavor_absorption;
+        // pick the appropriate timestep
+        dt_flavor = dt_flavor_stupid;
+        if(max_adaptive_speedup>1) {
+            dt_flavor = min(dt_flavor_stupid*max_adaptive_speedup, dt_flavor_adaptive, dt_flavor_absorption);
         }
-    }
-
-	// pick the appropriate timestep
-    dt_flavor = dt_flavor_stupid;
-	if(max_adaptive_speedup>1)
-	  dt_flavor = min(dt_flavor_stupid*max_adaptive_speedup, dt_flavor_adaptive, dt_flavor_absorption);
     }
 
     Real dt = 0.0;
