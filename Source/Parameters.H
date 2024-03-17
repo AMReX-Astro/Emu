@@ -48,7 +48,7 @@ struct TestParams : public amrex::Gpu::Managed
     Real IMFP_abs[2][NUM_FLAVORS];
     Real IMFP_scat[2][NUM_FLAVORS];
     Real munu[2][NUM_FLAVORS]; // equilibrium electron neutrino chemical potential in erg (CGS unist)
-    Real delta_E;
+    Real delta_E; // erg (CGS unist)
 
     // attenuation to hamiltonians
     Real attenuation_hamiltonians;
