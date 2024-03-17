@@ -19,19 +19,19 @@ namespace GIdx
     }
 }
 
-Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& state, const FlavoredNeutrinoContainer& /* neutrinos */, const Real flavor_cfl_factor, const Real max_adaptive_speedup, const TestParams* parms)
+Real compute_dt(const Geometry& geom, const MultiFab& state, const FlavoredNeutrinoContainer& /* neutrinos */, const TestParams* parms)
 {
-    AMREX_ASSERT(cfl_factor > 0.0 || flavor_cfl_factor > 0.0);
+    AMREX_ASSERT(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0 || parms->collision_cfl_factor > 0.0);
 
 	// translation part of timestep limit
     const auto dxi = geom.CellSizeArray();
     Real dt_translation = 0.0;
-    if (cfl_factor > 0.0) {
-        dt_translation = std::min(std::min(dxi[0],dxi[1]), dxi[2]) / PhysConst::c * cfl_factor;
+    if (parms->cfl_factor > 0.0) {
+        dt_translation = std::min(std::min(dxi[0],dxi[1]), dxi[2]) / PhysConst::c * parms->cfl_factor;
     }
 
     Real dt_flavor = 0.0;
-    if (flavor_cfl_factor > 0.0) {
+    if (parms->flavor_cfl_factor > 0.0 && parms->collision_cfl_factor > 0.0) {
         // define the reduction operator to get the max contribution to
         // the potential from matter and neutrinos
         // compute "effective" potential (ergs) that produces characteristic timescale
@@ -66,8 +66,8 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
         Real dt_flavor_absorption = std::numeric_limits<Real>::max(); // Initialize with infinity
 
         if (parms->attenuation_hamiltonians != 0) {
-            dt_flavor_adaptive = PhysConst::hbar / Vmax_adaptive * flavor_cfl_factor / parms->attenuation_hamiltonians;
-            dt_flavor_stupid = PhysConst::hbar / Vmax_stupid * flavor_cfl_factor / parms->attenuation_hamiltonians;
+            dt_flavor_adaptive = PhysConst::hbar / Vmax_adaptive * parms->flavor_cfl_factor / parms->attenuation_hamiltonians;
+            dt_flavor_stupid = PhysConst::hbar / Vmax_stupid * parms->flavor_cfl_factor / parms->attenuation_hamiltonians;
         }
 
         if (parms->IMFP_method == 1) {
@@ -84,8 +84,8 @@ Real compute_dt(const Geometry& geom, const Real cfl_factor, const MultiFab& sta
 
         // pick the appropriate timestep
         dt_flavor = min(dt_flavor_stupid, dt_flavor_adaptive, dt_flavor_absorption);
-        if(max_adaptive_speedup>1) {
-            dt_flavor = min(dt_flavor_stupid*max_adaptive_speedup, dt_flavor_adaptive, dt_flavor_absorption);
+        if(parms->max_adaptive_speedup>1) {
+            dt_flavor = min(dt_flavor_stupid*parms->max_adaptive_speedup, dt_flavor_adaptive, dt_flavor_absorption);
         }
     }
 
