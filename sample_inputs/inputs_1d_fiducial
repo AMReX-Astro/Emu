@@ -1,6 +1,10 @@
 perturbation_type = 0
 perturbation_amplitude = 1e-6
 
+# attenuation parameters to time derivative of N due to hamiltonians
+attenuation_hamiltonians = 1
+
+collision_cfl_factor = 1e-3
 cfl_factor = 0.5
 flavor_cfl_factor = 0.5
 max_adaptive_speedup = 0
@@ -78,3 +82,27 @@ alpha2_degrees = 0
 # CP-violating phase in degrees [NO:222 IO:285]
 deltaCP_degrees = 222
 
+#################
+# opacity stuff #
+#################
+IMFP_method = 0
+
+IMFP_abs0_cm = 0
+IMFP_abs1_cm = 0
+IMFP_abs2_cm = 0
+IMFP_abs0bar_cm = 0
+IMFP_abs1bar_cm = 0
+IMFP_abs2bar_cm = 0
+
+munu0_MeV=0
+munu1_MeV=0
+munu2_MeV=0
+
+IMFP_scat0_cm = 0
+IMFP_scat1_cm = 0
+IMFP_scat2_cm = 0
+IMFP_scat0bar_cm = 0
+IMFP_scat1bar_cm = 0
+IMFP_scat2bar_cm = 0
+
+delta_E = 0 # Mev

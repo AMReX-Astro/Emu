@@ -285,6 +285,28 @@ InitParticles(const TestParams* parms)
 	    p.rdata(PIdx::N   ) *= scale_fac;
 	    p.rdata(PIdx::Nbar) *= scale_fac;
 
+	    if(parms->IMFP_method == 1){
+			p.rdata(PIdx::Vphase) = dx[0]*dx[1]*dx[2]*4*MathConst::pi*(pow(p.rdata(PIdx::pupt)+parms->delta_E/2,3)-pow(p.rdata(PIdx::pupt)-parms->delta_E/2,3))/(3*ndirs_per_loc*parms->nppc[0]*parms->nppc[1]*parms->nppc[2]);
+		}
+
+		// set f ---> N*rho (before f ---> rho)
+		p.rdata(PIdx::f00_Re)    = p.rdata(PIdx::N    )* p.rdata(PIdx::f00_Re);
+		p.rdata(PIdx::f01_Im)    = p.rdata(PIdx::N    )* p.rdata(PIdx::f01_Im);
+		p.rdata(PIdx::f01_Re)    = p.rdata(PIdx::N    )* p.rdata(PIdx::f01_Re);
+		p.rdata(PIdx::f11_Re)    = p.rdata(PIdx::N    )* p.rdata(PIdx::f11_Re);
+		p.rdata(PIdx::f00_Rebar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::f00_Rebar);
+		p.rdata(PIdx::f01_Imbar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::f01_Imbar);
+		p.rdata(PIdx::f01_Rebar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::f01_Rebar);
+		p.rdata(PIdx::f11_Rebar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::f11_Rebar);
+#if NUM_FLAVORS==3
+		p.rdata(PIdx::f02_Re)    = p.rdata(PIdx::N    )* p.rdata(PIdx::f02_Re);
+		p.rdata(PIdx::f02_Im)    = p.rdata(PIdx::N    )* p.rdata(PIdx::f02_Im);
+		p.rdata(PIdx::f22_Re)    = p.rdata(PIdx::N    )* p.rdata(PIdx::f22_Re);
+		p.rdata(PIdx::f02_Rebar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::f02_Rebar);
+		p.rdata(PIdx::f02_Imbar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::f02_Imbar);
+		p.rdata(PIdx::f22_Rebar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::f22_Rebar);
+#endif
+
 	    //=====================//
 	    // Apply Perturbations //
 	    //=====================//

@@ -104,23 +104,14 @@ if __name__ == "__main__":
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
     code += ["TrHf"]
+    code += ["Vphase"]
 
-    code = [code[i]+"," for i in range(len(code))]
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoContainer.H_fill"))
+    code_lines = [code[i]+"," for i in range(len(code))]
+    write_code(code_lines, os.path.join(args.emu_home, "Source/generated_files", "FlavoredNeutrinoContainer.H_fill"))
 
     #========================================================#
     # FlavoredNeutrinoContainerInit.H_particle_varnames_fill #
     #========================================================#
-    vars = ["f"]
-    tails = ["","bar"]
-    code = []
-    for t in tails:
-        code += ["N"+t]
-        code += ["L"+t]
-        for v in vars:
-            A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
-            code += A.header()
-    code += ["TrHf"]
     code_string = 'attribute_names = {"time", "x", "y", "z", "pupx", "pupy", "pupz", "pupt", '
     code = ['"{}"'.format(c) for c in code]
     code_string = code_string + ", ".join(code) + "};"
@@ -178,7 +169,7 @@ if __name__ == "__main__":
                         "*p.rdata(PIdx::pupz)*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));"])
     code = []
     for t in tails:
-        string3 = ")*p.rdata(PIdx::N"+t+")"
+        string3 = ")"
         flist = HermitianMatrix(args.N, "f{}{}_{}"+t).header()
         for ivar in range(len(deposit_vars)):
             deplist = HermitianMatrix(args.N, deposit_vars[ivar]+"{}{}_{}"+t).header()
@@ -461,6 +452,38 @@ if __name__ == "__main__":
         Gdeclare = ["amrex::Real {}".format(line) for line in G.code()]
         code.append(Gdeclare)
 
+        # time derivative due to hamiltonians attenuation parameter
+        code.append(["dfdt00_Re"+t+" *= att_ham;"])
+        code.append(["dfdt11_Re"+t+" *= att_ham;"])
+        code.append(["dfdt01_Re"+t+" *= att_ham;"])
+        code.append(["dfdt01_Im"+t+" *= att_ham;"])
+
+        if(args.N == 3):
+
+            code.append(["dfdt22_Re"+t+" *= att_ham;"])
+            code.append(["dfdt02_Re"+t+" *= att_ham;"])
+            code.append(["dfdt02_Im"+t+" *= att_ham;"])
+            code.append(["dfdt12_Re"+t+" *= att_ham;"])
+            code.append(["dfdt12_Im"+t+" *= att_ham;"])
+
+        #collision term (emmission and apsortion)
+        s=0
+        if(t == ""): s=0
+        if(t == "bar"): s=1
+
+        code.append(["dfdt00_Re"+t+" += IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] * p.rdata(PIdx::Vphase) * pow( 1 / ( 2 * MathConst::pi * PhysConst::hbar ) , 3 ) * ( 1 / PhysConst::c2 ) - PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][0] ) / 2 ) * p.rdata(PIdx::f00_Re"+t+");"])        
+        code.append(["dfdt11_Re"+t+" += IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] * p.rdata(PIdx::Vphase) * pow( 1 / ( 2 * MathConst::pi * PhysConst::hbar ) , 3 ) * ( 1 / PhysConst::c2 ) - PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][1] ) / 2 ) * p.rdata(PIdx::f11_Re"+t+");"])
+        code.append(["dfdt01_Re"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] ) / 2 )  * p.rdata(PIdx::f01_Re"+t+");"])
+        code.append(["dfdt01_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] ) / 2 )  * p.rdata(PIdx::f01_Im"+t+");"])
+        
+        if(args.N == 3):
+
+            code.append(["dfdt22_Re"+t+" += IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] * p.rdata(PIdx::Vphase) * pow( 1 / ( 2 * MathConst::pi * PhysConst::hbar ) , 3 ) * ( 1 / PhysConst::c2 ) - PhysConst::c * ( ( IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][2] + IMFP_abs["+str(s)+"][2] ) / 2 ) * p.rdata(PIdx::f22_Re"+t+");"])
+            code.append(["dfdt02_Re"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::f02_Re"+t+");"])
+            code.append(["dfdt02_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::f02_Im"+t+");"])
+            code.append(["dfdt12_Re"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::f02_Re"+t+");"])
+            code.append(["dfdt12_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::f02_Im"+t+");"])        
+
         # Store dFdt back into the particle data for F
         dFdt = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
         Gempty = HermitianMatrix(args.N, "dfdt{}{}_{}"+t)
@@ -469,9 +492,17 @@ if __name__ == "__main__":
         # Write out dFdt->F
         code.append(dFdt.code())
 
+        # evolution equations for N and Nbar, stored as dNdt-->N
+        line = "p.rdata(PIdx::N"+t+") = 0;"
+        code.append([line])
+
+        # evolution equations for L and Lbar, stored as dLdt-->L
+        line = "p.rdata(PIdx::L"+t+") = 0;"
+        code.append([line])
+
         # store Tr(H*F) for estimating numerical errors
         TrHf = (H*F).trace();
-        code.append(["p.rdata(PIdx::TrHf) += p.rdata(PIdx::N"+t+") * ("+sympy.cxxcode(sympy.simplify(TrHf))+");"])
+        code.append(["p.rdata(PIdx::TrHf) += ("+sympy.cxxcode(sympy.simplify(TrHf))+");"])
 
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))

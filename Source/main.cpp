@@ -82,7 +82,7 @@ void evolve_flavor(const TestParams* parms)
     state.setVal(0.0);
     state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
     state.setVal(parms->Ye_in,GIdx::Ye,1);
-    state.setVal(parms->T_in,GIdx::T,1); // MeV
+    state.setVal(parms->kT_in,GIdx::T,1); // erg
     state.FillBoundary(geom.periodicity());
 
     // initialize the grid variable names
@@ -172,9 +172,6 @@ void evolve_flavor(const TestParams* parms)
         // since Redistribute() applies periodic boundary conditions.
         neutrinos.SyncLocation(Sync::PositionToCoordinate);
 
-        // Renormalize the neutrino state
-        neutrinos.Renormalize(parms);
-
         // Get which step the integrator is on
         const int step = integrator.get_step_number();
         const Real time = integrator.get_time();
@@ -197,7 +194,7 @@ void evolve_flavor(const TestParams* parms)
         // Note: this won't be the same as the new-time grid data
         // because the last deposit_to_mesh call was at either the old time (forward Euler)
         // or the final RK stage, if using Runge-Kutta.
-        const Real dt = compute_dt(geom,parms->cfl_factor,state,neutrinos,parms->flavor_cfl_factor,parms->max_adaptive_speedup);
+        const Real dt = compute_dt(geom, state, neutrinos, parms);
         integrator.set_timestep(dt);
     };
 
@@ -206,7 +203,7 @@ void evolve_flavor(const TestParams* parms)
     integrator.set_post_timestep(post_timestep_fun);
 
     // Get a starting timestep
-    const Real starting_dt = compute_dt(geom,parms->cfl_factor,state,neutrinos_old,parms->flavor_cfl_factor, parms->max_adaptive_speedup);
+    const Real starting_dt = compute_dt(geom, state, neutrinos_old, parms);
 
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;

@@ -385,7 +385,8 @@ def reduce_data(directory=".", nproc=4, do_average=True, do_fft=True, do_angular
     if(data_format=="Emu"):
         yt_descriptor = "boxlib"
         convert_N_to_inv_ccm = 1.0
-        directories = sorted(glob.glob("plt?????"))
+        directories = glob.glob("plt*")
+        directories = sorted(directories, key=lambda x: int(x.lstrip("plt")))
 
     # get NF
     eds = emu.EmuDataset(directories[0])
