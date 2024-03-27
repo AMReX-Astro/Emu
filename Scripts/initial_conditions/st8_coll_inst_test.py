@@ -24,13 +24,11 @@ nnu = np.zeros((2,NF))
 nnu[0,0] = nnue
 nnu[1,0] = nnua
 nnu[:,1:] = nnux
-print(f'nnu {nnu}')
 
 fnu = np.zeros((2,NF,3))
 fnu[0,0,:] = nnue * fnue
 fnu[1,0,:] = nnua * fnua
 fnu[:,1:,:] = nnu[:,1:,np.newaxis] * fnux[np.newaxis,np.newaxis,:]
-print(f'fnu {fnu}')
 
 particles = moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, uniform_sphere, minerbo_interpolate) # [particle, variable]
 
