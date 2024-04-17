@@ -23,8 +23,10 @@ nparticles = len(phat)
 # 10 dm2 c^4 / (2 sqrt(2) GF E)
 energy_erg = 50 * 1e6*amrex.eV
 dm2 = (m2-m1)**2 #g^2
+print(dm2*amrex.clight**4/(2.*energy_erg),"erg")
 # double omega = dm2*PhysConst::c4 / (2.*p.rdata(PIdx::pupt));
 ndens = 10. * dm2*amrex.clight**4 / (2.*np.sqrt(2.) * amrex.GF * energy_erg)
+print(ndens,"cm^-3")
 # double mu = sqrt(2.)*PhysConst::GF * ndens
 ndens_per_particle = ndens / nparticles # cm^-3
 
