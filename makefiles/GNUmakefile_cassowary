@@ -10,7 +10,7 @@ USE_MPI       = TRUE
 USE_OMP       = FALSE
 USE_ACC       = FALSE
 USE_CUDA      = FALSE
-AMREX_CUDA_ARCH=60
+AMREX_CUDA_ARCH=72
 
 USE_HDF5=FALSE
 HDF5_HOME=/usr/lib/x86_64-linux-gnu/hdf5/serial
