@@ -117,7 +117,9 @@ void evolve_flavor(const TestParams* parms)
 
     // Deposit particles to grid
     deposit_to_mesh(neutrinos_old, state, geom);
-
+    
+    init_background_to_mesh(neutrinos_old, state, geom, parms);
+    
     // Write plotfile after initialization
     DataReducer rd;
     if (not parms->do_restart) {
@@ -148,6 +150,7 @@ void evolve_flavor(const TestParams* parms)
         // B) We only Redistribute the integrator new data at the end of the timestep, not all the RHS data.
         //    Thus, this copy clears the old RHS particles and creates particles in the RHS container corresponding
         //    to the current particles in neutrinos.
+    
         neutrinos_rhs.copyParticles(neutrinos, true);
 
         // Step 3: Interpolate Mesh to construct the neutrino RHS in place
