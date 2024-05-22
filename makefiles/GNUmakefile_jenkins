@@ -10,7 +10,7 @@ USE_MPI       = TRUE
 USE_OMP       = FALSE
 USE_ACC       = FALSE
 USE_CUDA      = TRUE
-AMREX_CUDA_ARCH=75
+AMREX_CUDA_ARCH=70
 
 EMU_HOME = ..
 AMREX_HOME = ../submodules/amrex
