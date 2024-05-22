@@ -97,7 +97,7 @@ pipeline {
 			sh 'python ../Scripts/initial_conditions/st8_coll_inst_test.py'
 			sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_collisional_instability_test'
 			sh 'python ../Scripts/data_reduction/reduce_data.py'
-	        sh 'python ../Scripts/tests/coll_equi_test.py'
+	        sh 'python ../Scripts/tests/coll_inst_test.py'
 			sh 'rm -rf plt*'
 		}
 	}}
