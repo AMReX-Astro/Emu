@@ -12,13 +12,13 @@ import amrex_plot_tools as amrex
 # from ix=37 iy=86 iz=75 in Francois' data
 NF = 2
 nphi_equator = 16
-nnue = 6.789813908916637e+33
-nnua = 7.733526735756642e+33
-nnux = 4.445468787928724e+33
-fnue = np.array([-7.54557877e+30, -5.43212748e+30, -7.69897358e+31]) / np.array(6.789813908916637e+33)
-fnua = np.array([-7.54557877e+30, -5.43212748e+30, -2.94417496e+32]) / np.array(7.733526735756642e+33)
-fnux = np.array([-9.35603382e+30, -2.95170204e+31, -2.04503596e+32]) / np.array(4.445468787928724e+33)
-energy_erg = np.average([37.39393896350027, 38.51187069862436, 42.44995883633579, 42.44995883633579]) * 1e6*amrex.eV
+nnue = 3.0e+33
+nnua = 2.4e+33
+nnux = 1.0e+33
+fnue = np.array([0.0 , 0.0 , 0.0])
+fnua = np.array([0.0 , 0.0 , 0.0])
+fnux = np.array([0.0 , 0.0 , 0.0])
+energy_erg = 20.0 * 1e6*amrex.eV
 
 nnu = np.zeros((2,NF))
 nnu[0,0] = nnue
