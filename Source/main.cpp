@@ -117,9 +117,7 @@ void evolve_flavor(const TestParams* parms)
 
     // Deposit particles to grid
     deposit_to_mesh(neutrinos_old, state, geom);
-    
-    init_background_to_mesh(neutrinos_old, state, geom, parms);
-    
+        
     // Write plotfile after initialization
     DataReducer rd;
     if (not parms->do_restart) {

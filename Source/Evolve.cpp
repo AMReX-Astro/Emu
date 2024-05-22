@@ -103,31 +103,6 @@ Real compute_dt(const Geometry& geom, const MultiFab& state, const FlavoredNeutr
     return dt;
 }
 
-void init_background_to_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const MultiFab& state, const Geometry& geom, const TestParams* parms)
-{
-    const auto plo = geom.ProbLoArray();
-    const auto dxi = geom.InvCellSizeArray();
-
-    amrex::MeshToParticle(neutrinos_rhs, state, 0,
-    [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
-                          amrex::Array4<const amrex::Real> const& sarr)
-    { 
-        double x,y,z;
-
-        for (int k = 0; k < parms->ncell[2]; ++k) {
-            for (int j = 0; j < parms->ncell[1]; ++j) {
-                for (int i = 0; i < parms->ncell[0]; ++i) {
-
-                    x =  plo[0] + dxi[0] * i + dxi[0] / 2.0;        
-                    y =  plo[1] + dxi[1] * j + dxi[1] / 2.0;         
-                    z =  plo[2] + dxi[2] * k + dxi[2] / 2.0;         
-
-                }
-            }
-        }
-    });
-}
-
 void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state, const Geometry& geom)
 {
     const auto plo = geom.ProbLoArray();
