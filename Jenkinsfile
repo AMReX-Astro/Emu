@@ -90,6 +90,18 @@ pipeline {
 		}
 	}}
 
+	stage('Collisions flavor instability'){ steps{
+		dir('Exec'){
+			sh 'cp ../makefiles/GNUmakefile_jenkins GNUmakefile'
+	        sh 'make realclean; make generate NUM_FLAVORS=2; make -j NUM_FLAVORS=2'
+			sh 'python ../Scripts/initial_conditions/st8_coll_inst_test.py'
+			sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_coll_equi_test'
+			sh 'python ../Scripts/data_reduction/reduce_data.py'
+	        sh 'python ../Scripts/tests/coll_equi_test.py'
+			sh 'rm -rf plt*'
+		}
+	}}
+
 	stage('Collisions to equilibrium'){ steps{
 		dir('Exec'){
 			sh 'cp ../makefiles/GNUmakefile_jenkins GNUmakefile'
