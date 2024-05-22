@@ -131,8 +131,10 @@ struct TestParams : public amrex::Gpu::Managed
             pp.get(name.c_str(), IMFP_scat[1][i]);
             name = std::string("munu")+std::to_string(i)+std::string("_MeV");
             pp.get(name.c_str(), munu[0][i]);
+            name = std::string("munu")+std::to_string(i)+std::string("bar_MeV");
+            pp.get(name.c_str(), munu[1][i]);
             munu[0][i] *= 1e6*CGSUnitsConst::eV;
-            munu[1][i] = -munu[0][i];
+            munu[1][i] *= 1e6*CGSUnitsConst::eV;
         }
     	pp.get("delta_E", delta_E);
         delta_E*= 1e6*CGSUnitsConst::eV; // erg
