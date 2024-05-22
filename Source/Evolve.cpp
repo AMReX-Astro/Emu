@@ -122,12 +122,6 @@ void init_background_to_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const Mul
                     y =  plo[1] + dxi[1] * j + dxi[1] / 2.0;         
                     z =  plo[2] + dxi[2] * k + dxi[2] / 2.0;         
 
-                    std::cout << "\n ibm x : " << x << std::endl;
-                    std::cout << " ibm y : " << y << std::endl;
-                    std::cout << " ibm z : " << z << std::endl;
-                    std::cout << "\n ibm sarr("<<i<<", "<<j<<", "<<k<<", GIdx::T) : " << sarr(i, j , k, GIdx::T) << std::endl;
-                    std::cout << " ibm sarr("<<i<<", "<<j<<", "<<k<<", GIdx::rho) : " << sarr(i, j, k, GIdx::rho) << std::endl;
-                    std::cout << " ibm sarr("<<i<<", "<<j<<", "<<k<<", GIdx::Ye) : " << sarr(i, j, k, GIdx::Ye) << std::endl;
                 }
             }
         }
