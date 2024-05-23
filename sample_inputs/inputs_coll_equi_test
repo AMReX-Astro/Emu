@@ -94,9 +94,12 @@ IMFP_abs0bar_cm = 5e-4
 IMFP_abs1bar_cm = 5e-4
 IMFP_abs2bar_cm = 5e-4
 
-munu0_MeV=0
-munu1_MeV=0
-munu2_MeV=0
+munu0_MeV = 0
+munu1_MeV = 0
+munu2_MeV = 0
+munu0bar_MeV = 0
+munu1bar_MeV = 0
+munu2bar_MeV = 0
 
 IMFP_scat0_cm = 0
 IMFP_scat1_cm = 0
