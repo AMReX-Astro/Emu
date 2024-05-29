@@ -94,12 +94,10 @@ if __name__ == "__main__":
     #==================================#
     # FlavoredNeutrinoContainer.H_fill #
     #==================================#
-    vars = ["f"]
+    vars = ["N"]
     tails = ["","bar"]
     code = []
     for t in tails:
-        code += ["N"+t] # number of neutrinos
-        code += ["L"+t] # length of isospin vector, units of number of neutrinos
         for v in vars:
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
@@ -170,7 +168,7 @@ if __name__ == "__main__":
     code = []
     for t in tails:
         string3 = ")"
-        flist = HermitianMatrix(args.N, "f{}{}_{}"+t).header()
+        flist = HermitianMatrix(args.N, "N{}{}_{}"+t).header()
         for ivar in range(len(deposit_vars)):
             deplist = HermitianMatrix(args.N, deposit_vars[ivar]+"{}{}_{}"+t).header()
             for icomp in range(len(flist)):
@@ -184,7 +182,7 @@ if __name__ == "__main__":
     code = []
     for t in tails:
         # diagonal averages
-        N = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
+        N = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
         Nlist = N.header_diagonals();
         for i in range(len(Nlist)):
             code.append("Trf += "+Nlist[i]+";")
@@ -439,10 +437,10 @@ if __name__ == "__main__":
     code = []
     for t in tails:
         H = HermitianMatrix(args.N, "V{}{}_{}"+t)
-        F = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
+        F = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
 
         # G = Temporary variables for dFdt
-        G = HermitianMatrix(args.N, "dfdt{}{}_{}"+t)
+        G = HermitianMatrix(args.N, "dNdt{}{}_{}"+t)
 
         # Calculate C = i * [A,B]
         #Fnew.anticommutator(H,F).times(sympy.I * dt);
@@ -453,52 +451,52 @@ if __name__ == "__main__":
         code.append(Gdeclare)
 
         # time derivative due to hamiltonians attenuation parameter
-        code.append(["dfdt00_Re"+t+" *= att_ham;"])
-        code.append(["dfdt11_Re"+t+" *= att_ham;"])
-        code.append(["dfdt01_Re"+t+" *= att_ham;"])
-        code.append(["dfdt01_Im"+t+" *= att_ham;"])
+        code.append(["dNdt00_Re"+t+" *= att_ham;"])
+        code.append(["dNdt11_Re"+t+" *= att_ham;"])
+        code.append(["dNdt01_Re"+t+" *= att_ham;"])
+        code.append(["dNdt01_Im"+t+" *= att_ham;"])
 
         if(args.N == 3):
 
-            code.append(["dfdt22_Re"+t+" *= att_ham;"])
-            code.append(["dfdt02_Re"+t+" *= att_ham;"])
-            code.append(["dfdt02_Im"+t+" *= att_ham;"])
-            code.append(["dfdt12_Re"+t+" *= att_ham;"])
-            code.append(["dfdt12_Im"+t+" *= att_ham;"])
+            code.append(["dNdt22_Re"+t+" *= att_ham;"])
+            code.append(["dNdt02_Re"+t+" *= att_ham;"])
+            code.append(["dNdt02_Im"+t+" *= att_ham;"])
+            code.append(["dNdt12_Re"+t+" *= att_ham;"])
+            code.append(["dNdt12_Im"+t+" *= att_ham;"])
 
         #collision term (emmission and apsortion)
         s=0
         if(t == ""): s=0
         if(t == "bar"): s=1
 
-        code.append(["dfdt00_Re"+t+" += IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] * p.rdata(PIdx::Vphase) * pow( 1 / ( 2 * MathConst::pi * PhysConst::hbar ) , 3 ) * ( 1 / PhysConst::c2 ) - PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][0] ) / 2 ) * p.rdata(PIdx::f00_Re"+t+");"])        
-        code.append(["dfdt11_Re"+t+" += IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] * p.rdata(PIdx::Vphase) * pow( 1 / ( 2 * MathConst::pi * PhysConst::hbar ) , 3 ) * ( 1 / PhysConst::c2 ) - PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][1] ) / 2 ) * p.rdata(PIdx::f11_Re"+t+");"])
-        code.append(["dfdt01_Re"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] ) / 2 )  * p.rdata(PIdx::f01_Re"+t+");"])
-        code.append(["dfdt01_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] ) / 2 )  * p.rdata(PIdx::f01_Im"+t+");"])
+        code.append(["dNdt00_Re"+t+" += IMFP_abs["+str(s)+"][0] * N_eq["+str(s)+"][0] * p.rdata(PIdx::Vphase) * pow( 1 / ( 2 * MathConst::pi * PhysConst::hbar ) , 3 ) * ( 1 / PhysConst::c2 ) - PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * N_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][0] * N_eq["+str(s)+"][0] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][0] ) / 2 ) * p.rdata(PIdx::N00_Re"+t+");"])        
+        code.append(["dNdt11_Re"+t+" += IMFP_abs["+str(s)+"][1] * N_eq["+str(s)+"][1] * p.rdata(PIdx::Vphase) * pow( 1 / ( 2 * MathConst::pi * PhysConst::hbar ) , 3 ) * ( 1 / PhysConst::c2 ) - PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * N_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][1] * N_eq["+str(s)+"][1] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][1] ) / 2 ) * p.rdata(PIdx::N11_Re"+t+");"])
+        code.append(["dNdt01_Re"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * N_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] * N_eq["+str(s)+"][1] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] ) / 2 )  * p.rdata(PIdx::N01_Re"+t+");"])
+        code.append(["dNdt01_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * N_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] * N_eq["+str(s)+"][1] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] ) / 2 )  * p.rdata(PIdx::N01_Im"+t+");"])
         
         if(args.N == 3):
 
-            code.append(["dfdt22_Re"+t+" += IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] * p.rdata(PIdx::Vphase) * pow( 1 / ( 2 * MathConst::pi * PhysConst::hbar ) , 3 ) * ( 1 / PhysConst::c2 ) - PhysConst::c * ( ( IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][2] + IMFP_abs["+str(s)+"][2] ) / 2 ) * p.rdata(PIdx::f22_Re"+t+");"])
-            code.append(["dfdt02_Re"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::f02_Re"+t+");"])
-            code.append(["dfdt02_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::f02_Im"+t+");"])
-            code.append(["dfdt12_Re"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::f02_Re"+t+");"])
-            code.append(["dfdt12_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::f02_Im"+t+");"])        
+            code.append(["dNdt22_Re"+t+" += IMFP_abs["+str(s)+"][2] * N_eq["+str(s)+"][2] * p.rdata(PIdx::Vphase) * pow( 1 / ( 2 * MathConst::pi * PhysConst::hbar ) , 3 ) * ( 1 / PhysConst::c2 ) - PhysConst::c * ( ( IMFP_abs["+str(s)+"][2] * N_eq["+str(s)+"][2] + IMFP_abs["+str(s)+"][2] * N_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][2] + IMFP_abs["+str(s)+"][2] ) / 2 ) * p.rdata(PIdx::N22_Re"+t+");"])
+            code.append(["dNdt02_Re"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * N_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] * N_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::N02_Re"+t+");"])
+            code.append(["dNdt02_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * N_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] * N_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::N02_Im"+t+");"])
+            code.append(["dNdt12_Re"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * N_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] * N_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::N02_Re"+t+");"])
+            code.append(["dNdt12_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * N_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] * N_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::N02_Im"+t+");"])        
 
         # Store dFdt back into the particle data for F
-        dFdt = HermitianMatrix(args.N, "p.rdata(PIdx::f{}{}_{}"+t+")")
-        Gempty = HermitianMatrix(args.N, "dfdt{}{}_{}"+t)
+        dFdt = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
+        Gempty = HermitianMatrix(args.N, "dNdt{}{}_{}"+t)
         dFdt.H = Gempty.H
 
         # Write out dFdt->F
         code.append(dFdt.code())
 
         # evolution equations for N and Nbar, stored as dNdt-->N
-        line = "p.rdata(PIdx::N"+t+") = 0;"
-        code.append([line])
+        #line = "p.rdata(PIdx::N"+t+") = 0;"
+        #code.append([line])
 
         # evolution equations for L and Lbar, stored as dLdt-->L
-        line = "p.rdata(PIdx::L"+t+") = 0;"
-        code.append([line])
+        #line = "p.rdata(PIdx::L"+t+") = 0;"
+        #code.append([line])
 
         # store Tr(H*F) for estimating numerical errors
         TrHf = (H*F).trace();
