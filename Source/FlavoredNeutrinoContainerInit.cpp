@@ -324,6 +324,24 @@ InitParticles(const TestParams* parms)
 	      p.rdata(PIdx::f01_Re)    = parms->perturbation_amplitude*sin(nu_k*p.pos(2)) * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f11_Re   ));
 	      p.rdata(PIdx::f01_Rebar) = parms->perturbation_amplitude*sin(nu_k*p.pos(2)) * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f11_Rebar));
 	    }
+		if(parms->perturbation_type == 2){
+			// random perturbations of the diagonals
+		    Real rand;
+	    	symmetric_uniform(&rand, engine);
+			p.rdata(PIdx::f00_Re)    *= 1. + parms->perturbation_amplitude*rand;
+	    	symmetric_uniform(&rand, engine);
+			p.rdata(PIdx::f00_Rebar) *= 1. + parms->perturbation_amplitude*rand;
+	    	symmetric_uniform(&rand, engine);
+			p.rdata(PIdx::f11_Re)    *= 1. + parms->perturbation_amplitude*rand;
+	    	symmetric_uniform(&rand, engine);
+			p.rdata(PIdx::f11_Rebar) *= 1. + parms->perturbation_amplitude*rand;
+#if NUM_FLAVORS==3
+	    	symmetric_uniform(&rand, engine);
+			p.rdata(PIdx::f22_Re)    *= 1. + parms->perturbation_amplitude*rand;
+	    	symmetric_uniform(&rand, engine);
+			p.rdata(PIdx::f22_Rebar) *= 1. + parms->perturbation_amplitude*rand;
+#endif
+		}
 	      
 	    
 #include "generated_files/FlavoredNeutrinoContainerInit.cpp_set_trace_length"
