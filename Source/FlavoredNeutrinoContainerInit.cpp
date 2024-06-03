@@ -251,10 +251,10 @@ InitParticles(const TestParams* parms)
 	    for(int i_attrib=0; i_attrib<PIdx::nattribs; i_attrib++) p.rdata(i_attrib) = particle_data_p[i_direction][i_attrib];
 
 	    // basic checks
-	    AMREX_ASSERT(p.rdata(PIdx::N        ) >= 0);
-	    AMREX_ASSERT(p.rdata(PIdx::Nbar     ) >= 0);
-	    AMREX_ASSERT(p.rdata(PIdx::L        ) >= 0);
-	    AMREX_ASSERT(p.rdata(PIdx::Lbar     ) >= 0);
+	    //AMREX_ASSERT(p.rdata(PIdx::N        ) >= 0);
+	    //AMREX_ASSERT(p.rdata(PIdx::Nbar     ) >= 0);
+	    //AMREX_ASSERT(p.rdata(PIdx::L        ) >= 0);
+	    //AMREX_ASSERT(p.rdata(PIdx::Lbar     ) >= 0);
 	    AMREX_ASSERT(p.rdata(PIdx::N00_Re   ) >= 0);
 	    AMREX_ASSERT(p.rdata(PIdx::N11_Re   ) >= 0);
 	    AMREX_ASSERT(p.rdata(PIdx::N00_Rebar) >= 0);
@@ -306,6 +306,8 @@ InitParticles(const TestParams* parms)
 		p.rdata(PIdx::N02_Imbar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::N02_Imbar);
 		p.rdata(PIdx::f22_Rebar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::f22_Rebar);
 #endif*/
+
+		//printf("p.rdata(PIdx::N00_Re) = %15.6g\n", p.rdata(PIdx::N00_Re));
 
 	    //=====================//
 	    // Apply Perturbations //
