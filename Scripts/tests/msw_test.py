@@ -48,10 +48,10 @@ if __name__ == "__main__":
         idata, rdata = EmuReader.read_particle_data(plotfile, ptype="neutrinos")
         p = rdata[0]
         t.append(p[rkey["time"]])
-        fee.append(p[rkey["f00_Re"]])
-        fxx.append(p[rkey["f11_Re"]])
-        feebar.append(p[rkey["f00_Rebar"]])
-        fxxbar.append(p[rkey["f11_Rebar"]])
+        fee.append(p[rkey["N00_Re"]])
+        fxx.append(p[rkey["N11_Re"]])
+        feebar.append(p[rkey["N00_Rebar"]])
+        fxxbar.append(p[rkey["N11_Rebar"]])
         pupt.append(p[rkey["pupt"]])
 
     t = np.array(t)
