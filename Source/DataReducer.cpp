@@ -64,7 +64,7 @@ void DataReducer::InitializeFiles()
       #endif
     }
     file0D.createDataSet("N_offdiag_mag(1|ccm)", dataspace, create_datatype<amrex::Real>(), props);
-    file0D.createDataSet("sumTrf", dataspace, create_datatype<amrex::Real>(), props);
+    file0D.createDataSet("sumTrN", dataspace, create_datatype<amrex::Real>(), props);
     file0D.createDataSet("sumTrHN", dataspace, create_datatype<amrex::Real>(), props);
 
 #else
@@ -104,7 +104,7 @@ void DataReducer::InitializeFiles()
     j++;
     outfile << j << ":N_offdiag_mag(1|ccm)\t";
     j++;
-    outfile << j << ":sumTrf\t";
+    outfile << j << ":sumTrN\t";
     j++;
     outfile << j << ":sumTrHN\t";
     outfile << std::endl;
@@ -131,13 +131,13 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   auto particleResult = amrex::ParticleReduce< ReduceData<amrex::Real, amrex::Real> >(neutrinos,
       [=] AMREX_GPU_DEVICE(const PType& p) noexcept -> amrex::GpuTuple<amrex::Real, amrex::Real> {
           Real TrHN = p.rdata(PIdx::TrHN);
-	  Real Trf = 0;
+	  Real TrN = 0;
 #include "generated_files/DataReducer.cpp_fill_particles"
-	  return GpuTuple{Trf,TrHN};
+	  return GpuTuple{TrN,TrHN};
       }, reduce_ops);
-  Real Trf  = amrex::get<0>(particleResult);
+  Real TrN  = amrex::get<0>(particleResult);
   Real TrHN = amrex::get<1>(particleResult);
-  ParallelDescriptor::ReduceRealSum(Trf);
+  ParallelDescriptor::ReduceRealSum(TrN);
   ParallelDescriptor::ReduceRealSum(TrHN);
 
   //=============================//
@@ -290,7 +290,7 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
       #endif
     }
     append_0D(file0D, "N_offdiag_mag(1|ccm)", N_offdiag_mag);
-    append_0D(file0D, "sumTrf", Trf);
+    append_0D(file0D, "sumTrN", TrN);
     append_0D(file0D, "sumTrHN", TrHN);
 #else
     std::ofstream outfile;
@@ -324,7 +324,7 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
       #endif
     }
     outfile << N_offdiag_mag << "\t";
-    outfile << Trf << "\t";
+    outfile << TrN << "\t";
     outfile << TrHN << "\t";
     outfile << std::endl;
     outfile.close();

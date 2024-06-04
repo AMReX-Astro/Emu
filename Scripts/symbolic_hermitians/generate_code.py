@@ -185,7 +185,7 @@ if __name__ == "__main__":
         N = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
         Nlist = N.header_diagonals();
         for i in range(len(Nlist)):
-            code.append("Trf += "+Nlist[i]+";")
+            code.append("TrN += "+Nlist[i]+";")
 
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "DataReducer.cpp_fill_particles"))
 
