@@ -258,24 +258,14 @@ InitParticles(const TestParams* parms)
 	    for(int i_attrib=0; i_attrib<PIdx::nattribs; i_attrib++) p.rdata(i_attrib) = particle_data_p[i_direction][i_attrib];
 
 	    // basic checks
-	    //AMREX_ASSERT(p.rdata(PIdx::N        ) >= 0);
-	    //AMREX_ASSERT(p.rdata(PIdx::Nbar     ) >= 0);
-	    //AMREX_ASSERT(p.rdata(PIdx::L        ) >= 0);
-	    //AMREX_ASSERT(p.rdata(PIdx::Lbar     ) >= 0);
 	    AMREX_ASSERT(p.rdata(PIdx::N00_Re   ) >= 0);
 	    AMREX_ASSERT(p.rdata(PIdx::N11_Re   ) >= 0);
 	    AMREX_ASSERT(p.rdata(PIdx::N00_Rebar) >= 0);
 	    AMREX_ASSERT(p.rdata(PIdx::N11_Rebar) >= 0);
-	    Real trace    = p.rdata(PIdx::N00_Re   ) + p.rdata(PIdx::N11_Re   );
-	    Real tracebar = p.rdata(PIdx::N00_Rebar) + p.rdata(PIdx::N11_Rebar);
 #if NUM_FLAVORS==3
 	    AMREX_ASSERT(p.rdata(PIdx::N22_Re   ) >= 0);
 	    AMREX_ASSERT(p.rdata(PIdx::N22_Rebar) >= 0);
-	    trace    += p.rdata(PIdx::N22_Re   );
-	    tracebar += p.rdata(PIdx::N22_Rebar);
 #endif
-	    AMREX_ASSERT(std::abs(trace   -1)<1e-6);
-	    AMREX_ASSERT(std::abs(tracebar-1)<1e-6);
 
 	    // Set particle position
 	    p.pos(0) = x;
@@ -289,32 +279,18 @@ InitParticles(const TestParams* parms)
 	    p.rdata(PIdx::time) = 0;
 
 	    // scale particle numbers based on number of points per cell and the cell volume
-	    //p.rdata(PIdx::N   ) *= scale_fac;
-	    //p.rdata(PIdx::Nbar) *= scale_fac;
+	    p.rdata(PIdx::N00_Re   ) *= scale_fac;
+	    p.rdata(PIdx::N11_Re   ) *= scale_fac;
+	    p.rdata(PIdx::N00_Rebar) *= scale_fac;
+	    p.rdata(PIdx::N11_Rebar) *= scale_fac;
+#if NUM_FLAVORS==3
+	    p.rdata(PIdx::N22_Re   ) *= scale_fac;
+	    p.rdata(PIdx::N22_Rebar) *= scale_fac;
+#endif
 
 	    if(parms->IMFP_method == 1){
 			p.rdata(PIdx::Vphase) = dx[0]*dx[1]*dx[2]*4*MathConst::pi*(pow(p.rdata(PIdx::pupt)+parms->delta_E/2,3)-pow(p.rdata(PIdx::pupt)-parms->delta_E/2,3))/(3*ndirs_per_loc*parms->nppc[0]*parms->nppc[1]*parms->nppc[2]);
 		}
-
-		// set f ---> N*rho (before f ---> rho)
-		/*p.rdata(PIdx::N00_Re)    = p.rdata(PIdx::N    )* p.rdata(PIdx::N00_Re);
-		p.rdata(PIdx::N01_Im)    = p.rdata(PIdx::N    )* p.rdata(PIdx::N01_Im);
-		p.rdata(PIdx::N01_Re)    = p.rdata(PIdx::N    )* p.rdata(PIdx::N01_Re);
-		p.rdata(PIdx::N11_Re)    = p.rdata(PIdx::N    )* p.rdata(PIdx::N11_Re);
-		p.rdata(PIdx::N00_Rebar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::N00_Rebar);
-		p.rdata(PIdx::N01_Imbar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::N01_Imbar);
-		p.rdata(PIdx::N01_Rebar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::N01_Rebar);
-		p.rdata(PIdx::N11_Rebar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::N11_Rebar);
-#if NUM_FLAVORS==3
-		p.rdata(PIdx::N02_Re)    = p.rdata(PIdx::N    )* p.rdata(PIdx::N02_Re);
-		p.rdata(PIdx::N02_Im)    = p.rdata(PIdx::N    )* p.rdata(PIdx::N02_Im);
-		p.rdata(PIdx::f22_Re)    = p.rdata(PIdx::N    )* p.rdata(PIdx::f22_Re);
-		p.rdata(PIdx::N02_Rebar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::N02_Rebar);
-		p.rdata(PIdx::N02_Imbar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::N02_Imbar);
-		p.rdata(PIdx::f22_Rebar) = p.rdata(PIdx::Nbar) * p.rdata(PIdx::f22_Rebar);
-#endif*/
-
-		//printf("p.rdata(PIdx::N00_Re) = %15.6g\n", p.rdata(PIdx::N00_Re));
 
 	    //=====================//
 	    // Apply Perturbations //
