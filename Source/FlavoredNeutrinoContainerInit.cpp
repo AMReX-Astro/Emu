@@ -10,8 +10,13 @@ using namespace amrex;
 // Particle distribution in momentum space //
 //=========================================//
 
-Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs> > read_particle_data(std::string filename){
-  Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs> > particle_data;
+Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs>> read_particle_data(std::string filename){
+
+  // This function reads the input file containing the initial conditions of the particles.
+  // It reads the momentum, energy, and flavor occupation matrices for neutrinos and antineutrinos.
+
+  // This array will save the particles information
+  Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs>> particle_data;
 
   // open the file as a stream
   std::ifstream file(filename);
@@ -32,9 +37,11 @@ Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs> > read_particle_data(std::strin
   if(NF_in != NUM_FLAVORS) amrex::Print() << "Error: number of flavors in particle data file does not match the number of flavors Emu was compiled for." << std::endl;
   AMREX_ASSERT(NF_in == NUM_FLAVORS);
   
+  // Loop over every line in the initial condition file.
+  // This is equivalent to looping over every particle.
+  // Save every particle's information in the array particle_data.
   while(std::getline(file, line)){
     ss = std::stringstream(line);
-
     // skip over the first four attributes (x,y,z,t)
     for(int i=4; i<PIdx::nattribs; i++) ss >> temp_particle[i];
     particle_data.push_back(temp_particle);
