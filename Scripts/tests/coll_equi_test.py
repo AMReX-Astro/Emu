@@ -34,12 +34,12 @@ if __name__ == "__main__":
 
     for i in range(len(rdata)):
         p = rdata[i]
-        N_ee.append(p[rkey["f00_Re"]])
-        N_uu.append(p[rkey["f11_Re"]])
-        N_tt.append(p[rkey["f22_Re"]])
-        N_eebar.append(p[rkey["f00_Rebar"]])
-        N_uubar.append(p[rkey["f11_Rebar"]])
-        N_ttbar.append(p[rkey["f22_Rebar"]])
+        N_ee.append(p[rkey["N00_Re"]])
+        N_uu.append(p[rkey["N11_Re"]])
+        N_tt.append(p[rkey["N22_Re"]])
+        N_eebar.append(p[rkey["N00_Rebar"]])
+        N_uubar.append(p[rkey["N11_Rebar"]])
+        N_ttbar.append(p[rkey["N22_Rebar"]])
 
     print(f'average N_ee {np.average(N_ee)}')
     print(f'average N_uu {np.average(N_uu)}')
