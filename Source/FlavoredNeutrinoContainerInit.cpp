@@ -308,21 +308,21 @@ InitParticles(const TestParams* parms)
 	      p.rdata(PIdx::N01_Imbar) = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Rebar) - p.rdata(PIdx::N11_Rebar));
 #if NUM_FLAVORS==3
 	      symmetric_uniform(&rand, engine);
-	      p.rdata(PIdx::N02_Re)    = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Re   ) - p.rdata(PIdx::f22_Re   ));
+	      p.rdata(PIdx::N02_Re)    = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Re   ) - p.rdata(PIdx::N22_Re   ));
 	      symmetric_uniform(&rand, engine);
-	      p.rdata(PIdx::N02_Im)    = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Re   ) - p.rdata(PIdx::f22_Re   ));
+	      p.rdata(PIdx::N02_Im)    = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Re   ) - p.rdata(PIdx::N22_Re   ));
 	      symmetric_uniform(&rand, engine);
-	      p.rdata(PIdx::N12_Re)    = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N11_Re   ) - p.rdata(PIdx::f22_Re   ));
+	      p.rdata(PIdx::N12_Re)    = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N11_Re   ) - p.rdata(PIdx::N22_Re   ));
 	      symmetric_uniform(&rand, engine);
-	      p.rdata(PIdx::N12_Im)    = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N11_Re   ) - p.rdata(PIdx::f22_Re   ));
+	      p.rdata(PIdx::N12_Im)    = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N11_Re   ) - p.rdata(PIdx::N22_Re   ));
 	      symmetric_uniform(&rand, engine);
-	      p.rdata(PIdx::N02_Rebar) = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Rebar) - p.rdata(PIdx::f22_Rebar));
+	      p.rdata(PIdx::N02_Rebar) = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Rebar) - p.rdata(PIdx::N22_Rebar));
 	      symmetric_uniform(&rand, engine);
-	      p.rdata(PIdx::N02_Imbar) = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Rebar) - p.rdata(PIdx::f22_Rebar));
+	      p.rdata(PIdx::N02_Imbar) = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Rebar) - p.rdata(PIdx::N22_Rebar));
 	      symmetric_uniform(&rand, engine);
-	      p.rdata(PIdx::N12_Rebar) = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N11_Rebar) - p.rdata(PIdx::f22_Rebar));
+	      p.rdata(PIdx::N12_Rebar) = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N11_Rebar) - p.rdata(PIdx::N22_Rebar));
 	      symmetric_uniform(&rand, engine);
-	      p.rdata(PIdx::N12_Imbar) = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N11_Rebar) - p.rdata(PIdx::f22_Rebar));
+	      p.rdata(PIdx::N12_Imbar) = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N11_Rebar) - p.rdata(PIdx::N22_Rebar));
 #endif
 	    }
 	    if(parms->perturbation_type == 1){
