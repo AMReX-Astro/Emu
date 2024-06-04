@@ -101,7 +101,7 @@ if __name__ == "__main__":
         for v in vars:
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
-    code += ["TrHf"]
+    code += ["TrHN"]
     code += ["Vphase"]
 
     code_lines = [code[i]+"," for i in range(len(code))]
@@ -438,14 +438,14 @@ if __name__ == "__main__":
     code = []
     for t in tails:
         H = HermitianMatrix(args.N, "V{}{}_{}"+t)
-        F = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
+        N = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
 
-        # G = Temporary variables for dFdt
+        # G = Temporary variables for dNdt
         G = HermitianMatrix(args.N, "dNdt{}{}_{}"+t)
 
         # Calculate C = i * [A,B]
         #Fnew.anticommutator(H,F).times(sympy.I * dt);
-        G.H = ((H*F - F*H).times(-sympy.I/hbar)).H * attenuation
+        G.H = ((H*N - N*H).times(-sympy.I/hbar)).H * attenuation
 
         # Write the temporary variables for dFdt
         Gdeclare = ["amrex::Real {}".format(line) for line in G.code()]
@@ -470,24 +470,16 @@ if __name__ == "__main__":
             code.append(["dNdt12_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * N_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] * N_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::N02_Im"+t+");"])        
 
         # Store dFdt back into the particle data for F
-        dFdt = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
+        dNdt = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
         Gempty = HermitianMatrix(args.N, "dNdt{}{}_{}"+t)
-        dFdt.H = Gempty.H
+        dNdt.H = Gempty.H
 
-        # Write out dFdt->F
-        code.append(dFdt.code())
-
-        # evolution equations for N and Nbar, stored as dNdt-->N
-        #line = "p.rdata(PIdx::N"+t+") = 0;"
-        #code.append([line])
-
-        # evolution equations for L and Lbar, stored as dLdt-->L
-        #line = "p.rdata(PIdx::L"+t+") = 0;"
-        #code.append([line])
+        # Write out dNdt->N
+        code.append(dNdt.code())
 
         # store Tr(H*F) for estimating numerical errors
-        TrHf = (H*F).trace();
-        code.append(["p.rdata(PIdx::TrHf) += ("+sympy.cxxcode(sympy.simplify(TrHf))+");"])
+        TrHN = (H*N).trace();
+        code.append(["p.rdata(PIdx::TrHN) += ("+sympy.cxxcode(sympy.simplify(TrHN))+");"])
 
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))
