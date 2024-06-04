@@ -57,7 +57,7 @@ do_convergence () {
 INTPARAMS="
 integration.type=0"
 
-INTNAME="fe"
+INTNAME="Ne"
 
 do_convergence
 

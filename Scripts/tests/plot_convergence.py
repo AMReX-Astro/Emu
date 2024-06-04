@@ -69,12 +69,12 @@ class ConvergenceData(object):
             
 
 cdata = {}
-cdata["fe"] = ConvergenceData("msw_test_fe.txt")
+cdata["Ne"] = ConvergenceData("msw_test_Ne.txt")
 cdata["trapz"] = ConvergenceData("msw_test_trapz.txt")
 cdata["ssprk3"] = ConvergenceData("msw_test_ssprk3.txt")
 cdata["rk4"] = ConvergenceData("msw_test_rk4.txt")
 
-variables = cdata["fe"].error_keys()
+variables = cdata["Ne"].error_keys()
 
 for v in variables:
     fig, ax = plt.subplots()

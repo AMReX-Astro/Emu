@@ -30,10 +30,10 @@ if __name__ == "__main__":
     rkey, ikey = amrex.get_particle_keys(NF)
     
     t = []
-    fexR = []
-    fexI = []
-    fexRbar = []
-    fexIbar = []
+    NexR = []
+    NexI = []
+    NexRbar = []
+    NexIbar = []
     pupt = []
 
     nfiles = len(glob.glob("plt[0-9][0-9][0-9][0-9][0-9]"))
@@ -43,18 +43,18 @@ if __name__ == "__main__":
         idata, rdata = EmuReader.read_particle_data(plotfile, ptype="neutrinos")
         p = rdata
         t.append(p[0][rkey["time"]])
-        fexR.append(np.max(np.abs(p[:,rkey["N01_Re"]])))
-        fexI.append(np.max(np.abs(p[:,rkey["N01_Im"]])))
-        fexRbar.append(np.max(np.abs(p[:,rkey["N01_Rebar"]])))
-        fexIbar.append(np.max(np.abs(p[:,rkey["N01_Imbar"]])))
+        NexR.append(np.max(np.abs(p[:,rkey["N01_Re"]])))
+        NexI.append(np.max(np.abs(p[:,rkey["N01_Im"]])))
+        NexRbar.append(np.max(np.abs(p[:,rkey["N01_Rebar"]])))
+        NexIbar.append(np.max(np.abs(p[:,rkey["N01_Imbar"]])))
         pupt.append(p[0][rkey["pupt"]])
 
     t = np.array(t)
-    fexR = np.array(fexR)
-    fexI = np.array(fexI)
-    fexRbar = np.array(fexRbar)
-    fexIbar = np.array(fexIbar)
-    print(fexR)
+    NexR = np.array(NexR)
+    NexI = np.array(NexI)
+    NexRbar = np.array(NexRbar)
+    NexIbar = np.array(NexIbar)
+    print(NexR)
     
     # The neutrino energy we set
     E = 50. * 1e6*amrex.eV
@@ -70,27 +70,27 @@ if __name__ == "__main__":
     
     # get growth rate from each diagonal component
     dt = t[i1]-t[i0]
-    fexRomega = np.log(np.abs(fexR[i1]/fexR[i0])) / dt
-    fexIomega = np.log(np.abs(fexI[i1]/fexI[i0])) / dt
-    fexRbaromega = np.log(np.abs(fexRbar[i1]/fexRbar[i0])) / dt
-    fexIbaromega = np.log(np.abs(fexIbar[i1]/fexIbar[i0])) / dt
+    NexRomega = np.log(np.abs(NexR[i1]/NexR[i0])) / dt
+    NexIomega = np.log(np.abs(NexI[i1]/NexI[i0])) / dt
+    NexRbaromega = np.log(np.abs(NexRbar[i1]/NexRbar[i0])) / dt
+    NexIbaromega = np.log(np.abs(NexIbar[i1]/NexIbar[i0])) / dt
 
-    print("growth rates:",fexRomega,fexIomega,fexRbaromega,fexIbaromega)
-    print("growth rates / theoretical:",fexRomega/ImOmega,fexIomega/ImOmega,fexRbaromega/ImOmega,fexIbaromega/ImOmega)
+    print("growth rates:",NexRomega,NexIomega,NexRbaromega,NexIbaromega)
+    print("growth rates / theoretical:",NexRomega/ImOmega,NexIomega/ImOmega,NexRbaromega/ImOmega,NexIbaromega/ImOmega)
 
     def myassert(condition):
         if not args.no_assert:
             assert(condition)
 
-    fexRerror = np.abs(ImOmega - fexRomega) / ImOmega
-    myassert( fexRerror < tolerance )
+    NexRerror = np.abs(ImOmega - NexRomega) / ImOmega
+    myassert( NexRerror < tolerance )
 
-    fexIerror = np.abs(ImOmega - fexIomega) / ImOmega
-    myassert( fexIerror < tolerance )
+    NexIerror = np.abs(ImOmega - NexIomega) / ImOmega
+    myassert( NexIerror < tolerance )
 
-    fexRbarerror = np.abs(ImOmega - fexRbaromega) / ImOmega
-    myassert( fexRbarerror < tolerance )
+    NexRbarerror = np.abs(ImOmega - NexRbaromega) / ImOmega
+    myassert( NexRbarerror < tolerance )
 
-    fexIbarerror = np.abs(ImOmega - fexIbaromega) / ImOmega
-    myassert( fexIbarerror < tolerance )
+    NexIbarerror = np.abs(ImOmega - NexIbaromega) / ImOmega
+    myassert( NexIbarerror < tolerance )
 
