@@ -434,6 +434,7 @@ if __name__ == "__main__":
 
     # Set up Hermitian matrices A, B, C
     hbar = sympy.symbols("PhysConst\:\:hbar",real=True)
+    attenuation = sympy.symbols("att_ham", real=True)
     code = []
     for t in tails:
         H = HermitianMatrix(args.N, "V{}{}_{}"+t)
@@ -444,25 +445,11 @@ if __name__ == "__main__":
 
         # Calculate C = i * [A,B]
         #Fnew.anticommutator(H,F).times(sympy.I * dt);
-        G.H = ((H*F - F*H).times(-sympy.I/hbar)).H
+        G.H = ((H*F - F*H).times(-sympy.I/hbar)).H * attenuation
 
         # Write the temporary variables for dFdt
         Gdeclare = ["amrex::Real {}".format(line) for line in G.code()]
         code.append(Gdeclare)
-
-        # time derivative due to hamiltonians attenuation parameter
-        code.append(["dNdt00_Re"+t+" *= att_ham;"])
-        code.append(["dNdt11_Re"+t+" *= att_ham;"])
-        code.append(["dNdt01_Re"+t+" *= att_ham;"])
-        code.append(["dNdt01_Im"+t+" *= att_ham;"])
-
-        if(args.N == 3):
-
-            code.append(["dNdt22_Re"+t+" *= att_ham;"])
-            code.append(["dNdt02_Re"+t+" *= att_ham;"])
-            code.append(["dNdt02_Im"+t+" *= att_ham;"])
-            code.append(["dNdt12_Re"+t+" *= att_ham;"])
-            code.append(["dNdt12_Im"+t+" *= att_ham;"])
 
         #collision term (emmission and apsortion)
         s=0
