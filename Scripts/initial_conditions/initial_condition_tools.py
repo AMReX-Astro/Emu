@@ -200,6 +200,8 @@ def linear_interpolate(fluxfac, mu):
 def moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, direction_generator, interpolate_function):
     # number of neutrino flavors
     NF = nnu.shape[1]
+    
+    print(f'NF = {NF}')
 
     # flux magnitude and flux factor [nu/nubar, flavor]
     fluxmag = np.sqrt(np.sum(fnu**2, axis=2))
@@ -230,7 +232,7 @@ def moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, direction_g
     # get variable keys
     rkey, ikey = amrex.get_particle_keys(NF, ignore_pos=True)
     nelements = len(rkey)
-    
+
     # generate the list of particle info
     particles = np.zeros((nparticles,nelements))
 
@@ -240,22 +242,10 @@ def moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, direction_g
 
     # save the total number density of neutrinos for each particle
     n_flavorsummed = np.sum(n_particle, axis=2) # [particle, nu/nubar]
-    for nu_nubar, suffix in zip(range(2), ["","bar"]):
-        nvarname = "N"+suffix
-        particles[:,rkey[nvarname]] = n_flavorsummed[:,nu_nubar]
-    
+    for nu_nubar, suffix in zip(range(2), ["","bar"]):    
         for flavor in range(NF):
-            fvarname = "f"+str(flavor)+str(flavor)+"_Re"+suffix
-            particles[:,rkey[fvarname]] = n_particle[:,nu_nubar, flavor] / n_flavorsummed[:,nu_nubar]
-            particles[:,rkey[fvarname]][np.where(n_flavorsummed[:,nu_nubar]==0)] = 1./NF # ensure that trace stays equal to 1
-           
-            # double check that the number densities are correct
-            particle_n = np.sum(particles[:,rkey[nvarname]] * particles[:,rkey[fvarname]])
-            particle_fmag = np.sum(particles[:,rkey[nvarname]] * particles[:,rkey[fvarname]] * mu[:,nu_nubar, flavor])
-            #print("nu/nubar,flavor =", nu_nubar, flavor)
-            #print("output/input ndens =",particle_n, nnu[nu_nubar,flavor])
-            #print("output/input fluxfac =",particle_fmag / particle_n, fluxfac[nu_nubar,flavor])
-            #print()
+            fvarname = "N"+str(flavor)+str(flavor)+"_Re"+suffix
+            particles[:,rkey[fvarname]] = n_particle[:,nu_nubar, flavor]
 
     return particles
 
