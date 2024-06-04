@@ -3,6 +3,7 @@ import numpy as np
 import sys
 import os
 importpath = os.path.dirname(os.path.realpath(__file__))
+print(f'importpath = {importpath}')
 sys.path.append(importpath)
 sys.path.append(importpath+"/../visualization")
 from initial_condition_tools import uniform_sphere, write_particles
@@ -23,7 +24,10 @@ energy_erg = dm2*amrex.clight**4 * np.sin(2.*theta12) / (8.*np.pi*amrex.hbar*amr
 
 # get variable keys
 rkey, ikey = amrex.get_particle_keys(NF,ignore_pos=True)
+print(f'rkey = {rkey}')
+
 nelements = len(rkey)
+print(f'nelements = {nelements}')
 
 # generate the grid of direction coordinates
 phat = uniform_sphere(nphi_equator)
@@ -37,10 +41,8 @@ for ip in range(len(phat)):
     p[rkey["pupx"]] = phat[ip,0] * energy_erg
     p[rkey["pupy"]] = phat[ip,1] * energy_erg
     p[rkey["pupz"]] = phat[ip,2] * energy_erg
-    p[rkey["N"]   ] = ndens_per_particle
-    p[rkey["Nbar"]] = ndens_per_particle
-    p[rkey["f00_Re"]] = 1
-    p[rkey["f00_Rebar"]] = 1
+    p[rkey["N00_Re"]] = 1
+    p[rkey["N00_Rebar"]] = 1
     
 
 write_particles(np.array(particles), NF, "particle_input.dat")
