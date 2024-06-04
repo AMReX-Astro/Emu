@@ -331,9 +331,6 @@ InitParticles(const TestParams* parms)
 	      p.rdata(PIdx::N01_Re)    = parms->perturbation_amplitude*sin(nu_k*p.pos(2)) * (p.rdata(PIdx::N00_Re   ) - p.rdata(PIdx::N11_Re   ));
 	      p.rdata(PIdx::N01_Rebar) = parms->perturbation_amplitude*sin(nu_k*p.pos(2)) * (p.rdata(PIdx::N00_Rebar) - p.rdata(PIdx::N11_Rebar));
 	    }
-	      
-	    
-//#include "generated_files/FlavoredNeutrinoContainerInit.cpp_set_trace_length"
 
 	  } // loop over direction
 	} // loop over location
