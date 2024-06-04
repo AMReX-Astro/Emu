@@ -200,8 +200,6 @@ def linear_interpolate(fluxfac, mu):
 def moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, direction_generator, interpolate_function):
     # number of neutrino flavors
     NF = nnu.shape[1]
-    
-    print(f'NF = {NF}')
 
     # flux magnitude and flux factor [nu/nubar, flavor]
     fluxmag = np.sqrt(np.sum(fnu**2, axis=2))
