@@ -205,6 +205,13 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             }
         }
         else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0 or 1");
+        
+        //----------------------------   EoS call -----------------------------------------------
+        printf("(Evolve.cpp) munu[0][0] = %f\n", munu[0][0]);
+        double rho = 1.0e10; //g/cm^3
+        double temperature = 1.0; //MeV
+        double Ye = 0.3; 
+        //---------------------------------------------------------------------------------------
 
         // calculate the equilibrium distribution. Really munu and temperature should be interpolated from the grid.
         for(int i=0; i<2; i++){

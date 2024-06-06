@@ -4,6 +4,7 @@ CEXE_sources += IO.cpp
 CEXE_sources += FlavoredNeutrinoContainerInit.cpp
 CEXE_sources += Evolve.cpp
 CEXE_sources += FlavoredNeutrinoContainer.cpp
+CEXE_sources += ReadEosTable.cpp
 
 CEXE_headers += Evolve.H
 CEXE_headers += FlavoredNeutrinoContainer.H
@@ -14,3 +15,4 @@ CEXE_headers += Parameters.H
 CEXE_headers += ParticleInterpolator.H
 CEXE_headers += DataReducer.H
 CEXE_headers += ArithmeticArray.H
+CEXE_headers += EosTable.H 

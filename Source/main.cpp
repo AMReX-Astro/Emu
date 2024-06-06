@@ -32,6 +32,7 @@
 #include "Constants.H"
 #include "IO.H"
 #include "DataReducer.H"
+#include "EosTable.H"
 
 using namespace amrex;
 
@@ -88,8 +89,12 @@ void evolve_flavor(const TestParams* parms)
     // initialize the grid variable names
     GIdx::Initialize();
 
+    // read the EoS table
+    amrex::Print() << "Reading EoS table... " << std::endl;
+    ReadEosTable();
+
     // Initialize particles on the domain
-    amrex::Print() << "Initializing particles... ";
+    amrex::Print() << "Initializing particles... " << std::endl;
 
     // We store old-time and new-time data
     FlavoredNeutrinoContainer neutrinos_old(geom, dm, ba);
