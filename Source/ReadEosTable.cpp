@@ -56,7 +56,7 @@ void ReadEosTable() {
     using namespace nuc_eos_private;
       
     std::string nuceos_table_name = "/home/sshanka/000_UTK_projects/Emu/Exec/SFHo.h5"; //FIXME: Read from parameter file
-    amrex::Print() << "Using table: " << nuceos_table_name << std::endl;
+    amrex::Print() << "(ReadEosTable.cpp) Using table: " << nuceos_table_name << std::endl;
 
     //TODO: 
     int my_reader_process = 0; //reader_process;
@@ -103,156 +103,161 @@ void ReadEosTable() {
     READ_BCAST_EOS_HDF5("pointstemp", &ntemp_, H5T_NATIVE_INT, H5S_ALL, 1);
     READ_BCAST_EOS_HDF5("pointsye",   &nye_,   H5T_NATIVE_INT, H5S_ALL, 1);
 
-    printf("nrho = %d, ntemp = %d, nye = %d\n", nrho_, ntemp_, nye_);
+    printf("(ReadEosTable.cpp) nrho = %d, ntemp = %d, nye = %d\n", nrho_, ntemp_, nye_);
 
-#if 0
-  //Allocate managed memory arena on unified memory
-  ManagedArenaAllocator<CCTK_REAL> myManagedArena;
-  ManagedArenaAllocator<CCTK_INT> myManagedArena_Int;
-  //EOS_array = myManagedArena.allocate(nrho_ * ntemp_ * nye_ * NTABLES * sizeof(double));
+    //Allocate managed memory arena on unified memory
+    ManagedArenaAllocator<double> myManagedArena;
+    ManagedArenaAllocator<int> myManagedArena_Int;
+   
+    // Allocate memory for tables
+    double *alltables_temp;
+    if (!(alltables_temp = myManagedArena.allocate(nrho_ * ntemp_ * nye_ * NTABLES) )) {
+        printf("(ReadEosTable.cpp) Cannot allocate memory for EOS table"); 
+        assert(0);
+    }
+    if (!(logrho = myManagedArena.allocate(nrho_) )) {
+        printf("(ReadEosTable.cpp) Cannot allocate memory for EOS table"); 
+        assert(0);
+    }
+    if (!(logtemp = myManagedArena.allocate(ntemp_) )) {
+        printf("(ReadEosTable.cpp) Cannot allocate memory for EOS table"); 
+        assert(0);             
+    }
+    if (!(yes = myManagedArena.allocate(nye_) )) {
+        printf("(ReadEosTable.cpp) Cannot allocate memory for EOS table"); 
+        assert(0);
+    }
 
-  // Allocate memory for tables
-  CCTK_REAL *alltables_temp;
-  if (!(alltables_temp = myManagedArena.allocate(nrho_ * ntemp_ * nye_ * NTABLES) )) {
-    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
-                "Cannot allocate memory for EOS table");
-  }
-  if (!(logrho = myManagedArena.allocate(nrho_) )) {
-    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
-                "Cannot allocate memory for EOS table");
-  }
-  if (!(logtemp = myManagedArena.allocate(ntemp_) )) {
-    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
-                "Cannot allocate memory for EOS table");
-  }
-  if (!(yes = myManagedArena.allocate(nye_) )) {
-    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
-                "Cannot allocate memory for EOS table");
-  }
+    // Prepare HDF5 to read hyperslabs into alltables_temp
+    hsize_t table_dims[2] = {NTABLES, (hsize_t)nrho_ * ntemp_ * nye_};
+    hsize_t var3[2]       = { 1, (hsize_t)nrho_ * ntemp_ * nye_};
+    hid_t mem3 =  H5Screate_simple(2, table_dims, NULL);
 
-  // Prepare HDF5 to read hyperslabs into alltables_temp
-  hsize_t table_dims[2] = {NTABLES, (hsize_t)nrho_ * ntemp_ * nye_};
-  hsize_t var3[2]       = { 1, (hsize_t)nrho_ * ntemp_ * nye_};
-  hid_t mem3 =  H5Screate_simple(2, table_dims, NULL);
+    // Read alltables_temp
+    READ_BCAST_EOSTABLE_HDF5("logpress",  0, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("logenergy", 1, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("entropy",   2, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("munu",      3, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("cs2",       4, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("dedt",      5, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("dpdrhoe",   6, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("dpderho",   7, table_dims);
+    // chemical potentials
+    READ_BCAST_EOSTABLE_HDF5("muhat",     8, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("mu_e",      9, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("mu_p",     10, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("mu_n",     11, table_dims);
+    // compositions
+    READ_BCAST_EOSTABLE_HDF5("Xa",       12, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("Xh",       13, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("Xn",       14, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("Xp",       15, table_dims);
+    // average nucleus
+    READ_BCAST_EOSTABLE_HDF5("Abar",     16, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("Zbar",     17, table_dims);
+    // Gamma
+    READ_BCAST_EOSTABLE_HDF5("gamma",    18, table_dims);
 
-  // Read alltables_temp
-  READ_BCAST_EOSTABLE_HDF5("logpress",  0, table_dims);
-  READ_BCAST_EOSTABLE_HDF5("logenergy", 1, table_dims);
-  READ_BCAST_EOSTABLE_HDF5("entropy",   2, table_dims);
-  READ_BCAST_EOSTABLE_HDF5("munu",      3, table_dims);
-  READ_BCAST_EOSTABLE_HDF5("cs2",       4, table_dims);
-  READ_BCAST_EOSTABLE_HDF5("dedt",      5, table_dims);
-  READ_BCAST_EOSTABLE_HDF5("dpdrhoe",   6, table_dims);
-  READ_BCAST_EOSTABLE_HDF5("dpderho",   7, table_dims);
-  // chemical potentials
-  READ_BCAST_EOSTABLE_HDF5("muhat",     8, table_dims);
-  READ_BCAST_EOSTABLE_HDF5("mu_e",      9, table_dims);
-  READ_BCAST_EOSTABLE_HDF5("mu_p",     10, table_dims);
-  READ_BCAST_EOSTABLE_HDF5("mu_n",     11, table_dims);
-  // compositions
-  READ_BCAST_EOSTABLE_HDF5("Xa",       12, table_dims);
-  READ_BCAST_EOSTABLE_HDF5("Xh",       13, table_dims);
-  READ_BCAST_EOSTABLE_HDF5("Xn",       14, table_dims);
-  READ_BCAST_EOSTABLE_HDF5("Xp",       15, table_dims);
-  // average nucleus
-  READ_BCAST_EOSTABLE_HDF5("Abar",     16, table_dims);
-  READ_BCAST_EOSTABLE_HDF5("Zbar",     17, table_dims);
-  // Gamma
-  READ_BCAST_EOSTABLE_HDF5("gamma",    18, table_dims);
+    double energy_shift_; 
+    // Read additional tables and variables
+    READ_BCAST_EOS_HDF5("logrho",       logrho,        H5T_NATIVE_DOUBLE, H5S_ALL, nrho_);
+    READ_BCAST_EOS_HDF5("logtemp",      logtemp,       H5T_NATIVE_DOUBLE, H5S_ALL, ntemp_);
+    READ_BCAST_EOS_HDF5("ye",           yes,            H5T_NATIVE_DOUBLE, H5S_ALL, nye_);
+    READ_BCAST_EOS_HDF5("energy_shift", &energy_shift_, H5T_NATIVE_DOUBLE, H5S_ALL, 1);
 
-  double energy_shift_; 
-  // Read additional tables and variables
-  READ_BCAST_EOS_HDF5("logrho",       logrho,        H5T_NATIVE_DOUBLE, H5S_ALL, nrho_);
-  READ_BCAST_EOS_HDF5("logtemp",      logtemp,       H5T_NATIVE_DOUBLE, H5S_ALL, ntemp_);
-  READ_BCAST_EOS_HDF5("ye",           yes,            H5T_NATIVE_DOUBLE, H5S_ALL, nye_);
-  READ_BCAST_EOS_HDF5("energy_shift", &energy_shift_, H5T_NATIVE_DOUBLE, H5S_ALL, 1);
+    HDF5_ERROR(H5Sclose(mem3));
+    HDF5_ERROR(H5Fclose(file));
 
-  HDF5_ERROR(H5Sclose(mem3));
-  HDF5_ERROR(H5Fclose(file));
 
-  // change ordering of alltables array so that
-  // the table kind is the fastest changing index
-  if (!(alltables = myManagedArena.allocate(nrho_ * ntemp_ * nye_ * NTABLES) )) {
-    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
-                "Cannot allocate memory for EOS table");
-  }
-  for(int iv = 0;iv<NTABLES;iv++) 
-    for(int k = 0; k<nye_;k++) 
-      for(int j = 0; j<ntemp_; j++) 
-	for(int i = 0; i<nrho_; i++) {
-	  int indold = i + nrho_*(j + ntemp_*(k + nye_*iv));
-	  int indnew = iv + NTABLES*(i + nrho_*(j + ntemp_*k));
-	  alltables[indnew] = alltables_temp[indold];
+    // change ordering of alltables array so that
+    // the table kind is the fastest changing index
+    if (!(alltables = myManagedArena.allocate(nrho_ * ntemp_ * nye_ * NTABLES) )) {
+        printf("(ReadEosTable.cpp) Cannot allocate memory for EOS table");
+        assert(0);
+    }
+
+    for(int iv = 0;iv<NTABLES;iv++) 
+      for(int k = 0; k<nye_;k++) 
+        for(int j = 0; j<ntemp_; j++) 
+	      for(int i = 0; i<nrho_; i++) {
+	        int indold = i + nrho_*(j + ntemp_*(k + nye_*iv));
+	        int indnew = iv + NTABLES*(i + nrho_*(j + ntemp_*k));
+	        alltables[indnew] = alltables_temp[indold];
 	}
 
-  // free memory of temporary array
-  myManagedArena.deallocate(alltables_temp, nrho_ * ntemp_ * nye_ * NTABLES);
+    // free memory of temporary array
+    myManagedArena.deallocate(alltables_temp, nrho_ * ntemp_ * nye_ * NTABLES);
 
-  // convert units, convert logs to natural log
-  // The latter is great, because exp() is way faster than pow()
-  // pressure
-  energy_shift_ = energy_shift_ * EPSGF;
-  for(int i=0;i<nrho_;i++) {
-    // rewrite:
-    //logrho[i] = log(pow(10.0,logrho[i]) * RHOGF);
-    // by using log(a^b*c) = b*log(a)+log(c)
-    logrho[i] = logrho[i] * log(10.) + log(RHOGF);
-  }
+    // convert units, convert logs to natural log
+    // The latter is great, because exp() is way faster than pow()
+    // pressure
+    //energy_shift_ = energy_shift_ * EPSGF; //Old code.
+    //energy_shift_ = energy_shift_; //Let's not convert units yet.
 
-  for(int i=0;i<ntemp_;i++) {
-    //logtemp[i] = log(pow(10.0,logtemp[i]));
-    logtemp[i] = logtemp[i]*log(10.0);
-  }
-
-  // allocate epstable; a linear-scale eps table
-  // that allows us to extrapolate to negative eps
-  if (!(epstable = myManagedArena.allocate(nrho_ * ntemp_ * nye_) )) {
-    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
-                "Cannot allocate memory for eps table\n");
-  }
-
-  // convert units
-  for(int i=0;i<nrho_*ntemp_*nye_;i++) {
-
-    { // pressure
-      int idx = 0 + NTABLES*i;
-      alltables[idx] = alltables[idx] * log(10.0) + log(PRESSGF);
+    for(int i=0;i<nrho_;i++) {
+      //logrho[i] = log(pow(10.0,logrho[i]) * RHOGF);
+      // by using log(a^b*c) = b*log(a)+log(c)
+      //logrho[i] = logrho[i] * log(10.) + log(RHOGF); //Old code.
+      logrho[i] = logrho[i] * log(10.); //Let's not convert units yet. Only convert log_10(rho) to ln(rho).
+    }
+  
+    //Convert log_10(temp) to ln(temp).
+    for(int i=0;i<ntemp_;i++) {
+      logtemp[i] = logtemp[i]*log(10.0);
     }
 
-    { // eps
-      int idx = 1 + NTABLES*i;
-      alltables[idx] = alltables[idx] * log(10.0) + log(EPSGF);
-      epstable[i] = exp(alltables[idx]);
+    // allocate epstable; a linear-scale eps table
+    // that allows us to extrapolate to negative eps
+    //TODO: Is this really needed in Emu?
+    if (!(epstable = myManagedArena.allocate(nrho_ * ntemp_ * nye_) )) {
+                printf("(ReadEosTable.cpp) Cannot allocate memory for eps table\n");
+                assert(0);
     }
 
-    { // cs2
-      int idx = 4 + NTABLES*i;
-      alltables[idx] *= LENGTHGF*LENGTHGF/TIMEGF/TIMEGF;
-    }
+    // convert units //FIXME: We do not convert units yet. Just convert log10 to natural log. 
+    for(int i=0;i<nrho_*ntemp_*nye_;i++) {
 
-    { // dedT
-      int idx = 5 + NTABLES*i;
-      alltables[idx] *= EPSGF;
-    }
+        { // pressure
+          int idx = 0 + NTABLES*i;
+          //alltables[idx] = alltables[idx] * log(10.0) + log(PRESSGF); //old code
+          alltables[idx] = alltables[idx] * log(10.0); //Let's not convert units yet.
+        }
 
-    { // dpdrhoe
-      int idx = 6 + NTABLES*i;
-      alltables[idx] *= PRESSGF/RHOGF;
-    }
+        { // eps
+          int idx = 1 + NTABLES*i;
+          //alltables[idx] = alltables[idx] * log(10.0) + log(EPSGF); //old code
+          alltables[idx] = alltables[idx] * log(10.0);
+          epstable[i] = exp(alltables[idx]); //Let's not convert units yet.
+        }
 
-    { // dpderho
-      int idx = 7 + NTABLES*i;
-      alltables[idx] *= PRESSGF/EPSGF;
-    }
+        /*{ // cs2
+          int idx = 4 + NTABLES*i;
+          alltables[idx] *= LENGTHGF*LENGTHGF/TIMEGF/TIMEGF;
+        }
 
-  }
+        { // dedT
+          int idx = 5 + NTABLES*i;
+          alltables[idx] *= EPSGF;
+        }
+
+        { // dpdrhoe
+          int idx = 6 + NTABLES*i;
+          alltables[idx] *= PRESSGF/RHOGF;
+        }
+
+        { // dpderho
+          int idx = 7 + NTABLES*i;
+          alltables[idx] *= PRESSGF/EPSGF;
+        }*/
+
+    }
 
   //allocate memory for helperVars
   helperVarsReal = myManagedArena.allocate(24);
   helperVarsInt = myManagedArena_Int.allocate(3);
   
-  const CCTK_REAL temp0_ = exp(logtemp[0]);
-  const CCTK_REAL temp1_ = exp(logtemp[1]);
+  const double temp0_ = exp(logtemp[0]);
+  const double temp1_ = exp(logtemp[1]);
 
   EOSVAR_INT(nrho) = nrho_;
   EOSVAR_INT(ntemp) = ntemp_;
@@ -289,10 +294,10 @@ void ReadEosTable() {
   EOSVAR(eos_yemin) = yes[0];
   
   EOSVAR(energy_shift) = energy_shift_ ;
-  
-  //Can use similar treatment for pressure: grmhd_con2prim/standalone/readtable.c::314
-  CCTK_REAL epsmax = epstable[0];
-  CCTK_REAL epsmin = epstable[0];
+
+  //Calculate max and min of eps //TODO: Is this really needed in Emu?
+  double epsmax = epstable[0];
+  double epsmin = epstable[0];
   for(int i = 1; i < nrho_*ntemp_*nye_; i++){
     if ((epstable[i] > epsmax) && (epstable[i] < 1.0e150)){
         epsmax = epstable[i];
@@ -306,14 +311,14 @@ void ReadEosTable() {
   EOSVAR(eos_epsmin) = epsmin - energy_shift_;
   EOSVAR(eos_epsmax) = epsmax - energy_shift_;
   
-  printf(" EOS:rhomin  = %.5e\n", EOSVAR(eos_rhomin));
-  printf(" EOS:rhomax  = %.5e\n", EOSVAR(eos_rhomax));
-  printf(" EOS:tempmin  = %.5e\n", EOSVAR(eos_tempmin));
-  printf(" EOS:tempmax  = %.5e\n", EOSVAR(eos_tempmax));
-  printf(" EOS:yemin  = %.6f\n", EOSVAR(eos_yemin));
-  printf(" EOS:yemax  = %.6f\n", EOSVAR(eos_yemax));
+  printf("(ReadEosTable.cpp) EOS:rhomin  = %.5e g/cm^3\n", EOSVAR(eos_rhomin));
+  printf("(ReadEosTable.cpp) EOS:rhomax  = %.5e g/cm^3\n", EOSVAR(eos_rhomax));
+  printf("(ReadEosTable.cpp) EOS:tempmin  = %.4f MeV\n", EOSVAR(eos_tempmin));
+  printf("(ReadEosTable.cpp) EOS:tempmax  = %.4f MeV\n", EOSVAR(eos_tempmax));
+  printf("(ReadEosTable.cpp) EOS:yemin  = %.4f\n", EOSVAR(eos_yemin));
+  printf("(ReadEosTable.cpp) EOS:yemax  = %.4f\n", EOSVAR(eos_yemax));
 
-#endif
+  printf("(ReadEosTable.cpp) Finished reading EoS table!\n");
   
 } // ReadEOSTable
 
