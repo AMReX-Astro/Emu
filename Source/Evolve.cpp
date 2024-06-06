@@ -3,6 +3,9 @@
 #include "ParticleInterpolator.H"
 #include <cmath>
 
+#include "EosTableFunctions.H"
+#include "EosTable.H"
+
 using namespace amrex;
 
 namespace GIdx
@@ -150,6 +153,11 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
     const int shape_factor_order_y = geom.Domain().length(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
     const int shape_factor_order_z = geom.Domain().length(2) > 1 ? SHAPE_FACTOR_ORDER : 0;
 
+    //Create the EoS table object
+    using namespace nuc_eos_private;
+    EOS_tabulated EOS_tabulated_obj(alltables, epstable, logrho, logtemp, 
+                                    yes, helperVarsReal, helperVarsInt);
+
     amrex::MeshToParticle(neutrinos_rhs, state, 0,
     [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
                           amrex::Array4<const amrex::Real> const& sarr)
@@ -207,10 +215,15 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0 or 1");
         
         //----------------------------   EoS call -----------------------------------------------
-        printf("(Evolve.cpp) munu[0][0] = %f\n", munu[0][0]);
         double rho = 1.0e10; //g/cm^3
         double temperature = 1.0; //MeV
         double Ye = 0.3; 
+
+        double entropy_out, munu_out;
+        int keyerr, anyerr;
+        EOS_tabulated_obj.get_entropy_munu(rho, temperature, Ye, entropy_out, munu_out, keyerr, anyerr);
+        printf("(Evolve.cpp) munu interpolated = %f\n", munu_out);
+        //munu[0][0] = munu;
         //---------------------------------------------------------------------------------------
 
         // calculate the equilibrium distribution. Really munu and temperature should be interpolated from the grid.

@@ -16,3 +16,4 @@ CEXE_headers += ParticleInterpolator.H
 CEXE_headers += DataReducer.H
 CEXE_headers += ArithmeticArray.H
 CEXE_headers += EosTable.H 
+CEXE_headers += EosTableFunctions.H
