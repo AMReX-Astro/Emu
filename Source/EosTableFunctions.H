@@ -1,6 +1,9 @@
 #ifndef EOSTABLEFUCNTIONS_HXX
 #define EOSTABLEFUCNTIONS_HXX
 
+
+#include "EosTableHelpers.H"
+
 struct EOS_tabulated {
     double *alltables, *epstable, *logrho, *logtemp, *yes, *helperVarsReal;
     int *helperVarsInt;
@@ -23,14 +26,10 @@ struct EOS_tabulated {
                                              double &entropy, double &munu, 
                                              int &keyerr, int &anyerr) const {
         
-        /*nuc_eos_m_kt1_entropy_munu(rho, temperature, Ye, entropy, munu, keyerr, anyerr, 
-                                alltables, logrho, logtemp, yes, helperVarsReal, helperVarsInt);*/
-        keyerr = -404;
-        anyerr = -404;
-        entropy = -404.22;
-        munu = -404.22;
+        nuc_eos_entropy_munu(rho, temperature, Ye, entropy, munu, keyerr, anyerr, 
+                                alltables, logrho, logtemp, yes, helperVarsReal, helperVarsInt);
         return;
-        
+
         /*Actual steps:
         (1) check bounds
         (2) get interp spots
@@ -49,6 +48,7 @@ struct EOS_tabulated {
         //int keyerr, anyerr;
         /*nuc_eos_m_kt1_press(rho, temperature, Ye, press, keyerr, anyerr, 
                                 alltables, logrho, logtemp, yes, helperVarsReal, helperVarsInt);*/
+        assert(0); //FIXME: Add actual routine.
         return; 
     };//get_press
     
@@ -60,6 +60,7 @@ struct EOS_tabulated {
         //int keyerr, anyerr;
         /*nuc_eos_m_kt1_xh(rho, temperature, Ye, xh, keyerr, anyerr, 
                         alltables, logrho, logtemp, yes, helperVarsReal, helperVarsInt);*/
+        assert(0); //FIXME: Add actual routine.
         return; 
     };//get_xh
     

@@ -215,9 +215,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0 or 1");
         
         //----------------------------   EoS call -----------------------------------------------
-        double rho = 1.0e10; //g/cm^3
-        double temperature = 1.0; //MeV
-        double Ye = 0.3; 
+        double rho = 1.7e2; //g/cm^3
+        double temperature = 0.01; //MeV
+        double Ye = 0.01; 
 
         double entropy_out, munu_out;
         int keyerr, anyerr;
