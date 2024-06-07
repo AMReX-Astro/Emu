@@ -4,6 +4,11 @@
 #include "ArithmeticArray.H"
 #include <cmath>
 #include <string>
+
+//We use the AMReX binary format to write data for now
+//That's because the HDF5 write format gives errors when running with CUDA.
+#undef AMREX_USE_HDF5
+
 #ifdef AMREX_USE_HDF5
 #include <../submodules/HighFive/include/highfive/H5File.hpp>
 #include <../submodules/HighFive/include/highfive/H5DataSpace.hpp>
