@@ -214,7 +214,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         // calculate the equilibrium distribution. Really munu and temperature should be interpolated from the grid.
         for(int i=0; i<2; i++){
             for(int j=0; j<NUM_FLAVORS; j++){
-                const Real exponent = (p.rdata(PIdx::pupt) - munu[i][j]) / parms->kT_in;
+                const Real exponent = (p.rdata(PIdx::pupt) - munu[i][j]) / T_pp;
                 N_eq[i][j] = 1. / (1. + exp(exponent));
             }
         }
