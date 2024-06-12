@@ -172,17 +172,11 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         for (int k = sz.first(); k <= sz.last(); ++k) {
             for (int j = sy.first(); j <= sy.last(); ++j) {
                 for (int i = sx.first(); i <= sx.last(); ++i) {
-                    amrex::Print() << " i, j, k = " << i <<", " << j << ", " << k << std::endl;
                     #include "generated_files/Evolve.cpp_interpolate_from_mesh_fill"
                 }
             }
         }
 
-        amrex::Print() << " T_pp = " << T_pp << std::endl;
-        amrex::Print() << " parms->kT_in = " << parms->kT_in << std::endl;
-        amrex::Print() << " Ye_pp = " << Ye_pp << std::endl;
-        amrex::Print() << " rho_pp = " << rho_pp << std::endl;
-        
         // determine the IMFPs and equilibrium distribution value
         // create 2 x NF matrix to store absorption IMFPs
         // and 2 x NF matrix to store scattering IMFPs
