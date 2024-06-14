@@ -164,6 +164,11 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         const ParticleInterpolator<SHAPE_FACTOR_ORDER> sy(delta_y, shape_factor_order_y);
         const ParticleInterpolator<SHAPE_FACTOR_ORDER> sz(delta_z, shape_factor_order_z);
 
+        // The following variables contains temperature, electron fraction, and density interpolated from grid quantities to particle positions
+        double T_pp = 0;
+        double Ye_pp = 0;
+        double rho_pp = 0; 
+
         for (int k = sz.first(); k <= sz.last(); ++k) {
             for (int j = sy.first(); j <= sy.last(); ++j) {
                 for (int i = sx.first(); i <= sx.last(); ++i) {
@@ -209,7 +214,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         // calculate the equilibrium distribution. Really munu and temperature should be interpolated from the grid.
         for(int i=0; i<2; i++){
             for(int j=0; j<NUM_FLAVORS; j++){
-                const Real exponent = (p.rdata(PIdx::pupt) - munu[i][j]) / parms->kT_in;
+                const Real exponent = (p.rdata(PIdx::pupt) - munu[i][j]) / T_pp;
                 N_eq[i][j] = 1. / (1. + exp(exponent));
             }
         }

@@ -1,5 +1,5 @@
 perturbation_type = 0
-perturbation_amplitude = 1e-6
+perturbation_amplitude = 0.0
 
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 1.0
@@ -15,9 +15,9 @@ integration.rk.type = 4
 
 # Domain size in 3D index space
 ncell = (1, 1, 1)
-Lx = 1
-Ly = 1
-Lz = 1
+Lx = 1 # cm
+Ly = 1 # cm
+Lz = 1 # cm
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
@@ -56,7 +56,7 @@ restart_dir = ""
 # see first column of table 14.7 in http://pdg.lbl.gov/2019/reviews/rpp2019-rev-neutrino-mixing.pdf
 
 # mass state 1 mass in eV [NO/IO:-sqrt(7.39e-5)]
-mass1_eV = 0 #-0.008596511
+mass1_eV = 0.04866 #-0.008596511
 
 # mass state 2 mass in eV (define at 0 arbitrarily because oscillations only sensitive to deltaM^2)
 mass2_eV = 0
@@ -65,7 +65,7 @@ mass2_eV = 0
 mass3_eV = 0
 
 # 1-2 mixing angle in degrees [NO/IO:33.82]
-theta12_degrees = 0
+theta12_degrees = 1e-6
 
 # 2-3 mixing angle in degrees [NO:8.61 IO:8.65]
 theta23_degrees = 0
@@ -87,17 +87,17 @@ deltaCP_degrees = 0
 #################
 IMFP_method = 1
 
-IMFP_abs0_cm = 2.398e-1
+IMFP_abs0_cm = 2.398082e-1
 IMFP_abs1_cm = 0
 IMFP_abs2_cm = 0
-IMFP_abs0bar_cm = 2.294e-2
+IMFP_abs0bar_cm = 2.29358e-2
 IMFP_abs1bar_cm = 0
 IMFP_abs2bar_cm = 0
 
 munu0_MeV = 20.0
 munu1_MeV = 0
 munu2_MeV = 0
-munu0bar_MeV = 16.082712484451488
+munu0bar_MeV = 16.70996493528187
 munu1bar_MeV = 0
 munu2bar_MeV = 0
 
