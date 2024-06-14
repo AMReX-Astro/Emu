@@ -18,7 +18,7 @@ nnux = 4.445468787928724e+33 # 1/ccm
 fnue = np.array([-7.54557877e+30, -5.43212748e+30, -7.69897358e+31]) / np.array(nnue) # adimensional flux factor f/n
 fnua = np.array([-7.54557877e+30, -5.43212748e+30, -2.94417496e+32]) / np.array(nnua) # adimensional flux factor f/n
 fnux = np.array([-9.35603382e+30, -2.95170204e+31, -2.04503596e+32]) / np.array(nnux) # adimensional flux factor f/n
-energy_erg = np.average(37.39393896350027+38.51187069862436+42.44995883633579) # MeV
+energy_erg = np.average([37.39393896350027,38.51187069862436,42.44995883633579]) # MeV
 energy_erg *= 1e6*amrex.eV # erg
 
 nnu = np.zeros((2,NF))
