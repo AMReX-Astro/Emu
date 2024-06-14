@@ -1,10 +1,10 @@
 perturbation_type = 0
-perturbation_amplitude = 0.0
+perturbation_amplitude = 1e-6
 
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 1.0
 
-collision_cfl_factor = 1e-2
+collision_cfl_factor = 1e-3
 cfl_factor = 0.5
 flavor_cfl_factor = 0.5
 max_adaptive_speedup = 0
@@ -27,7 +27,7 @@ particle_data_filename = "particle_input.dat"
 max_grid_size = 16
 
 # Number of steps to run
-nsteps = 10000
+nsteps = 500000
 
 # Simulation end time
 end_time = 5.0e19
@@ -36,15 +36,15 @@ end_time = 5.0e19
 amrex.fpe_trap_invalid=1
 
 # give background fluid conditions
-rho_g_ccm = 2104856022650.468
+rho_g_ccm = 0 #2104856022650.468
 T_MeV = 9.308039509999132
-Ye = 0.09924428291081952
+Ye = 0 #0.09924428291081952
 
 # Write plotfiles
-write_plot_every = 100
+write_plot_every = 500
 
 # Write particle data in plotfiles
-write_plot_particles_every = 100
+write_plot_particles_every = 500
 
 # checkpointing
 do_restart = 0
@@ -56,7 +56,7 @@ restart_dir = ""
 # see first column of table 14.7 in http://pdg.lbl.gov/2019/reviews/rpp2019-rev-neutrino-mixing.pdf
 
 # mass state 1 mass in eV [NO/IO:-sqrt(7.39e-5)]
-mass1_eV = -0.008596511
+mass1_eV = 0 #-0.008596511
 
 # mass state 2 mass in eV (define at 0 arbitrarily because oscillations only sensitive to deltaM^2)
 mass2_eV = 0
@@ -65,7 +65,7 @@ mass2_eV = 0
 mass3_eV = 0
 
 # 1-2 mixing angle in degrees [NO/IO:33.82]
-theta12_degrees = 1e-6
+theta12_degrees = 0 #1e-6
 
 # 2-3 mixing angle in degrees [NO:8.61 IO:8.65]
 theta23_degrees = 0
@@ -87,11 +87,11 @@ deltaCP_degrees = 0
 #################
 IMFP_method = 1
 
-IMFP_abs0_cm = 1.403900319813648e-04
-IMFP_abs1_cm = 4.175459950002267e-08
+IMFP_abs0_cm = 1.403900319813648e-00
+IMFP_abs1_cm = 4.175459950002267e-04
 IMFP_abs2_cm = 0
-IMFP_abs0bar_cm = 7.950517300555263e-06
-IMFP_abs1bar_cm = 4.175459950002267e-08
+IMFP_abs0bar_cm = 7.950517300555263e-02
+IMFP_abs1bar_cm = 4.175459950002267e-04
 IMFP_abs2bar_cm = 0
 
 munu0_MeV = -4.171266344694622
