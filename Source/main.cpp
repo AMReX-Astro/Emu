@@ -231,6 +231,15 @@ void evolve_flavor(const TestParams* parms)
 
 int main(int argc, char* argv[])
 {
+    //In amrex::Initialize, a large amount of GPU device memory is allocated and is kept in The_Arena(). 
+    //The default is 3/4 of the total device memory. 
+    //It can be changed with a ParmParse parameter, amrex.the_arena_init_size, in the unit of bytes. 
+    //The default initial size for other arenas is 8388608 (i.e., 8 MB).
+    ParmParse pp;
+    pp.add("amrex.the_arena_init_size", 8388608);
+    pp.add("amrex.the_managed_arena_init_size", 8388608);
+    pp.add("amrex.the_device_arena_init_size", 8388608);
+    
     amrex::Initialize(argc,argv);
 
     MFIter::allowMultipleMFIters(true);
