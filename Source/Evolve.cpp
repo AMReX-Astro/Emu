@@ -204,15 +204,18 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         } 
         else if(parms->IMFP_method==1){
             // use the IMFPs from the input file
-            for(int i=0; i<2; i++){
-                for(int j=0; j<NUM_FLAVORS; j++){
+            for(int i=0; i<2; i++){ //0->neutrino or 1->antineutrino
+                for(int j=0; j<NUM_FLAVORS; j++){  //0->electron, 1->heavy(muon), 2->heavy(tau); all heavy same for current table
                     IMFP_abs[i][j] = parms->IMFP_abs[i][j];
                     IMFP_scat[i][j] = parms->IMFP_scat[i][j];
-                    munu[i][j] = parms->munu[i][j];
+                    munu[i][j] = parms->munu[i][j];  //munu -> "mu_e" - "muhat"
                 }
             }
         }
         else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0 or 1");
+
+        //for energy, we are specifying neutrino energy right now.
+        // double neutrino_energy = p.rdata(PIdx::pupt); locate energy bin using this. 
         
         //----------------------------   EoS call -----------------------------------------------
         double rho = 1.7e2; //g/cm^3
