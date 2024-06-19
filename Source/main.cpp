@@ -90,13 +90,16 @@ void evolve_flavor(const TestParams* parms)
     // initialize the grid variable names
     GIdx::Initialize();
 
-    // read the EoS table
-    amrex::Print() << "Reading EoS table... " << std::endl;
-    ReadEosTable(parms->nuceos_table_name);
+    //We only need HDF5 tables if IMFP_method is 2. 
+    if(parms->IMFP_method==2){
+        // read the EoS table
+        amrex::Print() << "Reading EoS table... " << std::endl;
+        ReadEosTable(parms->nuceos_table_name);
 
-    // read the NuLib table
-    amrex::Print() << "Reading NuLib table... " << std::endl;
-    ReadNuLibTable(parms->nulib_table_name);
+        // read the NuLib table
+        amrex::Print() << "Reading NuLib table... " << std::endl;
+        ReadNuLibTable(parms->nulib_table_name);
+    }
 
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... " << std::endl;

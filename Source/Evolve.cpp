@@ -155,7 +155,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
     const int shape_factor_order_x = geom.Domain().length(0) > 1 ? SHAPE_FACTOR_ORDER : 0;
     const int shape_factor_order_y = geom.Domain().length(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
     const int shape_factor_order_z = geom.Domain().length(2) > 1 ? SHAPE_FACTOR_ORDER : 0;
-
+    
     //Create EoS table object
     using namespace nuc_eos_private;
     EOS_tabulated EOS_tabulated_obj(alltables, epstable, logrho, logtemp, 
@@ -220,48 +220,89 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
                 }
             }
         }
-        else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0 or 1");
+        else if(parms->IMFP_method==2){
+            // use the IMFPs from NuLib table and munu from EoS table.
+            double rho = 1.0e6; //g/cm^3
+            double temperature = 0.6103379806197231; //0.05 //MeV
+            double Ye = 0.035; 
 
-        //for energy, we are specifying neutrino energy right now.
-        // double neutrino_energy = p.rdata(PIdx::pupt); locate energy bin using this. 
-        
-        //----------------------------   HDF5 table calls -----------------------------------------------
-        //EoS table
-        double rho = 1.0e6; //g/cm^3
-        double temperature = 0.6103379806197231; //0.05 //MeV
-        double Ye = 0.035; 
+            //-------------------- Values from EoS table ------------------------------
+            double mue_out, muhat_out;
+            int keyerr, anyerr;
+            EOS_tabulated_obj.get_mue_muhat(rho, temperature, Ye, mue_out, muhat_out, keyerr, anyerr);
+            if (anyerr) assert(0); //If there is an error in interpolation call, stop execution. 
 
-        double mue_out, muhat_out;
-        int keyerr, anyerr;
-        EOS_tabulated_obj.get_mue_muhat(rho, temperature, Ye, mue_out, muhat_out, keyerr, anyerr);
-        printf("(Evolve.cpp) mu_e interpolated = %f\n", mue_out);
-        printf("(Evolve.cpp) muhat interpolated = %f\n", muhat_out);
-        //if (anyerr) assert(0);
+//#define DEBUG_INTERPOLATION_TABLES
+#ifdef DEBUG_INTERPOLATION_TABLES
+            printf("(Evolve.cpp) mu_e interpolated = %f\n", mue_out);
+            printf("(Evolve.cpp) muhat interpolated = %f\n", muhat_out);
+#endif            
+            
+            const double munu_val = mue_out - muhat_out; //munu -> "mu_e" - "muhat"
 
-        //NuLib table
-        double *helperVarsReal_nulib = NuLib_tabulated_obj.get_helperVarsReal_nulib();
-        int idx_group = NULIBVAR(idx_group);
+            for(int i=0; i<2; i++){ 
+                for(int j=0; j<NUM_FLAVORS; j++){ 
+                    munu[i][j] = munu_val;  
+                }
+            }
 
-        int idx_species = 0;  
-        double absorption_opacity, scattering_opacity;
-        NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
-                                          keyerr, anyerr, idx_species, idx_group);
-        printf("(Evolve.cpp) absorption_opacity[e] interpolated = %17.6g\n", absorption_opacity);
-        printf("(Evolve.cpp) scattering_opacity[e] interpolated = %17.6g\n", scattering_opacity);
+            //--------------------- Values from NuLib table ---------------------------
+            double *helperVarsReal_nulib = NuLib_tabulated_obj.get_helperVarsReal_nulib();
+            int idx_group = NULIBVAR(idx_group);
+            //FIXME: specify neutrino energy using the following:
+            // double neutrino_energy = p.rdata(PIdx::pupt); locate energy bin using this. 
 
-        idx_species = 1; 
-        NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
-                                          keyerr, anyerr, idx_species, idx_group);
-        printf("(Evolve.cpp) absorption_opacity[a] interpolated = %17.6g\n", absorption_opacity);
-        printf("(Evolve.cpp) scattering_opacity[a] interpolated = %17.6g\n", scattering_opacity);
+            //idx_species = {0 for electron neutrino, 1 for electron antineutrino and 2 for all other heavier ones}
+            //electron neutrino: [0, 0]
+            int idx_species = 0;  
+            double absorption_opacity, scattering_opacity;
+            NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
+                                              keyerr, anyerr, idx_species, idx_group);
+            if (anyerr) assert(0);
 
-        idx_species = 2;
-        NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
-                                          keyerr, anyerr, idx_species, idx_group);
-        printf("(Evolve.cpp) absorption_opacity[x] interpolated = %17.6g\n", absorption_opacity);
-        printf("(Evolve.cpp) scattering_opacity[x] interpolated = %17.6g\n", scattering_opacity);
-        //if (anyerr) assert(0);
-        //---------------------------------------------------------------------------------------
+#ifdef DEBUG_INTERPOLATION_TABLES            
+            printf("(Evolve.cpp) absorption_opacity[e] interpolated = %17.6g\n", absorption_opacity);
+            printf("(Evolve.cpp) scattering_opacity[e] interpolated = %17.6g\n", scattering_opacity);
+#endif            
+            
+            IMFP_abs[0][0] = absorption_opacity;
+            IMFP_scat[0][0] = scattering_opacity;
+
+            //electron antineutrino: [1, 0]
+            idx_species = 1;  
+            NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
+                                              keyerr, anyerr, idx_species, idx_group);
+            if (anyerr) assert(0);
+
+#ifdef DEBUG_INTERPOLATION_TABLES            
+            printf("(Evolve.cpp) absorption_opacity[a] interpolated = %17.6g\n", absorption_opacity);
+            printf("(Evolve.cpp) scattering_opacity[a] interpolated = %17.6g\n", scattering_opacity);
+#endif            
+
+            IMFP_abs[1][0] = absorption_opacity;
+            IMFP_scat[1][0] = scattering_opacity;
+
+            //heavier ones: muon neutrino[0,1], muon antineutruino[1,1], tau neutrino[0,2], tau antineutrino[1,2]
+            idx_species = 2;  
+            NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
+                                              keyerr, anyerr, idx_species, idx_group);
+            if (anyerr) assert(0);
+
+#ifdef DEBUG_INTERPOLATION_TABLES            
+            printf("(Evolve.cpp) absorption_opacity[x] interpolated = %17.6g\n", absorption_opacity);
+            printf("(Evolve.cpp) scattering_opacity[x] interpolated = %17.6g\n", scattering_opacity);
+#endif
+
+            for(int i=0; i<2; i++){ //0->neutrino or 1->antineutrino
+                for(int j=1; j<NUM_FLAVORS; j++){  //0->electron, 1->heavy(muon), 2->heavy(tau); all heavy same for current table
+                    IMFP_abs[i][j] = absorption_opacity;
+                    IMFP_scat[i][j] = scattering_opacity;
+                }
+            }
+            //-----------------------------------------------------------------------
+
+        }
+        else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0, 1 or 2");
 
         // calculate the equilibrium distribution. Really munu and temperature should be interpolated from the grid.
         for(int i=0; i<2; i++){
