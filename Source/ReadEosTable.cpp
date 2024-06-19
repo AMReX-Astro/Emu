@@ -51,10 +51,10 @@ namespace nuc_eos_private {
 }
 
 //TODO: Pass the /path/to/table here in the function argument
-void ReadEosTable() {
+void ReadEosTable(const std::string nuceos_table_name) {
     using namespace nuc_eos_private;
       
-    std::string nuceos_table_name = "/home/sshanka/000_UTK_projects/Emu/Exec/SFHo.h5"; //FIXME: Read from parameter file
+    //std::string nuceos_table_name = "/home/sshanka/000_UTK_projects/Emu/Exec/SFHo.h5"; 
     amrex::Print() << "(ReadEosTable.cpp) Using table: " << nuceos_table_name << std::endl;
 
     //TODO: 

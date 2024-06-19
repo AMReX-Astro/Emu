@@ -1,7 +1,7 @@
 #ifndef EOS_TABLE_H
 #define EOS_TABLE_H
 
-void ReadEosTable();
+void ReadEosTable(const std::string nuceos_table_name);
 
 // OLD TODO: remove hard coded constants
 // OLD TODO: introduce defines for table index of variables

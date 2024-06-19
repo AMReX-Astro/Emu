@@ -53,10 +53,10 @@ namespace nulib_private {
 }
 
 //TODO: Pass the /path/to/table here in the function argument
-void ReadNuLibTable() {
+void ReadNuLibTable(const std::string nulib_table_name) {
     using namespace nulib_private;
       
-    std::string nulib_table_name = "/mnt/scratch/tables/NuLib/NuLib_SFHo.h5"; //FIXME: Read from parameter file
+    //std::string nulib_table_name = "/mnt/scratch/tables/NuLib/NuLib_SFHo.h5"; 
     amrex::Print() << "(ReadNuLibTable.cpp) Using table: " << nulib_table_name << std::endl;
 
     //TODO: 

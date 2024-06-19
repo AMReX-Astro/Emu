@@ -1,7 +1,7 @@
 #ifndef NULIB_TABLE_H
 #define NULIB_TABLE_H
 
-void ReadNuLibTable();
+void ReadNuLibTable(const std::string nulib_table_name);
 
 #define NTABLES_NULIB 2
 

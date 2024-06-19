@@ -53,6 +53,10 @@ struct TestParams : public amrex::Gpu::Managed
     // attenuation to hamiltonians
     Real attenuation_hamiltonians;
 
+    //HDF5 table names (with full path) for EoS and NuLib tables
+    std::string nuceos_table_name;
+    std::string nulib_table_name;
+
     void Initialize(){
         ParmParse pp;
         pp.get("ncell", ncell);
@@ -112,6 +116,10 @@ struct TestParams : public amrex::Gpu::Managed
 
     // attenuation to hamiltonians
     pp.get("attenuation_hamiltonians", attenuation_hamiltonians);
+
+    //HDF5 table names (with full path) for EoS and NuLib tables
+    pp.get("nuceos_table_name", nuceos_table_name); 
+    pp.get("nulib_table_name",  nulib_table_name); 
 
     // absorption opacities and equilibrium neutrino chemical potentials
     pp.get("IMFP_method", IMFP_method);

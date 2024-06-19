@@ -92,11 +92,11 @@ void evolve_flavor(const TestParams* parms)
 
     // read the EoS table
     amrex::Print() << "Reading EoS table... " << std::endl;
-    ReadEosTable();
+    ReadEosTable(parms->nuceos_table_name);
 
     // read the NuLib table
     amrex::Print() << "Reading NuLib table... " << std::endl;
-    ReadNuLibTable();
+    ReadNuLibTable(parms->nulib_table_name);
 
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... " << std::endl;
