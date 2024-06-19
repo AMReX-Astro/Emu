@@ -361,14 +361,34 @@ def get_Nrho(p):
         Nrho[1,5,:] = p[:,rkey["Nbar"]] * ( p[:,rkey["f22_Rebar"]] + 1j*0                      )
     return Nrho
 
-#===========================#
-# MAIN REDUCE DATA FUNCTION #
-#===========================#
-# nl = number of spherical harmonics
-def reduce_data(directory=".", nproc=4, do_average=True, do_fft=True, do_angular=False, nl=4, do_MPI=False, data_format='Emu'):
-    ########################
-    # format peculiarities #
-    ########################
+#==========================#
+# averaged data quantities #
+#==========================#
+# input: "alldata" object
+def reduce_averaged(ad):
+    thisN, thisNI = get_matrix(ad,"N",""   )
+    N = averaged_N(thisN,thisNI)
+            
+    thisFx, thisFxI = get_matrix(ad,"Fx","") 
+    thisFy, thisFyI = get_matrix(ad,"Fy","")
+    thisFz, thisFzI = get_matrix(ad,"Fz","")
+    Ftmp  = np.array([thisFx , thisFy , thisFz ])
+    FtmpI = np.array([thisFxI, thisFyI, thisFzI])
+    F = averaged_F(Ftmp, FtmpI)
+            
+    thisN, thisNI = get_matrix(ad,"N","bar")
+    Nbar = averaged_N(thisN,thisNI)
+            
+    thisFx, thisFxI = get_matrix(ad,"Fx","bar")
+    thisFy, thisFyI = get_matrix(ad,"Fy","bar")
+    thisFz, thisFzI = get_matrix(ad,"Fz","bar")
+    Ftmp  = np.array([thisFx , thisFy , thisFz ])
+    FtmpI = np.array([thisFxI, thisFyI, thisFzI])
+    Fbar = averaged_F(Ftmp, FtmpI)
+
+    return N, Nbar, F, Fbar
+
+def make_format_dict(data_format, directory):
     if(data_format=="FLASH"):
         assert(not do_angular)
         yt_descriptor = "flash"
@@ -378,17 +398,13 @@ def reduce_data(directory=".", nproc=4, do_average=True, do_fft=True, do_angular
         MeV_to_codeenergy = 1.60217733e-6*5.59424238e-55 #code energy/MeV
         cm_to_codelength = 6.77140812e-06 #code length/cm
         convert_N_to_inv_ccm = 4.0*np.pi/(e01_energy*MeV_to_codeenergy/cm_to_codelength**3)#1/cm^3
-
-        output_base = "NSM_sim_hdf5_chk_"
-        directories = sorted(glob.glob(output_base+"*"))
-    
+        
     if(data_format=="Emu"):
         yt_descriptor = "boxlib"
         convert_N_to_inv_ccm = 1.0
-        directories = sorted(glob.glob("plt?????"))
 
     # get NF
-    eds = emu.EmuDataset(directories[0])
+    eds = emu.EmuDataset(directory)
     NF = eds.get_num_flavors()
     global rkey
     rkey, ikey = amrex.get_particle_keys(NF)
@@ -397,8 +413,22 @@ def reduce_data(directory=".", nproc=4, do_average=True, do_fft=True, do_angular
     format_dict = {"data_format":data_format,
                    "yt_descriptor":yt_descriptor,
                    "convert_N_to_inv_ccm":convert_N_to_inv_ccm,
-                   "directories":directories,
                    "NF":NF}
+
+#===========================#
+# MAIN REDUCE DATA FUNCTION #
+#===========================#
+# nl = number of spherical harmonics
+def reduce_data(directory=".", nproc=4, do_average=True, do_fft=True, do_angular=False, nl=4, do_MPI=False, data_format='Emu'):
+    ########################
+    # format peculiarities #
+    ########################
+    if(data_format=="FLASH"):
+        output_base = "NSM_sim_hdf5_chk_"
+        directories = sorted(glob.glob(output_base+"*"))    
+    if(data_format=="Emu"):
+        directories = sorted(glob.glob("plt?????"))
+    make_format_dict(data_format, directories[0])
 
     #########################
     # loop over directories #
@@ -427,26 +457,12 @@ def reduce_data(directory=".", nproc=4, do_average=True, do_fft=True, do_angular
         outputfilename = d+"_reduced_data.h5"
         already_done = len(glob.glob(outputfilename))>0
         if do_average and not already_done:
-            thisN, thisNI = get_matrix(ad,"N",""   )
-            N = averaged_N(thisN,thisNI) * convert_N_to_inv_ccm
+            N,Nbar,F,Fbar = reduce_averaged(ad)
+            N    *= format_dict["convert_N_to_inv_ccm"]
+            Nbar *= format_dict["convert_N_to_inv_ccm"]
+            F    *= convert_F_to_inv_ccm(N,data_format)
+            Fbar *= convert_F_to_inv_ccm(Nbar,data_format)
             
-            thisFx, thisFxI = get_matrix(ad,"Fx","") 
-            thisFy, thisFyI = get_matrix(ad,"Fy","")
-            thisFz, thisFzI = get_matrix(ad,"Fz","")
-            Ftmp  = np.array([thisFx , thisFy , thisFz ])
-            FtmpI = np.array([thisFxI, thisFyI, thisFzI])
-            F = averaged_F(Ftmp, FtmpI) * convert_F_to_inv_ccm(N,data_format)
-            
-            thisN, thisNI = get_matrix(ad,"N","bar")
-            Nbar = averaged_N(thisN,thisNI) * convert_N_to_inv_ccm
-            
-            thisFx, thisFxI = get_matrix(ad,"Fx","bar")
-            thisFy, thisFyI = get_matrix(ad,"Fy","bar")
-            thisFz, thisFzI = get_matrix(ad,"Fz","bar")
-            Ftmp  = np.array([thisFx , thisFy , thisFz ])
-            FtmpI = np.array([thisFxI, thisFyI, thisFzI])
-            Fbar = averaged_F(Ftmp, FtmpI) * convert_F_to_inv_ccm(Nbar,data_format)
-
             print("# rank",mpi_rank,"writing",outputfilename)
             avgData = h5py.File(outputfilename,"w")
             avgData["N_avg_mag(1|ccm)"] = [N,]
