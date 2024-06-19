@@ -2,7 +2,6 @@
 
 #include <AMReX_GpuAllocators.H>
 
-//#include "GRHydroX_EOS.hxx"
 #define H5_USE_16_API 1
 #include "hdf5.h"
 

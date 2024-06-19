@@ -6,6 +6,9 @@
 #include "EosTableFunctions.H"
 #include "EosTable.H"
 
+#include "NuLibTableFunctions.H"
+#include "NuLibTable.H"
+
 using namespace amrex;
 
 namespace GIdx
@@ -153,10 +156,15 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
     const int shape_factor_order_y = geom.Domain().length(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
     const int shape_factor_order_z = geom.Domain().length(2) > 1 ? SHAPE_FACTOR_ORDER : 0;
 
-    //Create the EoS table object
+    //Create EoS table object
     using namespace nuc_eos_private;
     EOS_tabulated EOS_tabulated_obj(alltables, epstable, logrho, logtemp, 
                                     yes, helperVarsReal, helperVarsInt);
+
+    //Create NuLib table object
+    using namespace nulib_private;
+    NuLib_tabulated NuLib_tabulated_obj(alltables_nulib, logrho_nulib, logtemp_nulib, 
+                                        yes_nulib, helperVarsReal_nulib, helperVarsInt_nulib);
 
     amrex::MeshToParticle(neutrinos_rhs, state, 0,
     [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
@@ -217,16 +225,40 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         //for energy, we are specifying neutrino energy right now.
         // double neutrino_energy = p.rdata(PIdx::pupt); locate energy bin using this. 
         
-        //----------------------------   EoS call -----------------------------------------------
-        double rho = 1.7e2; //g/cm^3
-        double temperature = 0.01; //MeV
-        double Ye = 0.01; 
+        //----------------------------   HDF5 table calls -----------------------------------------------
+        //EoS table
+        double rho = 1.0e6; //g/cm^3
+        double temperature = 0.6103379806197231; //0.05 //MeV
+        double Ye = 0.035; 
 
         double entropy_out, munu_out;
         int keyerr, anyerr;
         EOS_tabulated_obj.get_entropy_munu(rho, temperature, Ye, entropy_out, munu_out, keyerr, anyerr);
         printf("(Evolve.cpp) munu interpolated = %f\n", munu_out);
-        //munu[0][0] = munu;
+        //if (anyerr) assert(0);
+
+        //NuLib table
+        int idx_group = 10;
+
+        int idx_species = 0;  
+        double absorption_opacity, scattering_opacity;
+        NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
+                                          keyerr, anyerr, idx_species, idx_group);
+        printf("(Evolve.cpp) absorption_opacity[e] interpolated = %17.6g\n", absorption_opacity);
+        printf("(Evolve.cpp) scattering_opacity[e] interpolated = %17.6g\n", scattering_opacity);
+
+        idx_species = 1; 
+        NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
+                                          keyerr, anyerr, idx_species, idx_group);
+        printf("(Evolve.cpp) absorption_opacity[a] interpolated = %17.6g\n", absorption_opacity);
+        printf("(Evolve.cpp) scattering_opacity[a] interpolated = %17.6g\n", scattering_opacity);
+
+        idx_species = 2;
+        NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
+                                          keyerr, anyerr, idx_species, idx_group);
+        printf("(Evolve.cpp) absorption_opacity[x] interpolated = %17.6g\n", absorption_opacity);
+        printf("(Evolve.cpp) scattering_opacity[x] interpolated = %17.6g\n", scattering_opacity);
+        //if (anyerr) assert(0);
         //---------------------------------------------------------------------------------------
 
         // calculate the equilibrium distribution. Really munu and temperature should be interpolated from the grid.

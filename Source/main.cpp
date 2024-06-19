@@ -33,6 +33,7 @@
 #include "IO.H"
 #include "DataReducer.H"
 #include "EosTable.H"
+#include "NuLibTable.H"
 
 using namespace amrex;
 
@@ -92,6 +93,10 @@ void evolve_flavor(const TestParams* parms)
     // read the EoS table
     amrex::Print() << "Reading EoS table... " << std::endl;
     ReadEosTable();
+
+    // read the NuLib table
+    amrex::Print() << "Reading NuLib table... " << std::endl;
+    ReadNuLibTable();
 
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... " << std::endl;

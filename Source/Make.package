@@ -5,6 +5,7 @@ CEXE_sources += FlavoredNeutrinoContainerInit.cpp
 CEXE_sources += Evolve.cpp
 CEXE_sources += FlavoredNeutrinoContainer.cpp
 CEXE_sources += ReadEosTable.cpp
+CEXE_sources += ReadNuLibTable.cpp
 
 CEXE_headers += Evolve.H
 CEXE_headers += FlavoredNeutrinoContainer.H
@@ -18,3 +19,6 @@ CEXE_headers += ArithmeticArray.H
 CEXE_headers += EosTable.H 
 CEXE_headers += EosTableFunctions.H
 CEXE_headers += EosTableHelpers.H
+CEXE_headers += NuLibTable.H
+CEXE_headers += NuLibTableFunctions.H
+CEXE_headers += NuLibTableHelpers.H
