@@ -231,10 +231,11 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         double temperature = 0.6103379806197231; //0.05 //MeV
         double Ye = 0.035; 
 
-        double entropy_out, munu_out;
+        double mue_out, muhat_out;
         int keyerr, anyerr;
-        EOS_tabulated_obj.get_entropy_munu(rho, temperature, Ye, entropy_out, munu_out, keyerr, anyerr);
-        printf("(Evolve.cpp) munu interpolated = %f\n", munu_out);
+        EOS_tabulated_obj.get_mue_muhat(rho, temperature, Ye, mue_out, muhat_out, keyerr, anyerr);
+        printf("(Evolve.cpp) mu_e interpolated = %f\n", mue_out);
+        printf("(Evolve.cpp) muhat interpolated = %f\n", muhat_out);
         //if (anyerr) assert(0);
 
         //NuLib table

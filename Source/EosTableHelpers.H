@@ -120,10 +120,10 @@ nuc_eos_C_linterp_one(const int *idx, const double delx, const double dely,
 
 
 
-//Main function for entropy and munu given (rho, temperature, Ye)
+//Main function for mu_e and muhat given (rho, temperature, Ye)
 static inline AMREX_GPU_DEVICE AMREX_GPU_HOST void
-nuc_eos_entropy_munu(const double rho, const double temperature,
-			              const double Ye, double &entropy, double &munu, 
+nuc_eos_mue_muhat(const double rho, const double temperature,
+			              const double Ye, double &mue, double &muhat, 
 			              int &keyerr, int &anyerr, double *alltables,
 			              double *logrho, double *logtemp, double *yes,
 			              double *helperVarsReal, int *helperVarsInt)
@@ -153,23 +153,23 @@ nuc_eos_entropy_munu(const double rho, const double temperature,
     get_interp_spots(lrho, ltemp, Ye, delx, dely, delz, idx, 
                      logrho, logtemp, yes, helperVarsReal, helperVarsInt); 
     
-    double entropy_ , munu_; 
+    double mue_ , muhat_; 
     {
-        const int iv = 2;
-        nuc_eos_C_linterp_one(idx, delx, dely, delz, entropy_, iv, alltables, helperVarsReal); 
+        const int iv = 9;
+        nuc_eos_C_linterp_one(idx, delx, dely, delz, mue_, iv, alltables, helperVarsReal); 
     }
 
     {
-        const int iv = 3;
-        nuc_eos_C_linterp_one(idx, delx, dely, delz, munu_, iv, alltables, helperVarsReal); 
+        const int iv = 8;
+        nuc_eos_C_linterp_one(idx, delx, dely, delz, muhat_, iv, alltables, helperVarsReal); 
     }
     
     // Assign values to reference variables:
-    entropy = entropy_;
-    munu = munu_;
+    mue = mue_;
+    muhat = muhat_;
   
     return;
-}//nuc_eos_entropy_munu
+}//nuc_eos_mue_muhat
 
 
 

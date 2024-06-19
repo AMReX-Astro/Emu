@@ -34,10 +34,7 @@ struct NuLib_tabulated {
         /*Actual steps:
         (1) check bounds
         (2) get interp spots
-        (3) do interpolation to get press and eps
-        Let's wrap this up in a funtion calleds nuc_eos_press_eps_kT1 (~nuc_eos_press.c)
-        This will further require another include ~helpers.hh
-        Pass errors such as anyerr or keyerr to the calling routine.
+        (3) do interpolation to get absorption and scattering opacity
         */
     };//get_opacities
     

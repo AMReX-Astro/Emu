@@ -21,48 +21,21 @@ struct EOS_tabulated {
     };//get_helperVarsReal
     
     
-    //--------------- get entropy/munu for tabulated EOS ---------------------------------------------  
-    AMREX_GPU_DEVICE AMREX_GPU_HOST void get_entropy_munu(double rho, double temperature, double Ye,
-                                             double &entropy, double &munu, 
+    //--------------- get mu_e and muhat for tabulated EOS ---------------------------------------------  
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void get_mue_muhat(double rho, double temperature, double Ye,
+                                             double &mue, double &muhat, 
                                              int &keyerr, int &anyerr) const {
         
-        nuc_eos_entropy_munu(rho, temperature, Ye, entropy, munu, keyerr, anyerr, 
+        nuc_eos_mue_muhat(rho, temperature, Ye, mue, muhat, keyerr, anyerr, 
                                 alltables, logrho, logtemp, yes, helperVarsReal, helperVarsInt);
         return;
 
         /*Actual steps:
         (1) check bounds
         (2) get interp spots
-        (3) do interpolation to get press and eps
-        Let's wrap this up in a funtion calleds nuc_eos_press_eps_kT1 (~nuc_eos_press.c)
-        This will further require another include ~helpers.hh
-        Pass errors such as anyerr or keyerr to the calling routine.
+        (3) do interpolation to get mu_e and muhat
         */
-    };//get_entropy_munu
-    
-    
-    //--------------- get pressure for tabulated EOS ---------------------------------------------  
-    AMREX_GPU_DEVICE AMREX_GPU_HOST void get_press(double rho, double temperature, double Ye,
-                                             double &press, int &keyerr, int &anyerr) const {
-        
-        //int keyerr, anyerr;
-        /*nuc_eos_m_kt1_press(rho, temperature, Ye, press, keyerr, anyerr, 
-                                alltables, logrho, logtemp, yes, helperVarsReal, helperVarsInt);*/
-        assert(0); //FIXME: Add actual routine.
-        return; 
-    };//get_press
-    
-    
-    //--------------- get composition xh for tabulated EOS ---------------------------------------------  
-    AMREX_GPU_DEVICE AMREX_GPU_HOST void get_xh(double rho, double temperature, double Ye,
-                                      double &xh, int &keyerr, int &anyerr) const {
-        
-        //int keyerr, anyerr;
-        /*nuc_eos_m_kt1_xh(rho, temperature, Ye, xh, keyerr, anyerr, 
-                        alltables, logrho, logtemp, yes, helperVarsReal, helperVarsInt);*/
-        assert(0); //FIXME: Add actual routine.
-        return; 
-    };//get_xh
+    };//get_mue_muhat
     
 }; //struct EOS_tabulated
 

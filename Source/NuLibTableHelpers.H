@@ -134,7 +134,7 @@ nuc_eos_C_linterp_one_nulib(const int *idx, const double delx, const double dely
 
 
 
-//Main function for entropy and munu given (rho, temperature, Ye)
+//Main function for absorption and scattering opacities (rho, temperature, Ye)
 static inline AMREX_GPU_DEVICE AMREX_GPU_HOST void
 nulib_opacities(const double rho, const double temperature,
                   const double Ye, double &absorption_opacity, double &scattering_opacity, 
