@@ -144,6 +144,18 @@ void ReadNuLibTable() {
         assert(0);
     }
 
+    //Allocate memory for energy bin determination.
+    double *energy_bottom;
+    double *energy_top;
+    if (!(energy_bottom = myManagedArena.allocate(ngroup_) )) {
+        printf("(ReadNuLibTable.cpp) Cannot allocate memory for NuLib table"); 
+        assert(0);
+    } 
+    if (!(energy_top = myManagedArena.allocate(ngroup_) )) {
+        printf("(ReadNuLibTable.cpp) Cannot allocate memory for NuLib table"); 
+        assert(0);
+    }
+
     // Prepare HDF5 to read hyperslabs into alltables_temp
     hsize_t table_dims[2] = {NTABLES_NULIB, (hsize_t)nrho_ * ntemp_ * nye_ * nspecies_ * ngroup_};
     //hsize_t var3[2]       = { 1, (hsize_t)nrho_ * ntemp_ * nye_ * nspecies_ * ngroup_};
@@ -160,6 +172,9 @@ void ReadNuLibTable() {
     READ_BCAST_EOS_HDF5("ye_points",         yes_nulib,          H5T_NATIVE_DOUBLE, H5S_ALL, nye_);
     READ_BCAST_EOS_HDF5("neutrino_energies", group_nulib,        H5T_NATIVE_DOUBLE, H5S_ALL, ngroup_);
     
+    READ_BCAST_EOS_HDF5("bin_bottom", energy_bottom,  H5T_NATIVE_DOUBLE, H5S_ALL, ngroup_);
+    READ_BCAST_EOS_HDF5("bin_top",    energy_top,  H5T_NATIVE_DOUBLE, H5S_ALL, ngroup_);
+
     HDF5_ERROR(H5Sclose(mem3));
     HDF5_ERROR(H5Fclose(file));
 
@@ -196,6 +211,23 @@ void ReadNuLibTable() {
       logtemp_nulib[i] = log(logtemp_nulib[i]);
     }
 
+    //---------------------------- Energy bin determeination --------------------------------
+    //FIXME: FIXME: Set from parameter file.
+    double given_energy = 55.0; //TODO: Is this log or linear in table?
+    int idx_group_;
+
+    //Decide which energy bin to use (i.e. determine 'idx_group')
+    for (int i=0; i<ngroup_; i++){
+        if(given_energy >= energy_bottom[i] && given_energy <= energy_top[i]){
+            idx_group_ = i;
+            break;
+        }
+    }
+
+    printf("Given neutrino energy = %f, selected bin index = %d\n", given_energy, idx_group);
+    myManagedArena.deallocate(energy_bottom, ngroup_);
+    myManagedArena.deallocate(energy_top, ngroup_);
+    //----------------------------------------------------------------------------------------------
 
     // convert any other quantities to log. 
     /*for(int i=0;i<nrho_*ntemp_*nye_;i++) {
@@ -209,11 +241,13 @@ void ReadNuLibTable() {
     }*/
 
   //allocate memory for helperVars
-  helperVarsReal_nulib = myManagedArena.allocate(23);
+  helperVarsReal_nulib = myManagedArena.allocate(24);
   helperVarsInt_nulib = myManagedArena_Int.allocate(5);
   
   const double temp0_ = exp(logtemp_nulib[0]);
   const double temp1_ = exp(logtemp_nulib[1]);
+
+  NULIBVAR(idx_group) = idx_group_;
 
   NULIBVAR_INT(nrho) = nrho_;
   NULIBVAR_INT(ntemp) = ntemp_;

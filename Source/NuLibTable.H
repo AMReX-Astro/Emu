@@ -26,7 +26,7 @@ namespace nulib_private {
   enum helperVarsEnumReal_nulib { eos_rhomin, eos_rhomax, eos_tempmin, eos_tempmax, eos_yemin, eos_yemax, 
                             dlintemp, dlintempi, drholintempi, dlintempyei, drholintempyei, 
                             dtemp, dtempi, drho, drhoi, dye, dyei, drhotempi, drhoyei, dtempyei, 
-                            drhotempyei, eos_epsmin, eos_epsmax };
+                            drhotempyei, eos_epsmin, eos_epsmax, idx_group};
   extern double *helperVarsReal_nulib;
   
 #define NULIBVAR_INT(VAR) helperVarsInt_nulib[helperVarsEnumInt_nulib::VAR]

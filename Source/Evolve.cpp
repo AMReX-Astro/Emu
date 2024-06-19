@@ -238,7 +238,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         //if (anyerr) assert(0);
 
         //NuLib table
-        int idx_group = 10;
+        double *helperVarsReal_nulib = NuLib_tabulated_obj.get_helperVarsReal_nulib();
+        int idx_group = NULIBVAR(idx_group);
 
         int idx_species = 0;  
         double absorption_opacity, scattering_opacity;
