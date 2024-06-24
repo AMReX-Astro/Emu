@@ -34,6 +34,7 @@
 #include "DataReducer.H"
 #include "EosTable.H"
 #include "NuLibTable.H"
+#include "ReadInput_RhoTempYe.H"
 
 using namespace amrex;
 
@@ -80,13 +81,24 @@ void evolve_flavor(const TestParams* parms)
     // Create a MultiFab to hold our grid state data and initialize to 0.0
     MultiFab state(ba, dm, ncomp, ngrow);
 
+    //FIXME: FIXME: Define this in paramete file.
+    const int read_rho_T_Ye_from_table = 1;
+
     // initialize with NaNs ...
     state.setVal(0.0);
-    state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
-    state.setVal(parms->Ye_in,GIdx::Ye,1);
-    state.setVal(parms->kT_in,GIdx::T,1); // erg
-    state.FillBoundary(geom.periodicity());
 
+    //If reading from table, call function "set_rho_T_Ye". 
+    //Else set rho, T and Ye to constant value throughout the grid using values from parameter file.
+    if (read_rho_T_Ye_from_table){
+        set_rho_T_Ye(state, geom);
+    } else {      
+        state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
+        state.setVal(parms->Ye_in,GIdx::Ye,1);
+        state.setVal(parms->kT_in,GIdx::T,1); // erg
+    }
+
+    state.FillBoundary(geom.periodicity());
+    
     // initialize the grid variable names
     GIdx::Initialize();
 

@@ -211,6 +211,8 @@ void ReadNuLibTable(const std::string nulib_table_name) {
       logtemp_nulib[i] = log(logtemp_nulib[i]);
     }
 
+    //FIXME: FIXME: Make an assert that rho, temp and Ye are uniformally spaced. 
+
     //---------------------------- Energy bin determeination --------------------------------
     //FIXME: FIXME: Set from parameter file.
     double given_energy = 55.0; //TODO: Is this log or linear in table?
