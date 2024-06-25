@@ -16,7 +16,7 @@ pipeline {
 	    sh 'nvidia-smi'
 	    sh 'nvcc -V'
 	    sh 'git submodule update --init'
-	    sh 'cp makefiles/GNUmakefile_jenkins_HDF5 Exec/GNUmakefile'
+	    sh 'cp makefiles/GNUmakefile_jenkins_HDF5_CUDA Exec/GNUmakefile'
 	    dir('Exec'){
 	        sh 'make generate; make -j'
 	    }
