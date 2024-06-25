@@ -117,10 +117,6 @@ struct TestParams : public amrex::Gpu::Managed
     // attenuation to hamiltonians
     pp.get("attenuation_hamiltonians", attenuation_hamiltonians);
 
-    //HDF5 table names (with full path) for EoS and NuLib tables
-    pp.get("nuceos_table_name", nuceos_table_name); 
-    pp.get("nulib_table_name",  nulib_table_name); 
-
     // absorption opacities and equilibrium neutrino chemical potentials
     pp.get("IMFP_method", IMFP_method);
     if(IMFP_method==0){
@@ -146,8 +142,11 @@ struct TestParams : public amrex::Gpu::Managed
         }
     	pp.get("delta_E", delta_E);
         delta_E*= 1e6*CGSUnitsConst::eV; // erg
-    }
-    else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 1");
+    } else if (IMFP_method==2){
+        //HDF5 table names (with full path) for EoS and NuLib tables
+        pp.get("nuceos_table_name", nuceos_table_name); 
+        pp.get("nulib_table_name",  nulib_table_name); 
+    } else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 1");
 
     }
 };
