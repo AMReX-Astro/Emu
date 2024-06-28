@@ -4,10 +4,17 @@ import numpy as np
 import sys
 
 def combine_files(directory, filename_base, filename_tail):
-    file_list = sorted(glob.glob(directory+"/"+filename_base+"*"+filename_tail))
+    file_list = glob.glob(directory+"/"+filename_base+"*"+filename_tail)
+    iteration = []
+    for f in file_list:
+        print(f)
+        this_iteration = int(f.split(filename_base)[-1].split(filename_tail)[0])
+        print(this_iteration)
+        iteration.append(this_iteration)
+    sorted_file_list = [x for _,x in sorted(zip(iteration, file_list))]
 
     # get the number of datasets in the file
-    f = h5py.File(file_list[0],"r")
+    f = h5py.File(sorted_file_list[0],"r")
     keylist = [key for key in f.keys()]
     ndatasets = len(keylist)
     f.close()
@@ -15,7 +22,7 @@ def combine_files(directory, filename_base, filename_tail):
     # collect the data in appended arrays
     print()
     datasets = [[] for i in range(ndatasets)]
-    for filename in file_list:
+    for filename in sorted_file_list:
         print("getting data from",filename)
         f = h5py.File(filename,"r")
         for i, key in enumerate(keylist):
