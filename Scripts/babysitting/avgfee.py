@@ -54,7 +54,7 @@ fig, ax = plt.subplots(1,1, figsize=(6,5))
 # formatting #
 ##############
 ax.axhline(1./3., color="green")
-ax.set_ylabel(r"$\langle N\rangle$ (cm$^{-3}$)")
+ax.set_ylabel(r"$\langle N\rangle_{ee}$ (cm$^{-3}$)")
 ax.set_xlabel(r"$t\,(10^{-9}\,\mathrm{s})$")
 ax.tick_params(axis='both', which='both', direction='in', right=True,top=True)
 ax.xaxis.set_minor_locator(AutoMinorLocator())
@@ -62,19 +62,20 @@ ax.yaxis.set_minor_locator(AutoMinorLocator())
 ax.minorticks_on()
 ax.grid(which='both')
 
-#############
-# plot data #
-#############
 filename = "plt_reduced_data.h5"
 t,N = plotdata(filename,0,0)
 ax.plot(t, N)
-
-############
-# save pdf #
-############
 plt.savefig("avgfee.pdf", bbox_inches="tight")
 
 # same for f_e\mu
+plt.cla()
+ax.set_ylabel(r"$\langle N\rangle_\mathrm{offdiag}$ (cm$^{-3}$)")
+ax.set_xlabel(r"$t\,(10^{-9}\,\mathrm{s})$")
+ax.tick_params(axis='both', which='both', direction='in', right=True,top=True)
+ax.xaxis.set_minor_locator(AutoMinorLocator())
+ax.yaxis.set_minor_locator(AutoMinorLocator())
+ax.minorticks_on()
+ax.grid(which='both')
 t,N = plotdata(filename,0,1)
 ax.semilogy(t, N)
 plt.savefig("avgfemu.pdf", bbox_inches="tight")
