@@ -1,5 +1,6 @@
 import matplotlib.pyplot as mpl
 import numpy as np
+from scipy.signal import argrelextrema
 
 ##############
 # parameters #
@@ -36,7 +37,17 @@ kz   = kmax[:,3]
 ky   = kmax[:,2]
 kx   = kmax[:,1]
 t    = kmax[:,0]*10**6
-imax = np.argmax(amp)
+
+# Obtaining the index at which exponential growth stops
+flag = True                                                            # Flag to prevent any errors if the following method fails
+indexes = np.concatenate([[0],argrelextrema(amp, np.greater)[0]])      # Take all the indexes at which there is a local maxima, as well as the first point in the data
+
+for i in range(len(indexes)-1):                                        # Loop over all the indexes to check if there are two adjacent points that have a difference of three orders of magnitude
+    if abs(round((np.log10(amp[indexes[i]]/amp[indexes[i+1]])))) >= 3:
+        imax = indexes[i+1]
+        flag = False
+if flag == True:                                                       # If there previous method does not work, the following is used
+    imax = np.argmax(amp)
 
 # Changing the length of the domain and kmin and kmax according to axis
 if direction == "x":
@@ -74,21 +85,21 @@ mpl.rcParams['figure.figsize'] = (10,10)
 fig, axs = mpl.subplots(2, 1, sharex=True)
 fig.subplots_adjust(hspace=0)
 
-if abskplt == "log":
-    axs[0].semilogy(t, amp)
-elif abskplt == "lin":
-    axs[0].plot(t, amp)
-else:
-    axs[0].semilogy(t, amp)
-    
+axs[0].semilogy(t, amp)
 axs[0].tick_params(axis='both',which="both", direction="in",top=True,right=True)
 axs[0].minorticks_on()
 
 kmag = np.sqrt(kz**2+ky**2+kx**2)
 
-axs[1].semilogy(t, kmag)
+if abskplt == "log":
+    axs[1].semilogy(t, kmag)
+elif abskplt == "lin":
+    axs[1].plot(t, kmag)
+else:
+    axs[1].semilogy(t, kmag)
+
 axs[1].axhline(kmx, color='r', linestyle='-', label=labels[1])
-axs[1].axhline(kmn, color='y', linestyle='-', label=labels[0])
+axs[1].axhline(kmn, color='g', linestyle='-', label=labels[0])
 axs[1].tick_params(axis='both',which="both", direction="in",top=True,right=True)
 axs[1].minorticks_on()
 
