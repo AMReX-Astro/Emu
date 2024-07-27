@@ -75,13 +75,15 @@ void evolve_flavor(const TestParams* parms)
     const IntVect ngrow(1 + (1+shape_factor_order_vec)/2);
     for(int i=0; i<AMREX_SPACEDIM; i++) AMREX_ASSERT(parms->ncell[i] >= ngrow[i]);
 
+    printf("ngrow = [%d, %d, %d] \n", ngrow[0], ngrow[1], ngrow[2]);
+
     // We want 1 component (this is one real scalar field on the domain)
     const int ncomp = GIdx::ncomp;
 
     // Create a MultiFab to hold our grid state data and initialize to 0.0
     MultiFab state(ba, dm, ncomp, ngrow);
 
-    //FIXME: FIXME: Define this in paramete file.
+    //FIXME: FIXME: Define this in parameter file.
     const int read_rho_T_Ye_from_table = 1;
 
     // initialize with NaNs ...
@@ -186,6 +188,10 @@ void evolve_flavor(const TestParams* parms)
 
         // Use the latest-time neutrino data
         auto& neutrinos = neutrinos_new;
+
+        //FIXME: Think carefully where to call this function.
+        //Create particles at outer boundary 
+        neutrinos.CreateParticlesAtBoundary(parms);
 
         // Update the new time particle locations in the domain with their
         // integrated coordinates.

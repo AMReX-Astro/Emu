@@ -76,6 +76,8 @@ public:
 
     void InitParticles(const TestParams* parms);
 
+    void CreateParticlesAtBoundary(const TestParams* parms);
+
     void SyncLocation(int type);
 
     void UpdateLocationFrom(FlavoredNeutrinoContainer& Other);
