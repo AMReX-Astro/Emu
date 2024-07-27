@@ -348,6 +348,7 @@ InitParticles(const TestParams* parms)
 //==================================================================================================================//
 //========================================= CreateParticlesAtBoundary ==============================================//
 //==================================================================================================================//
+template<bool outer_boundary, bool inner_boundary>
 void FlavoredNeutrinoContainer::
 CreateParticlesAtBoundary(const TestParams* parms)
 {
@@ -433,11 +434,24 @@ CreateParticlesAtBoundary(const TestParams* parms)
 		      y >= a_bounds.hi(1) || y < a_bounds.lo(1) ||
 		      z >= a_bounds.hi(2) || z < a_bounds.lo(2) ) continue;*/
 		  
+		  bool create_particle_this_cell = false;
 		  
-		  //Only create particles in the outermost interior cells.
-		  bool create_particle_this_cell = (i==0 || i==ncellx-1 || 
-		  									j==0 || j==ncelly-1 || 
-											k==0 || k==ncellz-1);
+		  //Create particles at outer boundary
+		  if(outer_boundary && !inner_boundary){
+			//Only create particles in the outermost interior cells.
+		  	if (i==0 || i==ncellx-1 || j==0 || j==ncelly-1 || k==0 || k==ncellz-1) create_particle_this_cell = true;
+		  }
+		  
+		  //Create particles at inner boundary
+		  if (inner_boundary && !outer_boundary){
+			//RUNTIME ERROR: Inner boundary is not implemented yet.
+			//Not giving a compile time error due to explicit instantiation of this function.
+			printf("ERROR: Inner boundary is not implemented yet.\n");
+			assert(0);
+			//TODO: Implement this.
+		  }
+
+
 		  if (!create_particle_this_cell) continue;
 		  //printf("CREATE PARTRICLE AT: i = %d, j = %d, k = %d \n", i, j, k);
 
@@ -528,10 +542,23 @@ CreateParticlesAtBoundary(const TestParams* parms)
     	      y >= a_bounds.hi(1) || y < a_bounds.lo(1) ||
     	      z >= a_bounds.hi(2) || z < a_bounds.lo(2) ) continue;*/
     		        
-		  //Only create particles in the outermost interior cells.
-		  bool create_particle_this_cell = (i==0 || i==ncellx-1 || 
-		  									j==0 || j==ncelly-1 || 
-											k==0 || k==ncellz-1);
+		  bool create_particle_this_cell = false;
+		  
+		  //Create particles at outer boundary
+		  if(outer_boundary && !inner_boundary){
+			//Only create particles in the outermost interior cells.
+		  	if (i==0 || i==ncellx-1 || j==0 || j==ncelly-1 || k==0 || k==ncellz-1) create_particle_this_cell = true;
+		  }
+		  
+		  //Create particles at inner boundary
+		  if (inner_boundary && !outer_boundary){
+			//RUNTIME ERROR: Inner boundary is not implemented yet.
+			//Not giving a compile time error due to explicit instantiation of this function.
+			printf("ERROR: Inner boundary is not implemented yet.\n");
+			assert(0);
+			//TODO: Implement this.
+		  }
+
 		  if (!create_particle_this_cell) continue;
 		  //printf("CREATE PARTRICLE AT: i = %d, j = %d, k = %d \n", i, j, k);
 
@@ -631,4 +658,11 @@ CreateParticlesAtBoundary(const TestParams* parms)
     } // loop over multifabs
 
 } // CreateParticlesAtBoundary()
+
+//We need to explicitly instantiate the template function for different use cases.
+//outer_boundary = true, inner_boundary = false
+template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<true, false>(const TestParams* parms);
+//outer_boundary = false, inner_boundary = true
+template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<false, true>(const TestParams* parms);
+
 

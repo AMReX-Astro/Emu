@@ -61,6 +61,7 @@ public:
     }
 };
 
+
 class FlavoredNeutrinoContainer
     : public amrex::ParticleContainer<PIdx::nattribs, 0, 0, 0>
 {
@@ -76,6 +77,7 @@ public:
 
     void InitParticles(const TestParams* parms);
 
+    template<bool outer_boundary, bool inner_boundary>
     void CreateParticlesAtBoundary(const TestParams* parms);
 
     void SyncLocation(int type);

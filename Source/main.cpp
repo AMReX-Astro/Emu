@@ -191,7 +191,10 @@ void evolve_flavor(const TestParams* parms)
 
         //FIXME: Think carefully where to call this function.
         //Create particles at outer boundary 
-        neutrinos.CreateParticlesAtBoundary(parms);
+        neutrinos.CreateParticlesAtBoundary<true, false>(parms);
+
+        //Create particles at inner boundary 
+        //neutrinos.CreateParticlesAtBoundary<false, true>(parms); //TODO: This needs to be implemented.
 
         // Update the new time particle locations in the domain with their
         // integrated coordinates.
