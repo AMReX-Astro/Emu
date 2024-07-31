@@ -61,6 +61,8 @@ public:
     }
 };
 
+//Create an enum to pass as a template argument to the particle creation function.
+enum BoundaryParticleCreationDirection {I_PLUS, I_MINUS, J_PLUS, J_MINUS, K_PLUS, K_MINUS};
 
 class FlavoredNeutrinoContainer
     : public amrex::ParticleContainer<PIdx::nattribs, 0, 0, 0>
@@ -77,7 +79,7 @@ public:
 
     void InitParticles(const TestParams* parms);
 
-    template<bool outer_boundary, bool inner_boundary>
+    template<BoundaryParticleCreationDirection DIRECTION>
     void CreateParticlesAtBoundary(const TestParams* parms);
 
     void SyncLocation(int type);
@@ -101,5 +103,6 @@ public:
     /* Public data members */
     static ApplyFlavoredNeutrinoRHS<ParticleType> particle_apply_rhs;
 };
+
 
 #endif

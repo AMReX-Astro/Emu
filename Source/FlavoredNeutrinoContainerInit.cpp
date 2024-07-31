@@ -348,7 +348,7 @@ InitParticles(const TestParams* parms)
 //==================================================================================================================//
 //========================================= CreateParticlesAtBoundary ==============================================//
 //==================================================================================================================//
-template<bool outer_boundary, bool inner_boundary>
+template<BoundaryParticleCreationDirection DIRECTION>
 void FlavoredNeutrinoContainer::
 CreateParticlesAtBoundary(const TestParams* parms)
 {
@@ -375,6 +375,8 @@ CreateParticlesAtBoundary(const TestParams* parms)
   int ndirs_per_loc = particle_data.size();
   amrex::Print() << "Using " << ndirs_per_loc << " directions." << std::endl;
   const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell;
+
+  //FIXME: We need to use outflow boundary condition, not periodic boundary condition. Put an assert(!periodic) here.
 
 
   // Loop over multifabs //
@@ -413,44 +415,48 @@ CreateParticlesAtBoundary(const TestParams* parms)
 	  amrex::ParallelFor(tile_box,
       [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
       {
-		//assert(0);
-		//amrex::Abort("This function is not used.");
 		for (int i_part=0; i_part<nlocs_per_cell;i_part++) {
-		  Real r[3];
-	                
-		  get_position_unit_cell(r, parms->nppc, i_part);
-	                
-		  Real x = plo[0] + (i + r[0])*dx[0];
-		  Real y = plo[1] + (j + r[1])*dx[1];
-		  Real z = plo[2] + (k + r[2])*dx[2];
-
-		  //printf("a_bounds.lo = [%f, %f, %f] \n", a_bounds.lo(0), a_bounds.lo(1), a_bounds.lo(2));
-		  //printf("a_bounds.hi = [%f, %f, %f] \n", a_bounds.hi(0), a_bounds.hi(1), a_bounds.hi(2));
-		  //printf("x = %f, y = %f, z = %f \n", x, y, z);
-		  //printf("i = %d, j = %d, k = %d \n", i, j, k);
-		  //printf("ncellx = %d, ncelly = %d, ncellz = %d \n", ncellx, ncelly, ncellz);
-          
-		  /*if (x >= a_bounds.hi(0) || x < a_bounds.lo(0) ||
-		      y >= a_bounds.hi(1) || y < a_bounds.lo(1) ||
-		      z >= a_bounds.hi(2) || z < a_bounds.lo(2) ) continue;*/
 		  
 		  bool create_particle_this_cell = false;
 		  
 		  //Create particles at outer boundary
-		  if(outer_boundary && !inner_boundary){
-			//Only create particles in the outermost interior cells.
-		  	if (i==0 || i==ncellx-1 || j==0 || j==ncelly-1 || k==0 || k==ncellz-1) create_particle_this_cell = true;
-		  }
-		  
-		  //Create particles at inner boundary
-		  if (inner_boundary && !outer_boundary){
-			//RUNTIME ERROR: Inner boundary is not implemented yet.
-			//Not giving a compile time error due to explicit instantiation of this function.
-			printf("ERROR: Inner boundary is not implemented yet.\n");
-			assert(0);
-			//TODO: Implement this.
-		  }
+		  switch (DIRECTION)
+		  {
+		  //Create particles in +ve x direction at lower x boundary.	
+		  case BoundaryParticleCreationDirection::I_PLUS:
+			if (i==0) create_particle_this_cell = true;
+			break;
 
+          //Create particles in -ve x direction at upper x boundary.
+		  case BoundaryParticleCreationDirection::I_MINUS:
+			if (i==ncellx-1) create_particle_this_cell = true;
+			break;
+		  
+		  //Create particles in +ve y direction at lower y boundary.
+		  case BoundaryParticleCreationDirection::J_PLUS:
+			if (j==0) create_particle_this_cell = true;
+			break;
+
+		  //Create particles in -ve y direction at upper y boundary.	
+		  case BoundaryParticleCreationDirection::J_MINUS:
+			if (j==ncelly-1) create_particle_this_cell = true;
+			break;
+
+          //Create particles in +ve z direction at lower z boundary.	
+	      case BoundaryParticleCreationDirection::K_PLUS:
+			if (k==0 ) create_particle_this_cell = true;
+			break;
+		
+		  //Create particles in -ve z direction at upper z boundary.
+		  case BoundaryParticleCreationDirection::K_MINUS:
+			if (k==ncellz-1) create_particle_this_cell = true;
+			break;
+			
+		  default:
+		  	printf("Invalid direction specified. \n");
+		  	assert(0);
+			break;
+		  }
 
 		  if (!create_particle_this_cell) continue;
 		  //printf("CREATE PARTRICLE AT: i = %d, j = %d, k = %d \n", i, j, k);
@@ -472,13 +478,6 @@ CreateParticlesAtBoundary(const TestParams* parms)
       // Determine total number of particles to add to the particle tile
       Gpu::inclusive_scan(counts.begin(), counts.end(), offsets.begin()); //This sets the value of "offsets"
 
-	  //Print the value of pcount for each cell.
-	  /*printf("pcount for each cell (ncells=%d):\n", tile_box.numPts());
-	  for (int i=0; i<tile_box.numPts(); i++){
-		  //printf("i=%d, pcount=%d\n", i, pcount[i]);
-		  std::cout << "i=" << i << ", pcount=" << pcount[i] << ", poffset=" << poffset[i] << std::endl;
-	  }*/
-
       int num_to_add = offsets[tile_box.numPts()-1];
       if (num_to_add == 0) continue; 
 
@@ -497,7 +496,7 @@ CreateParticlesAtBoundary(const TestParams* parms)
 		auto new_size = old_size + num_to_add;
 		particle_tile.resize(new_size);
 
-		printf("num_to_add = %d, old_size = %d, new_size = %d \n", num_to_add, old_size, new_size);
+		printf("num_to_add = %d, old_size = %lu, new_size = %lu \n", num_to_add, old_size, new_size);
 
 		//Returns the next particle ID for this processor.
 		// Particle IDs start at 1 and are never reused. The pair, consisting of the ID and the CPU on which the particle is "born", is a globally unique identifier for a particle. 
@@ -534,30 +533,74 @@ CreateParticlesAtBoundary(const TestParams* parms)
                     
     	  get_position_unit_cell(r, parms->nppc, i_loc);
                     
-    	  Real x = plo[0] + (i + r[0])*dx[0];
-    	  Real y = plo[1] + (j + r[1])*dx[1];
-    	  Real z = plo[2] + (k + r[2])*dx[2];
+    	  //Real x = plo[0] + (i + r[0])*dx[0];
+		  //Real x = plo[0] for i_plus direction i.e VC, (y,z) remain same CC.
+		  //Real x = plo[0] + (i+1)*dx[0] for i_minus direction i.e. VC, (y,z) remain same CC.
+    	  //Real y = plo[1] + (j + r[1])*dx[1];
+    	  //Real z = plo[2] + (k + r[2])*dx[2];
+		  Real x, y, z;
                     
-    	  /*if (x >= a_bounds.hi(0) || x < a_bounds.lo(0) ||
-    	      y >= a_bounds.hi(1) || y < a_bounds.lo(1) ||
-    	      z >= a_bounds.hi(2) || z < a_bounds.lo(2) ) continue;*/
-    		        
 		  bool create_particle_this_cell = false;
 		  
-		  //Create particles at outer boundary
-		  if(outer_boundary && !inner_boundary){
-			//Only create particles in the outermost interior cells.
-		  	if (i==0 || i==ncellx-1 || j==0 || j==ncelly-1 || k==0 || k==ncellz-1) create_particle_this_cell = true;
-		  }
+		  //Create particles at outer boundary and set face centered coordinates.
+		  //VC=vertex-centered; CC=cell-centered;
+		  switch (DIRECTION)
+		  {
+		  //Create particles in +ve x direction at lower x boundary.	
+		  case BoundaryParticleCreationDirection::I_PLUS:
+			if (i==0) create_particle_this_cell = true;
+			x = plo[0]; //VC, lower x boundary
+			y = plo[1] + (j + r[1])*dx[1]; //CC
+    	    z = plo[2] + (k + r[2])*dx[2]; //CC
+			break;
+
+          //Create particles in -ve x direction at upper x boundary.
+		  case BoundaryParticleCreationDirection::I_MINUS:
+			if (i==ncellx-1) create_particle_this_cell = true;
+			x = plo[0] + ncellx*dx[0]; //VC, upper x boundary
+			y = plo[1] + (j + r[1])*dx[1]; //CC
+    	    z = plo[2] + (k + r[2])*dx[2]; //CC
+			break;
 		  
-		  //Create particles at inner boundary
-		  if (inner_boundary && !outer_boundary){
-			//RUNTIME ERROR: Inner boundary is not implemented yet.
-			//Not giving a compile time error due to explicit instantiation of this function.
-			printf("ERROR: Inner boundary is not implemented yet.\n");
-			assert(0);
-			//TODO: Implement this.
+		  //Create particles in +ve y direction at lower y boundary.
+		  case BoundaryParticleCreationDirection::J_PLUS:
+			if (j==0) create_particle_this_cell = true;
+			y = plo[1]; //VC, lower y boundary
+			x = plo[0] + (i + r[0])*dx[0]; //CC
+    	    z = plo[2] + (k + r[2])*dx[2]; //CC
+			break;
+
+		  //Create particles in -ve y direction at upper y boundary.	
+		  case BoundaryParticleCreationDirection::J_MINUS:
+			if (j==ncelly-1) create_particle_this_cell = true;
+			y = plo[1] + ncelly*dx[1]; //VC, upper y boundary
+			x = plo[0] + (i + r[0])*dx[0]; //CC
+    	    z = plo[2] + (k + r[2])*dx[2]; //CC
+			break;
+
+          //Create particles in +ve z direction at lower z boundary.	
+	      case BoundaryParticleCreationDirection::K_PLUS:
+			if (k==0 ) create_particle_this_cell = true;
+			z = plo[2]; //VC, lower z boundary
+			x = plo[0] + (i + r[0])*dx[0]; //CC
+			y = plo[1] + (j + r[1])*dx[1]; //CC
+			break;
+		
+		  //Create particles in -ve z direction at upper z boundary.
+		  case BoundaryParticleCreationDirection::K_MINUS:
+			if (k==ncellz-1) create_particle_this_cell = true;
+			z = plo[2] + ncellz*dx[2]; //VC, upper z boundary
+			x = plo[0] + (i + r[0])*dx[0]; //CC
+			y = plo[1] + (j + r[1])*dx[1]; //CC
+			break;
+			
+		  default:
+		  	printf("Invalid direction specified. \n");
+		  	assert(0);
+			break;
 		  }
+
+		  printf("x = %f, y = %f, z = %f \n", x, y, z);
 
 		  if (!create_particle_this_cell) continue;
 		  //printf("CREATE PARTRICLE AT: i = %d, j = %d, k = %d \n", i, j, k);
@@ -609,7 +652,55 @@ CreateParticlesAtBoundary(const TestParams* parms)
 #endif
 
     	    if(parms->IMFP_method == 1){
-    			p.rdata(PIdx::Vphase) = dx[0]*dx[1]*dx[2]*4*MathConst::pi*(pow(p.rdata(PIdx::pupt)+parms->delta_E/2,3)-pow(p.rdata(PIdx::pupt)-parms->delta_E/2,3))/(3*ndirs_per_loc*parms->nppc[0]*parms->nppc[1]*parms->nppc[2]);
+				  const Real V_momentum = 4*MathConst::pi*(pow(p.rdata(PIdx::pupt)+parms->delta_E/2,3)-pow(p.rdata(PIdx::pupt)-parms->delta_E/2,3))/
+				                                          (3*ndirs_per_loc*parms->nppc[0]*parms->nppc[1]*parms->nppc[2]);
+    			  
+				  //p.rdata(PIdx::Vphase) = dx[0]*dx[1]*dx[2]*V_momentum;
+				  const Real dt = 0.1; //FIXME: FIXME: This is a dummy value. Set correct value from time integrator.
+				  const Real clight = 1.0; //FIXME: FIXME: This is a dummy value. Set correct value.
+				  const Real pupx_ = 1.0; //FIXME: FIXME: This is a dummy value. Set correct value.
+				  const Real pupy_ = 1.0; //FIXME: FIXME: This is a dummy value. Set correct value.
+				  const Real pupz_ = 1.0; //FIXME: FIXME: This is a dummy value. Set correct value.
+				  const Real pupt_ = 1.0; //FIXME: FIXME: This is a dummy value. Set correct value.
+				  printf("(WARNING) Using dummy values: dt = %f, clight = %f, pupt = %f etc.\n", dt, clight, pupt_);
+
+				  switch (DIRECTION)
+				  {
+				  //Create particles in +ve x direction at lower x boundary.	
+				  case BoundaryParticleCreationDirection::I_PLUS:
+					p.rdata(PIdx::Vphase) = dx[1]*dx[2]*clight*dt*V_momentum*pupx_/pupt_;
+					break;
+
+		          //Create particles in -ve x direction at upper x boundary.
+				  case BoundaryParticleCreationDirection::I_MINUS:
+					p.rdata(PIdx::Vphase) = dx[1]*dx[2]*clight*dt*V_momentum*pupx_/pupt_;
+					break;
+				  
+				  //Create particles in +ve y direction at lower y boundary.
+				  case BoundaryParticleCreationDirection::J_PLUS:
+					p.rdata(PIdx::Vphase) = dx[0]*dx[2]*clight*dt*V_momentum*pupy_/pupt_;
+					break;
+
+				  //Create particles in -ve y direction at upper y boundary.	
+				  case BoundaryParticleCreationDirection::J_MINUS:
+					p.rdata(PIdx::Vphase) = dx[0]*dx[2]*clight*dt*V_momentum*pupy_/pupt_;
+					break;
+
+		          //Create particles in +ve z direction at lower z boundary.	
+			      case BoundaryParticleCreationDirection::K_PLUS:
+					p.rdata(PIdx::Vphase) = dx[0]*dx[1]*clight*dt*V_momentum*pupz_/pupt_;
+					break;
+				
+				  //Create particles in -ve z direction at upper z boundary.
+				  case BoundaryParticleCreationDirection::K_MINUS:
+					p.rdata(PIdx::Vphase) = dx[0]*dx[1]*clight*dt*V_momentum*pupz_/pupt_;
+					break;
+					
+				  default:
+				  	printf("Invalid direction specified. \n");
+				  	assert(0);
+					break;
+				  }
     		}
 
     	    //=====================//
@@ -660,9 +751,17 @@ CreateParticlesAtBoundary(const TestParams* parms)
 } // CreateParticlesAtBoundary()
 
 //We need to explicitly instantiate the template function for different use cases.
-//outer_boundary = true, inner_boundary = false
-template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<true, false>(const TestParams* parms);
-//outer_boundary = false, inner_boundary = true
-template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<false, true>(const TestParams* parms);
+//DIRECTION == BoundaryParticleCreationDirection::I_PLUS (+ve x direction at lower x boundary.)
+template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_PLUS>(const TestParams* parms);
+//DIRECTION == BoundaryParticleCreationDirection::I_MINUS (-ve x direction at upper x boundary.)
+template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_MINUS>(const TestParams* parms);
+//DIRECTION == BoundaryParticleCreationDirection::J_PLUS (+ve y direction at lower y boundary.)
+template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_PLUS>(const TestParams* parms);
+//DIRECTION == BoundaryParticleCreationDirection::J_MINUS (-ve y direction at upper y boundary.)
+template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_MINUS>(const TestParams* parms);
+//DIRECTION == BoundaryParticleCreationDirection::K_PLUS (+ve z direction at lower z boundary.)
+template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_PLUS>(const TestParams* parms);
+//DIRECTION == BoundaryParticleCreationDirection::K_MINUS (-ve z direction at upper z boundary.)
+template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_MINUS>(const TestParams* parms);
 
 
