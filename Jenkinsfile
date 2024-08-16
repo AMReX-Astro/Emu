@@ -66,8 +66,8 @@ pipeline {
 		dir('Exec'){
 			sh 'python ../Scripts/initial_conditions/st4_linear_moment_ffi.py'
 			sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_1d_fiducial'
-			sh 'python ../Scripts/data_reduction/reduce_data_fft.py'
 			sh 'python ../Scripts/data_reduction/reduce_data.py'
+			sh 'python ../Scripts/data_reduction/reduce_data_fft.py'
 			sh 'python ../Scripts/data_reduction/combine_files.py plt _reduced_data.h5'
 			sh 'python ../Scripts/data_reduction/combine_files.py plt _reduced_data_fft_power.h5'
 			sh 'python ../Scripts/babysitting/avgfee.py'
