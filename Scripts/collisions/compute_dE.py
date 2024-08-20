@@ -6,6 +6,7 @@ This script compute the energy bin size ( /Delta E ) for monoenergetic neutrino 
 - Neutrinos energy bin center
 - Neutrino chemical potential
 - Background matter temperature
+This script was used to compute the energy bin size in the test scripts: coll_equi_test.py and coll_inst_test.py.
 '''
 
 import numpy as np
