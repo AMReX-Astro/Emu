@@ -165,9 +165,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         const ParticleInterpolator<SHAPE_FACTOR_ORDER> sz(delta_z, shape_factor_order_z);
 
         // The following variables contains temperature, electron fraction, and density interpolated from grid quantities to particle positions
-        double T_pp = 0;
-        double Ye_pp = 0;
-        double rho_pp = 0; 
+        Real T_pp = 0;
+        Real Ye_pp = 0;
+        Real rho_pp = 0; 
 
         for (int k = sz.first(); k <= sz.last(); ++k) {
             for (int j = sy.first(); j <= sy.last(); ++j) {
