@@ -183,7 +183,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         // and 2 x NF matrix to store equilibrium distribution values
         Real IMFP_abs[2][NUM_FLAVORS];
         Real IMFP_scat[2][NUM_FLAVORS];
-        Real N_eq[2][NUM_FLAVORS]; // equilibrium distribution function (dimensionless)
+        Real f_eq[2][NUM_FLAVORS]; // Fermi-Dirac distribution function at equilibrium (dimensionless)
         Real munu[2][NUM_FLAVORS]; // equilibrium chemical potential (erg)
         Real att_ham = parms->attenuation_hamiltonians;
 
@@ -194,7 +194,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
                 for (int j=0; j<NUM_FLAVORS; ++j) {
                     IMFP_abs[i][j] = 0;
                     IMFP_scat[i][j] = 0;
-                    N_eq[i][j] = 0;
+                    f_eq[i][j] = 0;
                     munu[i][j] = 0;
                 }
             }
@@ -215,7 +215,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         for(int i=0; i<2; i++){
             for(int j=0; j<NUM_FLAVORS; j++){
                 const Real exponent = (p.rdata(PIdx::pupt) - munu[i][j]) / T_pp;
-                N_eq[i][j] = 1. / (1. + exp(exponent));
+                f_eq[i][j] = 1. / (1. + exp(exponent));
             }
         }
 
