@@ -139,7 +139,7 @@ struct TestParams : public amrex::Gpu::Managed
     	pp.get("delta_E", delta_E);
         delta_E*= 1e6*CGSUnitsConst::eV; // erg
     }
-    else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 1");
+    else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0(do not collisions) and 1(do collisions)");
 
     }
 };
