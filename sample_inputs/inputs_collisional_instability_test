@@ -87,6 +87,8 @@ deltaCP_degrees = 0
 #################
 IMFP_method = 1
 
+Do_Pauli_blocking = 0 # If 1, it will multiply the inverse mean free path by 1 / (1 - f_eq); if 0, do nothing.
+
 IMFP_abs0_cm = 2.398082e-1
 IMFP_abs1_cm = 0
 IMFP_abs2_cm = 0

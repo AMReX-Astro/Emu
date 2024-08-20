@@ -200,24 +200,29 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             }
         } 
         else if(parms->IMFP_method==1){
-            // use the IMFPs from the input file
+            // Reads IMFPs from the input parameter file
+            // i runs from 0(neutrinos) to 1(antineutrinos)
+            // j runs over the numbers of lepton flavors
             for(int i=0; i<2; i++){
                 for(int j=0; j<NUM_FLAVORS; j++){
-                    IMFP_abs[i][j] = parms->IMFP_abs[i][j];
-                    IMFP_scat[i][j] = parms->IMFP_scat[i][j];
-                    munu[i][j] = parms->munu[i][j];
+
+                    IMFP_abs[i][j] = parms->IMFP_abs[i][j]; // Read absorption inverse mean free path from input parameters file.
+                    IMFP_scat[i][j] = parms->IMFP_scat[i][j]; // Read absorption inverse mean free path from input parameters file.
+
+                    munu[i][j] = parms->munu[i][j]; // Read chemical potential from input parameters file.
+
+                    // Calculate the Fermi-Dirac distribution for neutrinos and antineutrinos.
+                    const Real exponent = (p.rdata(PIdx::pupt) - munu[i][j]) / T_pp;
+                    f_eq[i][j] = 1. / (1. + exp(exponent));
+                    
+                    if (parms->Do_Pauli_blocking == 1){
+                        IMFP_abs[i][j] = IMFP_abs[i][j] / ( 1 - f_eq[i][j] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
+                        IMFP_scat[i][j] = IMFP_scat[i][j] / ( 1 - f_eq[i][j] ) ; // Multiply the scattering inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
+                    }
                 }
             }
         }
         else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0 or 1");
-
-        // calculate the equilibrium distribution. Really munu and temperature should be interpolated from the grid.
-        for(int i=0; i<2; i++){
-            for(int j=0; j<NUM_FLAVORS; j++){
-                const Real exponent = (p.rdata(PIdx::pupt) - munu[i][j]) / T_pp;
-                f_eq[i][j] = 1. / (1. + exp(exponent));
-            }
-        }
 
         #include "generated_files/Evolve.cpp_dfdt_fill"
 
