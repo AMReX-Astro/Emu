@@ -177,48 +177,37 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             }
         }
 
-        // determine the IMFPs and equilibrium distribution value
-        // create 2 x NF matrix to store absorption IMFPs
-        // and 2 x NF matrix to store scattering IMFPs
-        // and 2 x NF matrix to store equilibrium distribution values
-        Real IMFP_abs[2][NUM_FLAVORS];
-        Real IMFP_scat[2][NUM_FLAVORS];
-        Real f_eq[2][NUM_FLAVORS]; // Fermi-Dirac distribution function at equilibrium (dimensionless)
-        Real munu[2][NUM_FLAVORS]; // equilibrium chemical potential (erg)
-        Real att_ham = parms->attenuation_hamiltonians;
+        // Declare matrices to be used in quantum kinetic equation calculation
+        Real IMFP_abs[NUM_FLAVORS][NUM_FLAVORS]; // Neutrino inverse mean free path matrix: diag( k_e , k_u , k_t ) 
+        Real IMFP_absbar[NUM_FLAVORS][NUM_FLAVORS]; // Antineutrino inverse mean free path matrix: diag( kbar_e , kbar_u , kbar_t )         
+        Real f_eq[NUM_FLAVORS][NUM_FLAVORS]; // Neutrino equilibrium Fermi-dirac distribution matrix: f_eq = diag( f_e , f_u , f_t ) 
+        Real f_eqbar[NUM_FLAVORS][NUM_FLAVORS]; // Antineutrino equilibrium Fermi-dirac distribution matrix: f_eq = diag( fbar_e , fbar_u , fbar_t ) 
 
-        // fill the IMFP values
-        if(parms->IMFP_method==0){
-            // fill with all zeros
-            for (int i=0; i<2; ++i) {
-                for (int j=0; j<NUM_FLAVORS; ++j) {
-                    IMFP_abs[i][j] = 0;
-                    IMFP_scat[i][j] = 0;
-                    f_eq[i][j] = 0;
-                    munu[i][j] = 0;
-                }
+        // Initialize matrices with zeros
+        for (int i=0; i<NUM_FLAVORS; ++i) {
+            for (int j=0; j<NUM_FLAVORS; ++j) {
+                IMFP_abs[i][j] = 0.0;
+                IMFP_absbar[i][j] = 0.0;
+                f_eq[i][j] = 0.0;
+                f_eqbar[i][j] = 0.0;
             }
-        } 
-        else if(parms->IMFP_method==1){
-            // Reads IMFPs from the input parameter file
-            // i runs from 0(neutrinos) to 1(antineutrinos)
-            // j runs over the numbers of lepton flavors
-            for(int i=0; i<2; i++){
-                for(int j=0; j<NUM_FLAVORS; j++){
+        }
 
-                    IMFP_abs[i][j] = parms->IMFP_abs[i][j]; // Read absorption inverse mean free path from input parameters file.
-                    IMFP_scat[i][j] = parms->IMFP_scat[i][j]; // Read absorption inverse mean free path from input parameters file.
+        // If opacity_method is 1, the code will use the inverse mean free paths in the input parameters to compute the collision term.
+        if(parms->IMFP_method==1){
+            for (int i=0; i<NUM_FLAVORS; ++i) {
 
-                    munu[i][j] = parms->munu[i][j]; // Read chemical potential from input parameters file.
+                IMFP_abs[i][i]    = parms->IMFP_abs[0][i]; // Read absorption inverse mean free path from input parameters file.
+                IMFP_absbar[i][i] = parms->IMFP_abs[1][i]; // Read absorption inverse mean free path from input parameters file.
 
-                    // Calculate the Fermi-Dirac distribution for neutrinos and antineutrinos.
-                    const Real exponent = (p.rdata(PIdx::pupt) - munu[i][j]) / T_pp;
-                    f_eq[i][j] = 1. / (1. + exp(exponent));
-                    
-                    if (parms->Do_Pauli_blocking == 1){
-                        IMFP_abs[i][j] = IMFP_abs[i][j] / ( 1 - f_eq[i][j] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
-                        IMFP_scat[i][j] = IMFP_scat[i][j] / ( 1 - f_eq[i][j] ) ; // Multiply the scattering inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
-                    }
+                // Calculate the Fermi-Dirac distribution for neutrinos and antineutrinos.
+                f_eq[i][i]    = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - parms->munu[0][i] ) / T_pp ) );
+                f_eqbar[i][i] = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - parms->munu[1][i] ) / T_pp ) );
+
+                // Include the Pauli blocking term
+                if (parms->Do_Pauli_blocking == 1){
+                    IMFP_abs[i][i]    = IMFP_abs[i][i]    / ( 1 - f_eq[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
+                    IMFP_absbar[i][i] = IMFP_absbar[i][i] / ( 1 - f_eqbar[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
                 }
             }
         }

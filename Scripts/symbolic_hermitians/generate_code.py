@@ -438,47 +438,64 @@ if __name__ == "__main__":
     # Evolve.cpp_dfdt_fill #
     #========================#
 
-    # Set up Hermitian matrices A, B, C
+    # Generate quantum kinetic equations
+
+    # Define useful constants
     hbar = sympy.symbols("PhysConst\:\:hbar",real=True)
-    attenuation = sympy.symbols("att_ham", real=True)
+    attenuation_to_hamiltonian = sympy.symbols("parms->attenuation_hamiltonians", real=True)
+    V_phase = sympy.symbols("p.rdata(PIdx\:\:Vphase)", real=True)
+    pi = sympy.symbols("MathConst\:\:pi", real=True)
+    c = sympy.symbols("PhysConst\:\:c", real=True)
+
+    # List that will store the QKE code.
     code = []
+
+    # Looping over neutrinos(tail: no tail) and antineutrinos(tail: bar)
     for t in tails:
-        H = HermitianMatrix(args.N, "V{}{}_{}"+t)
-        N = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
 
-        # G = Temporary variables for dNdt
-        G = HermitianMatrix(args.N, "dNdt{}{}_{}"+t)
+        # Define Fermi-Dirac distribution matrix f_eq = diag( f_e , f_x ) from input parameters
+        f_eq = HermitianMatrix(args.N, "f_eq_{}{}_{}"+t)        # Fermi-dirac distribution matrix ----> To be used in calculation of QKE in sympy format
+        f_eq_cpp = HermitianMatrix(args.N, "f_eq"+t+"[{}][{}]") # Fermi-dirac distribution matrix ----> Using the systaxis of line 183 of the Evolve.cpp file
+        f_eq.H = f_eq_cpp.H # Assigning input mean free paths to SymPy matrix
+        f_eq_temp_declare = ["amrex::Real {}".format(line) for line in f_eq.code()] # 
+        code.append(f_eq_temp_declare)
 
-        # Calculate C = i * [A,B]
-        #Fnew.anticommutator(H,F).times(sympy.I * dt);
-        G.H = ((H*N - N*H).times(-sympy.I/hbar)).H * attenuation
+        # Define Gamma matrix from input parameters : Gamma = diag( k*_e , k*_x ) / 2 . ka is the inverse mean free path for flavor a, including Pauli blocking term. * means that Pauli blocking term is already in the inverse mean free path values.
+        Gamma = HermitianMatrix(args.N, "Gamma_{}{}_{}"+t) # Inverse mean free path matrix. Gamma = diag( k*e , k*x ) / 2.       ----> To be used in calculation of QKE in sympy format
+        IMFP_abs = HermitianMatrix(args.N, "IMFP_abs"+t+"[{}][{}]") # Inverse mean free path matrix IMFP_abs = diag( k*e , k*x ) ----> Using the systaxis of line 181 of the Evolve.cpp file       
+        Gamma.H = IMFP_abs.H / 2 # Compute Gamma
+        Gamma_temp_declare = ["amrex::Real {}".format(line) for line in Gamma.code()]
+        code.append(Gamma_temp_declare)
 
-        # Write the temporary variables for dFdt
-        Gdeclare = ["amrex::Real {}".format(line) for line in G.code()]
-        code.append(Gdeclare)
-
-        #collision term (emmission and apsortion)
-        s=0
-        if(t == ""): s=0
-        if(t == "bar"): s=1
-
-        code.append(["dNdt00_Re"+t+" += IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] * p.rdata(PIdx::Vphase) * pow( 1 / ( 2 * MathConst::pi * PhysConst::hbar ) , 3 ) * ( 1 / PhysConst::c2 ) - PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][0] ) / 2 ) * p.rdata(PIdx::N00_Re"+t+");"])        
-        code.append(["dNdt11_Re"+t+" += IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] * p.rdata(PIdx::Vphase) * pow( 1 / ( 2 * MathConst::pi * PhysConst::hbar ) , 3 ) * ( 1 / PhysConst::c2 ) - PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][1] ) / 2 ) * p.rdata(PIdx::N11_Re"+t+");"])
-        code.append(["dNdt01_Re"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] ) / 2 )  * p.rdata(PIdx::N01_Re"+t+");"])
-        code.append(["dNdt01_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][1] ) / 2 )  * p.rdata(PIdx::N01_Im"+t+");"])
+        # Define N_eq matrix
+        f_eq = HermitianMatrix(args.N, "f_eq_{}{}_{}"+t) # Fermi-dirac distribution matrix f_eq = diag( fe , fx ) 
+        N_eq = HermitianMatrix(args.N, "N_eq_{}{}_{}"+t) # Equilibrium neutrino number matrix N_eq equals the integral of f_eq, where the integral is over the phase space that the particle represents.
+        N_eq.H = f_eq.H * V_phase / ( 2 * pi * hbar * c )**3
+        N_eq_temp_declare = ["amrex::Real {}".format(line) for line in N_eq.code()]
+        code.append(N_eq_temp_declare)
         
-        if(args.N == 3):
+        # Define collision term
+        Gamma = HermitianMatrix(args.N, "Gamma_{}{}_{}"+t) # Inverse mean free path matrix. Gamma = diag( k*e , k*x ) / 2. ka is the inverse mean free path for flavor a, including Pauli blocking term.
+        N = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")") # Neutrino number matrix
+        N_eq = HermitianMatrix(args.N, "N_eq_{}{}_{}"+t) # Equilibrium neutrino number matrix N_eq equals the integral of f_eq, where the integral is over the phase space that the particle represents.
+        C = HermitianMatrix(args.N, "C_{}{}_{}"+t) # Collision term C = { gamma , N_eq - N }, {} means anticonmutator
+        C.H = Gamma.H * ( N_eq.H - N.H ) + ( N_eq.H - N.H ) * Gamma.H # Compute collision term
+        C_temp_declare = ["amrex::Real {}".format(line) for line in C.code()]
+        code.append(C_temp_declare)
 
-            code.append(["dNdt22_Re"+t+" += IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] * p.rdata(PIdx::Vphase) * pow( 1 / ( 2 * MathConst::pi * PhysConst::hbar ) , 3 ) * ( 1 / PhysConst::c2 ) - PhysConst::c * ( ( IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][2] + IMFP_abs["+str(s)+"][2] ) / 2 ) * p.rdata(PIdx::N22_Re"+t+");"])
-            code.append(["dNdt02_Re"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::N02_Re"+t+");"])
-            code.append(["dNdt02_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][0] * f_eq["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][0] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::N02_Im"+t+");"])
-            code.append(["dNdt12_Re"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::N02_Re"+t+");"])
-            code.append(["dNdt12_Im"+t+" += -1 * PhysConst::c * ( ( IMFP_abs["+str(s)+"][1] * f_eq["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] * f_eq["+str(s)+"][2] ) / 2 + ( IMFP_abs["+str(s)+"][1] + IMFP_abs["+str(s)+"][2] ) / 2 )  * p.rdata(PIdx::N02_Im"+t+");"])        
+        # Writing QKE
+        C = HermitianMatrix(args.N, "C_{}{}_{}"+t) # Collision term C = { gamma , N_eq - N }, {} means anticonmutator
+        H = HermitianMatrix(args.N, "V{}{}_{}"+t) # Hamiltonian
+        N = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")") # Neutrino number matrix
+        dNdt_temp = HermitianMatrix(args.N, "dNdt{}{}_{}"+t) # Temporary matrix for dNdt
+        dNdt_temp.H = C.H * c + ((H*N - N*H).times(-sympy.I/hbar)).H * attenuation_to_hamiltonian # Compute quantum kinetic equation
+        dNdt_temp_declare = ["amrex::Real {}".format(line) for line in dNdt_temp.code()]
+        code.append(dNdt_temp_declare)
 
         # Store dFdt back into the particle data for F
         dNdt = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
-        Gempty = HermitianMatrix(args.N, "dNdt{}{}_{}"+t)
-        dNdt.H = Gempty.H
+        dNdt_empty = HermitianMatrix(args.N, "dNdt{}{}_{}"+t)
+        dNdt.H = dNdt_empty.H
 
         # Write out dNdt->N
         code.append(dNdt.code())
