@@ -1,3 +1,7 @@
+'''
+This script tests the equilibrium value of the collision term.
+Created by Erick Urquilla, University of Tennessee, Knoxville.
+'''
 import numpy as np
 import argparse
 import glob
@@ -12,11 +16,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-na", "--no_assert", action="store_true", help="If --no_assert is supplied, do not raise assertion errors if the test error > tolerance.")
 args = parser.parse_args()
 
-# physical constants
-theta12 = 33.82*np.pi/180. # radians
-dm21c4 = 7.39e-5 * amrex.eV**2 # erg^2
-
-tolerance = 2e-2
 NF=3
 
 if __name__ == "__main__":
@@ -41,6 +40,8 @@ if __name__ == "__main__":
         N_uubar.append(p[rkey["N11_Rebar"]])
         N_ttbar.append(p[rkey["N22_Rebar"]])
 
+    print(f'The expected theoretical value for the following quantities is 1e33.')
+    print(f'The numerical values obtained using EMU are:')
     print(f'average N_ee {np.average(N_ee)}')
     print(f'average N_uu {np.average(N_uu)}')
     print(f'average N_tt {np.average(N_tt)}')
