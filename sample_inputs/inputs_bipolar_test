@@ -87,4 +87,3 @@ deltaCP_degrees = 222
 # opacity stuff #
 #################
 IMFP_method = 0
-Do_Pauli_blocking = 0 # If 1, it will multiply the inverse mean free path by 1 / (1 - f_eq); if 0, do nothing.

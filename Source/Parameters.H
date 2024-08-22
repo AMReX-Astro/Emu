@@ -45,7 +45,7 @@ struct TestParams : public amrex::Gpu::Managed
 
     // absorption opacities and equilibrium neutrino chemical potentials
     int IMFP_method;
-    int Do_Pauli_blocking = 0; // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
+    int Do_Pauli_blocking; // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
     Real IMFP_abs[2][NUM_FLAVORS];
     Real IMFP_scat[2][NUM_FLAVORS];
     Real munu[2][NUM_FLAVORS]; // equilibrium electron neutrino chemical potential in erg (CGS unist)
@@ -116,7 +116,6 @@ struct TestParams : public amrex::Gpu::Managed
 
     // absorption opacities and equilibrium neutrino chemical potentials
     pp.get("IMFP_method", IMFP_method);
-    pp.get("Do_Pauli_blocking", Do_Pauli_blocking); // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
     if(IMFP_method==0){
     	// do nothing - all values will be set to zero
     }
@@ -138,6 +137,8 @@ struct TestParams : public amrex::Gpu::Managed
             munu[0][i] *= 1e6*CGSUnitsConst::eV;
             munu[1][i] *= 1e6*CGSUnitsConst::eV;
         }
+        pp.get("Do_Pauli_blocking", Do_Pauli_blocking); // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
+
     	pp.get("delta_E", delta_E);
         delta_E*= 1e6*CGSUnitsConst::eV; // erg
     }
