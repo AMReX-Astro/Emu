@@ -335,18 +335,18 @@ InitParticles(const TestParams* parms)
 			// random perturbations of the diagonals
 		    Real rand;
 	    	symmetric_uniform(&rand, engine);
-			p.rdata(PIdx::f00_Re)    *= 1. + parms->perturbation_amplitude*rand;
+			p.rdata(PIdx::N00_Re)    *= 1. + parms->perturbation_amplitude*rand;
 	    	symmetric_uniform(&rand, engine);
-			p.rdata(PIdx::f00_Rebar) *= 1. + parms->perturbation_amplitude*rand;
+			p.rdata(PIdx::N00_Rebar) *= 1. + parms->perturbation_amplitude*rand;
 	    	symmetric_uniform(&rand, engine);
-			p.rdata(PIdx::f11_Re)    *= 1. + parms->perturbation_amplitude*rand;
+			p.rdata(PIdx::N11_Re)    *= 1. + parms->perturbation_amplitude*rand;
 	    	symmetric_uniform(&rand, engine);
-			p.rdata(PIdx::f11_Rebar) *= 1. + parms->perturbation_amplitude*rand;
+			p.rdata(PIdx::N11_Rebar) *= 1. + parms->perturbation_amplitude*rand;
 #if NUM_FLAVORS==3
 	    	symmetric_uniform(&rand, engine);
-			p.rdata(PIdx::f22_Re)    *= 1. + parms->perturbation_amplitude*rand;
+			p.rdata(PIdx::N22_Re)    *= 1. + parms->perturbation_amplitude*rand;
 	    	symmetric_uniform(&rand, engine);
-			p.rdata(PIdx::f22_Rebar) *= 1. + parms->perturbation_amplitude*rand;
+			p.rdata(PIdx::N22_Rebar) *= 1. + parms->perturbation_amplitude*rand;
 #endif
 		}
 
