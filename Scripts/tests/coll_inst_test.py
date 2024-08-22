@@ -43,8 +43,8 @@ if __name__ == "__main__":
             t[i]            = np.array(hf['t(s)'][:][0])
 
     # Fit the exponential function ( y = a e ^ ( b x ) ) to the data
-    l1 = 50 # initial item for fit
-    l2 = 200 # last item for fit
+    l1 = 10 # initial item for fit
+    l2 = 40 # last item for fit
     coefficients = np.polyfit(t[l1:l2], np.log(N_avg_mag[:,0,1][l1:l2]), 1)
     coefficients_bar = np.polyfit(t[l1:l2], np.log(Nbar_avg_mag[:,0,1][l1:l2]), 1)
     a = np.exp(coefficients[1])

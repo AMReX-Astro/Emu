@@ -27,7 +27,7 @@ particle_data_filename = "particle_input.dat"
 max_grid_size = 16
 
 # Number of steps to run
-nsteps = 100000
+nsteps = 40000
 
 # Simulation end time
 end_time = 5.0e19
@@ -41,10 +41,10 @@ T_MeV = 7.0
 Ye = 0
 
 # Write plotfiles
-write_plot_every = 100
+write_plot_every = 500
 
 # Write particle data in plotfiles
-write_plot_particles_every = 100
+write_plot_particles_every = 500
 
 # checkpointing
 do_restart = 0
