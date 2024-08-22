@@ -1,50 +1,50 @@
-collision_cfl_factor = 1e-3
-cfl_factor = 0.5
-flavor_cfl_factor = 0.1
-max_adaptive_speedup = 0
-maxError = 1e-6
+perturbation_type = 0
+perturbation_amplitude = 1e-6
 
 # attenuation parameters to time derivative of N due to hamiltonians
-attenuation_hamiltonians = 1
+attenuation_hamiltonians = 0
 
-perturbation_type = 0
-perturbation_amplitude = 0
+collision_cfl_factor = 0.04
+cfl_factor = 1e10
+flavor_cfl_factor = 0.5
+max_adaptive_speedup = 0
+maxError = 1e-6
 
 integration.type = 1
 integration.rk.type = 4
 
 # Domain size in 3D index space
-ncell = (1, 1, 1)
-Lx = 1.0
-Ly = 1.0
-Lz = 1.0
+ncell = (2, 2, 2)
+Lx = 20
+Ly = 20
+Lz = 20
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
 particle_data_filename = "particle_input.dat"
 
 # Maximum size of each grid in the domain
-max_grid_size = 64
+max_grid_size = 16
 
 # Number of steps to run
-nsteps = 50
+nsteps = 1000
 
 # Simulation end time
-end_time = 1.0
+end_time = 5.0e9
 
 # Make FPE signal errors so we get a Backtrace
 amrex.fpe_trap_invalid=1
 
 # give background fluid conditions
-rho_g_ccm = 1346160134.709288
+rho_g_ccm = 0
 T_MeV = 10
 Ye = 1
 
 # Write plotfiles
-write_plot_every = 1
+write_plot_every = 1000
 
 # Write particle data in plotfiles
-write_plot_particles_every = 1
+write_plot_particles_every = 1000
 
 # checkpointing
 do_restart = 0
@@ -56,17 +56,16 @@ restart_dir = ""
 # see first column of table 14.7 in http://pdg.lbl.gov/2019/reviews/rpp2019-rev-neutrino-mixing.pdf
 
 # mass state 1 mass in eV [NO/IO:-sqrt(7.39e-5)]
-mass1_eV = -0.008596511
+mass1_eV = 0 #-0.008596511
 
 # mass state 2 mass in eV (define at 0 arbitrarily because oscillations only sensitive to deltaM^2)
 mass2_eV = 0
 
 # mass state 3 mass in eV [NO:sqrt(2.449e-3) IO:-sqrt(2.509e-3)]
-# mass3_eV = 0.049487372
-mass3_eV = 0
+mass3_eV = 0.049487372
 
 # 1-2 mixing angle in degrees [NO/IO:33.82]
-theta12_degrees = 33.82
+theta12_degrees = 1e-6
 
 # 2-3 mixing angle in degrees [NO:8.61 IO:8.65]
 theta23_degrees = 8.61
@@ -86,5 +85,29 @@ deltaCP_degrees = 222
 #################
 # opacity stuff #
 #################
-IMFP_method = 0
+IMFP_method = 1
+
 Do_Pauli_blocking = 0 # If 1, it will multiply the inverse mean free path by 1 / (1 - f_eq); if 0, do nothing.
+
+IMFP_abs0_cm = 5e-4
+IMFP_abs1_cm = 5e-4
+IMFP_abs2_cm = 5e-4
+IMFP_abs0bar_cm = 5e-4
+IMFP_abs1bar_cm = 5e-4
+IMFP_abs2bar_cm = 5e-4
+
+munu0_MeV = 0
+munu1_MeV = 0
+munu2_MeV = 0
+munu0bar_MeV = 0
+munu1bar_MeV = 0
+munu2bar_MeV = 0
+
+IMFP_scat0_cm = 0
+IMFP_scat1_cm = 0
+IMFP_scat2_cm = 0
+IMFP_scat0bar_cm = 0
+IMFP_scat1bar_cm = 0
+IMFP_scat2bar_cm = 0
+
+delta_E = 0.8394810651882109 # Mev

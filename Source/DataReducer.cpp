@@ -64,8 +64,8 @@ void DataReducer::InitializeFiles()
       #endif
     }
     file0D.createDataSet("N_offdiag_mag(1|ccm)", dataspace, create_datatype<amrex::Real>(), props);
-    file0D.createDataSet("sumTrf", dataspace, create_datatype<amrex::Real>(), props);
-    file0D.createDataSet("sumTrHf", dataspace, create_datatype<amrex::Real>(), props);
+    file0D.createDataSet("sumTrN", dataspace, create_datatype<amrex::Real>(), props);
+    file0D.createDataSet("sumTrHN", dataspace, create_datatype<amrex::Real>(), props);
 
 #else
 
@@ -104,9 +104,9 @@ void DataReducer::InitializeFiles()
     j++;
     outfile << j << ":N_offdiag_mag(1|ccm)\t";
     j++;
-    outfile << j << ":sumTrf\t";
+    outfile << j << ":sumTrN\t";
     j++;
-    outfile << j << ":sumTrHf\t";
+    outfile << j << ":sumTrHN\t";
     outfile << std::endl;
     outfile.close();
 
@@ -130,15 +130,15 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   amrex::ReduceOps<ReduceOpSum,ReduceOpSum> reduce_ops;
   auto particleResult = amrex::ParticleReduce< ReduceData<amrex::Real, amrex::Real> >(neutrinos,
       [=] AMREX_GPU_DEVICE(const PType& p) noexcept -> amrex::GpuTuple<amrex::Real, amrex::Real> {
-          Real TrHf = p.rdata(PIdx::TrHf);
-	  Real Trf = 0;
+          Real TrHN = p.rdata(PIdx::TrHN);
+	  Real TrN = 0;
 #include "generated_files/DataReducer.cpp_fill_particles"
-	  return GpuTuple{Trf,TrHf};
+	  return GpuTuple{TrN,TrHN};
       }, reduce_ops);
-  Real Trf  = amrex::get<0>(particleResult);
-  Real TrHf = amrex::get<1>(particleResult);
-  ParallelDescriptor::ReduceRealSum(Trf);
-  ParallelDescriptor::ReduceRealSum(TrHf);
+  Real TrN  = amrex::get<0>(particleResult);
+  Real TrHN = amrex::get<1>(particleResult);
+  ParallelDescriptor::ReduceRealSum(TrN);
+  ParallelDescriptor::ReduceRealSum(TrHN);
 
   //=============================//
   // Do reductions over the grid //
@@ -290,8 +290,8 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
       #endif
     }
     append_0D(file0D, "N_offdiag_mag(1|ccm)", N_offdiag_mag);
-    append_0D(file0D, "sumTrf", Trf);
-    append_0D(file0D, "sumTrHf", TrHf);
+    append_0D(file0D, "sumTrN", TrN);
+    append_0D(file0D, "sumTrHN", TrHN);
 #else
     std::ofstream outfile;
     outfile.open(filename0D, std::ofstream::app);
@@ -324,8 +324,8 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
       #endif
     }
     outfile << N_offdiag_mag << "\t";
-    outfile << Trf << "\t";
-    outfile << TrHf << "\t";
+    outfile << TrN << "\t";
+    outfile << TrHN << "\t";
     outfile << std::endl;
     outfile.close();
 #endif

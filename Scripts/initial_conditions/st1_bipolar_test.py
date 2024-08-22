@@ -34,7 +34,6 @@ ndens_per_particle = ndens / nparticles # cm^-3
 rkey, ikey = amrex.get_particle_keys(NF,ignore_pos=True)
 nelements = len(rkey)
 
-
 # generate the list of particle info
 particles = np.zeros((nparticles,nelements))
 for ip in range(len(phat)):
@@ -43,10 +42,7 @@ for ip in range(len(phat)):
     p[rkey["pupx"]] = phat[ip,0] * energy_erg
     p[rkey["pupy"]] = phat[ip,1] * energy_erg
     p[rkey["pupz"]] = phat[ip,2] * energy_erg
-    p[rkey["N"]   ] = ndens_per_particle
-    p[rkey["Nbar"]] = ndens_per_particle
-    p[rkey["f00_Re"]] = 1
-    p[rkey["f00_Rebar"]] = 1
+    p[rkey["N00_Re"]] = ndens_per_particle
+    p[rkey["N00_Rebar"]] = ndens_per_particle
     
-
 write_particles(np.array(particles), NF, "particle_input.dat")

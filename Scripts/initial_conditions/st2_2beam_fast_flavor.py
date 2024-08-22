@@ -43,10 +43,7 @@ for ip in range(len(phat)):
     p[rkey["pupx"]] = u[0] * energy_erg
     p[rkey["pupy"]] = u[1] * energy_erg
     p[rkey["pupz"]] = u[2] * energy_erg
-    p[rkey["N"]   ] = ndens_per_particle * (1. + u[2])
-    p[rkey["Nbar"]] = ndens_per_particle * (1. - u[2])
-    p[rkey["f00_Re"]] = 1
-    p[rkey["f00_Rebar"]] = 1
-
+    p[rkey["N00_Re"]] = ndens_per_particle * (1. + u[2])
+    p[rkey["N00_Rebar"]] = ndens_per_particle * (1. - u[2])
 
 write_particles(np.array(particles), NF, "particle_input.dat")
