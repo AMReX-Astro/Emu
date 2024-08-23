@@ -386,6 +386,7 @@ def reduce_data(directory=".", nproc=4, do_average=True, do_fft=True, do_angular
         yt_descriptor = "boxlib"
         convert_N_to_inv_ccm = 1.0
         directories = glob.glob("plt*")
+        directories = [d for d in directories if ".h5" not in d]
         directories = sorted(directories, key=lambda x: int(x.lstrip("plt")))
 
     # get NF

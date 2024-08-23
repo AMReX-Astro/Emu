@@ -12,33 +12,10 @@ import amrex_plot_tools as amrex
 # MUST MATCH THE INPUTS IN THE EMU INPUT FILE!
 NF = 3
 nphi_equator = 16
-theta = 0
-thetabar = 3.14159265359
-phi = 0
-phibar=0
-ndens = 0
-ndensbar = 0
-fluxfac = .333333333333333
-fluxfacbar = .333333333333333
 energy_erg = 50 * 1e6*amrex.eV
 
-# flux factor vectors
-fhat    = np.array([np.cos(phi)   *np.sin(theta   ),
-                    np.sin(phi)   *np.sin(theta   ),
-                    np.cos(theta   )])
-fhatbar = np.array([np.cos(phibar)*np.sin(thetabar),
-                    np.sin(phibar)*np.sin(thetabar),
-                    np.cos(thetabar)])
-
 nnu = np.zeros((2,NF))
-nnu[0,0] = ndens
-nnu[1,0] = ndensbar
-nnu[:,1:] = 0
-
 fnu = np.zeros((2,NF,3))
-fnu[0,0,:] = ndens    * fluxfac    * fhat
-fnu[1,0,:] = ndensbar * fluxfacbar * fhatbar
-fnu[:,1:,:] = 0
 
 particles = moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, uniform_sphere, linear_interpolate) # [particle, variable]
 

@@ -180,6 +180,11 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         const ParticleInterpolator<SHAPE_FACTOR_ORDER> sy(delta_y, shape_factor_order_y);
         const ParticleInterpolator<SHAPE_FACTOR_ORDER> sz(delta_z, shape_factor_order_z);
 
+        // The following variables contains temperature, electron fraction, and density interpolated from grid quantities to particle positions
+        Real T_pp = 0;
+        Real Ye_pp = 0;
+        Real rho_pp = 0; 
+
         for (int k = sz.first(); k <= sz.last(); ++k) {
             for (int j = sy.first(); j <= sy.last(); ++j) {
                 for (int i = sx.first(); i <= sx.last(); ++i) {
@@ -188,6 +193,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             }
         }
 
+<<<<<<< HEAD
         // determine the IMFPs and equilibrium distribution value
         // create 2 x NF matrix to store absorption IMFPs
         // and 2 x NF matrix to store scattering IMFPs
@@ -222,6 +228,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         }
         else if(parms->IMFP_method==2){
             // use the IMFPs from NuLib table and munu from EoS table.
+            //FIXME: Set the value of rho, temperature and Ye using interpolation from the EoS table.
             double rho = 1.0e6; //g/cm^3
             double temperature = 0.6103379806197231; //0.05 //MeV
             double Ye = 0.035; 
@@ -311,6 +318,43 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
                 N_eq[i][j] = 1. / (1. + exp(exponent));
             }
         }
+=======
+        // Declare matrices to be used in quantum kinetic equation calculation
+        Real IMFP_abs[NUM_FLAVORS][NUM_FLAVORS]; // Neutrino inverse mean free path matrix: diag( k_e , k_u , k_t ) 
+        Real IMFP_absbar[NUM_FLAVORS][NUM_FLAVORS]; // Antineutrino inverse mean free path matrix: diag( kbar_e , kbar_u , kbar_t )         
+        Real f_eq[NUM_FLAVORS][NUM_FLAVORS]; // Neutrino equilibrium Fermi-dirac distribution matrix: f_eq = diag( f_e , f_u , f_t ) 
+        Real f_eqbar[NUM_FLAVORS][NUM_FLAVORS]; // Antineutrino equilibrium Fermi-dirac distribution matrix: f_eq = diag( fbar_e , fbar_u , fbar_t ) 
+
+        // Initialize matrices with zeros
+        for (int i=0; i<NUM_FLAVORS; ++i) {
+            for (int j=0; j<NUM_FLAVORS; ++j) {
+                IMFP_abs[i][j] = 0.0;
+                IMFP_absbar[i][j] = 0.0;
+                f_eq[i][j] = 0.0;
+                f_eqbar[i][j] = 0.0;
+            }
+        }
+
+        // If opacity_method is 1, the code will use the inverse mean free paths in the input parameters to compute the collision term.
+        if(parms->IMFP_method==1){
+            for (int i=0; i<NUM_FLAVORS; ++i) {
+
+                IMFP_abs[i][i]    = parms->IMFP_abs[0][i]; // Read absorption inverse mean free path from input parameters file.
+                IMFP_absbar[i][i] = parms->IMFP_abs[1][i]; // Read absorption inverse mean free path from input parameters file.
+
+                // Calculate the Fermi-Dirac distribution for neutrinos and antineutrinos.
+                f_eq[i][i]    = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - parms->munu[0][i] ) / T_pp ) );
+                f_eqbar[i][i] = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - parms->munu[1][i] ) / T_pp ) );
+
+                // Include the Pauli blocking term
+                if (parms->Do_Pauli_blocking == 1){
+                    IMFP_abs[i][i]    = IMFP_abs[i][i]    / ( 1 - f_eq[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
+                    IMFP_absbar[i][i] = IMFP_absbar[i][i] / ( 1 - f_eqbar[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
+                }
+            }
+        }
+        else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0 or 1");
+>>>>>>> 94846e2b40e6fa6813a2b29f024154ed420689b3
 
         #include "generated_files/Evolve.cpp_dfdt_fill"
 

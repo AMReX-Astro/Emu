@@ -331,6 +331,24 @@ InitParticles(const TestParams* parms)
 	      p.rdata(PIdx::N01_Re)    = parms->perturbation_amplitude*sin(nu_k*p.pos(2)) * (p.rdata(PIdx::N00_Re   ) - p.rdata(PIdx::N11_Re   ));
 	      p.rdata(PIdx::N01_Rebar) = parms->perturbation_amplitude*sin(nu_k*p.pos(2)) * (p.rdata(PIdx::N00_Rebar) - p.rdata(PIdx::N11_Rebar));
 	    }
+		if(parms->perturbation_type == 2){
+			// random perturbations of the diagonals
+		    Real rand;
+	    	symmetric_uniform(&rand, engine);
+			p.rdata(PIdx::N00_Re)    *= 1. + parms->perturbation_amplitude*rand;
+	    	symmetric_uniform(&rand, engine);
+			p.rdata(PIdx::N00_Rebar) *= 1. + parms->perturbation_amplitude*rand;
+	    	symmetric_uniform(&rand, engine);
+			p.rdata(PIdx::N11_Re)    *= 1. + parms->perturbation_amplitude*rand;
+	    	symmetric_uniform(&rand, engine);
+			p.rdata(PIdx::N11_Rebar) *= 1. + parms->perturbation_amplitude*rand;
+#if NUM_FLAVORS==3
+	    	symmetric_uniform(&rand, engine);
+			p.rdata(PIdx::N22_Re)    *= 1. + parms->perturbation_amplitude*rand;
+	    	symmetric_uniform(&rand, engine);
+			p.rdata(PIdx::N22_Rebar) *= 1. + parms->perturbation_amplitude*rand;
+#endif
+		}
 
 	  } // loop over direction
 	} // loop over location

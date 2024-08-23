@@ -8,17 +8,18 @@ sys.path.append(importpath+"/../data_reduction")
 from initial_condition_tools import uniform_sphere, moment_interpolate_particles, minerbo_interpolate, write_particles
 import amrex_plot_tools as amrex
 
-# generation parameters
-# from ix=37 iy=86 iz=75 in Francois' data
+# These initial conditions are intended to replicate the collisional instability outputs in "Collisional Flavor Instabilities of Supernova Neutrinos" by L. Johns [2104.11369].
+# Simulation parameters
 NF = 2
 nphi_equator = 16
-nnue = 3.0e+33
-nnua = 2.4e+33
-nnux = 1.0e+33
+nnue = 3.0e+33 # 1/ccm
+nnua = 2.5e+33 # 1/ccm
+nnux = 1.0e+33 # 1/ccm
 fnue = np.array([0.0 , 0.0 , 0.0])
 fnua = np.array([0.0 , 0.0 , 0.0])
 fnux = np.array([0.0 , 0.0 , 0.0])
-energy_erg = 20.0 * 1e6*amrex.eV
+energy_erg = 20.0 # MeV
+energy_erg *= 1e6*amrex.eV # erg 
 
 nnu = np.zeros((2,NF))
 nnu[0,0] = nnue
