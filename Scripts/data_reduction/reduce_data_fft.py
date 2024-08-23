@@ -9,7 +9,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-o", "--output", type=str, default="reduced_data_fft.h5", help="Name of the output file (default: reduced_data_fft.h5)")
 args = parser.parse_args()
 
-directories = sorted(glob.glob("plt?????"))
+directories = glob.glob("plt*")
+directories = [d for d in directories if ".h5" not in d]
+directories = sorted(directories, key=lambda x: int(x.lstrip("plt")))
 
 t = []
 
