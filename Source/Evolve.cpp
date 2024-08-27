@@ -248,12 +248,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             // munu_val : electron neutrino chemical potential
             const double munu_val = mue_out - muhat_out; //munu -> "mu_e" - "muhat"
             
-            // !!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            for (int i=0; i<NUM_FLAVORS; ++i) {
-                munu[i][i]    = 0.0; // ... fix it ... // Get neutrino chemical potential from EOS table.
-                munubar[i][i] = 0.0; // ... fix it ... // Get antineutrino chemical potential from EOS table.
-            }
-            // !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            munu[0][0]    = munu_val; // Save neutrino chemical potential from EOS table in chemical potential matrix
+            munubar[0][0] = -1.0 * munu_val; // Save antineutrino chemical potential from EOS table in chemical potential matrix
 
             //--------------------- Values from NuLib table ---------------------------
             double *helperVarsReal_nulib = NuLib_tabulated_obj.get_helperVarsReal_nulib();
