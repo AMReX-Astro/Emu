@@ -195,9 +195,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
 
         // Declare matrices to be used in quantum kinetic equation calculation
         Real IMFP_abs[NUM_FLAVORS][NUM_FLAVORS]; // Neutrino inverse mean free path matrix for nucleon absortion: diag( k_e , k_u , k_t ) 
-        Real IMFP_absbar[NUM_FLAVORS][NUM_FLAVORS]; // Antineutrino inverse mean free path matrix for nucleon absortion: diag( kbar_e , kbar_u , kbar_t )         
-        Real IMFP_scat[NUM_FLAVORS][NUM_FLAVORS]; // Neutrino inverse mean free path matrix for nucleon scatteting
-        Real IMFP_scatbar[NUM_FLAVORS][NUM_FLAVORS]; // Antineutrino inverse mean free path matrix for nucleon scatteting
+        Real IMFP_absbar[NUM_FLAVORS][NUM_FLAVORS]; // Antineutrino inverse mean free path matrix for nucleon absortion: diag( kbar_e , kbar_u , kbar_t )
+        Real IMFP_scat[NUM_FLAVORS][NUM_FLAVORS]; // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t ) 
+        Real IMFP_scatbar[NUM_FLAVORS][NUM_FLAVORS]; // Antineutrino inverse mean free path matrix for scatteting: diag( kbar_e , kbar_u , kbar_t )
         Real f_eq[NUM_FLAVORS][NUM_FLAVORS]; // Neutrino equilibrium Fermi-dirac distribution matrix: f_eq = diag( f_e , f_u , f_t ) 
         Real f_eqbar[NUM_FLAVORS][NUM_FLAVORS]; // Antineutrino equilibrium Fermi-dirac distribution matrix: f_eq = diag( fbar_e , fbar_u , fbar_t ) 
         Real munu[NUM_FLAVORS][NUM_FLAVORS]; // Neutrino chemical potential matrix: munu = diag ( munu_e , munu_x)
@@ -226,15 +226,16 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
 
             }
         }
+        // If opacity_method is 2, the code interpolate inverse mean free paths from NuLib table and electron neutrino chemical potential from EoS table to compute the collision term.
         else if(parms->IMFP_method==2){
-            // use the IMFPs from NuLib table and munu from EoS table.
-            //FIXME: Set the value of rho, temperature and Ye using interpolation from the EoS table.
-            Real rho = rho_pp; //g/cm^3
-            Real temperature = T_pp; //0.05 //MeV
-            Real Ye = Ye_pp; 
+            
+            // Assign temperature, electron fraction, and density at the particle's position to new variables for interpolation of chemical potentials and inverse mean free paths.
+            Real rho = rho_pp; // Density of background matter at this particle's position g/cm^3
+            Real temperature = T_pp; // Temperature of background matter at this particle's position 0.05 //MeV
+            Real Ye = Ye_pp; // Electron fraction of background matter at this particle's position
 
             //-------------------- Values from EoS table ------------------------------
-            double mue_out, muhat_out;
+            double mue_out, muhat_out; // mue_out : Electron chemical potential. muhat_out : neutron minus proton chemical potential
             int keyerr, anyerr;
             EOS_tabulated_obj.get_mue_muhat(rho, temperature, Ye, mue_out, muhat_out, keyerr, anyerr);
             if (anyerr) assert(0); //If there is an error in interpolation call, stop execution. 
@@ -244,7 +245,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             printf("(Evolve.cpp) mu_e interpolated = %f\n", mue_out);
             printf("(Evolve.cpp) muhat interpolated = %f\n", muhat_out);
 #endif            
-            
+            // munu_val : electron neutrino chemical potential
             const double munu_val = mue_out - muhat_out; //munu -> "mu_e" - "muhat"
             
             // !!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -314,7 +315,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         }
         else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0, 1 or 2");
 
-        for (int i=0; i<NUM_FLAVORS; ++i) { //0->neutrino or 1->antineutrino
+        for (int i=0; i<NUM_FLAVORS; ++i) {
 
             // Calculate the Fermi-Dirac distribution for neutrinos and antineutrinos.
             f_eq[i][i]    = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munu[i][i]    ) / T_pp ) );
@@ -328,6 +329,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
 
         }
 
+        // Compute the time derivative of \( N_{ab} \) using the Quantum Kinetic Equations (QKE).
         #include "generated_files/Evolve.cpp_dfdt_fill"
 
         // set the dfdt values into p.rdata
