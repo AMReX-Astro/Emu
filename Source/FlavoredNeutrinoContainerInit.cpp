@@ -391,7 +391,7 @@ CreateParticlesAtBoundary(const TestParams* parms)
     
   // determine the number of directions per location
   int ndirs_per_loc = particle_data.size();
-  amrex::Print() << "Using " << ndirs_per_loc << " directions." << std::endl;
+  //amrex::Print() << "Using " << ndirs_per_loc << " directions." << std::endl;
   const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell;
 
   //FIXME: We need to use outflow boundary condition, not periodic boundary condition. Put an assert(!periodic) here.
@@ -415,7 +415,7 @@ CreateParticlesAtBoundary(const TestParams* parms)
       const auto lo = amrex::lbound(tile_box);
       const auto hi = amrex::ubound(tile_box);
 
-	  printf("tile_box = [%d, %d, %d] x [%d, %d, %d] \n", lo.x, lo.y, lo.z, hi.x, hi.y, hi.z);
+	  //printf("tile_box = [%d, %d, %d] x [%d, %d, %d] \n", lo.x, lo.y, lo.z, hi.x, hi.y, hi.z);
 
       Gpu::ManagedVector<unsigned int> counts(tile_box.numPts(), 0);  //PODVector<int, ManagedArenaAllocator<int> >  counts(n, 0)
 
@@ -514,7 +514,7 @@ CreateParticlesAtBoundary(const TestParams* parms)
 		auto new_size = old_size + num_to_add;
 		particle_tile.resize(new_size);
 
-		printf("num_to_add = %d, old_size = %lu, new_size = %lu \n", num_to_add, old_size, new_size);
+		//printf("num_to_add = %d, old_size = %lu, new_size = %lu \n", num_to_add, old_size, new_size);
 
 		//Returns the next particle ID for this processor.
 		// Particle IDs start at 1 and are never reused. The pair, consisting of the ID and the CPU on which the particle is "born", is a globally unique identifier for a particle. 
@@ -618,7 +618,7 @@ CreateParticlesAtBoundary(const TestParams* parms)
 			break;
 		  }
 
-		  printf("x = %f, y = %f, z = %f \n", x, y, z);
+		  //printf("x = %f, y = %f, z = %f \n", x, y, z);
 
 		  if (!create_particle_this_cell) continue;
 		  //printf("CREATE PARTRICLE AT: i = %d, j = %d, k = %d \n", i, j, k);
@@ -764,6 +764,8 @@ CreateParticlesAtBoundary(const TestParams* parms)
     	  } // loop over direction
     	} // loop over location
       }); // loop over grid cells
+
+	  //printf("Finished creating particles at boundary. \n");
     } // loop over multifabs
 
 } // CreateParticlesAtBoundary()

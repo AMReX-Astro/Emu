@@ -40,9 +40,38 @@ using namespace amrex;
 
 void evolve_flavor(const TestParams* parms)
 {
-    // Periodicity and Boundary Conditions
-    // Defaults to Periodic in all dimensions
-    Vector<int> is_periodic(AMREX_SPACEDIM, 1);
+    
+    //The BC will be set using parameter file.
+    //Option 0: use periodic BC
+    //Option 1: create particles at boundary.
+
+    //FIXME: FIXME: Define this in parameter file.
+    const int BC_type = 0; //0=periodic, 1=outer.
+
+    int BC_type_val;
+    enum BC_type_enum {PERIODIC, OUTER};
+
+    if (BC_type == 0){
+        BC_type_val = BC_type_enum::PERIODIC; //use periodic BC
+    } else if (BC_type == 1){
+        BC_type_val = BC_type_enum::OUTER; //use outer BC
+    } else {
+        amrex::Abort("BC_type is incorrect.");
+    }
+
+    int periodic_flag;
+    if (BC_type_val == BC_type_enum::PERIODIC){
+        //1=yes, use periodic
+        periodic_flag = 1;
+    } else if (BC_type_val == BC_type_enum::OUTER){
+        //2=no, do not use periodic.
+        periodic_flag = 0;
+    } else {
+        amrex::Abort("BC_type is incorrect.");
+    }
+
+    Vector<int> is_periodic(AMREX_SPACEDIM, periodic_flag);
+    
     Vector<int> domain_lo_bc_types(AMREX_SPACEDIM, BCType::int_dir);
     Vector<int> domain_hi_bc_types(AMREX_SPACEDIM, BCType::int_dir);
 
@@ -75,7 +104,7 @@ void evolve_flavor(const TestParams* parms)
     const IntVect ngrow(1 + (1+shape_factor_order_vec)/2);
     for(int i=0; i<AMREX_SPACEDIM; i++) AMREX_ASSERT(parms->ncell[i] >= ngrow[i]);
 
-    printf("ngrow = [%d, %d, %d] \n", ngrow[0], ngrow[1], ngrow[2]);
+    //printf("ngrow = [%d, %d, %d] \n", ngrow[0], ngrow[1], ngrow[2]);
 
     // We want 1 component (this is one real scalar field on the domain)
     const int ncomp = GIdx::ncomp;
@@ -84,7 +113,7 @@ void evolve_flavor(const TestParams* parms)
     MultiFab state(ba, dm, ncomp, ngrow);
 
     //FIXME: FIXME: Define this in parameter file.
-    const int read_rho_T_Ye_from_table = 1;
+    const int read_rho_T_Ye_from_table = 0;
 
     // initialize with NaNs ...
     state.setVal(0.0);
@@ -191,12 +220,14 @@ void evolve_flavor(const TestParams* parms)
 
         //FIXME: Think carefully where to call this function.
         //Create particles at outer boundary 
-        neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_PLUS>(parms);
-        neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_MINUS>(parms);
-        neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_PLUS>(parms);
-        neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_MINUS>(parms);
-        neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_PLUS>(parms);
-        neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_MINUS>(parms);
+        if (BC_type_val == BC_type_enum::OUTER){
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_PLUS>(parms);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_MINUS>(parms);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_PLUS>(parms);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_MINUS>(parms);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_PLUS>(parms);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_MINUS>(parms);
+        }
 
         //Create particles at inner boundary 
         //TODO: This needs to be implemented.
@@ -216,7 +247,9 @@ void evolve_flavor(const TestParams* parms)
         const int step = integrator.get_step_number();
         const Real time = integrator.get_time();
 
+    printf("Writing reduced data to file... \n");
 	rd.WriteReducedData0D(geom, state, neutrinos, time, step+1);
+    printf("Done. \n");
 
         run_fom += neutrinos.TotalNumberOfParticles();
 
@@ -234,8 +267,10 @@ void evolve_flavor(const TestParams* parms)
         // Note: this won't be the same as the new-time grid data
         // because the last deposit_to_mesh call was at either the old time (forward Euler)
         // or the final RK stage, if using Runge-Kutta.
+        printf("Setting next timestep... \n");
         const Real dt = compute_dt(geom, state, neutrinos, parms);
         integrator.set_timestep(dt);
+        printf("Done. \n");
     };
 
     // Attach our RHS and post timestep hooks to the integrator
