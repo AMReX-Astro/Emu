@@ -110,8 +110,4 @@ IMFP_scat0bar_cm = 0
 IMFP_scat1bar_cm = 0
 IMFP_scat2bar_cm = 0
 
-<<<<<<< HEAD
-delta_E = 0.8394810651882109 # Mev
-=======
 delta_E = 0.8339001570751987 # Mev
->>>>>>> 94846e2b40e6fa6813a2b29f024154ed420689b3
