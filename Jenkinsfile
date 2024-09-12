@@ -85,7 +85,7 @@ pipeline {
 	        sh 'make realclean; make generate; make -j'
 			sh 'python ../Scripts/initial_conditions/st4_linear_moment_ffi_3F.py'
 			sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.ex ../sample_inputs/inputs_1d_fiducial'
-			sh 'python3 ../Scripts/babysitting/avgfee_HDF5.py'
+			/*sh 'python3 ../Scripts/babysitting/avgfee_HDF5.py'*/
 			sh 'rm -rf plt*'
 		}
 	}}
