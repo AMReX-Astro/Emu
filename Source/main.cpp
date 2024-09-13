@@ -120,7 +120,7 @@ void evolve_flavor(const TestParams* parms)
     //If reading from table, call function "set_rho_T_Ye". 
     //Else set rho, T and Ye to constant value throughout the grid using values from parameter file.
     if (read_rho_T_Ye_from_table){
-        set_rho_T_Ye(state, geom);
+        set_rho_T_Ye(state, geom, parms);
     } else {      
         state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
         state.setVal(parms->Ye_in,GIdx::Ye,1);

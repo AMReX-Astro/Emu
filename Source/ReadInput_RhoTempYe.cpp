@@ -4,7 +4,7 @@
 #include "ReadInput_RhoTempYe.H"
 #include <cmath>
 
-void set_rho_T_Ye(MultiFab& state, const Geometry& geom)
+void set_rho_T_Ye(MultiFab& state, const Geometry& geom, const TestParams* parms)
 {
     // Create an alias of the MultiFab so set_rho_T_Ye only sets rho, T and Ye.
     int start_comp = GIdx::rho;
