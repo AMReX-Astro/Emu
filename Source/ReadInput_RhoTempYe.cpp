@@ -2,7 +2,7 @@
 #include "Constants.H"
 
 #include <cmath>
-
+#include "ReadHDF5RhoYeT.H"
 
 void set_rho_T_Ye(MultiFab& state, const Geometry& geom)
 {
@@ -15,6 +15,9 @@ void set_rho_T_Ye(MultiFab& state, const Geometry& geom)
     
     //always access mf comp index as (GIdx::rho - start_comp)
     //Example: Amrex tutorials -> ExampleCodes/MPMD/Case-2/main.cpp.
+
+    const std::string hdf5_background_rho_Ye_T_name = "rho_Ye_T.hdf5"
+    ReadInputRhoYeT(hdf5_background_rho_Ye_T_name)
 
     for(amrex::MFIter mfi(rho_T_ye_state); mfi.isValid(); ++mfi){
         const amrex::Box& bx = mfi.validbox();
