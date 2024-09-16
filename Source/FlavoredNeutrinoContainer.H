@@ -80,7 +80,7 @@ public:
     void InitParticles(const TestParams* parms);
 
     template<BoundaryParticleCreationDirection DIRECTION>
-    void CreateParticlesAtBoundary(const TestParams* parms);
+    void CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt);
 
     void SyncLocation(int type);
 

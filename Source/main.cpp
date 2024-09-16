@@ -218,15 +218,17 @@ void evolve_flavor(const TestParams* parms)
         // Use the latest-time neutrino data
         auto& neutrinos = neutrinos_new;
 
+        const Real current_dt = integrator.get_timestep(); //FIXME: FIXME: Pass this to neutrinos.CreateParticlesAtBoundary.
+
         //FIXME: Think carefully where to call this function.
         //Create particles at outer boundary 
         if (BC_type_val == BC_type_enum::OUTER){
-            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_PLUS>(parms);
-            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_MINUS>(parms);
-            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_PLUS>(parms);
-            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_MINUS>(parms);
-            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_PLUS>(parms);
-            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_MINUS>(parms);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_PLUS>(parms, current_dt);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_MINUS>(parms, current_dt);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_PLUS>(parms, current_dt);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_MINUS>(parms, current_dt);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_PLUS>(parms, current_dt);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_MINUS>(parms, current_dt);
         }
 
         //Create particles at inner boundary 

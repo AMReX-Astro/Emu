@@ -368,7 +368,7 @@ InitParticles(const TestParams* parms)
 //==================================================================================================================//
 template<BoundaryParticleCreationDirection DIRECTION>
 void FlavoredNeutrinoContainer::
-CreateParticlesAtBoundary(const TestParams* parms)
+CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
 {
   BL_PROFILE("FlavoredNeutrinoContainer::CreateParticlesAtBoundary");
 
@@ -674,14 +674,13 @@ CreateParticlesAtBoundary(const TestParams* parms)
 				                                          (3*ndirs_per_loc*parms->nppc[0]*parms->nppc[1]*parms->nppc[2]);
     			  
 				  //p.rdata(PIdx::Vphase) = dx[0]*dx[1]*dx[2]*V_momentum;
-				  const Real dt = 0.1; //FIXME: FIXME: This is a dummy value. Set correct value from time integrator.
-				  const Real clight = 1.0; //FIXME: FIXME: This is a dummy value. Set correct value.
-				  const Real pupx_ = 1.0; //FIXME: FIXME: This is a dummy value. Set correct value.
-				  const Real pupy_ = 1.0; //FIXME: FIXME: This is a dummy value. Set correct value.
-				  const Real pupz_ = 1.0; //FIXME: FIXME: This is a dummy value. Set correct value.
-				  const Real pupt_ = 1.0; //FIXME: FIXME: This is a dummy value. Set correct value.
-				  printf("(WARNING) Using dummy values: dt = %f, clight = %f, pupt = %f etc.\n", dt, clight, pupt_);
-
+				  const Real dt = current_dt; 
+				  const Real clight = PhysConst::c; 
+				  const Real pupx_ = p.rdata(PIdx::pupx); //TODO: Review this.
+				  const Real pupy_ = p.rdata(PIdx::pupy); //TODO: Review this.
+				  const Real pupz_ = p.rdata(PIdx::pupz); //TODO: Review this.
+				  const Real pupt_ = p.rdata(PIdx::pupt); //TODO: Review this.
+				 
 				  switch (DIRECTION)
 				  {
 				  //Create particles in +ve x direction at lower x boundary.	
@@ -772,16 +771,16 @@ CreateParticlesAtBoundary(const TestParams* parms)
 
 //We need to explicitly instantiate the template function for different use cases.
 //DIRECTION == BoundaryParticleCreationDirection::I_PLUS (+ve x direction at lower x boundary.)
-template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_PLUS>(const TestParams* parms);
+template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_PLUS>(const TestParams* parms, const Real current_dt);
 //DIRECTION == BoundaryParticleCreationDirection::I_MINUS (-ve x direction at upper x boundary.)
-template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_MINUS>(const TestParams* parms);
+template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_MINUS>(const TestParams* parms, const Real current_dt);
 //DIRECTION == BoundaryParticleCreationDirection::J_PLUS (+ve y direction at lower y boundary.)
-template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_PLUS>(const TestParams* parms);
+template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_PLUS>(const TestParams* parms, const Real current_dt);
 //DIRECTION == BoundaryParticleCreationDirection::J_MINUS (-ve y direction at upper y boundary.)
-template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_MINUS>(const TestParams* parms);
+template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_MINUS>(const TestParams* parms, const Real current_dt);
 //DIRECTION == BoundaryParticleCreationDirection::K_PLUS (+ve z direction at lower z boundary.)
-template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_PLUS>(const TestParams* parms);
+template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_PLUS>(const TestParams* parms, const Real current_dt);
 //DIRECTION == BoundaryParticleCreationDirection::K_MINUS (-ve z direction at upper z boundary.)
-template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_MINUS>(const TestParams* parms);
+template void FlavoredNeutrinoContainer::CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_MINUS>(const TestParams* parms, const Real current_dt);
 
 
