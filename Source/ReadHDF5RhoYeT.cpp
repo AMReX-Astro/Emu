@@ -42,6 +42,15 @@ static int file_is_readable(std::string filename)
 
 namespace background_input_rho_T_Ye {
 
+  int *n_cell_x;
+  int *n_cell_y;
+  int *n_cell_z;
+  double *x_min;
+  double *x_max;
+  double *y_min;
+  double *y_max;
+  double *z_min;
+  double *z_max;
   double *rho_array_input;
   double *T_array_input;
   double *Ye_array_input;
@@ -91,16 +100,19 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T){
     do {                                                                   \
       READ_BCAST_EOS_HDF5(NAME,&allbackgroundYeTrhos_temp[(OFF)*(DIMS)[1]],H5T_NATIVE_DOUBLE,H5S_ALL,(DIMS)[1]); \
     } while (0)
-  
-    int ncellx_;
-    int ncelly_;
-    int ncellz_;
-    // Read size of tables
-    READ_BCAST_EOS_HDF5("ncellsx",  &ncellx_,  H5T_NATIVE_INT, H5S_ALL, 1);
-    READ_BCAST_EOS_HDF5("ncellsy", &ncelly_, H5T_NATIVE_INT, H5S_ALL, 1);
-    READ_BCAST_EOS_HDF5("ncellsz",   &ncellz_,   H5T_NATIVE_INT, H5S_ALL, 1);
 
-    printf("(ReadHDF5RhoYeT.cpp) ncellx_ = %d, ncelly_ = %d, ncellz_ = %d\n", ncellx_, ncelly_, ncellz_);
+    // Read size of tables
+    READ_BCAST_EOS_HDF5("ncellsx", n_cell_x, H5T_NATIVE_INT, H5S_ALL, 1);
+    READ_BCAST_EOS_HDF5("ncellsy", n_cell_y, H5T_NATIVE_INT, H5S_ALL, 1);
+    READ_BCAST_EOS_HDF5("ncellsz", n_cell_z, H5T_NATIVE_INT, H5S_ALL, 1);
+    READ_BCAST_EOS_HDF5("xmin_cm", x_min,    H5T_NATIVE_INT, H5S_ALL, 1);
+    READ_BCAST_EOS_HDF5("ymin_cm", y_min,    H5T_NATIVE_INT, H5S_ALL, 1);
+    READ_BCAST_EOS_HDF5("zmin_cm", z_min,    H5T_NATIVE_INT, H5S_ALL, 1);
+    READ_BCAST_EOS_HDF5("xmax_cm", x_max,    H5T_NATIVE_INT, H5S_ALL, 1);
+    READ_BCAST_EOS_HDF5("ymax_cm", y_max,    H5T_NATIVE_INT, H5S_ALL, 1);
+    READ_BCAST_EOS_HDF5("zmax_cm", z_max,    H5T_NATIVE_INT, H5S_ALL, 1);
+    
+    printf("(ReadHDF5RhoYeT.cpp) n_cell_x = %d, n_cell_y = %d, n_cell_z = %d\n", n_cell_x, n_cell_y, n_cell_z);
 
     //Allocate managed memory arena on unified memory
     ManagedArenaAllocator<double> myManagedArena;
@@ -108,27 +120,27 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T){
 
     // Allocate memory for tables
     double *allbackgroundYeTrhos_temp;
-    if (!(allbackgroundYeTrhos_temp = myManagedArena.allocate(ncellx_ * ncelly_ * ncellz_ * 3 ) )) {
+    if (!(allbackgroundYeTrhos_temp = myManagedArena.allocate(n_cell_x * n_cell_y * n_cell_z * 3 ) )) {
         printf("(ReadEosTable.cpp) Cannot allocate memory for EOS table"); 
         assert(0);
     }
     // Allocate memory for tables
-    if (!(rho_array_input = myManagedArena.allocate(ncellx_ * ncelly_ * ncellz_) )) {
+    if (!(rho_array_input = myManagedArena.allocate(n_cell_x * n_cell_y * n_cell_z) )) {
         printf("(ReadEosTable.cpp) Cannot allocate memory for EOS table"); 
         assert(0);
     }
-    if (!(T_array_input = myManagedArena.allocate(ncellx_ * ncelly_ * ncellz_) )) {
+    if (!(T_array_input = myManagedArena.allocate(n_cell_x * n_cell_y * n_cell_z) )) {
         printf("(ReadEosTable.cpp) Cannot allocate memory for EOS table"); 
         assert(0);             
     }
-    if (!(Ye_array_input = myManagedArena.allocate(ncellx_ * ncelly_ * ncellz_) )) {
+    if (!(Ye_array_input = myManagedArena.allocate(n_cell_x * n_cell_y * n_cell_z) )) {
         printf("(ReadEosTable.cpp) Cannot allocate memory for EOS table"); 
         assert(0);             
     }
 
     // Prepare HDF5 to read hyperslabs into alltables_temp
-    hsize_t table_dims[2] = {3, (hsize_t)ncellx_ * ncelly_ * ncellz_};
-    hsize_t var3[2]       = { 1, (hsize_t)ncellx_ * ncelly_ * ncellz_}; // DELETE IF NOT NEEDED ERICK
+    hsize_t table_dims[2] = {3, (hsize_t)n_cell_x * n_cell_y * n_cell_z};
+    hsize_t var3[2]       = { 1, (hsize_t)n_cell_x * n_cell_y * n_cell_z}; // DELETE IF NOT NEEDED ERICK
     hid_t mem3 =  H5Screate_simple(2, table_dims, NULL);
 
     // Read alltables_temp
@@ -139,38 +151,38 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T){
     HDF5_ERROR(H5Sclose(mem3));
     HDF5_ERROR(H5Fclose(file));
 
-    for(    int k = 0 ; k < ncellx_ ; k++ ){
-      for(  int j = 0 ; j < ncelly_ ; j++ ){ 
-        for(int i = 0 ; i < ncellz_ ; i++ ) {
-          int index_old = i + ncellz_*(j + ncelly_*(k + ncellx_));
-          int index_new = 0 + i + ncellz_*(j + ncelly_*k);
+    for(    int k = 0 ; k < n_cell_x ; k++ ){
+      for(  int j = 0 ; j < n_cell_y ; j++ ){ 
+        for(int i = 0 ; i < n_cell_z ; i++ ) {
+          int index_old = i + n_cell_z*(j + n_cell_y*(k + n_cell_x));
+          int index_new = 0 + i + n_cell_z*(j + n_cell_y*k);
           rho_array_input[index_new] = allbackgroundYeTrhos_temp[index_old];
         }
       } 
     }
 
-    for(    int k = 0 ; k < ncellx_ ; k++ ){
-      for(  int j = 0 ; j < ncelly_ ; j++ ){ 
-        for(int i = 0 ; i < ncellz_ ; i++ ) {
-          int index_old = i + ncellz_*(j + ncelly_*(k + ncellx_*2));
-          int index_new = 0 + i + ncellz_*(j + ncelly_*k);
+    for(    int k = 0 ; k < n_cell_x ; k++ ){
+      for(  int j = 0 ; j < n_cell_y ; j++ ){ 
+        for(int i = 0 ; i < n_cell_z ; i++ ) {
+          int index_old = i + n_cell_z*(j + n_cell_y*(k + n_cell_x*2));
+          int index_new = 0 + i + n_cell_z*(j + n_cell_y*k);
           T_array_input[index_new] = allbackgroundYeTrhos_temp[index_old];
         }
       } 
     }
 
-    for(    int k = 0 ; k < ncellx_ ; k++ ){
-      for(  int j = 0 ; j < ncelly_ ; j++ ){ 
-        for(int i = 0 ; i < ncellz_ ; i++ ) {
-          int index_old = i + ncellz_*(j + ncelly_*(k + ncellx_*3));
-          int index_new = 0 + i + ncellz_*(j + ncelly_*k);
+    for(    int k = 0 ; k < n_cell_x ; k++ ){
+      for(  int j = 0 ; j < n_cell_y ; j++ ){ 
+        for(int i = 0 ; i < n_cell_z ; i++ ) {
+          int index_old = i + n_cell_z*(j + n_cell_y*(k + n_cell_x*3));
+          int index_new = 0 + i + n_cell_z*(j + n_cell_y*k);
           Ye_array_input[index_new] = allbackgroundYeTrhos_temp[index_old];
         }
       } 
     }
 
     // free memory of temporary array
-    myManagedArena.deallocate(allbackgroundYeTrhos_temp, ncellz_ * ncelly_ * ncellz_ * 3);
+    myManagedArena.deallocate(allbackgroundYeTrhos_temp, n_cell_z * n_cell_y * n_cell_z * 3);
  
 } // ReadEOSTable
 

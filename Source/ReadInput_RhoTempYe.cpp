@@ -16,8 +16,12 @@ void set_rho_T_Ye(MultiFab& state, const Geometry& geom, const TestParams* parms
     //always access mf comp index as (GIdx::rho - start_comp)
     //Example: Amrex tutorials -> ExampleCodes/MPMD/Case-2/main.cpp.
 
+    using namespace background_input_rho_T_Ye;
     const std::string hdf5_background_rho_Ye_T_name = "rho_Ye_T.hdf5";
     ReadInputRhoYeT(hdf5_background_rho_Ye_T_name);
+
+    amrex::Print() << "n_cell_x" << n_cell_x << std::endl;
+    amrex::Print() << "parms->ncell[0]" << parms->ncell[0] << std::endl;
 
     for(amrex::MFIter mfi(rho_T_ye_state); mfi.isValid(); ++mfi){
         const amrex::Box& bx = mfi.validbox();
