@@ -112,35 +112,33 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T){
     READ_BCAST_EOS_HDF5("ymax_cm", y_max,    H5T_NATIVE_INT, H5S_ALL, 1);
     READ_BCAST_EOS_HDF5("zmax_cm", z_max,    H5T_NATIVE_INT, H5S_ALL, 1);
     
-    printf("(ReadHDF5RhoYeT.cpp) n_cell_x = %d, n_cell_y = %d, n_cell_z = %d\n", n_cell_x, n_cell_y, n_cell_z);
+    printf("(ReadHDF5RhoYeT.cpp) n_cell_x = %d, n_cell_y = %d, n_cell_z = %d\n", *n_cell_x, *n_cell_y, *n_cell_z);
 
     //Allocate managed memory arena on unified memory
     ManagedArenaAllocator<double> myManagedArena;
-    ManagedArenaAllocator<int> myManagedArena_Int; // REMOVE IT IF NOT NEEDED ERICK
 
     // Allocate memory for tables
     double *allbackgroundYeTrhos_temp;
-    if (!(allbackgroundYeTrhos_temp = myManagedArena.allocate(n_cell_x * n_cell_y * n_cell_z * 3 ) )) {
+    if (!(allbackgroundYeTrhos_temp = myManagedArena.allocate(*n_cell_x * *n_cell_y * *n_cell_z * 3 ) )) {
         printf("(ReadEosTable.cpp) Cannot allocate memory for EOS table"); 
         assert(0);
     }
     // Allocate memory for tables
-    if (!(rho_array_input = myManagedArena.allocate(n_cell_x * n_cell_y * n_cell_z) )) {
+    if (!(rho_array_input = myManagedArena.allocate(*n_cell_x * *n_cell_y * *n_cell_z) )) {
         printf("(ReadEosTable.cpp) Cannot allocate memory for EOS table"); 
         assert(0);
     }
-    if (!(T_array_input = myManagedArena.allocate(n_cell_x * n_cell_y * n_cell_z) )) {
+    if (!(T_array_input = myManagedArena.allocate(*n_cell_x * *n_cell_y * *n_cell_z) )) {
         printf("(ReadEosTable.cpp) Cannot allocate memory for EOS table"); 
         assert(0);             
     }
-    if (!(Ye_array_input = myManagedArena.allocate(n_cell_x * n_cell_y * n_cell_z) )) {
+    if (!(Ye_array_input = myManagedArena.allocate(*n_cell_x * *n_cell_y * *n_cell_z) )) {
         printf("(ReadEosTable.cpp) Cannot allocate memory for EOS table"); 
         assert(0);             
     }
 
     // Prepare HDF5 to read hyperslabs into alltables_temp
-    hsize_t table_dims[2] = {3, (hsize_t)n_cell_x * n_cell_y * n_cell_z};
-    hsize_t var3[2]       = { 1, (hsize_t)n_cell_x * n_cell_y * n_cell_z}; // DELETE IF NOT NEEDED ERICK
+    hsize_t table_dims[2] = {3, (hsize_t)*n_cell_x * *n_cell_y * *n_cell_z};
     hid_t mem3 =  H5Screate_simple(2, table_dims, NULL);
 
     // Read alltables_temp
@@ -151,38 +149,38 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T){
     HDF5_ERROR(H5Sclose(mem3));
     HDF5_ERROR(H5Fclose(file));
 
-    for(    int k = 0 ; k < n_cell_x ; k++ ){
-      for(  int j = 0 ; j < n_cell_y ; j++ ){ 
-        for(int i = 0 ; i < n_cell_z ; i++ ) {
-          int index_old = i + n_cell_z*(j + n_cell_y*(k + n_cell_x));
-          int index_new = 0 + i + n_cell_z*(j + n_cell_y*k);
+    for(    int k = 0 ; k < *n_cell_x  ; k++ ){
+      for(  int j = 0 ; j < *n_cell_y ; j++ ){ 
+        for(int i = 0 ; i < *n_cell_z ; i++ ) {
+          int index_old = i + *n_cell_z*(j + *n_cell_y*(k + *n_cell_x ));
+          int index_new = 0 + i + *n_cell_z*(j + *n_cell_y*k);
           rho_array_input[index_new] = allbackgroundYeTrhos_temp[index_old];
         }
       } 
     }
 
-    for(    int k = 0 ; k < n_cell_x ; k++ ){
-      for(  int j = 0 ; j < n_cell_y ; j++ ){ 
-        for(int i = 0 ; i < n_cell_z ; i++ ) {
-          int index_old = i + n_cell_z*(j + n_cell_y*(k + n_cell_x*2));
-          int index_new = 0 + i + n_cell_z*(j + n_cell_y*k);
+    for(    int k = 0 ; k < *n_cell_x  ; k++ ){
+      for(  int j = 0 ; j < *n_cell_y ; j++ ){ 
+        for(int i = 0 ; i < *n_cell_z ; i++ ) {
+          int index_old = i + *n_cell_z*(j + *n_cell_y*(k + *n_cell_x *2));
+          int index_new = 0 + i + *n_cell_z*(j + *n_cell_y*k);
           T_array_input[index_new] = allbackgroundYeTrhos_temp[index_old];
         }
       } 
     }
 
-    for(    int k = 0 ; k < n_cell_x ; k++ ){
-      for(  int j = 0 ; j < n_cell_y ; j++ ){ 
-        for(int i = 0 ; i < n_cell_z ; i++ ) {
-          int index_old = i + n_cell_z*(j + n_cell_y*(k + n_cell_x*3));
-          int index_new = 0 + i + n_cell_z*(j + n_cell_y*k);
+    for(    int k = 0 ; k < *n_cell_x  ; k++ ){
+      for(  int j = 0 ; j < *n_cell_y ; j++ ){ 
+        for(int i = 0 ; i < *n_cell_z ; i++ ) {
+          int index_old = i + *n_cell_z*(j + *n_cell_y*(k + *n_cell_x *3));
+          int index_new = 0 + i + *n_cell_z*(j + *n_cell_y*k);
           Ye_array_input[index_new] = allbackgroundYeTrhos_temp[index_old];
         }
       } 
     }
 
     // free memory of temporary array
-    myManagedArena.deallocate(allbackgroundYeTrhos_temp, n_cell_z * n_cell_y * n_cell_z * 3);
+    myManagedArena.deallocate(allbackgroundYeTrhos_temp, *n_cell_x * *n_cell_y * *n_cell_z * 3);
  
 } // ReadEOSTable
 
