@@ -136,7 +136,6 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T){
     
     //Allocate managed memory arena on unified memory
     ManagedArenaAllocator<double> myManagedArena;
-    ManagedArenaAllocator<int> myManagedArena_int;
 
     // Allocate memory for tables
     double *allbackgroundYeTrhos_temp;
@@ -169,36 +168,12 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T){
 
     HDF5_ERROR(H5Fclose(file));
 
-    for(    int k = 0 ; k < ncellx_ ; k++ ){
-      for(  int j = 0 ; j < ncelly_ ; j++ ){ 
-        for(int i = 0 ; i < ncellz_ ; i++ ) {
-          int index_old = i + ncellz_*(j + ncelly_*(k + ncellx_ ));
-          int index_new = 0 + i + ncellz_*(j + ncelly_*k);
-          rho_array_input[index_new] = allbackgroundYeTrhos_temp[index_old];
-        }
-      } 
+    for(int i = 0 ; i < ncellx_ * ncelly_ * ncellz_ ; i++ ) {
+      rho_array_input[i] = allbackgroundYeTrhos_temp[ i + 0 * ncellx_ * ncelly_ * ncellz_ ];
+      T_array_input  [i] = allbackgroundYeTrhos_temp[ i + 1 * ncellx_ * ncelly_ * ncellz_ ];
+      Ye_array_input [i] = allbackgroundYeTrhos_temp[ i + 2 * ncellx_ * ncelly_ * ncellz_ ];
     }
 
-    for(    int k = 0 ; k < ncellx_ ; k++ ){
-      for(  int j = 0 ; j < ncelly_ ; j++ ){ 
-        for(int i = 0 ; i < ncellz_ ; i++ ) {
-          int index_old = i + ncellz_*(j + ncelly_*(k + ncellx_ *2));
-          int index_new = 0 + i + ncellz_*(j + ncelly_*k);
-          T_array_input[index_new] = allbackgroundYeTrhos_temp[index_old];
-        }
-      } 
-    }
-
-    for(    int k = 0 ; k < ncellx_ ; k++ ){
-      for(  int j = 0 ; j < ncelly_ ; j++ ){ 
-        for(int i = 0 ; i < ncellz_ ; i++ ) {
-          int index_old = i + ncellz_*(j + ncelly_*(k + ncellx_ *3));
-          int index_new = 0 + i + ncellz_*(j + ncelly_*k);
-          Ye_array_input[index_new] = allbackgroundYeTrhos_temp[index_old];
-        }
-      } 
-    }
-    
     // free memory of temporary array
     myManagedArena.deallocate(allbackgroundYeTrhos_temp, ncellx_ * ncelly_ * ncellz_ * 3);
  
