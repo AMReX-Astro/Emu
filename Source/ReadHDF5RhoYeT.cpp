@@ -137,7 +137,6 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T){
     
     //Allocate managed memory arena on unified memory
     ManagedArenaAllocator<double> myManagedArena;
-    ManagedArenaAllocator<int> myManagedArena_int;
 
     // Allocate memory for tables
     double *allbackgroundYeTrhos_temp;
