@@ -23,12 +23,15 @@ void set_rho_T_Ye(MultiFab& state, const Geometry& geom, const TestParams* parms
     //always access mf comp index as (GIdx::rho - start_comp)
     //Example: Amrex tutorials -> ExampleCodes/MPMD/Case-2/main.cpp.
 
-    using namespace background_input_rho_T_Ye;
     const std::string hdf5_background_rho_Ye_T_name = "rho_Ye_T.hdf5";
     ReadInputRhoYeT(hdf5_background_rho_Ye_T_name);
 
-    amrex::Print() << "n_cell_x" << n_cell_x << std::endl;
-    amrex::Print() << "parms->ncell[0]" << parms->ncell[0] << std::endl;
+    using namespace background_input_rho_T_Ye;
+    int ncell_x = *n_cell_x;
+    int ncell_y = *n_cell_y;
+    int ncell_z = *n_cell_z;
+
+    rhoYeT_input_struct rhoYeT_input_obj(rho_array_input, Ye_array_input, T_array_input);
 
     for(amrex::MFIter mfi(rho_T_ye_state); mfi.isValid(); ++mfi){
         const amrex::Box& bx = mfi.validbox();
@@ -41,14 +44,20 @@ void set_rho_T_Ye(MultiFab& state, const Geometry& geom, const TestParams* parms
             amrex::Real x = (i+0.5) * dx[0];
             amrex::Real y = (j+0.5) * dx[1];
             amrex::Real z = (k+0.5) * dx[2];
+       
+            int ig = i;  // FIXME: Modify this based on how you calculate global indices
+            int jg = j;  // FIXME: Modify this based on how you calculate global indices
+            int kg = k;  // FIXME: Modify this based on how you calculate global indices
+    
+            // Compute the 1D index from 3D coordinates in the linearized array
+            int idx = ig + ncell_x * (jg + ncell_y * kg);
+    
+            // Set the values from the input arrays
+            mf_array(i, j, k, GIdx::rho - start_comp) = rhoYeT_input_obj.rho_input[idx];  // Assuming you have a rho_array_input
+            mf_array(i, j, k, GIdx::T - start_comp)   = rhoYeT_input_obj.T_input[idx];    // Assuming you have a T_array_input
+            mf_array(i, j, k, GIdx::Ye - start_comp)  = rhoYeT_input_obj.Ye_input[idx];   // Using Ye_array_input
 
-            //printf("Inside MFIter: x=%f, y=%f, z=%f\n", x, y, z);
 
-            //TODO: Find the global (i, j, k) from the amrex domain. call them (ig, jg, kg).
-            //TODO: Then get the values from GPU-array for (ig, jg, kg) and set them to corresponding MultiFabs here. 
-            mf_array(i, j, k, GIdx::rho - start_comp) = -404.0; //FIXME: 
-            mf_array(i, j, k, GIdx::T - start_comp) = -404.0; //FIXME:
-            mf_array(i, j, k, GIdx::Ye - start_comp) = -404.0; //FIXME: 
         });
     }
 
