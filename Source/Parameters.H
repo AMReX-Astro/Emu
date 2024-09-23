@@ -54,6 +54,9 @@ struct TestParams : public amrex::Gpu::Managed
     // attenuation to hamiltonians
     Real attenuation_hamiltonians;
 
+    // Background matter rho, Ye, T flag
+    int read_rho_T_Ye_from_table; 
+
     //HDF5 table names (with full path) for EoS and NuLib tables
     std::string nuceos_table_name;
     std::string nulib_table_name;
@@ -117,6 +120,9 @@ struct TestParams : public amrex::Gpu::Managed
 
     // attenuation to hamiltonians
     pp.get("attenuation_hamiltonians", attenuation_hamiltonians);
+
+    // Background matter rho, Ye, T flag
+    pp.get("read_rho_T_Ye_from_table", read_rho_T_Ye_from_table);
 
     // absorption opacities and equilibrium neutrino chemical potentials
     pp.get("IMFP_method", IMFP_method);
