@@ -111,3 +111,8 @@ IMFP_scat1bar_cm = 0
 IMFP_scat2bar_cm = 0
 
 delta_E = 2.272540842052914 # Mev
+
+#################
+# Background Ye, T and rho
+#################
+read_rho_T_Ye_from_table = 0
