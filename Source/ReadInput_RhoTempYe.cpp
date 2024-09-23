@@ -29,9 +29,6 @@ void set_rho_T_Ye(MultiFab& state, const Geometry& geom, const TestParams* parms
     double lx = xmax_ - xmin_;
     double ly = ymax_ - ymin_;
     double lz = zmax_ - zmin_;
-
-    amrex::Print() << "ncell_x = " << ncell_x << std::endl;
-    amrex::Print() << "parms->ncell[0] = " << parms->ncell[0] << std::endl;
     
     if (ncell_x != parms->ncell[0] || ncell_y != parms->ncell[1] || ncell_z != parms->ncell[2]) {
       amrex::Print() << "The number of cells in the background data file does not match the parameter file" << std::endl;
