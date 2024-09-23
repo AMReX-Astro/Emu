@@ -33,7 +33,9 @@ def get_particle_keys(NF, ignore_pos=False, xp_only=False):
                            "N00_Rebar",
                            "N01_Rebar",
                            "N01_Imbar",
-                           "N11_Rebar"]
+                           "N11_Rebar",
+                           "TrHN",
+                           "Vphase"]
     if(NF==3):
         real_quantities = ["pos_x",
                            "pos_y",
@@ -63,7 +65,9 @@ def get_particle_keys(NF, ignore_pos=False, xp_only=False):
                            "N11_Rebar",
                            "N12_Rebar",
                            "N12_Imbar",
-                           "N22_Rebar"]
+                           "N22_Rebar"
+                           "TrHN",
+                           "Vphase"]
 
     if xp_only: real_quantities = real_quantities[:11]
     if ignore_pos: real_quantities = real_quantities[7:]
