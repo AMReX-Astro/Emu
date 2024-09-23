@@ -111,15 +111,12 @@ void evolve_flavor(const TestParams* parms)
     // Create a MultiFab to hold our grid state data and initialize to 0.0
     MultiFab state(ba, dm, ncomp, ngrow);
 
-    //FIXME: FIXME: Define this in parameter file.
-    const int read_rho_T_Ye_from_table = 0;
-
     // initialize with NaNs ...
     state.setVal(0.0);
 
     //If reading from table, call function "set_rho_T_Ye". 
     //Else set rho, T and Ye to constant value throughout the grid using values from parameter file.
-    if (read_rho_T_Ye_from_table){
+    if (parms->read_rho_T_Ye_from_table){
         set_rho_T_Ye(state, geom, parms);
     } else {      
         state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
