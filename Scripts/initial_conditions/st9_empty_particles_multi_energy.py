@@ -23,27 +23,41 @@ energies_center_Mev = [1, 3, 5.23824, 8.00974, 11.4415, 15.6909, 20.9527, 27.468
 energies_bottom_Mev = [0, 2, 4, 6.47649, 9.54299, 13.3401, 18.0418, 23.8636, 31.0725, 39.9989, 51.0519, 64.7382, 81.6853, 102.67, 128.654, 160.828, 200.668, 250]
 # Energy bin top extracted from NuLib table
 energies_top_Mev = [2, 4, 6.47649, 9.54299, 13.3401, 18.0418, 23.8636, 31.0725, 39.9989, 51.0519, 64.7382, 81.6853, 102.67, 128.654, 160.828, 200.668, 250, 311.085]
+
 # Energies in ergs
 energies_center_erg = np.array(energies_center_Mev) * 1e6*amrex.eV # Energy in ergs
+energies_bottom_erg = np.array(energies_bottom_Mev) * 1e6*amrex.eV # Energy in ergs
+energies_top_erg    = np.array(energies_top_Mev   ) * 1e6*amrex.eV # Energy in ergs
 
-# Set zero number density
-nnu = np.zeros((2,NF))
-# Set zero number density flux
-fnu = np.zeros((2,NF,3))
-
-# Preallocate a NumPy array for efficiency
+# Gen the number of energy bins
 n_energies = len(energies_center_erg)
-n_particles, n_variables = moment_interpolate_particles(nphi_equator, nnu, fnu, energies_center_erg[0], uniform_sphere, linear_interpolate).shape
+
+# get variable keys
+rkey, ikey = amrex.get_particle_keys(NF, ignore_pos=True)
+
+# Gen the number of variables that describe each particle
+n_variables = len(rkey)
+
+# Get the momentum distribution of the particles
+phat = uniform_sphere(nphi_equator)
+
+# Gen the number of directions
+n_directions = len(phat)
+
+# Gen the number of particles
+n_particles = n_energies * n_directions
 
 # Initialize a NumPy array to store all particles
-particles = np.empty((n_energies, n_particles, n_variables))
+particles = np.empty((n_energies, n_directions, n_variables))
 
 # Fill the particles array using a loop, replacing append
 for i, energy_bin in enumerate(energies_center_erg):
-    particles[i] = moment_interpolate_particles(nphi_equator, nnu, fnu, energy_bin, uniform_sphere, linear_interpolate)
+    particles[i , : , rkey["pupx"] : rkey["pupz"]+1 ] = energy_bin * phat
+    particles[i , : , rkey["pupt"]                  ] = energy_bin
+    particles[i , : , rkey["Vphase"]                ] = ( 4.0 * np.pi / n_directions ) * ( ( energies_top_erg[i] ** 3 - energies_bottom_erg[i] ** 3 ) / 3.0 )
 
 # Reshape the particles array
-particles = particles.reshape(n_energies * n_particles, n_variables)
+particles = particles.reshape(n_energies * n_directions, n_variables)
 
 # Write particles initial condition file
 write_particles(np.array(particles), NF, "particle_input.dat")
