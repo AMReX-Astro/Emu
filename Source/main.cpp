@@ -46,7 +46,7 @@ void evolve_flavor(const TestParams* parms)
     //Option 1: create particles at boundary.
 
     //FIXME: FIXME: Define this in parameter file.
-    const int BC_type = 0; //0=periodic, 1=outer.
+    const int BC_type = 1; //0=periodic, 1=outer.
 
     int BC_type_val;
     enum BC_type_enum {PERIODIC, OUTER};
@@ -74,6 +74,9 @@ void evolve_flavor(const TestParams* parms)
     
     Vector<int> domain_lo_bc_types(AMREX_SPACEDIM, BCType::int_dir);
     Vector<int> domain_hi_bc_types(AMREX_SPACEDIM, BCType::int_dir);
+    //Vector<int> domain_lo_bc_types(AMREX_SPACEDIM, BCType::foextrap);
+    //Vector<int> domain_hi_bc_types(AMREX_SPACEDIM, BCType::foextrap);
+    
 
     // Define the index space of the domain
 
@@ -272,6 +275,7 @@ void evolve_flavor(const TestParams* parms)
         printf("Setting next timestep... \n");
         const Real dt = compute_dt(geom, state, neutrinos, parms);
         integrator.set_timestep(dt);
+        //printf("current_dt = %g, dt = %g \n", current_dt, dt);
         printf("Done. \n");
     };
 

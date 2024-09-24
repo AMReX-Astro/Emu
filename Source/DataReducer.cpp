@@ -112,6 +112,8 @@ void DataReducer::InitializeFiles()
     outfile << j << ":sumTrN\t";
     j++;
     outfile << j << ":sumTrHN\t";
+    j++;
+    outfile << j << ":Vphase\t";
     outfile << std::endl;
     outfile.close();
 
@@ -132,18 +134,23 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   // Do reductions over the particles //
   //==================================//
   using PType = typename FlavoredNeutrinoContainer::ParticleType;
-  amrex::ReduceOps<ReduceOpSum,ReduceOpSum> reduce_ops;
-  auto particleResult = amrex::ParticleReduce< ReduceData<amrex::Real, amrex::Real> >(neutrinos,
-      [=] AMREX_GPU_DEVICE(const PType& p) noexcept -> amrex::GpuTuple<amrex::Real, amrex::Real> {
+  amrex::ReduceOps<ReduceOpSum,ReduceOpSum,ReduceOpSum> reduce_ops;
+  auto particleResult = amrex::ParticleReduce< ReduceData<amrex::Real, amrex::Real, amrex::Real> >(neutrinos,
+      [=] AMREX_GPU_DEVICE(const PType& p) noexcept -> amrex::GpuTuple<amrex::Real, amrex::Real, amrex::Real> {
           Real TrHN = p.rdata(PIdx::TrHN);
-	  Real TrN = 0;
+	        Real TrN = 0;
+          Real Vphase = p.rdata(PIdx::Vphase);
 #include "generated_files/DataReducer.cpp_fill_particles"
-	  return GpuTuple{TrN,TrHN};
+	        return GpuTuple{TrN,TrHN, Vphase};
       }, reduce_ops);
   Real TrN  = amrex::get<0>(particleResult);
   Real TrHN = amrex::get<1>(particleResult);
+  Real Vphase = amrex::get<2>(particleResult);
   ParallelDescriptor::ReduceRealSum(TrN);
   ParallelDescriptor::ReduceRealSum(TrHN);
+  ParallelDescriptor::ReduceRealSum(Vphase);
+
+  printf("TrN=%g, TrHN=%g, Vphase=%g\n", TrN, TrHN, Vphase);
 
   //=============================//
   // Do reductions over the grid //
@@ -331,6 +338,7 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
     outfile << N_offdiag_mag << "\t";
     outfile << TrN << "\t";
     outfile << TrHN << "\t";
+    outfile << Vphase << "\t";
     outfile << std::endl;
     outfile.close();
 #endif
