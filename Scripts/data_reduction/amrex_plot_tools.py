@@ -65,7 +65,7 @@ def get_particle_keys(NF, ignore_pos=False, xp_only=False):
                            "N11_Rebar",
                            "N12_Rebar",
                            "N12_Imbar",
-                           "N22_Rebar"
+                           "N22_Rebar",
                            "TrHN",
                            "Vphase"]
 
