@@ -9,11 +9,29 @@ using namespace amrex;
 //=========================================//
 // Particle distribution in momentum space //
 //=========================================//
-
+/**
+ * @brief Reads the input file containing the initial conditions of the particles.
+ *
+ * This function reads the particle data from a file generated using the input Python scripts 
+ * in the directory "Scripts/initial_conditions/---.py" and stores the momentum, energy, and flavor 
+ * occupation matrices for neutrinos and antineutrinos. The file is expected to follow a specific 
+ * format, with the number of flavors in the first line, followed by particle data in each 
+ * subsequent line in the following order (2-flavor case): E*phatx, E*phaty, E*phatz, E, 
+ * N00_Re, N01_Re, N01_Im, N11_Re, N00_Rebar, N01_Rebar, N01_Imbar, N11_Rebar, TrHN, Vphase. 
+ * This can be generalized to the 3-flavor case.
+ *
+ * @param filename The name of the input file containing the particle data.
+ * 
+ * @return A managed vector of GpuArray containing the particle information.
+ * Each GpuArray stores particle attributes: E*phatx, E*phaty, E*phatz, E, 
+ * N00_Re, N01_Re, N01_Im, N11_Re, N00_Rebar, N01_Rebar, N01_Imbar, N11_Rebar, 
+ * TrHN, Vphase.
+ *
+ * @note The file should contain the number of neutrino flavors in the first line,
+ * which must match the value that Emu was compiled with. If the number of flavors
+ * does not match, the function will print an error message and terminate execution.
+ */
 Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs>> read_particle_data(std::string filename){
-
-  // This function reads the input file containing the initial conditions of the particles.
-  // It reads the momentum, energy, and flavor occupation matrices for neutrinos and antineutrinos.
 
   // This array will save the particles information
   Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs>> particle_data;
