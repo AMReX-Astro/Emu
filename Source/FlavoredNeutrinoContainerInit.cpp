@@ -122,7 +122,7 @@ InitParticles(const TestParams* parms)
 					   *parms->nppc[2]);
 
   // array of direction vectors
-  Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs> > particle_data = read_particle_data(parms->particle_data_filename);;
+  Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs> > particle_data = read_particle_data(parms->particle_data_filename);
   auto* particle_data_p = particle_data.dataPtr();
     
   // determine the number of directions per location
