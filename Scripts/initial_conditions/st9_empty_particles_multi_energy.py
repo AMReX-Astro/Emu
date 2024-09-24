@@ -48,7 +48,7 @@ n_directions = len(phat)
 n_particles = n_energies * n_directions
 
 # Initialize a NumPy array to store all particles
-particles = np.empty((n_energies, n_directions, n_variables))
+particles = np.zeros((n_energies, n_directions, n_variables))
 
 # Fill the particles array using a loop, replacing append
 for i, energy_bin in enumerate(energies_center_erg):
