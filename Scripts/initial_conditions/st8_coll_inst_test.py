@@ -19,59 +19,54 @@ import amrex_plot_tools as amrex
 NF = 2 # Number of flavors
 nphi_equator = 16 # number of direction in equator ---> theta = pi/2
 
-nu_e = 3.0e+33 # 1/ccm
-nu_x = 1.0e+33 # 1/ccm
-nu_ebar = 2.5e+33 # 1/ccm
-nu_xbar = 1.0e+33 # 1/ccm
+# Neutrino number densities
+nnue = 3.0e+33 # 1/ccm
+nnua = 2.5e+33 # 1/ccm
+nnux = 1.0e+33 # 1/ccm
+
+# Neutrino flux factors
+fnue = np.array([0.0 , 0.0 , 0.0])
+fnua = np.array([0.0 , 0.0 , 0.0])
+fnux = np.array([0.0 , 0.0 , 0.0])
 
 # Energy bin size
 energy_bin_size_MeV = 2.272540842052914 # Energy in Mev
 
 # Energy bin centers extracted from NuLib table
-energies_center_Mev = [20.0] # Energy in Mev
+energies_center_Mev = 20.0 # Energy in Mev
 # Energy bin bottom extracted from NuLib table
-energies_bottom_Mev = [20.0-energy_bin_size_MeV/2.0]
+energies_bottom_Mev = 20.0-energy_bin_size_MeV/2.0
 # Energy bin top extracted from NuLib table
-energies_top_Mev = [20.0+energy_bin_size_MeV/2.0]
+energies_top_Mev = 20.0+energy_bin_size_MeV/2.0
 
 # Energies in ergs
 energies_center_erg = np.array(energies_center_Mev) * 1e6*amrex.eV # Energy in ergs
 energies_bottom_erg = np.array(energies_bottom_Mev) * 1e6*amrex.eV # Energy in ergs
 energies_top_erg    = np.array(energies_top_Mev   ) * 1e6*amrex.eV # Energy in ergs
 
-# Generate the number of energy bins
-n_energies = len(energies_center_erg)
+# Matrix to save the neutrino number densities
+nnu = np.zeros((2,NF))
+nnu[0,0] = nnue
+nnu[1,0] = nnua
+nnu[:,1:] = nnux
 
-# Get variable keys
-rkey, ikey = amrex.get_particle_keys(NF, ignore_pos=True)
+# Matrix to save the neutrino number densities fluxes
+fnu = np.zeros((2,NF,3))
+fnu[0,0,:] = nnue * fnue
+fnu[1,0,:] = nnua * fnua
+fnu[:,1:,:] = nnu[:,1:,np.newaxis] * fnux[np.newaxis,np.newaxis,:]
 
-# Generate the number of variables that describe each particle
-n_variables = len(rkey)
-
-# Get the momentum distribution of the particles
-phat = uniform_sphere(nphi_equator)
+# Generate particles
+particles = moment_interpolate_particles(nphi_equator, nnu, fnu, energies_center_erg, uniform_sphere, minerbo_interpolate) # [particle, variable]
 
 # Generate the number of directions
-n_directions = len(phat)
+n_directions = len(particles)
 
-# Generate the number of particles
-n_particles = n_energies * n_directions
+# Compute the phase space volume dOmega * dE^3 / 3
+Vphase = ( 4.0 * np.pi / n_directions ) * ( ( energies_top_erg ** 3 - energies_bottom_erg ** 3 ) / 3.0 ) 
 
-# Initialize a NumPy array to store all particles
-particles = np.zeros((n_energies, n_directions, n_variables))
-
-# Fill the particles array using a loop, replacing append
-for i, energy_bin in enumerate(energies_center_erg):
-    particles[i , : , rkey["pupx"] : rkey["pupz"]+1 ] = energy_bin * phat
-    particles[i , : , rkey["pupt"]                  ] = energy_bin
-    particles[i , : , rkey["Vphase"]                ] = ( 4.0 * np.pi / n_directions ) * ( ( energies_top_erg[i] ** 3 - energies_bottom_erg[i] ** 3 ) / 3.0 )
-    particles[i , : , rkey["N00_Re"]                ] = nu_e
-    particles[i , : , rkey["N11_Re"]                ] = nu_x
-    particles[i , : , rkey["N00_Rebar"]             ] = nu_ebar
-    particles[i , : , rkey["N11_Rebar"]             ] = nu_xbar
-
-# Reshape the particles array
-particles = particles.reshape(n_energies * n_directions, n_variables)
+# Save V_phase in the last column of the particle array
+particles[:,-1] = Vphase
 
 # Write particles initial condition file
 write_particles(np.array(particles), NF, "particle_input.dat")
