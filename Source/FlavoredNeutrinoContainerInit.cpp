@@ -310,7 +310,7 @@ InitParticles(const TestParams* parms)
         // From initial conditions, Vphase gets dOmega * dE^3 / 3
         // Here we multiply this value by the cell volume dx[0] * dx[1] * dx[2]
         // Divide by the number of particle emission points inside the cell
-        p.rdata(PIdx::Vphase) *= dx[0]*dx[1]*dx[2] / nlocs_per_cell ;
+        p.rdata(PIdx::Vphase) *= scale_fac ;
 
 	    //=====================//
 	    // Apply Perturbations //
