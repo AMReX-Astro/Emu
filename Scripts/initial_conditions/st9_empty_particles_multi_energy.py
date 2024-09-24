@@ -2,14 +2,13 @@
 Created by Erick Urquilla, Department of Physics and Astronomy, University of Tennessee, Knoxville.
 This script is used to create empty particles at the energy bin center of the Nulib table.
 '''
-import h5py
 import numpy as np
 import sys
 import os
 importpath = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(importpath)
 sys.path.append(importpath+"/../data_analysis")
-from initial_condition_tools import uniform_sphere, write_particles, moment_interpolate_particles, linear_interpolate
+from initial_condition_tools import uniform_sphere, write_particles
 import amrex_plot_tools as amrex
 
 # generation parameters
@@ -29,22 +28,22 @@ energies_center_erg = np.array(energies_center_Mev) * 1e6*amrex.eV # Energy in e
 energies_bottom_erg = np.array(energies_bottom_Mev) * 1e6*amrex.eV # Energy in ergs
 energies_top_erg    = np.array(energies_top_Mev   ) * 1e6*amrex.eV # Energy in ergs
 
-# Gen the number of energy bins
+# Generate the number of energy bins
 n_energies = len(energies_center_erg)
 
-# get variable keys
+# Get variable keys
 rkey, ikey = amrex.get_particle_keys(NF, ignore_pos=True)
 
-# Gen the number of variables that describe each particle
+# Generate the number of variables that describe each particle
 n_variables = len(rkey)
 
 # Get the momentum distribution of the particles
 phat = uniform_sphere(nphi_equator)
 
-# Gen the number of directions
+# Generate the number of directions
 n_directions = len(phat)
 
-# Gen the number of particles
+# Generate the number of particles
 n_particles = n_energies * n_directions
 
 # Initialize a NumPy array to store all particles
