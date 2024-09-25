@@ -4,9 +4,9 @@ perturbation_amplitude = 1e-6
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 0
 
-collision_cfl_factor = 0.005
-cfl_factor = 0.005
-flavor_cfl_factor = 0.005
+collision_cfl_factor = 100
+cfl_factor = 100
+flavor_cfl_factor = 100
 max_adaptive_speedup = 0
 maxError = 1e-6
 
@@ -14,10 +14,10 @@ integration.type = 1
 integration.rk.type = 4
 
 # Domain size in 3D index space
-ncell = (2, 2, 2)
-Lx = 2.0
-Ly = 2.0
-Lz = 2.0
+ncell = (2,2,2)
+Lx = 2.0e4 # cm
+Ly = 2.0e4 # cm
+Lz = 2.0e4 # cm
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
@@ -27,7 +27,7 @@ particle_data_filename = "particle_input.dat"
 max_grid_size = 16
 
 # Number of steps to run
-nsteps = 1
+nsteps = 2000
 
 # Simulation end time
 end_time = 5.0e9
@@ -41,10 +41,10 @@ T_MeV = 10
 Ye = 1
 
 # Write plotfiles
-write_plot_every = 1
+write_plot_every = 2000
 
 # Write particle data in plotfiles
-write_plot_particles_every = 1
+write_plot_particles_every = 2000
 
 # checkpointing
 do_restart = 0
