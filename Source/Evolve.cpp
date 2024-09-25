@@ -204,9 +204,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         const ParticleInterpolator<SHAPE_FACTOR_ORDER> sz(delta_z, shape_factor_order_z);
 
         // The following variables contains temperature, electron fraction, and density interpolated from grid quantities to particle positions
-        Real T_pp = 0;
+        Real T_pp = 0; // erg
         Real Ye_pp = 0;
-        Real rho_pp = 0; 
+        Real rho_pp = 0; // g/ccm
 
         for (int k = sz.first(); k <= sz.last(); ++k) {
             for (int j = sy.first(); j <= sy.last(); ++j) {
@@ -242,10 +242,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         if(parms->IMFP_method==1){
             for (int i=0; i<NUM_FLAVORS; ++i) {
 
-                IMFP_abs[i][i]    = parms->IMFP_abs[0][i]; // Read absorption inverse mean free path from input parameters file.
-                IMFP_absbar[i][i] = parms->IMFP_abs[1][i]; // Read absorption inverse mean free path from input parameters file.
-                munu[i][i]        = parms->munu[0][i]; // Read neutrino chemical potential from input parameters file.
-                munubar[i][i]     = parms->munu[1][i]; // Read antineutrino chemical potential from input parameters file.
+                IMFP_abs[i][i]    = parms->IMFP_abs[0][i]; // 1/cm : Read absorption inverse mean free path from input parameters file.
+                IMFP_absbar[i][i] = parms->IMFP_abs[1][i]; // 1/cm : Read absorption inverse mean free path from input parameters file.
+                munu[i][i]        = parms->munu[0][i];     // ergs : Read neutrino chemical potential from input parameters file.
+                munubar[i][i]     = parms->munu[1][i];     // ergs : Read antineutrino chemical potential from input parameters file.
 
             }
         }
@@ -254,7 +254,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             
             // Assign temperature, electron fraction, and density at the particle's position to new variables for interpolation of chemical potentials and inverse mean free paths.
             Real rho = rho_pp; // Density of background matter at this particle's position g/cm^3
-            Real temperature = T_pp; // Temperature of background matter at this particle's position 0.05 //MeV
+            Real temperature = T_pp / (1e6*CGSUnitsConst::eV); // Temperature of background matter at this particle's position 0.05 //MeV
             Real Ye = Ye_pp; // Electron fraction of background matter at this particle's position
 
             //-------------------- Values from EoS table ------------------------------
@@ -269,10 +269,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             printf("(Evolve.cpp) muhat interpolated = %f\n", muhat_out);
 #endif            
             // munu_val : electron neutrino chemical potential
-            const double munu_val = mue_out - muhat_out; //munu -> "mu_e" - "muhat"
-            
-            munu[0][0]    = munu_val; // Save neutrino chemical potential from EOS table in chemical potential matrix
-            munubar[0][0] = -1.0 * munu_val; // Save antineutrino chemical potential from EOS table in chemical potential matrix
+            const double munu_val = ( mue_out - muhat_out ) * 1e6*CGSUnitsConst::eV ; //munu -> "mu_e" - "muhat"
+
+            munu[0][0]    = munu_val; // erg : Save neutrino chemical potential from EOS table in chemical potential matrix
+            munubar[0][0] = -1.0 * munu_val; // erg : Save antineutrino chemical potential from EOS table in chemical potential matrix
 
             //--------------------- Values from NuLib table ---------------------------
             double *helperVarsReal_nulib = NuLib_tabulated_obj.get_helperVarsReal_nulib();
@@ -330,7 +330,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
                 // }
             }
             //-----------------------------------------------------------------------
-
         }
         else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0, 1 or 2");
 
