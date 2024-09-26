@@ -13,8 +13,7 @@ void set_rho_T_Ye(MultiFab& state, const Geometry& geom, const TestParams* parms
 
     amrex::GpuArray<amrex::Real,3> dx = geom.CellSizeArray();
 
-    const std::string hdf5_background_rho_Ye_T_name = "rho_Ye_T.hdf5";
-    ReadInputRhoYeT(hdf5_background_rho_Ye_T_name);
+    ReadInputRhoYeT(parms->background_rho_Ye_T_table_name);
 
     using namespace background_input_rho_T_Ye;
     int ncell_x = *n_cell_x;
