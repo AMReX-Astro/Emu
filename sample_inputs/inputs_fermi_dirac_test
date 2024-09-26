@@ -119,3 +119,4 @@ read_rho_T_Ye_from_table = 1
 
 nulib_table_name = "../Scripts/collisions/NuLib_SFHo.h5"
 nuceos_table_name = "../Scripts/collisions/LS220.h5"
+background_rho_Ye_T_table_name = "./rho_Ye_T.hdf5"

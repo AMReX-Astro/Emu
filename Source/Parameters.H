@@ -60,6 +60,7 @@ struct TestParams : public amrex::Gpu::Managed
     //HDF5 table names (with full path) for EoS and NuLib tables
     std::string nuceos_table_name;
     std::string nulib_table_name;
+    std::string background_rho_Ye_T_table_name;
 
     void Initialize(){
         ParmParse pp;
@@ -123,7 +124,10 @@ struct TestParams : public amrex::Gpu::Managed
 
     // Background matter rho, Ye, T flag
     pp.get("read_rho_T_Ye_from_table", read_rho_T_Ye_from_table);
-
+    if(read_rho_T_Ye_from_table==1){
+        pp.get("background_rho_Ye_T_table_name", background_rho_Ye_T_table_name);
+    }
+    
     // absorption opacities and equilibrium neutrino chemical potentials
     pp.get("IMFP_method", IMFP_method);
     if(IMFP_method==0){
@@ -158,6 +162,7 @@ struct TestParams : public amrex::Gpu::Managed
     } else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0(do not collisions) and 1(do collisions)");
 
     }
+
 };
 
 #endif
