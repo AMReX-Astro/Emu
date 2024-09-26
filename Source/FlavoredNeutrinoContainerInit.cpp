@@ -287,11 +287,12 @@ InitParticles(const TestParams* parms)
 	    p.rdata(PIdx::N22_Re   ) *= scale_fac;
 	    p.rdata(PIdx::N22_Rebar) *= scale_fac;
 #endif
-
-	    if(parms->IMFP_method == 1){
-			p.rdata(PIdx::Vphase) = dx[0]*dx[1]*dx[2]*4*MathConst::pi*(pow(p.rdata(PIdx::pupt)+parms->delta_E/2,3)-pow(p.rdata(PIdx::pupt)-parms->delta_E/2,3))/(3*ndirs_per_loc*parms->nppc[0]*parms->nppc[1]*parms->nppc[2]);
-			//printf("(Inside FlavoredNeutrinoContainerInit.cpp) Vphase = %g \n", p.rdata(PIdx::Vphase));
-		}
+    
+        // Set phase space volume Vphase = dx^3 * dOmega * dE^3 / 3
+        // From initial conditions, Vphase gets dOmega * dE^3 / 3
+        // Here we multiply this value by the cell volume dx[0] * dx[1] * dx[2]
+        // Divide by the number of particle emission points inside the cell
+        p.rdata(PIdx::Vphase) *= dx[0]*dx[1]*dx[2] / nlocs_per_cell ;
 
 	    //=====================//
 	    // Apply Perturbations //
