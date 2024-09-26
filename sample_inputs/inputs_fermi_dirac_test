@@ -117,6 +117,6 @@ delta_E = 0.8339001570751987 # Mev
 #################
 read_rho_T_Ye_from_table = 1
 
-nulib_table_name = "/tables/NuLib/NuLib_SFHo.h5"
-nuceos_table_name = "/tables/EOS/LS220_234r_136t_50y_analmu_20091212_SVNr26.h5"
+nulib_table_name = "/NuLib/NuLib_SFHo.h5"
+nuceos_table_name = "/EOS/LS220_234r_136t_50y_analmu_20091212_SVNr26.h5"
 background_rho_Ye_T_table_name = "./rho_Ye_T.hdf5"
