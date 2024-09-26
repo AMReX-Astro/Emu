@@ -130,7 +130,7 @@ from matplotlib.ticker import AutoLocator, AutoMinorLocator, LogLocator
 # Font settings
 mpl.rcParams['font.size'] = 22
 mpl.rcParams['font.family'] = 'serif'
-mpl.rc('text', usetex=True)
+# mpl.rc('text', usetex=True)
 
 # Tick settings
 mpl.rcParams['xtick.major.size'] = 7
@@ -235,35 +235,35 @@ for i in range(len(directories)):
         axNuu.plot(energies_center_erg, Nuu, label=f't = {t[0]:.1e} s')
         axNuubar.plot(energies_center_erg, Nuubar, label=f't = {t[0]:.1e} s')
 
-axfee.plot(energies_center_erg, f_eq_ee, label='Fermi-Dirac $T=5.02$ MeV',linestyle='dotted',color = 'black')
-axfeebar.plot(energies_center_erg, f_eq_eebar, label='Fermi-Dirac $T=5.02$ MeV',linestyle='dotted',color = 'black')
-axfuu.plot(energies_center_erg, f_eq_uu, label='Fermi-Dirac $T=5.02$ MeV',linestyle='dotted',color = 'black')
-axfuubar.plot(energies_center_erg, f_eq_uubar, label='Fermi-Dirac $T=5.02$ MeV',linestyle='dotted',color = 'black')
+axfee.plot(energies_center_erg, f_eq_ee, label='Fermi-Dirac T=5.02 MeV',linestyle='dotted',color = 'black')
+axfeebar.plot(energies_center_erg, f_eq_eebar, label='Fermi-Dirac T=5.02 MeV',linestyle='dotted',color = 'black')
+axfuu.plot(energies_center_erg, f_eq_uu, label='Fermi-Dirac T=5.02 MeV',linestyle='dotted',color = 'black')
+axfuubar.plot(energies_center_erg, f_eq_uubar, label='Fermi-Dirac T=5.02 MeV',linestyle='dotted',color = 'black')
 
-axNee.plot(energies_center_erg, N_eq_ee, label='Fermi-Dirac $T=5.02$ MeV',linestyle='dotted',color = 'black')
-axNeebar.plot(energies_center_erg, N_eq_eebar, label='Fermi-Dirac $T=5.02$ MeV',linestyle='dotted',color = 'black')
-axNuu.plot(energies_center_erg, N_eq_uu, label='Fermi-Dirac $T=5.02$ MeV',linestyle='dotted',color = 'black')
-axNuubar.plot(energies_center_erg, N_eq_uubar, label='Fermi-Dirac $T=5.02$ MeV',linestyle='dotted',color = 'black')
+axNee.plot(energies_center_erg, N_eq_ee, label='Fermi-Dirac T=5.02 MeV',linestyle='dotted',color = 'black')
+axNeebar.plot(energies_center_erg, N_eq_eebar, label='Fermi-Dirac T=5.02 MeV',linestyle='dotted',color = 'black')
+axNuu.plot(energies_center_erg, N_eq_uu, label='Fermi-Dirac T=5.02 MeV',linestyle='dotted',color = 'black')
+axNuubar.plot(energies_center_erg, N_eq_uubar, label='Fermi-Dirac T=5.02 MeV',linestyle='dotted',color = 'black')
 
 # Add title and labels
-axfee.set_xlabel(r'$E$ (erg)')
-axfeebar.set_xlabel(r'$E$ (erg)')
-axfuu.set_xlabel(r'$E$ (erg)')
-axfuubar.set_xlabel(r'$E$ (erg)')
-axNee.set_xlabel(r'$E$ (erg)')
-axNeebar.set_xlabel(r'$E$ (erg)')
-axNuu.set_xlabel(r'$E$ (erg)')
-axNuubar.set_xlabel(r'$E$ (erg)')
+axfee.set_xlabel(r'E (erg)')
+axfeebar.set_xlabel(r'E (erg)')
+axfuu.set_xlabel(r'E (erg)')
+axfuubar.set_xlabel(r'E (erg)')
+axNee.set_xlabel(r'E (erg)')
+axNeebar.set_xlabel(r'E (erg)')
+axNuu.set_xlabel(r'E (erg)')
+axNuubar.set_xlabel(r'E (erg)')
 
-axfee.set_ylabel(r'$f_{{e}}^{{eq}}$')
-axfeebar.set_ylabel(r'$\bar{f}_{{e}}^{{eq}}$')
-axfuu.set_ylabel(r'$f_{{u}}^{{eq}}$')
-axfuubar.set_ylabel(r'$\bar{f}_{{u}}^{{eq}}$')
+axfee.set_ylabel(r'f_{{e}}^{{eq}}')
+axfeebar.set_ylabel(r'\bar{f}_{{e}}^{{eq}}')
+axfuu.set_ylabel(r'f_{{u}}^{{eq}}')
+axfuubar.set_ylabel(r'\bar{f}_{{u}}^{{eq}}')
 
-axNee.set_ylabel(r'$N_{{e}}$')
-axNeebar.set_ylabel(r'$\bar{N}_{{e}}$')
-axNuu.set_ylabel(r'$N_{{u}}$')
-axNuubar.set_ylabel(r'$\bar{N}_{{u}}$')
+axNee.set_ylabel(r'N_{{e}}')
+axNeebar.set_ylabel(r'\bar{N}_{{e}}')
+axNuu.set_ylabel(r'N_{{u}}')
+axNuubar.set_ylabel(r'\bar{N}_{{u}}')
 
 # Add a legend
 legfee = axfee.legend(framealpha=0.0, ncol=1, fontsize=14)
