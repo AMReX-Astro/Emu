@@ -1,6 +1,6 @@
 pipeline {
     triggers { pollSCM('') }  // Run tests whenever a new commit is detected.
-    agent { dockerfile {args '--gpus all -v /mnt/scratch/tables:/tables:ro'}} // Use the Dockerfile defined in the root Flash-X directory
+    agent { dockerfile {args '--gpus all -v /mnt/scratch/EOS:/EOS:ro /mnt/scratch/NuLib:/NuLib:ro'}} // Use the Dockerfile defined in the root Flash-X directory
     environment {
 		// Get rid of Read -1, expected <someNumber>, errno =1 error
     	// See https://github.com/open-mpi/ompi/issues/4948
@@ -21,8 +21,6 @@ pipeline {
 	        sh 'make generate; make -j'
 	    }
 	}}
-
-
 
 	//=======//
 	// Tests //
@@ -120,7 +118,7 @@ pipeline {
 			sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fermi_dirac_test'
 	        sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
 	        sh '../Scripts/tests/fermi_dirac_test.py'
-			sh 'rm -rf plt* *pdf'
+			sh 'rm -rf plt* *pdf rho_Ye_T.hdf5'
 		}
 	}}
 
