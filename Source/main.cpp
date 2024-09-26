@@ -45,8 +45,7 @@ void evolve_flavor(const TestParams* parms)
     //Option 0: use periodic BC
     //Option 1: create particles at boundary.
 
-    //FIXME: FIXME: Define this in parameter file.
-    const int BC_type = 0; //0=periodic, 1=outer.
+    const int BC_type = parm->boundary_condition_type; //0=periodic, 1=outer.
 
     int BC_type_val;
     enum BC_type_enum {PERIODIC, OUTER};
