@@ -61,6 +61,7 @@ struct TestParams : public amrex::Gpu::Managed
     std::string nuceos_table_name;
     std::string nulib_table_name;
     std::string background_rho_Ye_T_table_name;
+    int boundary_condition_type;
 
     void Initialize(){
         ParmParse pp;
@@ -121,6 +122,9 @@ struct TestParams : public amrex::Gpu::Managed
 
     // attenuation to hamiltonians
     pp.get("attenuation_hamiltonians", attenuation_hamiltonians);
+    
+    // Boundary condition type
+    pp.get("boundary_condition_type", boundary_condition_type);
 
     // Background matter rho, Ye, T flag
     pp.get("read_rho_T_Ye_from_table", read_rho_T_Ye_from_table);
@@ -152,7 +156,7 @@ struct TestParams : public amrex::Gpu::Managed
             munu[1][i] *= 1e6*CGSUnitsConst::eV;
         }
 
-    	pp.get("Do_Pauli_blocking", Do_Pauli_blocking); // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
+        pp.get("Do_Pauli_blocking", Do_Pauli_blocking); // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
         pp.get("delta_E", delta_E);
         delta_E*= 1e6*CGSUnitsConst::eV; // erg
     } else if (IMFP_method==2){
