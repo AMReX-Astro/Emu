@@ -98,7 +98,7 @@ pipeline {
 			sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_collisional_instability_test'
 			sh 'python ../Scripts/data_reduction/reduce_data.py'
 	        sh 'python ../Scripts/tests/coll_inst_test.py'
-			sh 'rm -rf plt*'
+			sh 'rm -rf plt* *pdf'
 		}
 	}}
 
@@ -109,7 +109,18 @@ pipeline {
 			sh 'python ../Scripts/initial_conditions/st7_empty_particles.py'
 			sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_coll_equi_test'
 	        sh 'python ../Scripts/tests/coll_equi_test.py'
-			sh 'rm -rf plt*'
+			sh 'rm -rf plt* *pdf'
+		}
+	}}
+
+	stage('Fermi-Dirac test'){ steps{
+		dir('Exec'){
+			sh 'python ../Scripts/initial_conditions/st9_empty_particles_multi_energy.py'
+			sh 'python ../Scripts/collisions/nsm_constant_background_rho_Ye_T__writer.py'
+			sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fermi_dirac_test'
+	        sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
+	        sh '../Scripts/tests/fermi_dirac_test.py'
+			sh 'rm -rf plt* *pdf'
 		}
 	}}
 
