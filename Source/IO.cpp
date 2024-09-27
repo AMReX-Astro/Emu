@@ -2,6 +2,10 @@
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_buildInfo.H>
 
+//We use the AMReX binary format to write data for now
+//That's because the HDF5 write format gives errors when running with CUDA.
+#undef AMREX_USE_HDF5
+
 #ifdef AMREX_USE_HDF5
 #include "hdf5.h"
 #endif

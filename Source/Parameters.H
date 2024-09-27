@@ -54,6 +54,10 @@ struct TestParams : public amrex::Gpu::Managed
     // attenuation to hamiltonians
     Real attenuation_hamiltonians;
 
+    //HDF5 table names (with full path) for EoS and NuLib tables
+    std::string nuceos_table_name;
+    std::string nulib_table_name;
+
     void Initialize(){
         ParmParse pp;
         pp.get("ncell", ncell);
@@ -137,12 +141,15 @@ struct TestParams : public amrex::Gpu::Managed
             munu[0][i] *= 1e6*CGSUnitsConst::eV;
             munu[1][i] *= 1e6*CGSUnitsConst::eV;
         }
-        pp.get("Do_Pauli_blocking", Do_Pauli_blocking); // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
 
-    	pp.get("delta_E", delta_E);
+    	pp.get("Do_Pauli_blocking", Do_Pauli_blocking); // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
+        pp.get("delta_E", delta_E);
         delta_E*= 1e6*CGSUnitsConst::eV; // erg
-    }
-    else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0(do not collisions) and 1(do collisions)");
+    } else if (IMFP_method==2){
+        //HDF5 table names (with full path) for EoS and NuLib tables
+        pp.get("nuceos_table_name", nuceos_table_name); 
+        pp.get("nulib_table_name",  nulib_table_name); 
+    } else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0(do not collisions) and 1(do collisions)");
 
     }
 };
