@@ -1,4 +1,4 @@
-#include <iostream>
+ #include <iostream>
 
 #include <AMReX_GpuAllocators.H>
 
@@ -6,6 +6,10 @@
 #include "hdf5.h"
 
 #include "NuLibTable.H"
+
+#ifdef AMREX_USE_MPI
+printf("AMREX_USE_MPI is defined\n");
+#endif
 
 // mini NoMPI
 #define HAVE_CAPABILITY_MPI //FIXME: This should be defined only when USE_MPI = TRUE

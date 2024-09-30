@@ -72,14 +72,6 @@ get_interp_spots_nulib(const double x, const double y, const double z, double &d
   idx[6] = NTABLES_NULIB*(ix + nrho*((iy-1) + ntemp*((iz-1) + nye*(idx_species + nspecies*idx_group))));
   idx[7] = NTABLES_NULIB*((ix-1) + nrho*((iy-1) + ntemp*((iz-1) + nye*(idx_species + nspecies*idx_group))));
   
-  //idx[0] = NTABLES_NULIB*(ix + nrho*(iy + ntemp*iz));
-  //idx[1] = NTABLES_NULIB*((ix-1) + nrho*(iy + ntemp*iz));
-  //idx[2] = NTABLES_NULIB*(ix + nrho*((iy-1) + ntemp*iz));
-  //idx[3] = NTABLES_NULIB*(ix + nrho*(iy + ntemp*(iz-1)));
-  //idx[4] = NTABLES_NULIB*((ix-1) + nrho*((iy-1) + ntemp*iz));
-  //idx[5] = NTABLES_NULIB*((ix-1) + nrho*(iy + ntemp*(iz-1)));
-  //idx[6] = NTABLES_NULIB*(ix + nrho*((iy-1) + ntemp*(iz-1)));
-  //idx[7] = NTABLES_NULIB*((ix-1) + nrho*((iy-1) + ntemp*(iz-1)));
 
    // set up aux vars for interpolation
   delx = logrho_nulib[ix] - x;

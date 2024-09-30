@@ -290,7 +290,6 @@ InitParticles(const TestParams* parms)
 
 	    if(parms->IMFP_method == 1){
 			p.rdata(PIdx::Vphase) = dx[0]*dx[1]*dx[2]*4*MathConst::pi*(pow(p.rdata(PIdx::pupt)+parms->delta_E/2,3)-pow(p.rdata(PIdx::pupt)-parms->delta_E/2,3))/(3*ndirs_per_loc*parms->nppc[0]*parms->nppc[1]*parms->nppc[2]);
-			//printf("(Inside FlavoredNeutrinoContainerInit.cpp) Vphase = %g \n", p.rdata(PIdx::Vphase));
 		}
 
 	    //=====================//
@@ -377,8 +376,6 @@ CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
   const auto dx = Geom(lev).CellSizeArray();
   const auto plo = Geom(lev).ProbLoArray();
   const auto& a_bounds = Geom(lev).ProbDomain();
-    
-  //printf("plo = [%f, %f, %f] \n", plo[0], plo[1], plo[2]);
 
   const int nlocs_per_cell = AMREX_D_TERM( parms->nppc[0],
 					   *parms->nppc[1],
@@ -391,11 +388,7 @@ CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
     
   // determine the number of directions per location
   int ndirs_per_loc = particle_data.size();
-  //amrex::Print() << "Using " << ndirs_per_loc << " directions." << std::endl;
   const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell;
-
-  //FIXME: We need to use outflow boundary condition, not periodic boundary condition. Put an assert(!periodic) here.
-
 
   // Loop over multifabs //
 #ifdef _OPENMP
@@ -415,8 +408,6 @@ CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
       const auto lo = amrex::lbound(tile_box);
       const auto hi = amrex::ubound(tile_box);
 
-	  //printf("tile_box = [%d, %d, %d] x [%d, %d, %d] \n", lo.x, lo.y, lo.z, hi.x, hi.y, hi.z);
-
       Gpu::ManagedVector<unsigned int> counts(tile_box.numPts(), 0);  //PODVector<int, ManagedArenaAllocator<int> >  counts(n, 0)
 
       unsigned int* pcount = counts.dataPtr();
@@ -424,7 +415,8 @@ CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
       Gpu::ManagedVector<unsigned int> offsets(tile_box.numPts());
       unsigned int* poffset = offsets.dataPtr();
 
-	  const int buffer = 0; //TODO: TODO: Set this appropriately.
+	  //TODO: This can be used to emit particles not exactly at the boundary, but at n cells away from the boundary (n = buffer).
+	  const int buffer = 0; 
         
       // Determine how many particles to add to the particle tile per cell
 	  //This loop runs over all the particles in a given box. 
@@ -479,8 +471,7 @@ CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
 		  }
 
 		  if (!create_particle_this_cell) continue;
-		  //printf("CREATE PARTRICLE AT: i = %d, j = %d, k = %d \n", i, j, k);
-
+		  
 		  int ix = i - lo.x;
 		  int iy = j - lo.y;
 		  int iz = k - lo.z;
@@ -496,7 +487,6 @@ CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
       });
 
       // Determine total number of particles to add to the particle tile
-      //Gpu::inclusive_scan(counts.begin(), counts.end(), offsets.begin()); //This sets the value of "offsets"
 	  Gpu::exclusive_scan(counts.begin(), counts.end(), offsets.begin()); //This sets the value of "offsets"
 
       int num_to_add = offsets[tile_box.numPts()-1] + counts[tile_box.numPts()-1];
@@ -520,9 +510,6 @@ CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
 		for (int i = 0; i< offsets.size(); i++){
 			offsets[i] += old_size;
 		}
-
-		//printf("num_to_add = %d, old_size = %lu, new_size = %lu \n", num_to_add, old_size, new_size);
-		//printf("Particle ID = %lu \n", ParticleType::NextID());
 
 		//Returns the next particle ID for this processor.
 		// Particle IDs start at 1 and are never reused. The pair, consisting of the ID and the CPU on which the particle is "born", is a globally unique identifier for a particle. 
@@ -559,11 +546,6 @@ CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
                     
     	  get_position_unit_cell(r, parms->nppc, i_loc);
                     
-    	  //Real x = plo[0] + (i + r[0])*dx[0];
-		  //Real x = plo[0] for i_plus direction i.e VC, (y,z) remain same CC.
-		  //Real x = plo[0] + (i+1)*dx[0] for i_minus direction i.e. VC, (y,z) remain same CC.
-    	  //Real y = plo[1] + (j + r[1])*dx[1];
-    	  //Real z = plo[2] + (k + r[2])*dx[2];
 		  Real x, y, z;
                     
 		  bool create_particle_this_cell = false;
@@ -626,14 +608,10 @@ CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
 			break;
 		  }
 
-		  //printf("x = %f, y = %f, z = %f \n", x, y, z);
-
 		  if (!create_particle_this_cell) continue;
-		  //printf("CREATE PARTRICLE AT: i = %d, j = %d, k = %d \n", i, j, k);
 
 		  for(int i_direction=0; i_direction<ndirs_per_loc; i_direction++){
     	    // Get the Particle data corresponding to our particle index in pidx
-    	    //const int pidx = poffset[cellid] - poffset[0] + i_loc*ndirs_per_loc + i_direction;
 			const int pidx = poffset[cellid] + i_loc*ndirs_per_loc + i_direction;
     	    ParticleType& p = pstruct[pidx];
 
@@ -684,47 +662,41 @@ CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
 				  //p.rdata(PIdx::Vphase) = dx[0]*dx[1]*dx[2]*V_momentum;
 				  const Real dt = current_dt; 
 				  const Real clight = PhysConst::c; 
-				  const Real pupx_ = p.rdata(PIdx::pupx); //TODO: Review this.
-				  const Real pupy_ = p.rdata(PIdx::pupy); //TODO: Review this.
-				  const Real pupz_ = p.rdata(PIdx::pupz); //TODO: Review this.
-				  const Real pupt_ = p.rdata(PIdx::pupt); //TODO: Review this.
+				  const Real pupx_ = p.rdata(PIdx::pupx); 
+				  const Real pupy_ = p.rdata(PIdx::pupy); 
+				  const Real pupz_ = p.rdata(PIdx::pupz); 
+				  const Real pupt_ = p.rdata(PIdx::pupt); 
 				 
 				  switch (DIRECTION)
 				  {
 				  //Create particles in +ve x direction at lower x boundary.	
 				  case BoundaryParticleCreationDirection::I_PLUS:
 					p.rdata(PIdx::Vphase) = dx[1]*dx[2]*clight*dt*V_momentum*std::abs(pupx_/pupt_);
-					//printf("(Inside FlavoredNeutrinoContainerInit.cpp:I_PLUS) Vphase = %g \n", p.rdata(PIdx::Vphase));
 					break;
 
 		          //Create particles in -ve x direction at upper x boundary.
 				  case BoundaryParticleCreationDirection::I_MINUS:
 					p.rdata(PIdx::Vphase) = dx[1]*dx[2]*clight*dt*V_momentum*std::abs(pupx_/pupt_);
-					//printf("(Inside FlavoredNeutrinoContainerInit.cpp:I_MINUS) Vphase = %g \n", p.rdata(PIdx::Vphase));
 					break;
 				  
 				  //Create particles in +ve y direction at lower y boundary.
 				  case BoundaryParticleCreationDirection::J_PLUS:
 					p.rdata(PIdx::Vphase) = dx[0]*dx[2]*clight*dt*V_momentum*std::abs(pupy_/pupt_);
-					//printf("(Inside FlavoredNeutrinoContainerInit.cpp:J_PLUS) Vphase = %g \n", p.rdata(PIdx::Vphase));
 					break;
 
 				  //Create particles in -ve y direction at upper y boundary.	
 				  case BoundaryParticleCreationDirection::J_MINUS:
 					p.rdata(PIdx::Vphase) = dx[0]*dx[2]*clight*dt*V_momentum*std::abs(pupy_/pupt_);
-					//printf("(Inside FlavoredNeutrinoContainerInit.cpp:J_MINUS) Vphase = %g \n", p.rdata(PIdx::Vphase));
 					break;
 
 		          //Create particles in +ve z direction at lower z boundary.	
 			      case BoundaryParticleCreationDirection::K_PLUS:
 					p.rdata(PIdx::Vphase) = dx[0]*dx[1]*clight*dt*V_momentum*std::abs(pupz_/pupt_);
-					//printf("(Inside FlavoredNeutrinoContainerInit.cpp:K_PLUS) Vphase = %g \n", p.rdata(PIdx::Vphase));
 					break;
 				
 				  //Create particles in -ve z direction at upper z boundary.
 				  case BoundaryParticleCreationDirection::K_MINUS:
 					p.rdata(PIdx::Vphase) = dx[0]*dx[1]*clight*dt*V_momentum*std::abs(pupz_/pupt_);
-					//printf("(Inside FlavoredNeutrinoContainerInit.cpp:K_MINUS) Vphase = %g \n", p.rdata(PIdx::Vphase));
 					break;
 					
 				  default:
@@ -734,66 +706,26 @@ CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
 				  }
     		}
 
-			//TODO: Do not apply perturbation in this case. 
-    	    //=====================//
-    	    // Apply Perturbations //
-    	    //=====================//
-    	    if(parms->perturbation_type == 0){
-    	      // random perturbations to the off-diagonals
-    	      /*Real rand;
-    	      symmetric_uniform(&rand, engine);
-    	      p.rdata(PIdx::N01_Re)    = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Re   ) - p.rdata(PIdx::N11_Re   ));
-    	      symmetric_uniform(&rand, engine);
-    	      p.rdata(PIdx::N01_Im)    = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Re   ) - p.rdata(PIdx::N11_Re   ));
-    	      symmetric_uniform(&rand, engine);
-    	      p.rdata(PIdx::N01_Rebar) = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Rebar) - p.rdata(PIdx::N11_Rebar));
-    	      symmetric_uniform(&rand, engine);
-    	      p.rdata(PIdx::N01_Imbar) = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Rebar) - p.rdata(PIdx::N11_Rebar));*/
-			  p.rdata(PIdx::N01_Re)    = - p.rdata(PIdx::N11_Re);
-    	      p.rdata(PIdx::N01_Im)    =  - p.rdata(PIdx::N11_Re);
-    	      p.rdata(PIdx::N01_Rebar) = - p.rdata(PIdx::N11_Rebar);
-    	      p.rdata(PIdx::N01_Imbar) = - p.rdata(PIdx::N11_Rebar);
+    	    //Set off-diagonal terms to zero //TODO: This should be reviewed once. 
+		    p.rdata(PIdx::N01_Re)    = 0.0;
+	        p.rdata(PIdx::N01_Im)    = 0.0;
+	        p.rdata(PIdx::N01_Rebar) = 0.0;
+	        p.rdata(PIdx::N01_Imbar) = 0.0;
 #if NUM_FLAVORS==3
-    	      /*symmetric_uniform(&rand, engine);
-    	      p.rdata(PIdx::N02_Re)    = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Re   ) - p.rdata(PIdx::N22_Re   ));
-    	      symmetric_uniform(&rand, engine);
-    	      p.rdata(PIdx::N02_Im)    = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Re   ) - p.rdata(PIdx::N22_Re   ));
-    	      symmetric_uniform(&rand, engine);
-    	      p.rdata(PIdx::N12_Re)    = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N11_Re   ) - p.rdata(PIdx::N22_Re   ));
-    	      symmetric_uniform(&rand, engine);
-    	      p.rdata(PIdx::N12_Im)    = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N11_Re   ) - p.rdata(PIdx::N22_Re   ));
-    	      symmetric_uniform(&rand, engine);
-    	      p.rdata(PIdx::N02_Rebar) = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Rebar) - p.rdata(PIdx::N22_Rebar));
-    	      symmetric_uniform(&rand, engine);
-    	      p.rdata(PIdx::N02_Imbar) = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N00_Rebar) - p.rdata(PIdx::N22_Rebar));
-    	      symmetric_uniform(&rand, engine);
-    	      p.rdata(PIdx::N12_Rebar) = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N11_Rebar) - p.rdata(PIdx::N22_Rebar));
-    	      symmetric_uniform(&rand, engine);
-    	      p.rdata(PIdx::N12_Imbar) = parms->perturbation_amplitude*rand * (p.rdata(PIdx::N11_Rebar) - p.rdata(PIdx::N22_Rebar));*/
-			  p.rdata(PIdx::N02_Re)    = - p.rdata(PIdx::N22_Re);
-    	      p.rdata(PIdx::N02_Im)    = - p.rdata(PIdx::N22_Re);
-    	      p.rdata(PIdx::N12_Re)    = - p.rdata(PIdx::N22_Re);
-    	      p.rdata(PIdx::N12_Im)    = - p.rdata(PIdx::N22_Re);
-    	      p.rdata(PIdx::N02_Rebar) = - p.rdata(PIdx::N22_Rebar);
-    	      p.rdata(PIdx::N02_Imbar) = - p.rdata(PIdx::N22_Rebar);
-    	      p.rdata(PIdx::N12_Rebar) = - p.rdata(PIdx::N22_Rebar);
-    	      p.rdata(PIdx::N12_Imbar) = - p.rdata(PIdx::N22_Rebar);
+		    p.rdata(PIdx::N02_Re)    = 0.0;
+	        p.rdata(PIdx::N02_Im)    = 0.0;
+	        p.rdata(PIdx::N12_Re)    = 0.0;
+	        p.rdata(PIdx::N12_Im)    = 0.0;
+	        p.rdata(PIdx::N02_Rebar) = 0.0;
+	        p.rdata(PIdx::N02_Imbar) = 0.0;
+	        p.rdata(PIdx::N12_Rebar) = 0.0;
+	        p.rdata(PIdx::N12_Imbar) = 0.0;
 #endif
-    	    }
-    	    if(parms->perturbation_type == 1){
-    	      // Perturb real part of e-mu component only sinusoidally in z
-    	      /*Real nu_k = (2.*M_PI) / parms->perturbation_wavelength_cm;
-    	      p.rdata(PIdx::N01_Re)    = parms->perturbation_amplitude*sin(nu_k*p.pos(2)) * (p.rdata(PIdx::N00_Re   ) - p.rdata(PIdx::N11_Re   ));
-    	      p.rdata(PIdx::N01_Rebar) = parms->perturbation_amplitude*sin(nu_k*p.pos(2)) * (p.rdata(PIdx::N00_Rebar) - p.rdata(PIdx::N11_Rebar));*/
-    	      p.rdata(PIdx::N01_Re)    = - p.rdata(PIdx::N11_Re);
-    	      p.rdata(PIdx::N01_Rebar) = - p.rdata(PIdx::N11_Rebar);
-    	    }
 
     	  } // loop over direction
     	} // loop over location
       }); // loop over grid cells
 
-	  //printf("Finished creating particles at boundary. \n");
     } // loop over multifabs
 
 } // CreateParticlesAtBoundary()
