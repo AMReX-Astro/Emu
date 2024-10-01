@@ -54,6 +54,13 @@ struct TestParams : public amrex::Gpu::Managed
     // attenuation to hamiltonians
     Real attenuation_hamiltonians;
 
+    // Black hole properties
+    int do_nsm; #cm
+    double bh_radius; #cm
+    double bh_center_x; #cm
+    double bh_center_y; #cm
+    double bh_center_z; #cm
+
     // Background matter rho, Ye, T flag
     int read_rho_T_Ye_from_table; 
 
@@ -64,6 +71,7 @@ struct TestParams : public amrex::Gpu::Managed
     int boundary_condition_type;
 
     void Initialize(){
+
         ParmParse pp;
         pp.get("ncell", ncell);
         pp.get("Lx", Lx);
@@ -73,9 +81,6 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("max_grid_size", max_grid_size);
         pp.get("nsteps", nsteps);
         pp.get("end_time", end_time);
-        pp.get("rho_g_ccm", rho_in);
-        pp.get("Ye", Ye_in);
-        pp.get("T_MeV", kT_in);
         pp.get("cfl_factor", cfl_factor);
         pp.get("flavor_cfl_factor", flavor_cfl_factor);
         pp.get("collision_cfl_factor", collision_cfl_factor);
@@ -86,84 +91,103 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("restart_dir", restart_dir);
         pp.get("maxError", maxError);
 
-        // convert to cgs
-        kT_in *= 1e6 * CGSUnitsConst::eV; // erg
-
-	// angular grid
-	pp.get("particle_data_filename",particle_data_filename);
-	
-	// perturbation parameters
-	pp.get("perturbation_amplitude", perturbation_amplitude);
-	pp.get("perturbation_type", perturbation_type);
-	if(perturbation_type == 1)
-	  pp.get("perturbation_wavelength_cm", perturbation_wavelength_cm);
-	
-    // neutrino physics parameters for 2-flavor
-    pp.get("mass1_eV", mass1);
-    pp.get("mass2_eV", mass2);
-    pp.get("theta12_degrees", theta12);
-    pp.get("alpha1_degrees", alpha1);
-    mass1 *= CGSUnitsConst::eV/PhysConst::c2;
-    mass2 *= CGSUnitsConst::eV/PhysConst::c2;
-    theta12 *= M_PI/180.;
-    alpha1 *= M_PI/180.;
-    if(NUM_FLAVORS>=2){
-    	pp.get("mass3_eV", mass3);
-    	pp.get("theta13_degrees", theta13);
-    	pp.get("theta23_degrees", theta23);
-    	pp.get("alpha2_degrees", alpha2);
-    	pp.get("deltaCP_degrees", deltaCP);
-    	mass3 *= CGSUnitsConst::eV/PhysConst::c2;
-    	theta13 *= M_PI/180.;
-    	theta23 *= M_PI/180.;
-    	alpha2 *= M_PI/180.;
-    	deltaCP *= M_PI/180.;
-    }
-
-    // attenuation to hamiltonians
-    pp.get("attenuation_hamiltonians", attenuation_hamiltonians);
-    
-    // Boundary condition type
-    pp.get("boundary_condition_type", boundary_condition_type);
-
-    // Background matter rho, Ye, T flag
-    pp.get("read_rho_T_Ye_from_table", read_rho_T_Ye_from_table);
-    if(read_rho_T_Ye_from_table==1){
-        pp.get("background_rho_Ye_T_table_name", background_rho_Ye_T_table_name);
-    }
-    
-    // absorption opacities and equilibrium neutrino chemical potentials
-    pp.get("IMFP_method", IMFP_method);
-    if(IMFP_method==0){
-    	// do nothing - all values will be set to zero
-    }
-    else if(IMFP_method==1){
-        for(int i=0;i<NUM_FLAVORS;i++){
-            std::string name;
-            name = std::string("IMFP_abs")+std::to_string(i)+std::string("_cm");
-            pp.get(name.c_str(), IMFP_abs[0][i]);
-            name = std::string("IMFP_abs")+std::to_string(i)+std::string("bar_cm");
-            pp.get(name.c_str(), IMFP_abs[1][i]);
-            name = std::string("IMFP_scat")+std::to_string(i)+std::string("_cm");
-            pp.get(name.c_str(), IMFP_scat[0][i]);
-            name = std::string("IMFP_scat")+std::to_string(i)+std::string("bar_cm");
-            pp.get(name.c_str(), IMFP_scat[1][i]);
-            name = std::string("munu")+std::to_string(i)+std::string("_MeV");
-            pp.get(name.c_str(), munu[0][i]);
-            name = std::string("munu")+std::to_string(i)+std::string("bar_MeV");
-            pp.get(name.c_str(), munu[1][i]);
-            munu[0][i] *= 1e6*CGSUnitsConst::eV;
-            munu[1][i] *= 1e6*CGSUnitsConst::eV;
+        // angular grid
+        pp.get("particle_data_filename",particle_data_filename);
+        
+        // perturbation parameters
+        pp.get("perturbation_amplitude", perturbation_amplitude);
+        pp.get("perturbation_type", perturbation_type);
+        if(perturbation_type == 1)
+        pp.get("perturbation_wavelength_cm", perturbation_wavelength_cm);
+        
+        // neutrino physics parameters for 2-flavor
+        pp.get("mass1_eV", mass1);
+        pp.get("mass2_eV", mass2);
+        pp.get("theta12_degrees", theta12);
+        pp.get("alpha1_degrees", alpha1);
+        mass1 *= CGSUnitsConst::eV/PhysConst::c2;
+        mass2 *= CGSUnitsConst::eV/PhysConst::c2;
+        theta12 *= M_PI/180.;
+        alpha1 *= M_PI/180.;
+        if(NUM_FLAVORS>=2){
+            pp.get("mass3_eV", mass3);
+            pp.get("theta13_degrees", theta13);
+            pp.get("theta23_degrees", theta23);
+            pp.get("alpha2_degrees", alpha2);
+            pp.get("deltaCP_degrees", deltaCP);
+            mass3 *= CGSUnitsConst::eV/PhysConst::c2;
+            theta13 *= M_PI/180.;
+            theta23 *= M_PI/180.;
+            alpha2 *= M_PI/180.;
+            deltaCP *= M_PI/180.;
         }
 
-        pp.get("Do_Pauli_blocking", Do_Pauli_blocking); // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
-        pp.get("delta_E", delta_E);
-        delta_E*= 1e6*CGSUnitsConst::eV; // erg
-    } else if (IMFP_method==2){
-        //HDF5 table names (with full path) for EoS and NuLib tables
-        pp.get("nuceos_table_name", nuceos_table_name); 
-        pp.get("nulib_table_name",  nulib_table_name); 
-    } else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0(do not collisions) and 1(do collisions)");
+        // attenuation to hamiltonians
+        pp.get("attenuation_hamiltonians", attenuation_hamiltonians);
+        
+        // Boundary condition type
+        pp.get("boundary_condition_type", boundary_condition_type);
+
+        // Background matter rho, Ye, T flag
+        pp.get("read_rho_T_Ye_from_table", read_rho_T_Ye_from_table);
+        if(read_rho_T_Ye_from_table==1){
+            pp.get("background_rho_Ye_T_table_name", background_rho_Ye_T_table_name);
+        }
+        
+        // absorption opacities and equilibrium neutrino chemical potentials
+        pp.get("IMFP_method", IMFP_method);
+
+        if(IMFP_method==0 || IMFP_method==1 ){
+            pp.get("rho_g_ccm", rho_in);
+            pp.get("Ye", Ye_in);
+            pp.get("T_MeV", kT_in);
+            kT_in *= 1e6 * CGSUnitsConst::eV; // convert to cgs : erg
+        }
+
+        if(IMFP_method==1 || IMFP_method==2 ){
+            pp.get("Do_Pauli_blocking", Do_Pauli_blocking); // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
+        }
+
+        if(IMFP_method==0) {
+            // Do nothing
+        } else if(IMFP_method==1){
+            
+            for(int i=0;i<NUM_FLAVORS;i++){
+                std::string name;
+                name = std::string("IMFP_abs")+std::to_string(i)+std::string("_cm");
+                pp.get(name.c_str(), IMFP_abs[0][i]);
+                name = std::string("IMFP_abs")+std::to_string(i)+std::string("bar_cm");
+                pp.get(name.c_str(), IMFP_abs[1][i]);
+                name = std::string("IMFP_scat")+std::to_string(i)+std::string("_cm");
+                pp.get(name.c_str(), IMFP_scat[0][i]);
+                name = std::string("IMFP_scat")+std::to_string(i)+std::string("bar_cm");
+                pp.get(name.c_str(), IMFP_scat[1][i]);
+                name = std::string("munu")+std::to_string(i)+std::string("_MeV");
+                pp.get(name.c_str(), munu[0][i]);
+                name = std::string("munu")+std::to_string(i)+std::string("bar_MeV");
+                pp.get(name.c_str(), munu[1][i]);
+                munu[0][i] *= 1e6*CGSUnitsConst::eV;
+                munu[1][i] *= 1e6*CGSUnitsConst::eV;
+            }
+            
+            pp.get("delta_E", delta_E);
+            delta_E*= 1e6*CGSUnitsConst::eV; // erg
+        
+        } else if (IMFP_method==2){
+            
+            //HDF5 table names (with full path) for EoS and NuLib tables
+            pp.get("nuceos_table_name", nuceos_table_name); 
+            pp.get("nulib_table_name",  nulib_table_name); 
+            pp.get("do_nsm",  do_nsm); 
+            
+            if ( do_nsm == 1 ){
+                pp.get("bh_radius",  bh_radius); 
+                pp.get("bh_center_x",  bh_center_x); 
+                pp.get("bh_center_y",  bh_center_y); 
+                pp.get("bh_center_z",  bh_center_z); 
+            }
+        
+        } else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0(do not collisions) and 1(do collisions)");
 
     }
 
