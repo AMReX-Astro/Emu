@@ -232,6 +232,20 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             
                     return;
                 }
+
+                if ( parms->do_periodic_empty_bc == 1 ){
+
+                    // Set time derivatives to zero if particles is in the boundary cells
+                    if (p.rdata(PIdx::x) < parms->Lx / parms->ncell[0]             ||
+                        p.rdata(PIdx::x) > parms->Lx - parms->Lx / parms->ncell[0] ||
+                        p.rdata(PIdx::y) < parms->Ly / parms->ncell[1]             ||
+                        p.rdata(PIdx::y) > parms->Ly - parms->Ly / parms->ncell[1] ||
+                        p.rdata(PIdx::z) < parms->Lz / parms->ncell[2]             ||
+                        p.rdata(PIdx::z) > parms->Lz - parms->Lz / parms->ncell[2]    ) {
+
+                        #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+
+                    }
             }
         }
 
@@ -404,4 +418,39 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         p.rdata(PIdx::pupt) = 0;
         p.rdata(PIdx::Vphase) = 0;
     });
+}
+
+
+void particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, const MultiFab& state, const Geometry& geom, const TestParams* parms)
+{
+
+    const int lev = 0;
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+    for (FNParIter pti(neutrinos, lev); pti.isValid(); ++pti)
+    {
+        const int np  = pti.numParticles();
+        FlavoredNeutrinoContainer::ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
+
+        amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
+            FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
+
+                // Compute particle distance from black hole center
+                double particle_distance_from_bh_center = pow( pow( p.rdata(PIdx::x) - parms->bh_center_x , 2.0 ) + pow( p.rdata(PIdx::y) - parms->bh_center_y , 2.0 ) + pow( p.rdata(PIdx::z) - parms->bh_center_z , 2.0 ) , 0.5 ); //cm
+
+                // Set time derivatives to zero if particles is inside the BH or the boundary cells
+                if ( particle_distance_from_bh_center < parms->bh_radius       ||
+                    p.rdata(PIdx::x) < parms->Lx / parms->ncell[0]             ||
+                    p.rdata(PIdx::x) > parms->Lx - parms->Lx / parms->ncell[0] ||
+                    p.rdata(PIdx::y) < parms->Ly / parms->ncell[1]             ||
+                    p.rdata(PIdx::y) > parms->Ly - parms->Ly / parms->ncell[1] ||
+                    p.rdata(PIdx::z) < parms->Lz / parms->ncell[2]             ||
+                    p.rdata(PIdx::z) > parms->Lz - parms->Lz / parms->ncell[2]    ) {
+
+                    #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+
+                }
+        });
+    }
 }
