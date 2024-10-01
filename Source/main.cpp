@@ -74,8 +74,6 @@ void evolve_flavor(const TestParams* parms)
     
     Vector<int> domain_lo_bc_types(AMREX_SPACEDIM, BCType::int_dir);
     Vector<int> domain_hi_bc_types(AMREX_SPACEDIM, BCType::int_dir);
-    //Vector<int> domain_lo_bc_types(AMREX_SPACEDIM, BCType::foextrap);
-    //Vector<int> domain_hi_bc_types(AMREX_SPACEDIM, BCType::foextrap);
     
 
     // Define the index space of the domain
@@ -106,8 +104,6 @@ void evolve_flavor(const TestParams* parms)
                                                       parms->ncell[2]==1 ? 0 : SHAPE_FACTOR_ORDER));
     const IntVect ngrow(1 + (1+shape_factor_order_vec)/2);
     for(int i=0; i<AMREX_SPACEDIM; i++) AMREX_ASSERT(parms->ncell[i] >= ngrow[i]);
-
-    //printf("ngrow = [%d, %d, %d] \n", ngrow[0], ngrow[1], ngrow[2]);
 
     // We want 1 component (this is one real scalar field on the domain)
     const int ncomp = GIdx::ncomp;

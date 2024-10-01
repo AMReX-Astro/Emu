@@ -7,8 +7,12 @@
 
 #include "EosTable.H"
 
+#ifdef AMREX_USE_MPI
 // mini NoMPI
-#define HAVE_CAPABILITY_MPI //FIXME: This should be defined only when USE_MPI = TRUE
+#define HAVE_CAPABILITY_MPI 
+#endif
+
+//#define HAVE_CAPABILITY_MPI 
 #ifdef HAVE_CAPABILITY_MPI
 #include <mpi.h>
 #define BCAST(buffer, size) MPI_Bcast(buffer, size, MPI_BYTE, my_reader_process, MPI_COMM_WORLD)
