@@ -507,4 +507,23 @@ if __name__ == "__main__":
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))
 
-    
+    #========================#
+    # Evolve.cpp_dfdt_fill_zeros #
+    #========================#
+
+    # List that will store the QKE code.
+    code = []
+
+    # Looping over neutrinos(tail: no tail) and antineutrinos(tail: bar)
+    for t in tails:
+
+        # Store dFdt back into the particle data for F
+        dNdt = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
+        dNdt_empty = HermitianMatrix(args.N, "0.0")
+        dNdt.H = dNdt_empty.H
+
+        # Write out dNdt->N
+        code.append(dNdt.code())
+
+    code = [line for sublist in code for line in sublist]
+    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill_zeros"))
