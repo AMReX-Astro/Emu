@@ -193,6 +193,64 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
     [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
                           amrex::Array4<const amrex::Real> const& sarr)
     {
+
+        // Adding an if statement to avoid computing quantities of particles inside the black hole.
+        if(parms->IMFP_method==2){
+            if(parms->do_nsm==1 ){
+            
+                // Compute particle distance from black hole center
+                double particle_distance_from_bh_center = pow( pow( p.rdata(PIdx::x) - parms->bh_center_x , 2.0 ) + pow( p.rdata(PIdx::y) - parms->bh_center_y , 2.0 ) + pow( p.rdata(PIdx::z) - parms->bh_center_z , 2.0 ) , 0.5 ); #cm
+
+                // Set time derivatives to zero if particles is inside the BH
+                if ( particle_distance_from_bh_center < parms->bh_radius ) {
+
+                    p.rdata(PIdx::time) = 1.0; // neutrinos move at one second per second!
+
+                    // set the dx/dt values 
+                    p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
+                    p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
+                    p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
+                    // set the d(pE)/dt values 
+                    p.rdata(PIdx::pupx) = 0;
+                    p.rdata(PIdx::pupy) = 0;
+                    p.rdata(PIdx::pupz) = 0;
+                    // set the dE/dt values 
+                    p.rdata(PIdx::pupt) = 0;
+                    // set the dVphase/dt values 
+                    p.rdata(PIdx::Vphase) = 0;
+
+                    if ( NUM_FLAVORS == 2 ){
+                        
+                        // set the dN/dt and dNbar/dt values 
+                        p.rdata(PIdx::N00_Re) = 0.0;
+                        p.rdata(PIdx::N01_Re) = 0.0;
+                        p.rdata(PIdx::N01_Im) = 0.0;
+                        p.rdata(PIdx::N11_Re) = 0.0;
+                        p.rdata(PIdx::N00_Rebar) = 0.0;
+                        p.rdata(PIdx::N01_Rebar) = 0.0;
+                        p.rdata(PIdx::N01_Imbar) = 0.0;
+                        p.rdata(PIdx::N11_Rebar) = 0.0;
+                    
+                    } else if ( NUM_FLAVORS == 3 ) {
+                    
+                        // set the dN/dt and dNbar/dt values 
+                        p.rdata(PIdx::N02_Re) = 0.0;
+                        p.rdata(PIdx::N02_Im) = 0.0;
+                        p.rdata(PIdx::N12_Re) = 0.0;
+                        p.rdata(PIdx::N12_Im) = 0.0;
+                        p.rdata(PIdx::N22_Re) = 0.0;
+                        p.rdata(PIdx::N02_Rebar) = 0.0;
+                        p.rdata(PIdx::N02_Imbar) = 0.0;
+                        p.rdata(PIdx::N12_Rebar) = 0.0;
+                        p.rdata(PIdx::N12_Imbar) = 0.0;
+                        p.rdata(PIdx::N22_Rebar) = 0.0;
+                    
+                    }
+                    return;
+                }
+            }
+        }
+
         #include "generated_files/Evolve.cpp_Vvac_fill"
 
         const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
@@ -251,7 +309,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         }
         // If opacity_method is 2, the code interpolate inverse mean free paths from NuLib table and electron neutrino chemical potential from EoS table to compute the collision term.
         else if(parms->IMFP_method==2){
-            
+
             // Assign temperature, electron fraction, and density at the particle's position to new variables for interpolation of chemical potentials and inverse mean free paths.
             Real rho = rho_pp; // Density of background matter at this particle's position g/cm^3
             Real temperature = T_pp / (1e6*CGSUnitsConst::eV); // Temperature of background matter at this particle's position 0.05 //MeV
@@ -333,20 +391,21 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         }
         else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0, 1 or 2");
 
-        for (int i=0; i<NUM_FLAVORS; ++i) {
+        if(parms->IMFP_method==1 || parms->IMFP_method==2){       
 
-            // Calculate the Fermi-Dirac distribution for neutrinos and antineutrinos.
-            f_eq[i][i]    = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munu[i][i]    ) / T_pp ) );
-            f_eqbar[i][i] = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munubar[i][i] ) / T_pp ) );
+            for (int i=0; i<NUM_FLAVORS; ++i) {
 
-            // Include the Pauli blocking term
-            if (parms->Do_Pauli_blocking == 1){
-                IMFP_abs[i][i]    = IMFP_abs[i][i]    / ( 1 - f_eq[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
-                IMFP_absbar[i][i] = IMFP_absbar[i][i] / ( 1 - f_eqbar[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
+                // Calculate the Fermi-Dirac distribution for neutrinos and antineutrinos.
+                f_eq[i][i]    = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munu[i][i]    ) / T_pp ) );
+                f_eqbar[i][i] = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munubar[i][i] ) / T_pp ) );
+
+                // Include the Pauli blocking term
+                if (parms->Do_Pauli_blocking == 1){
+                    IMFP_abs[i][i]    = IMFP_abs[i][i]    / ( 1 - f_eq[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
+                    IMFP_absbar[i][i] = IMFP_absbar[i][i] / ( 1 - f_eqbar[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
+                }
             }
-
         }
-
         // Compute the time derivative of \( N_{ab} \) using the Quantum Kinetic Equations (QKE).
         #include "generated_files/Evolve.cpp_dfdt_fill"
 
