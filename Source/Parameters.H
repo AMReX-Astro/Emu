@@ -55,11 +55,11 @@ struct TestParams : public amrex::Gpu::Managed
     Real attenuation_hamiltonians;
 
     // Black hole properties
-    int do_nsm; #cm
-    double bh_radius; #cm
-    double bh_center_x; #cm
-    double bh_center_y; #cm
-    double bh_center_z; #cm
+    int do_nsm; //cm
+    double bh_radius; //cm
+    double bh_center_x; //cm
+    double bh_center_y; //cm
+    double bh_center_z; //cm
 
     // Background matter rho, Ye, T flag
     int read_rho_T_Ye_from_table; 
