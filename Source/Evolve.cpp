@@ -236,6 +236,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
 
                         #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
 
+                        return;
                     }
                 }
             }
