@@ -227,34 +227,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
                     p.rdata(PIdx::pupt) = 0;
                     // set the dVphase/dt values 
                     p.rdata(PIdx::Vphase) = 0;
-
-                    if ( NUM_FLAVORS == 2 ){
-                        
-                        // set the dN/dt and dNbar/dt values 
-                        p.rdata(PIdx::N00_Re) = 0.0;
-                        p.rdata(PIdx::N01_Re) = 0.0;
-                        p.rdata(PIdx::N01_Im) = 0.0;
-                        p.rdata(PIdx::N11_Re) = 0.0;
-                        p.rdata(PIdx::N00_Rebar) = 0.0;
-                        p.rdata(PIdx::N01_Rebar) = 0.0;
-                        p.rdata(PIdx::N01_Imbar) = 0.0;
-                        p.rdata(PIdx::N11_Rebar) = 0.0;
-                    
-                    } else if ( NUM_FLAVORS == 3 ) {
-                    
-                        // set the dN/dt and dNbar/dt values 
-                        p.rdata(PIdx::N02_Re) = 0.0;
-                        p.rdata(PIdx::N02_Im) = 0.0;
-                        p.rdata(PIdx::N12_Re) = 0.0;
-                        p.rdata(PIdx::N12_Im) = 0.0;
-                        p.rdata(PIdx::N22_Re) = 0.0;
-                        p.rdata(PIdx::N02_Rebar) = 0.0;
-                        p.rdata(PIdx::N02_Imbar) = 0.0;
-                        p.rdata(PIdx::N12_Rebar) = 0.0;
-                        p.rdata(PIdx::N12_Imbar) = 0.0;
-                        p.rdata(PIdx::N22_Rebar) = 0.0;
-                    
-                    }
+            
+                    #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+            
                     return;
                 }
             }
