@@ -211,13 +211,13 @@ for i in range(len(directories)):
         Nuubar = np.zeros(len(energies_center_erg))
         Total_Vphase = np.zeros(len(energies_center_erg))
 
-        for i, energy_erg in enumerate(energies_center_erg):
+        for j, energy_erg in enumerate(energies_center_erg):
             mask = E == energy_erg
-            Nee[i] = np.sum(N00_Re[mask])
-            Neebar[i] = np.sum(N00_Rebar[mask])
-            Nuu[i] = np.sum(N11_Re[mask])
-            Nuubar[i] = np.sum(N11_Rebar[mask])
-            Total_Vphase[i] = np.sum(Vphase[mask])
+            Nee[j] = np.sum(N00_Re[mask])
+            Neebar[j] = np.sum(N00_Rebar[mask])
+            Nuu[j] = np.sum(N11_Re[mask])
+            Nuubar[j] = np.sum(N11_Rebar[mask])
+            Total_Vphase[j] = np.sum(Vphase[mask])
     
         fee = ( h * clight )**3 * Nee / Total_Vphase
         feebar = ( h * clight )**3 * Neebar / Total_Vphase
