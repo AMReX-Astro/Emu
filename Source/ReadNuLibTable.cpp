@@ -1,4 +1,4 @@
-#include <iostream>
+ #include <iostream>
 
 #include <AMReX_GpuAllocators.H>
 
@@ -7,9 +7,7 @@
 
 #include "NuLibTable.H"
 
-// mini NoMPI
-#define HAVE_CAPABILITY_MPI //FIXME: This should be defined only when USE_MPI = TRUE
-#ifdef HAVE_CAPABILITY_MPI
+#ifdef AMREX_USE_MPI
 #include <mpi.h>
 #define BCAST(buffer, size) MPI_Bcast(buffer, size, MPI_BYTE, my_reader_process, MPI_COMM_WORLD)
 #else
@@ -52,21 +50,13 @@ namespace nulib_private {
   int *helperVarsInt_nulib;
 }
 
-//TODO: Pass the /path/to/table here in the function argument
 void ReadNuLibTable(const std::string nulib_table_name) {
     using namespace nulib_private;
       
-    //std::string nulib_table_name = "/mnt/scratch/tables/NuLib/NuLib_SFHo.h5"; 
     amrex::Print() << "(ReadNuLibTable.cpp) Using table: " << nulib_table_name << std::endl;
 
     //TODO: 
     int my_reader_process = 0; //reader_process;
-    /*if (my_reader_process < 0 || my_reader_process >= CCTK_nProcs(cctkGH))
-    {
-      CCTK_VWarn(CCTK_WARN_COMPLAIN, __LINE__, __FILE__, CCTK_THORNSTRING,
-                 "Requested IO process %d out of range. Reverting to process 0.", my_reader_process);
-      my_reader_process = 0;
-    }*/
    
     const int read_table_on_single_process = 1;
     //const int doIO = !read_table_on_single_process || CCTK_MyProc(cctkGH) == my_reader_process; //TODO: 
@@ -191,9 +181,7 @@ void ReadNuLibTable(const std::string nulib_table_name) {
               for(int k = 0; k<nye_;k++) 
                 for(int j = 0; j<ntemp_; j++) 
         	      for(int i = 0; i<nrho_; i++) {
-        	        //int indold = i + nrho_*(j + ntemp_*(k + nye_*iv));
                     int indold = i + nrho_*(j + ntemp_*(k + nye_*(l + nspecies_*(m + ngroup_*iv))));
-        	        //int indnew = iv + NTABLES_NULIB*(i + nrho_*(j + ntemp_*k));
                     int indnew = iv + NTABLES_NULIB*(i + nrho_*(j + ntemp_*(k + nye_*(l + nspecies_*m))));
         	        alltables_nulib[indnew] = alltables_temp[indold];
 	}
@@ -230,17 +218,6 @@ void ReadNuLibTable(const std::string nulib_table_name) {
     myManagedArena.deallocate(energy_bottom, ngroup_);
     myManagedArena.deallocate(energy_top, ngroup_);
     //----------------------------------------------------------------------------------------------
-
-    // convert any other quantities to log. 
-    /*for(int i=0;i<nrho_*ntemp_*nye_;i++) {
-
-        { // pressure
-          int idx = 0 + NTABLES_NULIB*i;
-          //alltables_nulib[idx] = alltables_nulib[idx] * log(10.0) + log(PRESSGF); //old code
-          alltables_nulib[idx] = alltables_nulib[idx] * log(10.0); //Let's not convert units yet.
-        }
-
-    }*/
 
   //allocate memory for helperVars
   helperVarsReal_nulib = myManagedArena.allocate(24);

@@ -168,34 +168,25 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
                                         yes_nulib, helperVarsReal_nulib, helperVarsInt_nulib);
 
     
-    
-    //---------------------------
+
+//The following commented loop can be used to print information about each particle in case debug is needed in future.
+/*    
     const int lev = 0;
-   
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
     for (FNParIter pti(neutrinos_rhs, lev); pti.isValid(); ++pti)
     {
         const int np  = pti.numParticles();
-        //printf("(Evolve.cpp) number of particles: np = %d \n", np);
         FlavoredNeutrinoContainer::ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
 
         amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
             FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
-
-                //printf("(Inside Evolve.cpp)i =%d,  Vphase = %g \n", i, p.rdata(PIdx::Vphase));
-                /*p.pos(0) = p.rdata(PIdx::x);
-                p.pos(1) = p.rdata(PIdx::y);
-                p.pos(2) = p.rdata(PIdx::z);
-            
-                p.rdata(PIdx::x) = p.pos(0);
-                p.rdata(PIdx::y) = p.pos(1);
-                p.rdata(PIdx::z) = p.pos(2);*/
-           
+                //printf("(Inside Evolve.cpp) Partile i = %d,  Vphase = %g \n", i, p.rdata(PIdx::Vphase));
         });
     }
-    //--------------------------
+*/
+    
     
     
     amrex::MeshToParticle(neutrinos_rhs, state, 0,

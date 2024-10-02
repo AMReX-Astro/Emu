@@ -7,9 +7,7 @@
 
 #include "EosTable.H"
 
-// mini NoMPI
-#define HAVE_CAPABILITY_MPI //FIXME: This should be defined only when USE_MPI = TRUE
-#ifdef HAVE_CAPABILITY_MPI
+#ifdef AMREX_USE_MPI
 #include <mpi.h>
 #define BCAST(buffer, size) MPI_Bcast(buffer, size, MPI_BYTE, my_reader_process, MPI_COMM_WORLD)
 #else
@@ -54,17 +52,10 @@ namespace nuc_eos_private {
 void ReadEosTable(const std::string nuceos_table_name) {
     using namespace nuc_eos_private;
       
-    //std::string nuceos_table_name = "/home/sshanka/000_UTK_projects/Emu/Exec/SFHo.h5"; 
     amrex::Print() << "(ReadEosTable.cpp) Using table: " << nuceos_table_name << std::endl;
 
     //TODO: 
     int my_reader_process = 0; //reader_process;
-    /*if (my_reader_process < 0 || my_reader_process >= CCTK_nProcs(cctkGH))
-    {
-      CCTK_VWarn(CCTK_WARN_COMPLAIN, __LINE__, __FILE__, CCTK_THORNSTRING,
-                 "Requested IO process %d out of range. Reverting to process 0.", my_reader_process);
-      my_reader_process = 0;
-    }*/
    
     const int read_table_on_single_process = 1;
     //const int doIO = !read_table_on_single_process || CCTK_MyProc(cctkGH) == my_reader_process; //TODO: 
@@ -187,16 +178,11 @@ void ReadEosTable(const std::string nuceos_table_name) {
     // free memory of temporary array
     myManagedArena.deallocate(alltables_temp, nrho_ * ntemp_ * nye_ * NTABLES);
 
-    // convert units, convert logs to natural log
+    // convert logs to natural log
     // The latter is great, because exp() is way faster than pow()
-    // pressure
-    //energy_shift_ = energy_shift_ * EPSGF; //Old code.
-    //energy_shift_ = energy_shift_; //Let's not convert units yet.
-
+    
     for(int i=0;i<nrho_;i++) {
-      //logrho[i] = log(pow(10.0,logrho[i]) * RHOGF);
       // by using log(a^b*c) = b*log(a)+log(c)
-      //logrho[i] = logrho[i] * log(10.) + log(RHOGF); //Old code.
       logrho[i] = logrho[i] * log(10.); //Let's not convert units yet. Only convert log_10(rho) to ln(rho).
     }
   
@@ -213,41 +199,19 @@ void ReadEosTable(const std::string nuceos_table_name) {
                 assert(0);
     }
 
-    // convert units //FIXME: We do not convert units yet. Just convert log10 to natural log. 
+    //convert log10 to natural log. 
     for(int i=0;i<nrho_*ntemp_*nye_;i++) {
 
         { // pressure
           int idx = 0 + NTABLES*i;
-          //alltables[idx] = alltables[idx] * log(10.0) + log(PRESSGF); //old code
           alltables[idx] = alltables[idx] * log(10.0); //Let's not convert units yet.
         }
 
         { // eps
           int idx = 1 + NTABLES*i;
-          //alltables[idx] = alltables[idx] * log(10.0) + log(EPSGF); //old code
           alltables[idx] = alltables[idx] * log(10.0);
           epstable[i] = exp(alltables[idx]); //Let's not convert units yet.
         }
-
-        /*{ // cs2
-          int idx = 4 + NTABLES*i;
-          alltables[idx] *= LENGTHGF*LENGTHGF/TIMEGF/TIMEGF;
-        }
-
-        { // dedT
-          int idx = 5 + NTABLES*i;
-          alltables[idx] *= EPSGF;
-        }
-
-        { // dpdrhoe
-          int idx = 6 + NTABLES*i;
-          alltables[idx] *= PRESSGF/RHOGF;
-        }
-
-        { // dpderho
-          int idx = 7 + NTABLES*i;
-          alltables[idx] *= PRESSGF/EPSGF;
-        }*/
 
     }
 
