@@ -7,9 +7,7 @@
 
 #include "ReadHDF5RhoYeT.H"
 
-// mini NoMPI
-#define HAVE_CAPABILITY_MPI //FIXME: This should be defined only when USE_MPI = TRUE
-#ifdef HAVE_CAPABILITY_MPI
+#ifdef AMREX_USE_MPI
 #include <mpi.h>
 #define BCAST(buffer, size) MPI_Bcast(buffer, size, MPI_BYTE, my_reader_process, MPI_COMM_WORLD)
 #else
@@ -64,14 +62,7 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T){
     //std::string nuceos_table_name = "/home/sshanka/000_UTK_projects/Emu/Exec/SFHo.h5"; 
     amrex::Print() << "(ReadHDF5RhoYeT.cpp) Using hdf5: " << hdf5_background_rho_Ye_T << std::endl;
 
-    //TODO: 
-    int my_reader_process = 0; //reader_process;
-    /*if (my_reader_process < 0 || my_reader_process >= CCTK_nProcs(cctkGH))
-    {
-      CCTK_VWarn(CCTK_WARN_COMPLAIN, __LINE__, __FILE__, CCTK_THORNSTRING,
-                 "Requested IO process %d out of range. Reverting to process 0.", my_reader_process);
-      my_reader_process = 0;
-    }*/
+    int my_reader_process = 0;
    
     const int read_table_on_single_process = 1;
     //const int doIO = !read_table_on_single_process || CCTK_MyProc(cctkGH) == my_reader_process; //TODO: 
