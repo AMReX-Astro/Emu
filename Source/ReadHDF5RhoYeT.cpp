@@ -63,9 +63,7 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T){
     amrex::Print() << "(ReadHDF5RhoYeT.cpp) Using hdf5: " << hdf5_background_rho_Ye_T << std::endl;
 
     int my_reader_process = 0;
-   
     const int read_table_on_single_process = 1;
-    //const int doIO = !read_table_on_single_process || CCTK_MyProc(cctkGH) == my_reader_process; //TODO: 
     const int doIO = 1;
 
     hid_t file;
