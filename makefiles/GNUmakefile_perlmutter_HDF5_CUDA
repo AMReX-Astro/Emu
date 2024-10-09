@@ -1,0 +1,20 @@
+NUM_FLAVORS = 2
+SHAPE_FACTOR_ORDER = 2
+NUM_MOMENTS = 3
+
+COMP = gnu
+
+DEBUG = FALSE
+
+USE_MPI       = TRUE
+USE_OMP       = FALSE
+USE_ACC       = FALSE
+USE_CUDA      = TRUE
+AMREX_CUDA_ARCH=80
+
+USE_HDF5=TRUE
+HDF5_HOME=/opt/cray/pe/hdf5-parallel/1.12.2.9/
+
+EMU_HOME = ..
+AMREX_HOME = ../submodules/amrex
+include ../Make.Emu

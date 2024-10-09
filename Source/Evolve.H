@@ -24,9 +24,9 @@ namespace GIdx
     extern amrex::Vector<std::string> names;
 
     void Initialize();
-};
+}
 
-amrex::Real compute_dt(const amrex::Geometry& geom, const amrex::Real cfl_factor, const MultiFab& state, const FlavoredNeutrinoContainer& neutrinos, const Real flavor_cfl_factor, const Real max_adaptive_speedup);
+amrex::Real compute_dt(const amrex::Geometry& geom, const MultiFab& state, const FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
 
 void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, amrex::MultiFab& state, const amrex::Geometry& geom);
 

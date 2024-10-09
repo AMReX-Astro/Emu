@@ -1,8 +1,6 @@
 [![DOI](https://zenodo.org/badge/228717670.svg)](https://zenodo.org/badge/latestdoi/228717670)
 [![AMReX](https://amrex-codes.github.io/badges/powered%20by-AMReX-red.svg)](https://amrex-codes.github.io)
 
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/AMReX-Astro/Emu)
-
 ![Emu](https://github.com/AMReX-Astro/Emu/blob/development/Docs/Emu_logo_transparent.png)
 
 # Emu
@@ -25,53 +23,81 @@ Emu is implemented in C++ and is based on the AMReX library for
 high-performance, block-structured adaptive mesh refinement. Emu is
 parallelized with MPI + OpenMP for CPUs and MPI + CUDA for GPUs.
 
-# Try Emu in Your Browser!
-
-To quickly try Emu out using your browser, you can
-[open an interactive Emu workspace in Gitpod!](https://gitpod.io/#https://github.com/AMReX-Astro/Emu)
-
-Emu's prebuilt Gitpod workspace tracks the current release branch, and you can find pre-compiled examples in the `Examples` directory.
-
-For example, to run and visualize the MSW setup:
-
-```
-cd Examples/2-Flavors/msw
-./main3d.gnu.TPROF.MPI.ex inputs_msw_test
-python plot_first_particle.py
-```
-
-And then open the plot through the file browser on the left of the screen.
-
 # Getting Started From Scratch
+If you would like to run Emu on your own machine, there are some packages
+you will need to install depending on your operating system.
 
-If you would like to run Emu on your own machine, first clone Emu with the AMReX submodule:
+## Linux or WSL
+
+If you are running Emu on Linux or a WSL, you will need to install the
+following packages:
+
+```
+apt-get install g++ libopenmpi-dev python-3 gfortran gnuplot-x11
+pip install sympy h5py
+```
+
+## MacOS
+
+If you are running Emu on macOS you will need gcc and a mpi wrapper:
+
+```
+brew install mpich --cc=gcc-13
+```
+
+
+## Using Emu
+
+
+After installing those modules, clone Emu with the AMReX submodule:
 
 ```
 git clone --recurse-submodules https://github.com/AMReX-Astro/Emu.git
+git submodule update
 ```
 
-Then change directories to `Emu/Exec`.
+Then change directories to `Emu/Exec`. Before each compilation, you must symbolically generate Emu source code for
+the number of neutrino flavors you wish to use and specify a few other compile-time settings in a file called `GNUmakefile`.
 
-Before each compilation, you must symbolically generate Emu source code for
-the number of neutrino flavors you wish to use. Do this like:
+Copy in a default makefile. In this file you can specify the number of neutrino flavors, whether to compile for GPUs, etc. We have set the defaults to 2 neutrino flavors, order 2 PIC shape factors, and compiling for a single CPU.
 
-```
-make generate NUM_FLAVORS=2
-```
-
-Then compile Emu with `make`, e.g.:
+For Linux or WSL:
 
 ```
-make NUM_FLAVORS=2
+cp ../makefiles/GNUmakefile_default GNUmakefile
 ```
 
-Emu parameters are set in an input file, and we provide a series of sample
-input files for various simulation setups in `Emu/sample_inputs`.
-
-You can run the MSW setup in Emu by doing:
+For MacOS:
 
 ```
-./main3d.gnu.TPROF.MPI.ex inputs_msw_test
+cp ../makefiles/GNUmakefile_macOS GNUmakefile
+```
+
+
+
+Compiling occurs in two stages. We first have to generate code according to the number of neutrino flavors.
+```
+make generate
+```
+Then we have to compile Emu.
+```
+make -j
+```
+
+The initial particle distribution is set by an ASCII particle data file. You can generate the data file with our initial condition scripts. For instance, if we want to simulate a two-beam fast flavor instability, generate the initial conditions using
+```
+python3 ../Scripts/initial_conditions/st3_2beam_fast_flavor_nonzerok.py
+```
+You should now see a new file called `particle_input.dat`.
+
+The parameters for the simulation are set in input files. These include information about things like the size of the domain, the number of grid cells, and fundamental neutrino properties. Run the fast flavor test simulation using the particle distribution generated previously using one of the test input files stored in `sample_inputs`
+```
+./main3d.gnu.TPROF.ex ../sample_inputs/inputs_fast_flavor_nonzerok
+```
+
+We have a number of data reduction, analysis, and visualization scripts in the `Scripts` directory. Generate a PDF file titled `avgfee.pdf` showing the time evolution of the average number density of electron neutrinos using
+```
+gnuplot ../Scripts/babysitting/avgfee_gnuplot.plt
 ```
 
 # Open Source Development

@@ -10,6 +10,7 @@ def make_plot(d):
     plt.clf()
     #plt.ylim(-1.5e40,1.5e40)
     ds = yt.load(d)
+    t = ds.current_time
     ad = ds.all_data()
     Re = ad['boxlib',base+"_Re"]
     Im = ad['boxlib',base+"_Im"]
@@ -22,6 +23,7 @@ def make_plot(d):
     plt.plot(Re,color="blue",linestyle="--")
     plt.plot(Im,color="orange",linestyle="--")
 #    plt.plot(mag)
+    plt.text(0,0,"t="+str(t)+" s")
     plt.savefig(base+"_"+d+".png")
 
 directories = sorted(glob.glob("plt*"))
@@ -31,4 +33,4 @@ directories = sorted(glob.glob("plt*"))
 for d in directories:
     make_plot(d)
 
-# ffmpeg -i N01_%05d.png -pix_fmt yuv420p movie.mp4
+# ffmpeg -i %*.png -pix_fmt yuv420p movie.mp4
