@@ -10,7 +10,9 @@ USE_MPI  = FALSE
 USE_OMP  = FALSE
 USE_ACC  = FALSE
 USE_CUDA = FALSE
-USE_HDF5 = FALSE
+
+USE_HDF5 = TRUE
+HDF5_HOME= /path/to/hdf5
 
 EMU_HOME = ..
 AMREX_HOME = ../submodules/amrex

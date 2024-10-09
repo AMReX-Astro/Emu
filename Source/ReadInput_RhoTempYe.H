@@ -8,7 +8,7 @@
 #include <AMReX_ParticleMesh.H>
 #include <FlavoredNeutrinoContainer.H>
 
-void set_rho_T_Ye(MultiFab& state, const Geometry& geom);
+void set_rho_T_Ye(MultiFab& state, const Geometry& geom, const TestParams* parms);
 
 
 #endif

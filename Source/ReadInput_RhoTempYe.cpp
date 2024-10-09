@@ -1,10 +1,10 @@
 #include "Evolve.H"
 #include "Constants.H"
-
+#include "ReadHDF5RhoYeT.H"
+#include "ReadInput_RhoTempYe.H"
 #include <cmath>
 
-
-void set_rho_T_Ye(MultiFab& state, const Geometry& geom)
+void set_rho_T_Ye(MultiFab& state, const Geometry& geom, const TestParams* parms)
 {
     // Create an alias of the MultiFab so set_rho_T_Ye only sets rho, T and Ye.
     int start_comp = GIdx::rho;
@@ -12,27 +12,53 @@ void set_rho_T_Ye(MultiFab& state, const Geometry& geom)
     MultiFab rho_T_ye_state(state, amrex::make_alias, start_comp, num_comps);
 
     amrex::GpuArray<amrex::Real,3> dx = geom.CellSizeArray();
+
+    ReadInputRhoYeT(parms->background_rho_Ye_T_table_name);
+
+    using namespace background_input_rho_T_Ye;
+    int ncell_x = *n_cell_x;
+    int ncell_y = *n_cell_y;
+    int ncell_z = *n_cell_z;
+    double xmin_ = *x_min;
+    double xmax_ = *x_max;
+    double ymin_ = *y_min;
+    double ymax_ = *y_max;
+    double zmin_ = *z_min;
+    double zmax_ = *z_max;
+    double lx = xmax_ - xmin_;
+    double ly = ymax_ - ymin_;
+    double lz = zmax_ - zmin_;
     
-    //always access mf comp index as (GIdx::rho - start_comp)
-    //Example: Amrex tutorials -> ExampleCodes/MPMD/Case-2/main.cpp.
+    if (ncell_x != parms->ncell[0] || ncell_y != parms->ncell[1] || ncell_z != parms->ncell[2]) {
+      amrex::Print() << "The number of cells in the background data file does not match the parameter file" << std::endl;
+      abort();
+    }
+    
+    if (lx != parms->Lx || ly != parms->Ly || lz != parms->Lz ) {
+      amrex::Print() << "The simulation domain in the background data file does not match the parameter file" << std::endl;
+      abort();
+    }
+    
+    rhoYeT_input_struct rhoYeT_input_obj(rho_array_input, Ye_array_input, T_array_input);
 
     for(amrex::MFIter mfi(rho_T_ye_state); mfi.isValid(); ++mfi){
         const amrex::Box& bx = mfi.validbox();
         const amrex::Array4<amrex::Real>& mf_array = rho_T_ye_state.array(mfi);
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k){
-            
-            //x, y and z are the coordinates. 
-            //This is not really needed. Cook up some assert statement to make sure we are at the same (x, y, z) that the table is vlaue is referring to. 
-            amrex::Real x = (i+0.5) * dx[0];
-            amrex::Real y = (j+0.5) * dx[1];
-            amrex::Real z = (k+0.5) * dx[2];
+       
+            int ig = i;
+            int jg = j;
+            int kg = k;
+        
+            // Compute the 1D index from 3D coordinates in the linearized array
+            int idx = kg + ncell_z * (jg + ncell_y * ig);
 
-            //TODO: Find the global (i, j, k) from the amrex domain. call them (ig, jg, kg).
-            //TODO: Then get the values from GPU-array for (ig, jg, kg) and set them to corresponding MultiFabs here. 
-            mf_array(i, j, k, GIdx::rho - start_comp) = -404.0; //FIXME: 
-            mf_array(i, j, k, GIdx::T - start_comp) = -404.0; //FIXME:
-            mf_array(i, j, k, GIdx::Ye - start_comp) = -404.0; //FIXME: 
+            // Set the values from the input arrays
+            mf_array(i, j, k, GIdx::rho - start_comp) = rhoYeT_input_obj.rho_input[idx]; // g/ccm
+            mf_array(i, j, k, GIdx::T - start_comp)   = rhoYeT_input_obj.T_input[idx]*1e6*CGSUnitsConst::eV; //erg
+            mf_array(i, j, k, GIdx::Ye - start_comp)  = rhoYeT_input_obj.Ye_input[idx];
+    
         });
     }
 

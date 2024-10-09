@@ -9,11 +9,29 @@ using namespace amrex;
 //=========================================//
 // Particle distribution in momentum space //
 //=========================================//
-
+/**
+ * @brief Reads the input file containing the initial conditions of the particles.
+ *
+ * This function reads the particle data from a file generated using the input Python scripts 
+ * in the directory "Scripts/initial_conditions/---.py" and stores the momentum, energy, and flavor 
+ * occupation matrices for neutrinos and antineutrinos. The file is expected to follow a specific 
+ * format, with the number of flavors in the first line, followed by particle data in each 
+ * subsequent line in the following order (2-flavor case): E*phatx, E*phaty, E*phatz, E, 
+ * N00_Re, N01_Re, N01_Im, N11_Re, N00_Rebar, N01_Rebar, N01_Imbar, N11_Rebar, TrHN, Vphase. 
+ * This can be generalized to the 3-flavor case.
+ *
+ * @param filename The name of the input file containing the particle data.
+ * 
+ * @return A managed vector of GpuArray containing the particle information.
+ * Each GpuArray stores particle attributes: E*phatx, E*phaty, E*phatz, E, 
+ * N00_Re, N01_Re, N01_Im, N11_Re, N00_Rebar, N01_Rebar, N01_Imbar, N11_Rebar, 
+ * TrHN, Vphase.
+ *
+ * @note The file should contain the number of neutrino flavors in the first line,
+ * which must match the value that Emu was compiled with. If the number of flavors
+ * does not match, the function will print an error message and terminate execution.
+ */
 Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs>> read_particle_data(std::string filename){
-
-  // This function reads the input file containing the initial conditions of the particles.
-  // It reads the momentum, energy, and flavor occupation matrices for neutrinos and antineutrinos.
 
   // This array will save the particles information
   Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs>> particle_data;
@@ -122,7 +140,7 @@ InitParticles(const TestParams* parms)
 					   *parms->nppc[2]);
 
   // array of direction vectors
-  Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs> > particle_data = read_particle_data(parms->particle_data_filename);;
+  Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs> > particle_data = read_particle_data(parms->particle_data_filename);
   auto* particle_data_p = particle_data.dataPtr();
     
   // determine the number of directions per location
@@ -287,10 +305,12 @@ InitParticles(const TestParams* parms)
 	    p.rdata(PIdx::N22_Re   ) *= scale_fac;
 	    p.rdata(PIdx::N22_Rebar) *= scale_fac;
 #endif
-
-	    if(parms->IMFP_method == 1){
-			p.rdata(PIdx::Vphase) = dx[0]*dx[1]*dx[2]*4*MathConst::pi*(pow(p.rdata(PIdx::pupt)+parms->delta_E/2,3)-pow(p.rdata(PIdx::pupt)-parms->delta_E/2,3))/(3*ndirs_per_loc*parms->nppc[0]*parms->nppc[1]*parms->nppc[2]);
-		}
+    
+        // Set phase space volume Vphase = dx^3 * dOmega * dE^3 / 3
+        // From initial conditions, Vphase gets dOmega * dE^3 / 3
+        // Here we multiply this value by the cell volume dx[0] * dx[1] * dx[2]
+        // Divide by the number of particle emission points inside the cell
+        p.rdata(PIdx::Vphase) *= scale_fac ;
 
 	    //=====================//
 	    // Apply Perturbations //

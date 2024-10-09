@@ -86,3 +86,10 @@ deltaCP_degrees = 222
 # opacity stuff #
 #################
 IMFP_method = 0
+
+#################
+# Background Ye, T and rho
+#################
+read_rho_T_Ye_from_table = 0
+
+boundary_condition_type = 0
