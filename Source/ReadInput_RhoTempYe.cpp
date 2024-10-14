@@ -16,6 +16,7 @@ void set_rho_T_Ye(MultiFab& state, const Geometry& geom, const TestParams* parms
     ReadInputRhoYeT(parms->background_rho_Ye_T_table_name);
 
     using namespace background_input_rho_T_Ye;
+    int ncell_x = *n_cell_x;
     int ncell_y = *n_cell_y;
     int ncell_z = *n_cell_z;
     double xmin_ = *x_min;
