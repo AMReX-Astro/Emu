@@ -125,8 +125,19 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T){
     z_min = &zmin_;
     z_max = &zmax_;
 
+    n_cell_x = &ncellx_;
+    n_cell_y = &ncelly_;
+    n_cell_z = &ncellz_;
+    x_min = &xmin_;
+    x_max = &xmax_;
+    y_min = &ymin_;
+    y_max = &ymax_;
+    z_min = &zmin_;
+    z_max = &zmax_;
+    
     //Allocate managed memory arena on unified memory
     ManagedArenaAllocator<double> myManagedArena;
+    ManagedArenaAllocator<int> myManagedArena_int;
 
     // Allocate memory for tables
     double *allbackgroundYeTrhos_temp;
@@ -164,7 +175,7 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T){
       T_array_input  [i] = allbackgroundYeTrhos_temp[ i + 1 * ncellx_ * ncelly_ * ncellz_ ];
       Ye_array_input [i] = allbackgroundYeTrhos_temp[ i + 2 * ncellx_ * ncelly_ * ncellz_ ];
     }
-
+    
     // free memory of temporary array
     myManagedArena.deallocate(allbackgroundYeTrhos_temp, ncellx_ * ncelly_ * ncellz_ * 3);
  
