@@ -164,7 +164,7 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T){
       T_array_input  [i] = allbackgroundYeTrhos_temp[ i + 1 * ncellx_ * ncelly_ * ncellz_ ];
       Ye_array_input [i] = allbackgroundYeTrhos_temp[ i + 2 * ncellx_ * ncelly_ * ncellz_ ];
     }
-    
+
     // free memory of temporary array
     myManagedArena.deallocate(allbackgroundYeTrhos_temp, ncellx_ * ncelly_ * ncellz_ * 3);
  
