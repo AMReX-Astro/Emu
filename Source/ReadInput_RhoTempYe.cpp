@@ -54,13 +54,8 @@ void set_rho_T_Ye(MultiFab& state, const Geometry& geom, const TestParams* parms
             int idx = kg + ncell_z * (jg + ncell_y * ig);
 
             // Set the values from the input arrays
-<<<<<<< HEAD
             mf_array(i, j, k, GIdx::rho - start_comp) = rhoYeT_input_obj.rho_input[idx]; // g/ccm
             mf_array(i, j, k, GIdx::T - start_comp)   = rhoYeT_input_obj.T_input[idx]*1e6*CGSUnitsConst::eV; //erg
-=======
-            mf_array(i, j, k, GIdx::rho - start_comp) = rhoYeT_input_obj.rho_input[idx];
-            mf_array(i, j, k, GIdx::T - start_comp)   = rhoYeT_input_obj.T_input[idx];
->>>>>>> 1eb2623 (Assigning the correct values of densities, temperature, and electron fraction to the mesh MultiFab.)
             mf_array(i, j, k, GIdx::Ye - start_comp)  = rhoYeT_input_obj.Ye_input[idx];
     
         });
