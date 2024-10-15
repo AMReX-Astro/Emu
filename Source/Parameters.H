@@ -99,7 +99,7 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("perturbation_amplitude", perturbation_amplitude);
         pp.get("perturbation_type", perturbation_type);
         if(perturbation_type == 1)
-        pp.get("perturbation_wavelength_cm", perturbation_wavelength_cm);
+            pp.get("perturbation_wavelength_cm", perturbation_wavelength_cm);
         
         // neutrino physics parameters for 2-flavor
         pp.get("mass1_eV", mass1);
