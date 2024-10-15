@@ -147,6 +147,8 @@ struct TestParams : public amrex::Gpu::Managed
 
         if(IMFP_method==1 || IMFP_method==2 ){
             pp.get("Do_Pauli_blocking", Do_Pauli_blocking); // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
+            pp.get("do_periodic_empty_bc",  do_periodic_empty_bc);
+
         }
 
         if(IMFP_method==0) {
@@ -182,7 +184,6 @@ struct TestParams : public amrex::Gpu::Managed
             pp.get("do_nsm",  do_nsm); 
             
             if ( do_nsm == 1 ){
-                pp.get("do_periodic_empty_bc",  do_periodic_empty_bc); 
                 pp.get("bh_radius",  bh_radius); 
                 pp.get("bh_center_x",  bh_center_x); 
                 pp.get("bh_center_y",  bh_center_y); 
