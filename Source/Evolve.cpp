@@ -223,21 +223,20 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             
                     return;
                 }
+            }
+            if ( parms->do_periodic_empty_bc == 1 ){
 
-                if ( parms->do_periodic_empty_bc == 1 ){
+                // Set time derivatives to zero if particles is in the boundary cells
+                if (p.rdata(PIdx::x) < parms->Lx / parms->ncell[0]             ||
+                    p.rdata(PIdx::x) > parms->Lx - parms->Lx / parms->ncell[0] ||
+                    p.rdata(PIdx::y) < parms->Ly / parms->ncell[1]             ||
+                    p.rdata(PIdx::y) > parms->Ly - parms->Ly / parms->ncell[1] ||
+                    p.rdata(PIdx::z) < parms->Lz / parms->ncell[2]             ||
+                    p.rdata(PIdx::z) > parms->Lz - parms->Lz / parms->ncell[2]    ) {
 
-                    // Set time derivatives to zero if particles is in the boundary cells
-                    if (p.rdata(PIdx::x) < parms->Lx / parms->ncell[0]             ||
-                        p.rdata(PIdx::x) > parms->Lx - parms->Lx / parms->ncell[0] ||
-                        p.rdata(PIdx::y) < parms->Ly / parms->ncell[1]             ||
-                        p.rdata(PIdx::y) > parms->Ly - parms->Ly / parms->ncell[1] ||
-                        p.rdata(PIdx::z) < parms->Lz / parms->ncell[2]             ||
-                        p.rdata(PIdx::z) > parms->Lz - parms->Lz / parms->ncell[2]    ) {
+                    #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
 
-                        #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
-
-                        return;
-                    }
+                    return;
                 }
             }
         }
