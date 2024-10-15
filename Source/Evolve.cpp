@@ -195,7 +195,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
     {
 
         // Adding an if statement to avoid computing quantities of particles inside the black hole.
-        if(parms->IMFP_method==2){
+        if( parms->IMFP_method==2 || parms->IMFP_method==1 ){
             if(parms->do_nsm==1 ){
             
                 // Compute particle distance from black hole center
@@ -429,21 +429,28 @@ void particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, const Mul
         amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
             FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
 
+            if(parms->do_nsm==1 ){
+
                 // Compute particle distance from black hole center
                 double particle_distance_from_bh_center = pow( pow( p.rdata(PIdx::x) - parms->bh_center_x , 2.0 ) + pow( p.rdata(PIdx::y) - parms->bh_center_y , 2.0 ) + pow( p.rdata(PIdx::z) - parms->bh_center_z , 2.0 ) , 0.5 ); //cm
 
                 // Set time derivatives to zero if particles is inside the BH or the boundary cells
-                if ( particle_distance_from_bh_center < parms->bh_radius       ||
-                    p.rdata(PIdx::x) < parms->Lx / parms->ncell[0]             ||
-                    p.rdata(PIdx::x) > parms->Lx - parms->Lx / parms->ncell[0] ||
-                    p.rdata(PIdx::y) < parms->Ly / parms->ncell[1]             ||
-                    p.rdata(PIdx::y) > parms->Ly - parms->Ly / parms->ncell[1] ||
-                    p.rdata(PIdx::z) < parms->Lz / parms->ncell[2]             ||
-                    p.rdata(PIdx::z) > parms->Lz - parms->Lz / parms->ncell[2]    ) {
-
+                if ( particle_distance_from_bh_center < parms->bh_radius ) {
                     #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
-
                 }
+
+            }
+            // Set time derivatives to zero if particles is inside the BH or the boundary cells
+            if (p.rdata(PIdx::x) < parms->Lx / parms->ncell[0]             ||
+                p.rdata(PIdx::x) > parms->Lx - parms->Lx / parms->ncell[0] ||
+                p.rdata(PIdx::y) < parms->Ly / parms->ncell[1]             ||
+                p.rdata(PIdx::y) > parms->Ly - parms->Ly / parms->ncell[1] ||
+                p.rdata(PIdx::z) < parms->Lz / parms->ncell[2]             ||
+                p.rdata(PIdx::z) > parms->Lz - parms->Lz / parms->ncell[2]    ) {
+
+                #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+
+            }
         });
     }
 }
