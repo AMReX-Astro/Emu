@@ -125,8 +125,7 @@ for i in range(len(directories)):
         pos_z = np.array(hf['pos_z']) # cm
 
         # Append time
-        if i != 0:
-            time[i] = t[np.nonzero(t)[0][0]]
+        time[i] = t[0]
 
         # Shape n_particle x 3 array
         # The first index runs over the particles
