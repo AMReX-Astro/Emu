@@ -454,7 +454,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
  * - Sets the time derivatives to zero if the particle is within the boundary cells of the simulation domain.
  *
  */
-void particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms)
+void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms)
 {
 
     const int lev = 0;
