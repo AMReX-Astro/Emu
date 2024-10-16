@@ -1,3 +1,10 @@
+'''
+This test script is used to check if the periodic empty boundary conditions are correctly implemented in the EMU code.
+The periodic empty boundary conditions are implemented in the following way:
+The particles in the boundary cells should be autamatically set to zero.
+Created by Erick Urquilla. University of Tennessee Knoxville, USA.
+'''
+
 import numpy as np
 import h5py
 import glob
@@ -122,10 +129,10 @@ for i in range(len(directories)):
             time[i] = t[np.nonzero(t)[0][0]]
 
         # Shape n_particle x 3 array
-        # First index runs over the particles
-        # Second index is the cell index in x direction
-        # Thrid index is the cell index in y direction
-        # Fourth index is the cell index in z direction
+        # The first index runs over the particles
+        # The second index is the cell index in the x direction
+        # The third index is the cell index in the y direction
+        # The fourth index is the cell index in the z direction
         particle_cell = np.zeros((len(N00_Re),3))
 
         # Find index of cell in x direction
@@ -174,6 +181,7 @@ for i in range(len(directories)):
         all_files_uu_ocupation_in_each_cell[i] = uu_ocupation_in_each_cell
         all_files_uubar_ocupation_in_each_cell[i] = uubar_ocupation_in_each_cell
 
+# Theoretical values for the number of particles
 N00_Re_theory = 3.0e+33
 N00_Rebar_theory = 2.5e+33
 N11_Re_theory = 1.0e+33
@@ -186,10 +194,10 @@ for i in range(ncell[0]):
         for k in range(ncell[0]):
             if i==1 and j==1 and k==1:
 
-                rel_error_ee    = np.abs( all_files_ee_ocupation_in_each_cell[-1,i,j,k] - N00_Re_theory ) / N00_Re_theory 
-                rel_error_eebar = np.abs( all_files_eebar_ocupation_in_each_cell[-1,i,j,k] - N00_Rebar_theory ) / N00_Rebar_theory                 
-                rel_error_uu    = np.abs( all_files_uu_ocupation_in_each_cell[-1,i,j,k] - N11_Re_theory ) / N11_Re_theory 
-                rel_error_uubar = np.abs( all_files_uubar_ocupation_in_each_cell[-1,i,j,k] - N11_Rebar_theory ) / N11_Rebar_theory 
+                rel_error_ee    = np.abs( all_files_ee_ocupation_in_each_cell[-1,i,j,k] - N00_Re_theory ) / N00_Re_theory  # Calculate relative error for ee occupation number
+                rel_error_eebar = np.abs( all_files_eebar_ocupation_in_each_cell[-1,i,j,k] - N00_Rebar_theory ) / N00_Rebar_theory  # Calculate relative error for eebar occupation number
+                rel_error_uu    = np.abs( all_files_uu_ocupation_in_each_cell[-1,i,j,k] - N11_Re_theory ) / N11_Re_theory  # Calculate relative error for uu occupation number
+                rel_error_uubar = np.abs( all_files_uubar_ocupation_in_each_cell[-1,i,j,k] - N11_Rebar_theory ) / N11_Rebar_theory  # Calculate relative error for uubar occupation number
 
                 print(f"{rel_error_ee} ---> relative error in ee : Cell ({j},{k},{l})")
                 print(f"{rel_error_eebar} ---> relative error in eebar : Cell ({j},{k},{l})")
@@ -219,36 +227,56 @@ for i in range(ncell[0]):
                 # myassert( rel_error_uu     < rel_error_max )
                 # myassert( rel_error_uubar < rel_error_max )
 
-print(f'all_files_ee_ocupation_in_each_cell[:,i,j,k] = {all_files_ee_ocupation_in_each_cell[:,i,j,k]}')
-print(f'time = {time}')
-
+# Create a figure and axis for plotting electron occupation numbers
 fig1, ax1 = plt.subplots()
+
+# Loop over all cells in the x, y, and z directions
 for i in range(ncell[0]):
     for j in range(ncell[1]):
         for k in range(ncell[2]):
-            if i==1 and j==1 and k==1:
-                ax1.plot(time, all_files_ee_ocupation_in_each_cell[:,i,j,k], label=f'Cell ({i},{j},{k})', linestyle='--', color='black')
+            # Plot the electron occupation number for the central cell with a different style
+            if i == 1 and j == 1 and k == 1:
+                ax1.plot(time, all_files_ee_ocupation_in_each_cell[:, i, j, k], label=f'Cell ({i},{j},{k})', linestyle='--', color='black')
             else:
-                ax1.plot(time, all_files_ee_ocupation_in_each_cell[:,i,j,k], label=f'Cell ({i},{j},{k})')
+                ax1.plot(time, all_files_ee_ocupation_in_each_cell[:, i, j, k], label=f'Cell ({i},{j},{k})')
+
+# Set the x and y axis labels
 ax1.set_xlabel('time ($s$)')
 ax1.set_ylabel('$N_{ee}$')
+
+# Add a legend to the plot
 leg1 = ax1.legend(framealpha=0.0, ncol=3, fontsize=10)
+
+# Apply custom settings to the plot
 apply_custom_settings(ax1, leg1, False)
+
+# Adjust layout and save the figure
 plt.tight_layout()
 fig1.savefig('electron_occupation.pdf', bbox_inches='tight')
 
+# Create a figure and axis for plotting electron occupation numbers (bar)
 fig2, ax2 = plt.subplots()
+
+# Loop over all cells in the x, y, and z directions
 for i in range(ncell[0]):
     for j in range(ncell[1]):
         for k in range(ncell[2]):
-            if i==1 and j==1 and k==1:
-                ax2.plot(time, all_files_eebar_ocupation_in_each_cell[:,i,j,k], label=f'Cell ({i},{j},{k})',linestyle='--', color='black')
+            # Plot the electron occupation number (bar) for the central cell with a different style
+            if i == 1 and j == 1 and k == 1:
+                ax2.plot(time, all_files_eebar_ocupation_in_each_cell[:, i, j, k], label=f'Cell ({i},{j},{k})', linestyle='--', color='black')
             else:
-                ax2.plot(time, all_files_eebar_ocupation_in_each_cell[:,i,j,k], label=f'Cell ({i},{j},{k})')
+                ax2.plot(time, all_files_eebar_ocupation_in_each_cell[:, i, j, k], label=f'Cell ({i},{j},{k})')
 
+# Set the x and y axis labels
 ax2.set_xlabel('time ($s$)')
 ax2.set_ylabel('$\\bar{N}_{ee}$')
+
+# Add a legend to the plot
 leg2 = ax2.legend(framealpha=0.0, ncol=3, fontsize=10)
+
+# Apply custom settings to the plot
 apply_custom_settings(ax2, leg2, False)
+
+# Adjust layout and save the figure
 plt.tight_layout()
 fig2.savefig('electron_occupation_bar.pdf', bbox_inches='tight')
