@@ -209,6 +209,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
                 p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
                 p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
                 p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
+                // set the dt/dt = 1. Neutrinos move at one second per second
+                p.rdata(PIdx::time) = 1.0;
                 // set the d(pE)/dt values 
                 p.rdata(PIdx::pupx) = 0;
                 p.rdata(PIdx::pupy) = 0;
@@ -241,6 +243,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
                 p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
                 p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
                 p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
+                // set the dt/dt = 1. Neutrinos move at one second per second
+                p.rdata(PIdx::time) = 1.0;
                 // set the d(pE)/dt values 
                 p.rdata(PIdx::pupx) = 0;
                 p.rdata(PIdx::pupy) = 0;
@@ -397,6 +401,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         }
         else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0, 1 or 2");
 
+        // Compute equilibrium distribution functions and include Pauli blocking term if requested
         if(parms->IMFP_method==1 || parms->IMFP_method==2){       
 
             for (int i=0; i<NUM_FLAVORS; ++i) {
@@ -415,16 +420,21 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         // Compute the time derivative of \( N_{ab} \) using the Quantum Kinetic Equations (QKE).
         #include "generated_files/Evolve.cpp_dfdt_fill"
 
-        // set the dfdt values into p.rdata
+        // set the dx/dt values 
         p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
         p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
         p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
-        p.rdata(PIdx::time) = 1.0; // neutrinos move at one second per second!
+        // set the dt/dt = 1. Neutrinos move at one second per second
+        p.rdata(PIdx::time) = 1.0;
+        // set the d(pE)/dt values 
         p.rdata(PIdx::pupx) = 0;
         p.rdata(PIdx::pupy) = 0;
         p.rdata(PIdx::pupz) = 0;
+        // set the dE/dt values 
         p.rdata(PIdx::pupt) = 0;
+        // set the dVphase/dt values 
         p.rdata(PIdx::Vphase) = 0;
+
     });
 }
 
