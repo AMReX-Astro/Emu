@@ -32,6 +32,21 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, amrex::MultiFab
 
 void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const amrex::MultiFab& state, const amrex::Geometry& geom, const TestParams* parms);
 
-void particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, const amrex::MultiFab& state, const amrex::Geometry& geom, const TestParams* parms);
+/**
+ * @brief Sets the time derivatives to zero for particles inside the black hole or boundary cells.
+ *
+ * This function iterates over all particles in the `FlavoredNeutrinoContainer` and sets their time derivatives to zero if they are inside the black hole or within the boundary cells of the simulation domain.
+ *
+ * @param neutrinos Reference to the container holding the flavored neutrinos.
+ * @param parms Pointer to the structure containing test parameters, including black hole properties and domain dimensions.
+ *
+ * The function performs the following steps:
+ * - Iterates over all particles in the container.
+ * - Computes the distance of each particle from the black hole center.
+ * - Sets the time derivatives to zero if the particle is inside the black hole radius.
+ * - Sets the time derivatives to zero if the particle is within the boundary cells of the simulation domain.
+ *
+ */
+void particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
 
 #endif

@@ -439,13 +439,25 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
 }
 
 
-void particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, const MultiFab& state, const Geometry& geom, const TestParams* parms)
+/**
+ * @brief Sets the time derivatives to zero for particles inside the black hole or boundary cells.
+ *
+ * This function iterates over all particles in the `FlavoredNeutrinoContainer` and sets their time derivatives to zero if they are inside the black hole or within the boundary cells of the simulation domain.
+ *
+ * @param neutrinos Reference to the container holding the flavored neutrinos.
+ * @param parms Pointer to the structure containing test parameters, including black hole properties and domain dimensions.
+ *
+ * The function performs the following steps:
+ * - Iterates over all particles in the container.
+ * - Computes the distance of each particle from the black hole center.
+ * - Sets the time derivatives to zero if the particle is inside the black hole radius.
+ * - Sets the time derivatives to zero if the particle is within the boundary cells of the simulation domain.
+ *
+ */
+void particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms)
 {
 
     const int lev = 0;
-#ifdef _OPENMP
-#pragma omp parallel
-#endif
     for (FNParIter pti(neutrinos, lev); pti.isValid(); ++pti)
     {
         const int np  = pti.numParticles();
@@ -454,18 +466,20 @@ void particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, const Mul
         amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
             FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
 
+            // Check if the simulation involves a neutron star merger (NSM)
             if(parms->do_nsm==1 ){
 
                 // Compute particle distance from black hole center
                 double particle_distance_from_bh_center = pow( pow( p.rdata(PIdx::x) - parms->bh_center_x , 2.0 ) + pow( p.rdata(PIdx::y) - parms->bh_center_y , 2.0 ) + pow( p.rdata(PIdx::z) - parms->bh_center_z , 2.0 ) , 0.5 ); //cm
 
-                // Set time derivatives to zero if particles is inside the BH or the boundary cells
+                // Set time derivatives to zero if particles are inside the black hole
                 if ( particle_distance_from_bh_center < parms->bh_radius ) {
                     #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
                 }
 
             }
-            // Set time derivatives to zero if particles is inside the BH or the boundary cells
+
+            // Set time derivatives to zero if particles are within the boundary cells
             if (p.rdata(PIdx::x) < parms->Lx / parms->ncell[0]             ||
                 p.rdata(PIdx::x) > parms->Lx - parms->Lx / parms->ncell[0] ||
                 p.rdata(PIdx::y) < parms->Ly / parms->ncell[1]             ||

@@ -216,7 +216,7 @@ void evolve_flavor(const TestParams* parms)
         // Do periodic boundary conditions but initialize particles with N=0 and Nbar=0 at the boundary
         if ( parms->IMFP_method == 1 || parms->IMFP_method == 2 ){
             if ( parms->do_periodic_empty_bc == 1 ){
-                particles_at_boundary_cells(neutrinos, state, geom, parms);
+                particles_at_boundary_cells(neutrinos, parms);
             }
         }
 
