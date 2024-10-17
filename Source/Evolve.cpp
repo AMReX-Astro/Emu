@@ -469,7 +469,7 @@ void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, con
         amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
             FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
 
-            // Check if the simulation involves a neutron star merger (NSM)
+            // Check if the simulation involves a black hole somewhere in the domain  
             if(parms->do_blackhole==1 ){
 
                 // Compute particle distance from black hole center
