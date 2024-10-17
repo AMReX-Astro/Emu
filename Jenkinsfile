@@ -44,7 +44,7 @@ pipeline {
 
 		stage('Fast Flavor'){ steps{
 				dir('Exec'){
-				sh 'python ../Scripts/initial_conditions/st2_2beam_fast_flavor.py'
+					sh 'python ../Scripts/initial_conditions/st2_2beam_fast_flavor.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fast_flavor'
 					sh 'python ../Scripts/tests/fast_flavor_test.py'
 					sh 'rm -rf plt*'
