@@ -196,7 +196,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
 
         // If statement to avoid computing quantities of particles inside the black hole.
         if( parms->IMFP_method==2 ){
-            if( parms->do_nsm==1 ){
+            if( parms->do_blackhole==1 ){
             
                 // Compute particle distance from black hole center
                 double particle_distance_from_bh_center = pow( pow( p.rdata(PIdx::x) - parms->bh_center_x , 2.0 ) + pow( p.rdata(PIdx::y) - parms->bh_center_y , 2.0 ) + pow( p.rdata(PIdx::z) - parms->bh_center_z , 2.0 ) , 0.5 ); //cm
@@ -470,7 +470,7 @@ void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, con
             FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
 
             // Check if the simulation involves a neutron star merger (NSM)
-            if(parms->do_nsm==1 ){
+            if(parms->do_blackhole==1 ){
 
                 // Compute particle distance from black hole center
                 double particle_distance_from_bh_center = pow( pow( p.rdata(PIdx::x) - parms->bh_center_x , 2.0 ) + pow( p.rdata(PIdx::y) - parms->bh_center_y , 2.0 ) + pow( p.rdata(PIdx::z) - parms->bh_center_z , 2.0 ) , 0.5 ); //cm
