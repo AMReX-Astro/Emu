@@ -203,8 +203,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             // Set time derivatives to zero if particles is inside the BH
             if ( particle_distance_from_bh_center < parms->bh_radius ) {
 
-                p.rdata(PIdx::time) = 1.0; // neutrinos move at one second per second!
-
                 // set the dx/dt values 
                 p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
                 p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
