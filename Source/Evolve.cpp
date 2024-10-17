@@ -195,37 +195,35 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
     {
 
         // If statement to avoid computing quantities of particles inside the black hole.
-        if( parms->IMFP_method==2 ){
-            if( parms->do_blackhole==1 ){
-            
-                // Compute particle distance from black hole center
-                double particle_distance_from_bh_center = pow( pow( p.rdata(PIdx::x) - parms->bh_center_x , 2.0 ) + pow( p.rdata(PIdx::y) - parms->bh_center_y , 2.0 ) + pow( p.rdata(PIdx::z) - parms->bh_center_z , 2.0 ) , 0.5 ); //cm
+        if( parms->do_blackhole==1 ){
+        
+            // Compute particle distance from black hole center
+            double particle_distance_from_bh_center = pow( pow( p.rdata(PIdx::x) - parms->bh_center_x , 2.0 ) + pow( p.rdata(PIdx::y) - parms->bh_center_y , 2.0 ) + pow( p.rdata(PIdx::z) - parms->bh_center_z , 2.0 ) , 0.5 ); //cm
 
-                // Set time derivatives to zero if particles is inside the BH
-                if ( particle_distance_from_bh_center < parms->bh_radius ) {
+            // Set time derivatives to zero if particles is inside the BH
+            if ( particle_distance_from_bh_center < parms->bh_radius ) {
 
-                    p.rdata(PIdx::time) = 1.0; // neutrinos move at one second per second!
+                p.rdata(PIdx::time) = 1.0; // neutrinos move at one second per second!
 
-                    // set the dx/dt values 
-                    p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
-                    p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
-                    p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
-                    // set the dt/dt = 1. Neutrinos move at one second per second
-                    p.rdata(PIdx::time) = 1.0;
-                    // set the d(pE)/dt values 
-                    p.rdata(PIdx::pupx) = 0;
-                    p.rdata(PIdx::pupy) = 0;
-                    p.rdata(PIdx::pupz) = 0;
-                    // set the dE/dt values 
-                    p.rdata(PIdx::pupt) = 0;
-                    // set the dVphase/dt values 
-                    p.rdata(PIdx::Vphase) = 0;
+                // set the dx/dt values 
+                p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
+                p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
+                p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
+                // set the dt/dt = 1. Neutrinos move at one second per second
+                p.rdata(PIdx::time) = 1.0;
+                // set the d(pE)/dt values 
+                p.rdata(PIdx::pupx) = 0;
+                p.rdata(PIdx::pupy) = 0;
+                p.rdata(PIdx::pupz) = 0;
+                // set the dE/dt values 
+                p.rdata(PIdx::pupt) = 0;
+                // set the dVphase/dt values 
+                p.rdata(PIdx::Vphase) = 0;
 
-                    // Set the dN/dt and dNbar/dt values to zero        
-                    #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
-            
-                    return;
-                }
+                // Set the dN/dt and dNbar/dt values to zero        
+                #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+        
+                return;
             }
         }
 
