@@ -55,7 +55,7 @@ struct TestParams : public amrex::Gpu::Managed
     Real attenuation_hamiltonians;
 
     // Black hole properties
-    int do_nsm;
+    int do_blackhole;
     int do_periodic_empty_bc;
     double bh_radius; //cm
     double bh_center_x; //cm
@@ -154,8 +154,8 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("do_periodic_empty_bc",  do_periodic_empty_bc);
 
         //  Black hole properties
-        pp.get("do_nsm",  do_nsm); 
-        if ( do_nsm == 1 ){
+        pp.get("do_blackhole",  do_blackhole); 
+        if ( do_blackhole == 1 ){
             pp.get("bh_radius",  bh_radius); 
             pp.get("bh_center_x",  bh_center_x); 
             pp.get("bh_center_y",  bh_center_y); 
