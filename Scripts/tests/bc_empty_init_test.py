@@ -188,9 +188,12 @@ N11_Rebar_theory = 1.0e+33
 
 rel_error_max = 0.05
 
+# Print the distance traveled by the particles
+print(f'Distance traveled by particles = {time[-1]*clight} cm')
+
 for i in range(ncell[0]):
-    for j in range(ncell[0]):
-        for k in range(ncell[0]):
+    for j in range(ncell[1]):
+        for k in range(ncell[2]):
             if i==1 and j==1 and k==1:
 
                 rel_error_ee    = np.abs( all_files_ee_ocupation_in_each_cell[-1,i,j,k] - N00_Re_theory ) / N00_Re_theory  # Calculate relative error for ee occupation number
@@ -198,8 +201,8 @@ for i in range(ncell[0]):
                 rel_error_uu    = np.abs( all_files_uu_ocupation_in_each_cell[-1,i,j,k] - N11_Re_theory ) / N11_Re_theory  # Calculate relative error for uu occupation number
                 rel_error_uubar = np.abs( all_files_uubar_ocupation_in_each_cell[-1,i,j,k] - N11_Rebar_theory ) / N11_Rebar_theory  # Calculate relative error for uubar occupation number
 
-                print(f"{rel_error_ee} ---> relative error in ee : Cell ({j},{k},{l})")
-                print(f"{rel_error_eebar} ---> relative error in eebar : Cell ({j},{k},{l})")
+                # print(f"{rel_error_ee} ---> relative error in ee : Cell ({i},{j},{k})")
+                # print(f"{rel_error_eebar} ---> relative error in eebar : Cell ({i},{j},{k})")
                 # print(f"{rel_error_uu} ---> relative error in uu")
                 # print(f"{rel_error_uubar} ---> relative error in uubar")
 
@@ -210,14 +213,14 @@ for i in range(ncell[0]):
 
             else:
 
-                print(f'Cell ({j},{k},{l})')
+                # print(f'Cell ({j},{k},{l})')
                 rel_error_ee    = np.abs( all_files_ee_ocupation_in_each_cell[-1,i,j,k] )
                 rel_error_eebar = np.abs( all_files_eebar_ocupation_in_each_cell[-1,i,j,k] )             
                 rel_error_uu    = np.abs( all_files_uu_ocupation_in_each_cell[-1,i,j,k] )
                 rel_error_uubar = np.abs( all_files_uubar_ocupation_in_each_cell[-1,i,j,k] ) 
 
-                print(f"{rel_error_ee} ---> relative error in ee : Cell ({j},{k},{l})")
-                print(f"{rel_error_eebar} ---> relative error in eebar : Cell ({j},{k},{l})")
+                # print(f"{rel_error_ee} ---> relative error in ee : Cell ({i},{j},{k})")
+                # print(f"{rel_error_eebar} ---> relative error in eebar : Cell ({i},{j},{k})")
                 # print(f"{rel_error_uu} ---> relative error in uu")
                 # print(f"{rel_error_uubar} ---> relative error in uubar")
 
