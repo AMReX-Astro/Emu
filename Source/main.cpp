@@ -213,7 +213,9 @@ void evolve_flavor(const TestParams* parms)
         // Use the latest-time neutrino data
         auto& neutrinos = neutrinos_new;
 
-        // Do periodic boundary conditions but initialize particles with N=0 and Nbar=0 at the boundary
+        // If do_periodic_empty_bc is one.
+        // Do periodic boundary conditions but initialize particles with N=0 and Nbar=0 at the boundary.
+        // If a black hole is present in the simulation it will set N=0 and Nbar=0 for all particles inside the black hole.
         if ( parms->do_periodic_empty_bc == 1 ){
             empty_particles_at_boundary_cells(neutrinos, parms);
         }
