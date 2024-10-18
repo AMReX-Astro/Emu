@@ -104,15 +104,6 @@ pipeline {
 				}
 			}
 		}
-		stage('BC periodic empty'){ steps{
-				dir('Exec'){
-					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_bc_periodic_init'
-					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
-					sh 'python ../Scripts/tests/bc_empty_init_test.py'
-					sh 'rm -rf plt* *pdf'
-				}
-			}
-		}
 		stage('Collisions to equilibrium'){ steps{
 				dir('Exec'){
 					sh 'cp ../makefiles/GNUmakefile_jenkins_HDF5_CUDA GNUmakefile'
@@ -124,7 +115,6 @@ pipeline {
 				}
 			}
 		}
-
 		stage('Fermi-Dirac test'){ steps{
 				dir('Exec'){
 					sh 'python ../Scripts/initial_conditions/st9_empty_particles_multi_energy.py'
@@ -136,7 +126,18 @@ pipeline {
 				}
 			}
 		}
-
+		stage('BC periodic empty'){ steps{
+				dir('Exec'){
+					sh 'cp ../makefiles/GNUmakefile_jenkins_HDF5_CUDA GNUmakefile'
+					sh 'make realclean; make generate NUM_FLAVORS=2; make -j NUM_FLAVORS=2'
+					sh 'python ../Scripts/initial_conditions/st8_coll_inst_test.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_bc_periodic_init'
+					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
+					sh 'python ../Scripts/tests/bc_empty_init_test.py'
+					sh 'rm -rf plt* *pdf'
+				}
+			}
+		}
     } // stages{
 
     post {
