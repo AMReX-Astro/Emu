@@ -465,7 +465,7 @@ void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, con
         amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
             FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
 
-            // Check if the simulation involves a neutron star merger (NSM)
+            // Check if the simulation involves a black hole somewhere in the domain
             if(parms->do_blackhole==1 ){
 
                 // Compute particle distance from black hole center
@@ -474,6 +474,7 @@ void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, con
                 // Set time derivatives to zero if particles are inside the black hole
                 if ( particle_distance_from_bh_center < parms->bh_radius ) {
                     #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+                    return;
                 }
 
             }
@@ -487,7 +488,7 @@ void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, con
                 p.rdata(PIdx::z) > parms->Lz - parms->Lz / parms->ncell[2]    ) {
 
                 #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
-
+                return;
             }
         });
     }
