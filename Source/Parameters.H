@@ -150,6 +150,15 @@ struct TestParams : public amrex::Gpu::Managed
             pp.get("do_periodic_empty_bc",  do_periodic_empty_bc);
 
         }
+        
+        //  Black hole properties
+        pp.get("do_nsm",  do_nsm); 
+        if ( do_nsm == 1 ){
+            pp.get("bh_radius",  bh_radius); 
+            pp.get("bh_center_x",  bh_center_x); 
+            pp.get("bh_center_y",  bh_center_y); 
+            pp.get("bh_center_z",  bh_center_z); 
+        }
 
         if(IMFP_method==0) {
             // Do nothing
@@ -181,14 +190,6 @@ struct TestParams : public amrex::Gpu::Managed
             //HDF5 table names (with full path) for EoS and NuLib tables
             pp.get("nuceos_table_name", nuceos_table_name); 
             pp.get("nulib_table_name",  nulib_table_name); 
-            pp.get("do_nsm",  do_nsm); 
-            
-            if ( do_nsm == 1 ){
-                pp.get("bh_radius",  bh_radius); 
-                pp.get("bh_center_x",  bh_center_x); 
-                pp.get("bh_center_y",  bh_center_y); 
-                pp.get("bh_center_z",  bh_center_z); 
-            }
         
         } else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0(do not collisions) and 1(do collisions)");
 
