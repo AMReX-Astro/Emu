@@ -296,11 +296,6 @@ for i in range(ncell[0]):
                     
                     particle_ins_bh_time = []
                     particle_out_bh_time = []
-                    
-                    print(f'len(directories) = {len(directories)}')
-
-                    print(f'len(x_pos_bh_cell) = {len(x_pos_bh_cell)}')
-                    print(f'len(x_pos_bh_cell[0]) = {len(x_pos_bh_cell[0])}')
 
                     for l in range(len(directories)):
 
