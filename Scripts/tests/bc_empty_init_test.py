@@ -88,10 +88,16 @@ def apply_custom_settings(ax, leg, log_scale_y=False):
 ############################################################
 
 # Domain size in 3D index space
-ncell = (3, 3, 3)
-Lx = 3 # cm
-Ly = 3 # cm
-Lz = 3 # cm
+ncell = (5, 5, 5)
+Lx = 5 # cm
+Ly = 5 # cm
+Lz = 5 # cm
+
+# Black hole parameters
+bh_radius = 0.5 # cm
+bh_center_x = 2.5 # cm
+bh_center_y = 2.5 # cm
+bh_center_z = 2.5 # cm
 
 # Contains mesh faces coordinates
 cell_x_faces = np.linspace(0, Lx, ncell[0] + 1)
@@ -103,6 +109,15 @@ all_files_eebar_ocupation_in_each_cell = np.zeros((len(directories), *ncell)) # 
 all_files_uu_ocupation_in_each_cell = np.zeros((len(directories), *ncell)) # number of particles units    
 all_files_uubar_ocupation_in_each_cell = np.zeros((len(directories), *ncell)) # number of particles units    
 time = np.zeros(len(directories)) # seconds
+
+x_pos_bh_cell = []
+y_pos_bh_cell = []
+z_pos_bh_cell = []
+
+N00_Re_bh_cell = []
+N11_Re_bh_cell = []
+N00_Rebar_bh_cell = []
+N11_Rebar_bh_cell = []
 
 # Looping over all directories
 for i in range(len(directories)):
@@ -174,6 +189,15 @@ for i in range(len(directories)):
                     uu_ocupation_in_each_cell[j,k,l] = np.sum(N11_Re[mask])
                     uubar_ocupation_in_each_cell[j,k,l] = np.sum(N11_Rebar[mask])
 
+                    if j==2 and k==2 and l==2:
+                        x_pos_bh_cell.append( pos_x[mask] )
+                        y_pos_bh_cell.append( pos_y[mask] )
+                        z_pos_bh_cell.append( pos_z[mask] )
+                        N00_Re_bh_cell.append( N00_Re[mask] )
+                        N11_Re_bh_cell.append( N11_Re[mask] )
+                        N00_Rebar_bh_cell.append( N00_Rebar[mask] )
+                        N11_Rebar_bh_cell.append( N11_Rebar[mask] )
+
         # Store the occupation numbers for the current file in the all_files arrays
         all_files_ee_ocupation_in_each_cell[i] = ee_ocupation_in_each_cell
         all_files_eebar_ocupation_in_each_cell[i] = eebar_ocupation_in_each_cell
@@ -191,43 +215,70 @@ rel_error_max = 0.05
 # Print the distance traveled by the particles
 print(f'Distance traveled by particles = {time[-1]*clight} cm')
 
+# Loop over all cells in the x, y, and z directions
 for i in range(ncell[0]):
     for j in range(ncell[1]):
         for k in range(ncell[2]):
-            if i==1 and j==1 and k==1:
 
-                rel_error_ee    = np.abs( all_files_ee_ocupation_in_each_cell[-1,i,j,k] - N00_Re_theory ) / N00_Re_theory  # Calculate relative error for ee occupation number
-                rel_error_eebar = np.abs( all_files_eebar_ocupation_in_each_cell[-1,i,j,k] - N00_Rebar_theory ) / N00_Rebar_theory  # Calculate relative error for eebar occupation number
-                rel_error_uu    = np.abs( all_files_uu_ocupation_in_each_cell[-1,i,j,k] - N11_Re_theory ) / N11_Re_theory  # Calculate relative error for uu occupation number
-                rel_error_uubar = np.abs( all_files_uubar_ocupation_in_each_cell[-1,i,j,k] - N11_Rebar_theory ) / N11_Rebar_theory  # Calculate relative error for uubar occupation number
+            # Check if the cell is in the second layer next to the boundary
+            if (i > 0) and (i < ncell[0] - 1) and (j > 0) and (j < ncell[1] - 1) and (k > 0) and (k < ncell[2] - 1):
 
-                # print(f"{rel_error_ee} ---> relative error in ee : Cell ({i},{j},{k})")
-                # print(f"{rel_error_eebar} ---> relative error in eebar : Cell ({i},{j},{k})")
-                # print(f"{rel_error_uu} ---> relative error in uu")
-                # print(f"{rel_error_uubar} ---> relative error in uubar")
+                # Calculate the relative errors for the central cells
+                if i == 2 and j == 2 and k == 2:
 
-                myassert( rel_error_ee     < rel_error_max )
-                myassert( rel_error_eebar < rel_error_max )
-                # myassert( rel_error_uu     < rel_error_max )
-                # myassert( rel_error_uubar < rel_error_max )
+                    # Calculate the distance of particles from the black hole center
+                    particle_distance_from_bh_center = np.sqrt(
+                        (np.array(x_pos_bh_cell[-1]) - bh_center_x)**2 + 
+                        (np.array(y_pos_bh_cell[-1]) - bh_center_y)**2 + 
+                        (np.array(z_pos_bh_cell[-1]) - bh_center_z)**2
+                    )  # cm
+
+                    # Mask for particles inside the black hole
+                    mask = particle_distance_from_bh_center < bh_radius
+                    particle_ins_bh = np.sum(N00_Re_bh_cell[-1][mask])
+                    
+                    # Mask for particles outside the black hole
+                    mask = particle_distance_from_bh_center > bh_radius
+                    particle_out_bh = np.sum(N00_Re_bh_cell[-1][mask])
+
+                    # Print the number of particles inside and outside the black hole
+                    print(f'3BoundaryLayer: Cell ({i},{j},{k}) : Number of particles inside the black hole = {particle_ins_bh}')
+                    print(f'3BoundaryLayer: Cell ({i},{j},{k}) : Number of particles outside the black hole = {particle_out_bh}')
+
+                    # Assert that the number of particles inside the black hole is less than the maximum relative error
+                    myassert(particle_ins_bh < rel_error_max)
+
+                else:
+                   
+                    # Calculate relative errors for ee and eebar occupation numbers
+                    rel_error_ee    = np.abs(all_files_ee_ocupation_in_each_cell[-1, i, j, k] - N00_Re_theory) / N00_Re_theory
+                    rel_error_eebar = np.abs(all_files_eebar_ocupation_in_each_cell[-1, i, j, k] - N00_Rebar_theory) / N00_Rebar_theory
+
+                    # Print the relative errors for ee and eebar occupation numbers
+                    print(f"2BoundaryLayer: Cell ({i},{j},{k}) : relative error in ee = {rel_error_ee}")
+                    print(f"2BoundaryLayer: Cell ({i},{j},{k}) : relative error in eebar = {rel_error_eebar}")
+
+                    # Assert that the relative errors are less than the maximum relative error
+                    myassert(rel_error_ee < rel_error_max)
+                    myassert(rel_error_eebar < rel_error_max)
 
             else:
 
-                # print(f'Cell ({j},{k},{l})')
-                rel_error_ee    = np.abs( all_files_ee_ocupation_in_each_cell[-1,i,j,k] )
-                rel_error_eebar = np.abs( all_files_eebar_ocupation_in_each_cell[-1,i,j,k] )             
-                rel_error_uu    = np.abs( all_files_uu_ocupation_in_each_cell[-1,i,j,k] )
-                rel_error_uubar = np.abs( all_files_uubar_ocupation_in_each_cell[-1,i,j,k] ) 
+                # Calculate the relative errors for the boundary cells
+                rel_error_ee    = np.abs(all_files_ee_ocupation_in_each_cell[-1, i, j, k])
+                rel_error_eebar = np.abs(all_files_eebar_ocupation_in_each_cell[-1, i, j, k])
 
-                # print(f"{rel_error_ee} ---> relative error in ee : Cell ({i},{j},{k})")
-                # print(f"{rel_error_eebar} ---> relative error in eebar : Cell ({i},{j},{k})")
-                # print(f"{rel_error_uu} ---> relative error in uu")
-                # print(f"{rel_error_uubar} ---> relative error in uubar")
+                # Print the relative errors for the boundary cells
+                print(f"1BoundaryLayer: Cell ({i},{j},{k}) : relative error in ee = {rel_error_ee}")
+                print(f"1BoundaryLayer: Cell ({i},{j},{k}) : relative error in eebar = {rel_error_eebar}")
 
-                myassert( rel_error_ee     < rel_error_max )
-                myassert( rel_error_eebar < rel_error_max )
-                # myassert( rel_error_uu     < rel_error_max )
-                # myassert( rel_error_uubar < rel_error_max )
+                # Assert that the relative errors are less than the maximum relative error
+                myassert(rel_error_ee < rel_error_max)
+                myassert(rel_error_eebar < rel_error_max)
+
+##########################################################################################
+# PLOTTING
+##########################################################################################
 
 # Create a figure and axis for plotting electron occupation numbers
 fig1, ax1 = plt.subplots()
@@ -236,11 +287,47 @@ fig1, ax1 = plt.subplots()
 for i in range(ncell[0]):
     for j in range(ncell[1]):
         for k in range(ncell[2]):
-            # Plot the electron occupation number for the central cell with a different style
-            if i == 1 and j == 1 and k == 1:
-                ax1.plot(time, all_files_ee_ocupation_in_each_cell[:, i, j, k], label=f'Cell ({i},{j},{k})', linestyle='--', color='black')
-            else:
-                ax1.plot(time, all_files_ee_ocupation_in_each_cell[:, i, j, k], label=f'Cell ({i},{j},{k})')
+
+            # Check if the cell is in the second layer next to the boundary
+            if (i > 0) and (i < ncell[0] - 1) and (j > 0) and (j < ncell[1] - 1) and (k > 0) and (k < ncell[2] - 1):
+
+                # Plot the central cells
+                if i == 2 and j == 2 and k == 2:
+                    
+                    particle_ins_bh_time = []
+                    particle_out_bh_time = []
+                    
+                    print(f'len(directories) = {len(directories)}')
+
+                    print(f'len(x_pos_bh_cell) = {len(x_pos_bh_cell)}')
+                    print(f'len(x_pos_bh_cell[0]) = {len(x_pos_bh_cell[0])}')
+
+                    for l in range(len(directories)):
+
+                        # Calculate the distance of particles from the black hole center
+                        particle_distance_from_bh_center = np.sqrt(
+                            (np.array(x_pos_bh_cell[l]) - bh_center_x)**2 + 
+                            (np.array(y_pos_bh_cell[l]) - bh_center_y)**2 + 
+                            (np.array(z_pos_bh_cell[l]) - bh_center_z)**2
+                        )  # cm
+
+                        # Mask for particles inside the black hole
+                        mask = particle_distance_from_bh_center < bh_radius
+                        particle_ins_bh_time.append(np.sum(N00_Re_bh_cell[l][mask]))
+                        
+                        # Mask for particles outside the black hole
+                        mask = particle_distance_from_bh_center > bh_radius
+                        particle_out_bh_time.append(np.sum(N00_Re_bh_cell[l][mask]))
+
+                    ax1.plot(time, particle_ins_bh_time, label=f'Particles inside BH', linestyle='solid', color='black')
+                    ax1.plot(time, particle_out_bh_time, label=f"Particles ouside BH but in BH's cell", linestyle='solid', color='gray')
+
+                else:  
+                    # Plot cells adjacent to boundary cell
+                    ax1.plot(time, all_files_ee_ocupation_in_each_cell[:, i, j, k], linestyle='dashed', color='orange')
+            else:              
+                # Plot boundary cells
+                ax1.plot(time, all_files_ee_ocupation_in_each_cell[:, i, j, k], linestyle='dotted', color='red')
 
 # Set the x and y axis labels
 ax1.set_xlabel('time ($s$)')
@@ -263,11 +350,42 @@ fig2, ax2 = plt.subplots()
 for i in range(ncell[0]):
     for j in range(ncell[1]):
         for k in range(ncell[2]):
-            # Plot the electron occupation number (bar) for the central cell with a different style
-            if i == 1 and j == 1 and k == 1:
-                ax2.plot(time, all_files_eebar_ocupation_in_each_cell[:, i, j, k], label=f'Cell ({i},{j},{k})', linestyle='--', color='black')
-            else:
-                ax2.plot(time, all_files_eebar_ocupation_in_each_cell[:, i, j, k], label=f'Cell ({i},{j},{k})')
+
+            # Check if the cell is in the second layer next to the boundary
+            if (i > 0) and (i < ncell[0] - 1) and (j > 0) and (j < ncell[1] - 1) and (k > 0) and (k < ncell[2] - 1):
+
+                # Plot the central cells
+                if i == 2 and j == 2 and k == 2:
+                    
+                    particle_ins_bh_time = []
+                    particle_out_bh_time = []
+                    
+                    for l in range(len(directories)):
+
+                        # Calculate the distance of particles from the black hole center
+                        particle_distance_from_bh_center = np.sqrt(
+                            (np.array(x_pos_bh_cell[l]) - bh_center_x)**2 + 
+                            (np.array(y_pos_bh_cell[l]) - bh_center_y)**2 + 
+                            (np.array(z_pos_bh_cell[l]) - bh_center_z)**2
+                        )  # cm
+
+                        # Mask for particles inside the black hole
+                        mask = particle_distance_from_bh_center < bh_radius
+                        particle_ins_bh_time.append(np.sum(N00_Rebar_bh_cell[l][mask]))
+                        
+                        # Mask for particles outside the black hole
+                        mask = particle_distance_from_bh_center > bh_radius
+                        particle_out_bh_time.append(np.sum(N00_Rebar_bh_cell[l][mask]))
+
+                    ax2.plot(time, particle_ins_bh_time, label=f'Particles inside BH', linestyle='solid', color='black')
+                    ax2.plot(time, particle_out_bh_time, label=f"Particles ouside BH but in BH's cell", linestyle='solid', color='gray')
+
+                else:  
+                    # Plot cells adjacent to boundary cell
+                    ax2.plot(time, all_files_eebar_ocupation_in_each_cell[:, i, j, k], linestyle='dashed', color='orange')
+            else:              
+                # Plot boundary cells
+                ax2.plot(time, all_files_eebar_ocupation_in_each_cell[:, i, j, k], linestyle='dotted', color='red')
 
 # Set the x and y axis labels
 ax2.set_xlabel('time ($s$)')

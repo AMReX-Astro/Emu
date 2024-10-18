@@ -14,10 +14,10 @@ integration.type = 1
 integration.rk.type = 4
 
 # Domain size in 3D index space
-ncell = (3, 3, 3)
-Lx = 3 # cm
-Ly = 3 # cm
-Lz = 3 # cm
+ncell = (5, 5, 5)
+Lx = 5 # cm
+Ly = 5 # cm
+Lz = 5 # cm
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
@@ -27,7 +27,7 @@ particle_data_filename = "particle_input.dat"
 max_grid_size = 16
 
 # Number of steps to run
-nsteps = 10000
+nsteps = 30000
 
 # Simulation end time
 end_time = 5.0e19
@@ -41,10 +41,10 @@ T_MeV = 7.0
 Ye = 0
 
 # Write plotfiles
-write_plot_every = 1000
+write_plot_every = 3000
 
 # Write particle data in plotfiles
-write_plot_particles_every = 1000
+write_plot_particles_every = 3000
 
 # checkpointing
 do_restart = 0
@@ -118,4 +118,10 @@ delta_E = 2.272540842052914 # Mev
 read_rho_T_Ye_from_table = 0
 boundary_condition_type = 0
 do_periodic_empty_bc = 1
-do_blackhole = 0
+
+# Blackhole parameters
+do_blackhole = 1
+bh_radius = 0.5 # cm
+bh_center_x = 2.5 # cm
+bh_center_y = 2.5 # cm
+bh_center_z = 2.5 # cm
