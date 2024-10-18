@@ -507,4 +507,23 @@ if __name__ == "__main__":
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))
 
-    
+    #========================#
+    # Evolve.cpp_dfdt_fill_zeros #
+    #========================#
+
+    # List that will store the code for setting the derivative of the matrices N and Nbar to zero.
+    code = []
+
+    # Looping over neutrinos(tail: no tail) and antineutrinos(tail: bar)
+    for t in tails:
+
+        # Store dN/dt and dNbar/dt set to zero
+        dNdt = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")") # Derivative of the neutrino number matrix
+        zero_matrix = HermitianMatrix(args.N, "0.0") # Zero matrix
+        dNdt.H = zero_matrix.H # Set the derivative of the neutrino number matrix to zero
+
+        # Write out dN/dt = 0
+        code.append(dNdt.code())
+
+    code = [line for sublist in code for line in sublist]
+    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill_zeros"))
