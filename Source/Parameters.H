@@ -164,7 +164,7 @@ struct TestParams : public amrex::Gpu::Managed
         if(IMFP_method==0) {
             // Do nothing
         } else if(IMFP_method==1){
-            
+
             for(int i=0;i<NUM_FLAVORS;i++){
                 std::string name;
                 name = std::string("IMFP_abs")+std::to_string(i)+std::string("_cm");
@@ -193,8 +193,8 @@ struct TestParams : public amrex::Gpu::Managed
             pp.get("nuceos_table_name", nuceos_table_name); 
             pp.get("nulib_table_name",  nulib_table_name); 
             pp.get("Do_Pauli_blocking", Do_Pauli_blocking); // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
-        
-        } else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0(do not collisions) and 1(do collisions)");
+
+        } else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0(do not collisions), 1(do collisions in the contant fluid) and 2(variable background fluid conditions)");
 
     }
 

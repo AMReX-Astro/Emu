@@ -25,7 +25,7 @@ pipeline {
 
 		stage('MSW'){ steps{
 				dir('Exec'){
-				sh 'python ../Scripts/initial_conditions/st0_msw_test.py'
+					sh 'python ../Scripts/initial_conditions/st0_msw_test.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_msw_test'
 					sh 'python ../Scripts/tests/msw_test.py'
 					sh 'rm -rf plt*'
