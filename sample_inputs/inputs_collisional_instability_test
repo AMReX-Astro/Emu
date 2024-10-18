@@ -116,6 +116,14 @@ delta_E = 2.272540842052914 # Mev
 # Background Ye, T and rho
 #################
 read_rho_T_Ye_from_table = 0
+
+#################
+# Blackhole
+#################
+do_blackhole = 0
+
+#################
+# Boundary conditions
+#################
 boundary_condition_type = 0
 do_periodic_empty_bc = 0
-do_blackhole = 0
