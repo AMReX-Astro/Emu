@@ -193,6 +193,74 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
     [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
                           amrex::Array4<const amrex::Real> const& sarr)
     {
+
+        // If statement to avoid computing quantities of particles inside the black hole.
+        if( parms->do_blackhole==1 ){
+        
+            // Compute particle distance from black hole center
+            double particle_distance_from_bh_center = sqrt(amrex::Math::powi<2>(p.rdata(PIdx::x) - parms->bh_center_x) + 
+                                                                     amrex::Math::powi<2>(p.rdata(PIdx::y) - parms->bh_center_y) + 
+                                                                     amrex::Math::powi<2>(p.rdata(PIdx::z) - parms->bh_center_z)); // cm
+            // Set time derivatives to zero if particles is inside the BH
+            if ( particle_distance_from_bh_center < parms->bh_radius ) {
+
+                // set the dx/dt values 
+                p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
+                p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
+                p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
+                // set the dt/dt = 1. Neutrinos move at one second per second
+                p.rdata(PIdx::time) = 1.0;
+                // set the d(pE)/dt values 
+                p.rdata(PIdx::pupx) = 0;
+                p.rdata(PIdx::pupy) = 0;
+                p.rdata(PIdx::pupz) = 0;
+                // set the dE/dt values 
+                p.rdata(PIdx::pupt) = 0;
+                // set the dVphase/dt values 
+                p.rdata(PIdx::Vphase) = 0;
+
+                // Set the dN/dt and dNbar/dt values to zero        
+                #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+        
+                return;
+            }
+        }
+
+        // Periodic empty boundary conditions.
+        // Set time derivatives to zero if particles are in the boundary cells
+        // Check if periodic empty boundary conditions are enabled
+        if (parms->do_periodic_empty_bc == 1) {
+
+            // Check if the particle is in the boundary cells
+            if (p.rdata(PIdx::x) < parms->Lx / parms->ncell[0]             ||
+            p.rdata(PIdx::x) > parms->Lx - parms->Lx / parms->ncell[0] ||
+            p.rdata(PIdx::y) < parms->Ly / parms->ncell[1]             ||
+            p.rdata(PIdx::y) > parms->Ly - parms->Ly / parms->ncell[1] ||
+            p.rdata(PIdx::z) < parms->Lz / parms->ncell[2]             ||
+            p.rdata(PIdx::z) > parms->Lz - parms->Lz / parms->ncell[2]    ) {
+
+                // set the dx/dt values 
+                p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
+                p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
+                p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
+                // set the dt/dt = 1. Neutrinos move at one second per second
+                p.rdata(PIdx::time) = 1.0;
+                // set the d(pE)/dt values 
+                p.rdata(PIdx::pupx) = 0;
+                p.rdata(PIdx::pupy) = 0;
+                p.rdata(PIdx::pupz) = 0;
+                // set the dE/dt values 
+                p.rdata(PIdx::pupt) = 0;
+                // set the dVphase/dt values 
+                p.rdata(PIdx::Vphase) = 0;
+
+                // Set the dN/dt and dNbar/dt values to zero        
+                #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+
+                return;
+            }
+        }
+
         #include "generated_files/Evolve.cpp_Vvac_fill"
 
         const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
@@ -333,32 +401,98 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         }
         else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0, 1 or 2");
 
-        for (int i=0; i<NUM_FLAVORS; ++i) {
+        // Compute equilibrium distribution functions and include Pauli blocking term if requested
+        if(parms->IMFP_method==1 || parms->IMFP_method==2){       
 
-            // Calculate the Fermi-Dirac distribution for neutrinos and antineutrinos.
-            f_eq[i][i]    = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munu[i][i]    ) / T_pp ) );
-            f_eqbar[i][i] = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munubar[i][i] ) / T_pp ) );
+            for (int i=0; i<NUM_FLAVORS; ++i) {
 
-            // Include the Pauli blocking term
-            if (parms->Do_Pauli_blocking == 1){
-                IMFP_abs[i][i]    = IMFP_abs[i][i]    / ( 1 - f_eq[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
-                IMFP_absbar[i][i] = IMFP_absbar[i][i] / ( 1 - f_eqbar[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
+                // Calculate the Fermi-Dirac distribution for neutrinos and antineutrinos.
+                f_eq[i][i]    = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munu[i][i]    ) / T_pp ) );
+                f_eqbar[i][i] = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munubar[i][i] ) / T_pp ) );
+
+                // Include the Pauli blocking term
+                if (parms->Do_Pauli_blocking == 1){
+                    IMFP_abs[i][i]    = IMFP_abs[i][i]    / ( 1 - f_eq[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
+                    IMFP_absbar[i][i] = IMFP_absbar[i][i] / ( 1 - f_eqbar[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
+                }
             }
-
         }
-
         // Compute the time derivative of \( N_{ab} \) using the Quantum Kinetic Equations (QKE).
         #include "generated_files/Evolve.cpp_dfdt_fill"
 
-        // set the dfdt values into p.rdata
+        // set the dx/dt values 
         p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
         p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
         p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
-        p.rdata(PIdx::time) = 1.0; // neutrinos move at one second per second!
+        // set the dt/dt = 1. Neutrinos move at one second per second
+        p.rdata(PIdx::time) = 1.0;
+        // set the d(pE)/dt values 
         p.rdata(PIdx::pupx) = 0;
         p.rdata(PIdx::pupy) = 0;
         p.rdata(PIdx::pupz) = 0;
+        // set the dE/dt values 
         p.rdata(PIdx::pupt) = 0;
+        // set the dVphase/dt values 
         p.rdata(PIdx::Vphase) = 0;
+
     });
+}
+
+
+/**
+ * @brief Sets the N and Nbar to zero for particles inside the black hole or boundary cells.
+ *
+ * This function iterates over all particles in the `FlavoredNeutrinoContainer` and sets N and Nbar to zero if pariticles are inside the black hole or within the boundary cells of the simulation domain.
+ *
+ * @param neutrinos Reference to the container holding the flavored neutrinos.
+ * @param parms Pointer to the structure containing test parameters, including black hole properties and domain dimensions.
+ *
+ * The function performs the following steps:
+ * - Iterates over all particles in the container.
+ * - Computes the distance of each particle from the black hole center.
+ * - Sets N and Nbar to zero if the particle is inside the black hole radius.
+ * - Sets N and Nbar to zero if the particle is within the boundary cells of the simulation domain.
+ *
+ */
+void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms)
+{
+
+    const int lev = 0;
+    for (FNParIter pti(neutrinos, lev); pti.isValid(); ++pti)
+    {
+        const int np  = pti.numParticles();
+        FlavoredNeutrinoContainer::ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
+
+        amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
+            FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
+
+            // Check if the simulation involves a black hole somewhere in the domain
+            if(parms->do_blackhole==1 ){
+
+                // Compute particle distance from black hole center
+                double particle_distance_from_bh_center = sqrt(amrex::Math::powi<2>(p.rdata(PIdx::x) - parms->bh_center_x) + 
+                                                                     amrex::Math::powi<2>(p.rdata(PIdx::y) - parms->bh_center_y) + 
+                                                                     amrex::Math::powi<2>(p.rdata(PIdx::z) - parms->bh_center_z)); // cm
+
+                // Set time derivatives to zero if particles are inside the black hole
+                if ( particle_distance_from_bh_center < parms->bh_radius ) {
+                    #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+                    return;
+                }
+
+            }
+
+            // Set time derivatives to zero if particles are within the boundary cells
+            if (p.rdata(PIdx::x) < parms->Lx / parms->ncell[0]             ||
+                p.rdata(PIdx::x) > parms->Lx - parms->Lx / parms->ncell[0] ||
+                p.rdata(PIdx::y) < parms->Ly / parms->ncell[1]             ||
+                p.rdata(PIdx::y) > parms->Ly - parms->Ly / parms->ncell[1] ||
+                p.rdata(PIdx::z) < parms->Lz / parms->ncell[2]             ||
+                p.rdata(PIdx::z) > parms->Lz - parms->Lz / parms->ncell[2]    ) {
+
+                #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+                return;
+            }
+        });
+    }
 }
