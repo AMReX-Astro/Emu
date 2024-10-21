@@ -198,8 +198,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         if( parms->do_blackhole==1 ){
         
             // Compute particle distance from black hole center
-            double particle_distance_from_bh_center = pow( pow( p.rdata(PIdx::x) - parms->bh_center_x , 2.0 ) + pow( p.rdata(PIdx::y) - parms->bh_center_y , 2.0 ) + pow( p.rdata(PIdx::z) - parms->bh_center_z , 2.0 ) , 0.5 ); //cm
-
+            double particle_distance_from_bh_center = sqrt(amrex::Math::powi<2>(p.rdata(PIdx::x) - parms->bh_center_x) + 
+                                                                     amrex::Math::powi<2>(p.rdata(PIdx::y) - parms->bh_center_y) + 
+                                                                     amrex::Math::powi<2>(p.rdata(PIdx::z) - parms->bh_center_z)); // cm
             // Set time derivatives to zero if particles is inside the BH
             if ( particle_distance_from_bh_center < parms->bh_radius ) {
 
@@ -469,7 +470,9 @@ void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, con
             if(parms->do_blackhole==1 ){
 
                 // Compute particle distance from black hole center
-                double particle_distance_from_bh_center = pow( pow( p.rdata(PIdx::x) - parms->bh_center_x , 2.0 ) + pow( p.rdata(PIdx::y) - parms->bh_center_y , 2.0 ) + pow( p.rdata(PIdx::z) - parms->bh_center_z , 2.0 ) , 0.5 ); //cm
+                double particle_distance_from_bh_center = sqrt(amrex::Math::powi<2>(p.rdata(PIdx::x) - parms->bh_center_x) + 
+                                                                     amrex::Math::powi<2>(p.rdata(PIdx::y) - parms->bh_center_y) + 
+                                                                     amrex::Math::powi<2>(p.rdata(PIdx::z) - parms->bh_center_z)); // cm
 
                 // Set time derivatives to zero if particles are inside the black hole
                 if ( particle_distance_from_bh_center < parms->bh_radius ) {
