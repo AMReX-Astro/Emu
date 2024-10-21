@@ -1,0 +1,133 @@
+perturbation_type = 0
+perturbation_amplitude = 0.0
+
+# attenuation parameters to time derivative of N due to hamiltonians
+attenuation_hamiltonians = 0
+
+collision_cfl_factor = 1e-1
+cfl_factor = 2
+flavor_cfl_factor = 2
+max_adaptive_speedup = 0
+maxError = 1e-6
+
+integration.type = 1
+integration.rk.type = 4
+
+# Domain size in 3D index space
+ncell = (5, 5, 5)
+Lx = 5 # cm
+Ly = 5 # cm
+Lz = 5 # cm
+
+# Number of particles per cell
+nppc  = (1, 1, 1)
+particle_data_filename = "particle_input.dat"
+
+# Maximum size of each grid in the domain
+max_grid_size = 16
+
+# Number of steps to run
+nsteps = 30000
+
+# Simulation end time
+end_time = 5.0e19
+
+# Make FPE signal errors so we get a Backtrace
+amrex.fpe_trap_invalid=1
+
+# give background fluid conditions
+rho_g_ccm = 0
+T_MeV = 7.0
+Ye = 0
+
+# Write plotfiles
+write_plot_every = 3000
+
+# Write particle data in plotfiles
+write_plot_particles_every = 3000
+
+# checkpointing
+do_restart = 0
+restart_dir = ""
+
+###############################
+# NEUTRINO PHYSICS PARAMETERS #
+###############################
+# see first column of table 14.7 in http://pdg.lbl.gov/2019/reviews/rpp2019-rev-neutrino-mixing.pdf
+
+# mass state 1 mass in eV [NO/IO:-sqrt(7.39e-5)]
+mass1_eV = 0.04866 #-0.008596511
+
+# mass state 2 mass in eV (define at 0 arbitrarily because oscillations only sensitive to deltaM^2)
+mass2_eV = 0
+
+# mass state 3 mass in eV [NO:sqrt(2.449e-3) IO:-sqrt(2.509e-3)]
+mass3_eV = 0
+
+# 1-2 mixing angle in degrees [NO/IO:33.82]
+theta12_degrees = 1e-6
+
+# 2-3 mixing angle in degrees [NO:8.61 IO:8.65]
+theta23_degrees = 0
+
+# 1-3 mixing angle in degrees [NO:48.3 IO:48.6]
+theta13_degrees = 0
+
+# Majorana angle 1 in degrees
+alpha1_degrees = 0
+
+# Majorana angle 2 in degrees
+alpha2_degrees = 0
+
+# CP-violating phase in degrees [NO:222 IO:285]
+deltaCP_degrees = 0
+
+#################
+# opacity stuff #
+#################
+IMFP_method = 1
+
+Do_Pauli_blocking = 0 # If 1, it will multiply the inverse mean free path by 1 / (1 - f_eq); if 0, do nothing.
+
+IMFP_abs0_cm = 1.0e2
+IMFP_abs1_cm = 0
+IMFP_abs2_cm = 0
+IMFP_abs0bar_cm = 1.0e2
+IMFP_abs1bar_cm = 0
+IMFP_abs2bar_cm = 0
+
+munu0_MeV = 20.0
+munu1_MeV = 0
+munu2_MeV = 0
+munu0bar_MeV = 17.644694342915507
+munu1bar_MeV = 0
+munu2bar_MeV = 0
+
+IMFP_scat0_cm = 0
+IMFP_scat1_cm = 0
+IMFP_scat2_cm = 0
+IMFP_scat0bar_cm = 0
+IMFP_scat1bar_cm = 0
+IMFP_scat2bar_cm = 0
+
+delta_E = 2.272540842052914 # Mev
+
+#################
+# Background Ye, T and rho
+#################
+read_rho_T_Ye_from_table = 0
+
+#################
+# Blackhole
+#################
+do_blackhole = 1
+bh_radius = 0.5 # cm
+bh_center_x = 2.5 # cm
+bh_center_y = 2.5 # cm
+bh_center_z = 2.5 # cm
+
+#################
+# Boundary conditions
+#################
+boundary_condition_type = 0
+do_periodic_empty_bc = 1

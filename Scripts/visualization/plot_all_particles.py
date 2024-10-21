@@ -1,12 +1,17 @@
 import numpy as np
 import argparse
 import glob
+import os
+import sys
+importpath = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(importpath)
+sys.path.append(importpath+"/../data_reduction")
 import amrex_plot_tools as amrex
 
 if __name__ == "__main__":
     import pylab as plt
 
-    rkey, ikey = amrex.get_particle_keys()
+    rkey, ikey = amrex.get_particle_keys(2)
 
     t = []
     fee = []

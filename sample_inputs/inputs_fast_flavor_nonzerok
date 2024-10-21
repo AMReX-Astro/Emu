@@ -1,7 +1,11 @@
-simulation_type = 3
-st3_amplitude = 1e-6
-st3_wavelength_fraction_of_domain = 1
+perturbation_type = 1
+perturbation_amplitude = 1e-6
+perturbation_wavelength_cm = 1
 
+# attenuation parameters to time derivative of N due to hamiltonians
+attenuation_hamiltonians = 1
+
+collision_cfl_factor = 1e-3
 cfl_factor = 0.5
 flavor_cfl_factor = 0.5
 max_adaptive_speedup = 0
@@ -18,10 +22,10 @@ Lz = 1.0
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
-nphi_equator = 1
+particle_data_filename = "particle_input.dat"
 
 # Maximum size of each grid in the domain
-max_grid_size = 1000
+max_grid_size = 10
 
 # Number of steps to run
 nsteps = 5000
@@ -79,3 +83,23 @@ alpha2_degrees = 0
 # CP-violating phase in degrees [NO:222 IO:285]
 deltaCP_degrees = 222
 
+#################
+# opacity stuff #
+#################
+IMFP_method = 0
+
+#################
+# Background Ye, T and rho
+#################
+read_rho_T_Ye_from_table = 0
+
+#################
+# Blackhole
+#################
+do_blackhole = 0
+
+#################
+# Boundary conditions
+#################
+boundary_condition_type = 0
+do_periodic_empty_bc = 0

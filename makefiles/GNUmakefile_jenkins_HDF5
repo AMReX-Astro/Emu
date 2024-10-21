@@ -1,0 +1,20 @@
+NUM_FLAVORS = 3
+SHAPE_FACTOR_ORDER = 2
+NUM_MOMENTS = 3
+
+COMP = gnu
+
+DEBUG = FALSE
+
+USE_MPI       = TRUE
+USE_OMP       = FALSE
+USE_ACC       = FALSE
+USE_CUDA      = FALSE
+AMREX_CUDA_ARCH=60
+
+USE_HDF5=TRUE
+HDF5_HOME=/usr/lib/x86_64-linux-gnu/hdf5/openmpi
+
+EMU_HOME = ..
+AMREX_HOME = ../submodules/amrex
+include ../Make.Emu

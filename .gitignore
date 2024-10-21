@@ -31,6 +31,9 @@
 *.out
 *.app
 
+# Jupiter files
+*.ipynb_checkpoints
+
 # Other
 Scripts/symbolic_hermitians/*.pyc
 Scripts/symbolic_hermitians/__pycache__
@@ -40,3 +43,4 @@ Scripts/symbolic_hermitians/__pycache__
 .settings
 .vscode
 Source/generated_files
+*~

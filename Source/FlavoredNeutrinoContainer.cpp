@@ -1,7 +1,5 @@
 #include "FlavoredNeutrinoContainer.H"
 #include "Constants.H"
-#include <sstream>
-#include <string>
 
 using namespace amrex;
 
@@ -82,32 +80,6 @@ UpdateLocationFrom(FlavoredNeutrinoContainer& Ploc)
             if (p_ploc.id() < 0) {
                 p_this.id() = p_ploc.id();
             }
-        });
-    }
-}
-
-void FlavoredNeutrinoContainer::
-Renormalize(const TestParams* parms)
-{
-    BL_PROFILE("FlavoredNeutrinoContainer::Renormalize");
-
-    const int lev = 0;
-
-    const auto dxi = Geom(lev).InvCellSizeArray();
-    const auto plo = Geom(lev).ProbLoArray();
-
-#ifdef _OPENMP
-#pragma omp parallel
-#endif
-    for (FNParIter pti(*this, lev); pti.isValid(); ++pti)
-    {
-        const int np  = pti.numParticles();
-        ParticleType * pstruct = &(pti.GetArrayOfStructs()[0]);
-
-        amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
-            ParticleType& p = pstruct[i];
-            Real sumP, length, error;
-            #include "generated_files/FlavoredNeutrinoContainer.cpp_Renormalize_fill"
         });
     }
 }

@@ -1,14 +1,10 @@
-simulation_type = 4
-st4_theta = 0
-st4_thetabar = 3.14159265359
-st4_phi = 0
-st4_phibar=0
-st4_ndens = 4.891290819e+32
-st4_ndensbar = 4.891290819e+32
-st4_fluxfac = .333333333333333
-st4_fluxfacbar = .333333333333333
-st4_amplitude = 1e-6
+perturbation_type = 0
+perturbation_amplitude = 1e-6
 
+# attenuation parameters to time derivative of N due to hamiltonians
+attenuation_hamiltonians = 1
+
+collision_cfl_factor = 1e-3
 cfl_factor = 0.5
 flavor_cfl_factor = 0.5
 max_adaptive_speedup = 0
@@ -25,13 +21,13 @@ Lz = 64.0
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
-nphi_equator = 16
+particle_data_filename = "particle_input.dat"
 
 # Maximum size of each grid in the domain
 max_grid_size = 16
 
 # Number of steps to run
-nsteps = 5000
+nsteps = 1000
 
 # Simulation end time
 end_time = 5.0e-9
@@ -86,3 +82,23 @@ alpha2_degrees = 0
 # CP-violating phase in degrees [NO:222 IO:285]
 deltaCP_degrees = 222
 
+#################
+# opacity stuff #
+#################
+IMFP_method = 0
+
+#################
+# Background Ye, T and rho
+#################
+read_rho_T_Ye_from_table = 0
+
+#################
+# Blackhole
+#################
+do_blackhole = 0
+
+#################
+# Boundary conditions
+#################
+boundary_condition_type = 0
+do_periodic_empty_bc = 0

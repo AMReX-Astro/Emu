@@ -31,16 +31,49 @@
 #include "Evolve.H"
 #include "Constants.H"
 #include "IO.H"
+#include "DataReducer.H"
+#include "EosTable.H"
+#include "NuLibTable.H"
+#include "ReadInput_RhoTempYe.H"
 
 using namespace amrex;
 
 void evolve_flavor(const TestParams* parms)
 {
-    // Periodicity and Boundary Conditions
-    // Defaults to Periodic in all dimensions
-    Vector<int> is_periodic(AMREX_SPACEDIM, 1);
+    
+    //The BC will be set using parameter file.
+    //Option 0: use periodic BC
+    //Option 1: create particles at boundary.
+
+    const int BC_type = parms->boundary_condition_type; //0=periodic, 1=outer.
+
+    int BC_type_val;
+    enum BC_type_enum {PERIODIC, OUTER};
+
+    if (BC_type == 0){
+        BC_type_val = BC_type_enum::PERIODIC; //use periodic BC
+    } else if (BC_type == 1){
+        BC_type_val = BC_type_enum::OUTER; //use outer BC
+    } else {
+        amrex::Abort("BC_type is incorrect.");
+    }
+
+    int periodic_flag;
+    if (BC_type_val == BC_type_enum::PERIODIC){
+        //1=yes, use periodic
+        periodic_flag = 1;
+    } else if (BC_type_val == BC_type_enum::OUTER){
+        //2=no, do not use periodic.
+        periodic_flag = 0;
+    } else {
+        amrex::Abort("BC_type is incorrect.");
+    }
+
+    Vector<int> is_periodic(AMREX_SPACEDIM, periodic_flag);
+    
     Vector<int> domain_lo_bc_types(AMREX_SPACEDIM, BCType::int_dir);
     Vector<int> domain_hi_bc_types(AMREX_SPACEDIM, BCType::int_dir);
+    
 
     // Define the index space of the domain
 
@@ -79,16 +112,35 @@ void evolve_flavor(const TestParams* parms)
 
     // initialize with NaNs ...
     state.setVal(0.0);
-    state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
-    state.setVal(parms->Ye_in,GIdx::Ye,1);
-    state.setVal(parms->T_in,GIdx::T,1); // MeV
-    state.FillBoundary(geom.periodicity());
 
+    //If reading from table, call function "set_rho_T_Ye". 
+    //Else set rho, T and Ye to constant value throughout the grid using values from parameter file.
+    if (parms->read_rho_T_Ye_from_table){
+        set_rho_T_Ye(state, geom, parms);
+    } else {      
+        state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
+        state.setVal(parms->Ye_in,GIdx::Ye,1);
+        state.setVal(parms->kT_in,GIdx::T,1); // erg
+    }
+
+    state.FillBoundary(geom.periodicity());
+    
     // initialize the grid variable names
     GIdx::Initialize();
 
+    //We only need HDF5 tables if IMFP_method is 2. 
+    if(parms->IMFP_method==2){
+        // read the EoS table
+        amrex::Print() << "Reading EoS table... " << std::endl;
+        ReadEosTable(parms->nuceos_table_name);
+
+        // read the NuLib table
+        amrex::Print() << "Reading NuLib table... " << std::endl;
+        ReadNuLibTable(parms->nulib_table_name);
+    }
+
     // Initialize particles on the domain
-    amrex::Print() << "Initializing particles... ";
+    amrex::Print() << "Initializing particles... " << std::endl;
 
     // We store old-time and new-time data
     FlavoredNeutrinoContainer neutrinos_old(geom, dm, ba);
@@ -116,20 +168,22 @@ void evolve_flavor(const TestParams* parms)
 
     // Deposit particles to grid
     deposit_to_mesh(neutrinos_old, state, geom);
-
+        
     // Write plotfile after initialization
+    DataReducer rd;
     if (not parms->do_restart) {
         // If we have just initialized, then always save the particle data for reference
-        const int write_particles_after_init = 1;
+        const int write_particles_after_init = (parms->write_plot_particles_every>0);
         WritePlotFile(state, neutrinos_old, geom, initial_time, initial_step, write_particles_after_init);
+	rd.InitializeFiles();
     }
 
     amrex::Print() << "Done. " << std::endl;
 
-    TimeIntegrator<FlavoredNeutrinoContainer> integrator(neutrinos_old, neutrinos_new, initial_time, initial_step);
+    TimeIntegrator<FlavoredNeutrinoContainer> integrator(neutrinos_old);
 
     // Create a RHS source function we will integrate
-    auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, const FlavoredNeutrinoContainer& neutrinos, Real time) {
+    auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, const FlavoredNeutrinoContainer& neutrinos, Real /* time */) {
         /* Evaluate the neutrino distribution matrix RHS */
 
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
@@ -145,6 +199,7 @@ void evolve_flavor(const TestParams* parms)
         // B) We only Redistribute the integrator new data at the end of the timestep, not all the RHS data.
         //    Thus, this copy clears the old RHS particles and creates particles in the RHS container corresponding
         //    to the current particles in neutrinos.
+    
         neutrinos_rhs.copyParticles(neutrinos, true);
 
         // Step 3: Interpolate Mesh to construct the neutrino RHS in place
@@ -155,8 +210,31 @@ void evolve_flavor(const TestParams* parms)
     auto post_timestep_fun = [&] () {
         /* Post-timestep function. The integrator new-time data is the latest data available. */
 
-        // Get the latest neutrino data
-        auto& neutrinos = integrator.get_new_data();
+        // Use the latest-time neutrino data
+        auto& neutrinos = neutrinos_new;
+
+        // If do_periodic_empty_bc is one.
+        // Do periodic boundary conditions but initialize particles with N=0 and Nbar=0 at the boundary.
+        // If a black hole is present in the simulation it will set N=0 and Nbar=0 for all particles inside the black hole.
+        if ( parms->do_periodic_empty_bc == 1 ){
+            empty_particles_at_boundary_cells(neutrinos, parms);
+        }
+
+        const Real current_dt = integrator.get_timestep(); //FIXME: FIXME: Pass this to neutrinos.CreateParticlesAtBoundary.
+
+        //FIXME: Think carefully where to call this function.
+        //Create particles at outer boundary 
+        if (BC_type_val == BC_type_enum::OUTER){
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_PLUS>(parms, current_dt);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::I_MINUS>(parms, current_dt);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_PLUS>(parms, current_dt);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::J_MINUS>(parms, current_dt);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_PLUS>(parms, current_dt);
+            neutrinos.CreateParticlesAtBoundary<BoundaryParticleCreationDirection::K_MINUS>(parms, current_dt);
+        }
+
+        //Create particles at inner boundary 
+        //TODO: This needs to be implemented.
 
         // Update the new time particle locations in the domain with their
         // integrated coordinates.
@@ -169,21 +247,20 @@ void evolve_flavor(const TestParams* parms)
         // since Redistribute() applies periodic boundary conditions.
         neutrinos.SyncLocation(Sync::PositionToCoordinate);
 
-        // Renormalize the neutrino state
-        neutrinos.Renormalize(parms);
-
         // Get which step the integrator is on
         const int step = integrator.get_step_number();
         const Real time = integrator.get_time();
 
-        amrex::Print() << "Completed time step: " << step << " t = " << time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;
+    printf("Writing reduced data to file... \n");
+	rd.WriteReducedData0D(geom, state, neutrinos, time, step+1);
+    printf("Done. \n");
 
         run_fom += neutrinos.TotalNumberOfParticles();
 
         // Write the Mesh Data to Plotfile if required
-        if ((step+1) % parms->write_plot_every == 0 ||
-            (parms->write_plot_particles_every > 0 &&
-             (step+1) % parms->write_plot_particles_every == 0)) {
+	bool write_plotfile       = parms->write_plot_every           > 0 && (step+1) % parms->write_plot_every           == 0;
+	bool write_plot_particles = parms->write_plot_particles_every > 0 && (step+1) % parms->write_plot_particles_every == 0;
+        if (write_plotfile || write_plot_particles) {
             // Only include the Particle Data if write_plot_particles_every is satisfied
             int write_plot_particles = parms->write_plot_particles_every > 0 &&
                                        (step+1) % parms->write_plot_particles_every == 0;
@@ -194,8 +271,11 @@ void evolve_flavor(const TestParams* parms)
         // Note: this won't be the same as the new-time grid data
         // because the last deposit_to_mesh call was at either the old time (forward Euler)
         // or the final RK stage, if using Runge-Kutta.
-        const Real dt = compute_dt(geom,parms->cfl_factor,state,neutrinos,parms->flavor_cfl_factor,parms->max_adaptive_speedup);
+        printf("Setting next timestep... \n");
+        const Real dt = compute_dt(geom, state, neutrinos, parms);
         integrator.set_timestep(dt);
+        //printf("current_dt = %g, dt = %g \n", current_dt, dt);
+        printf("Done. \n");
     };
 
     // Attach our RHS and post timestep hooks to the integrator
@@ -203,14 +283,14 @@ void evolve_flavor(const TestParams* parms)
     integrator.set_post_timestep(post_timestep_fun);
 
     // Get a starting timestep
-    const Real starting_dt = compute_dt(geom,parms->cfl_factor,state,neutrinos_old,parms->flavor_cfl_factor, parms->max_adaptive_speedup);
+    const Real starting_dt = compute_dt(geom, state, neutrinos_old, parms);
 
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
 
     Real start_time = amrex::second();
 
-    integrator.integrate(starting_dt, parms->end_time, parms->nsteps);
+    integrator.integrate(neutrinos_old, neutrinos_new, initial_time, starting_dt, parms->end_time, initial_step, parms->nsteps);
 
     Real stop_time = amrex::second();
     Real advance_time = stop_time - start_time;
@@ -228,7 +308,18 @@ void evolve_flavor(const TestParams* parms)
 
 int main(int argc, char* argv[])
 {
+    //In amrex::Initialize, a large amount of GPU device memory is allocated and is kept in The_Arena(). 
+    //The default is 3/4 of the total device memory. 
+    //It can be changed with a ParmParse parameter, amrex.the_arena_init_size, in the unit of bytes. 
+    //The default initial size for other arenas is 8388608 (i.e., 8 MB).
+    ParmParse pp;
+    pp.add("amrex.the_arena_init_size", 8388608);
+    pp.add("amrex.the_managed_arena_init_size", 8388608);
+    pp.add("amrex.the_device_arena_init_size", 8388608);
+    
     amrex::Initialize(argc,argv);
+
+    MFIter::allowMultipleMFIters(true);
 
     // write build information to screen
     if (ParallelDescriptor::IOProcessor()) {
