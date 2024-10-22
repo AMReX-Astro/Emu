@@ -68,40 +68,40 @@ with h5py.File('rho_Ye_T.hdf5', 'w') as hdf:
     hdf.create_dataset("T_Mev", data=T)
     hdf.create_dataset("Ye", data=Ye)
 
-# Read hdf5 file and print the datasets
-with h5py.File('../../../../tables/NuLib_SFHo.h5', 'r') as hdf:
+# # Read hdf5 file and print the datasets
+# with h5py.File('../../../../tables/NuLib_SFHo.h5', 'r') as hdf:
 
-    absortion_opacities = hdf['absorption_opacity'][:]
-    rho_ = hdf['rho_points'][:]
-    T_   = hdf['temp_points'][:]
-    ye_  = hdf['ye_points'][:]
+#     absortion_opacities = hdf['absorption_opacity'][:]
+#     rho_ = hdf['rho_points'][:]
+#     T_   = hdf['temp_points'][:]
+#     ye_  = hdf['ye_points'][:]
 
-    e_absortion_opacities = absortion_opacities[:,0,:,:,:]
-    ebar_absortion_opacities = absortion_opacities[:,1,:,:,:]
-    x_absortion_opacities = absortion_opacities[:,2,:,:,:]
+#     e_absortion_opacities = absortion_opacities[:,0,:,:,:]
+#     ebar_absortion_opacities = absortion_opacities[:,1,:,:,:]
+#     x_absortion_opacities = absortion_opacities[:,2,:,:,:]
     
-    av_absortion_opacities = ( e_absortion_opacities + ebar_absortion_opacities + x_absortion_opacities ) / 3
+#     av_absortion_opacities = ( e_absortion_opacities + ebar_absortion_opacities + x_absortion_opacities ) / 3
     
-    # Define the limits
-    lower_limit = 1e-8
-    upper_limit = 1e+1
+#     # Define the limits
+#     lower_limit = 1e-8
+#     upper_limit = 1e+1
 
-    # Mask the array to only consider values within the specified limits
-    mask = ( (av_absortion_opacities < lower_limit) | (av_absortion_opacities > upper_limit) )
-    av_absortion_opacities[mask] = 0.5
+#     # Mask the array to only consider values within the specified limits
+#     mask = ( (av_absortion_opacities < lower_limit) | (av_absortion_opacities > upper_limit) )
+#     av_absortion_opacities[mask] = 0.5
 
-    # Find the indices of the maximum and minimum values within the masked array
-    max_index = np.unravel_index(np.argmax(av_absortion_opacities, axis=None), av_absortion_opacities.shape)
-    min_index = np.unravel_index(np.argmin(av_absortion_opacities, axis=None), av_absortion_opacities.shape)
+#     # Find the indices of the maximum and minimum values within the masked array
+#     max_index = np.unravel_index(np.argmax(av_absortion_opacities, axis=None), av_absortion_opacities.shape)
+#     min_index = np.unravel_index(np.argmin(av_absortion_opacities, axis=None), av_absortion_opacities.shape)
 
-    print("\n\nAverage all flavor neutrinos")
-    print(f"\nIndex of maximum value: {max_index}")
-    print(f"absorption opacity: {av_absortion_opacities[max_index]:.3e} 1/cm")
-    print(f"ye: {ye_[max_index[1]]:.3e}")
-    print(f"T: {T_[max_index[2]]:.3e} MeV")
-    print(f"rho: {rho_[max_index[3]]:.3e} g/ccm")
-    print(f"\nIndex of minimum value: {min_index}")
-    print(f"absorption opacity: {av_absortion_opacities[min_index]:.3e} 1/cm")
-    print(f"ye: {ye_[min_index[1]]:.3e}")
-    print(f"T: {T_[min_index[2]]:.3e} MeV")
-    print(f"rho: {rho_[min_index[3]]:.3e} g/ccm")
+#     print("\n\nAverage all flavor neutrinos")
+#     print(f"\nIndex of maximum value: {max_index}")
+#     print(f"absorption opacity: {av_absortion_opacities[max_index]:.3e} 1/cm")
+#     print(f"ye: {ye_[max_index[1]]:.3e}")
+#     print(f"T: {T_[max_index[2]]:.3e} MeV")
+#     print(f"rho: {rho_[max_index[3]]:.3e} g/ccm")
+#     print(f"\nIndex of minimum value: {min_index}")
+#     print(f"absorption opacity: {av_absortion_opacities[min_index]:.3e} 1/cm")
+#     print(f"ye: {ye_[min_index[1]]:.3e}")
+#     print(f"T: {T_[min_index[2]]:.3e} MeV")
+#     print(f"rho: {rho_[min_index[3]]:.3e} g/ccm")
