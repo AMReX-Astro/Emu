@@ -251,9 +251,11 @@ void evolve_flavor(const TestParams* parms)
         const int step = integrator.get_step_number();
         const Real time = integrator.get_time();
 
-    printf("Writing reduced data to file... \n");
+    amrex::Print() << "step = " << step+1 << " time = " << time << " s" << std::endl;
+
+    // printf("Writing reduced data to file... \n");
 	rd.WriteReducedData0D(geom, state, neutrinos, time, step+1);
-    printf("Done. \n");
+    // printf("Done. \n");
 
         run_fom += neutrinos.TotalNumberOfParticles();
 
@@ -271,11 +273,11 @@ void evolve_flavor(const TestParams* parms)
         // Note: this won't be the same as the new-time grid data
         // because the last deposit_to_mesh call was at either the old time (forward Euler)
         // or the final RK stage, if using Runge-Kutta.
-        printf("Setting next timestep... \n");
+        // printf("Setting next timestep... \n");
         const Real dt = compute_dt(geom, state, neutrinos, parms);
         integrator.set_timestep(dt);
         //printf("current_dt = %g, dt = %g \n", current_dt, dt);
-        printf("Done. \n");
+        // printf("Done. \n");
     };
 
     // Attach our RHS and post timestep hooks to the integrator
