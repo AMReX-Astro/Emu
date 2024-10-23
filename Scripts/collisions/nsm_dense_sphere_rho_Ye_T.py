@@ -9,11 +9,11 @@ import h5py
 import nsm_grid_generator
 
 # EMU grid parameters
-ncellsx = 100 # scalar, number of cells in x-direction
-ncellsy = 50 # scalar, number of cells in y-direction
-ncellsz = 50 # scalar, number of cells in z-direction
+ncellsx = 7 # scalar, number of cells in x-direction
+ncellsy = 5 # scalar, number of cells in y-direction
+ncellsz = 5 # scalar, number of cells in z-direction
 xmin = 0.0 #cm
-xmax = 100.0e4 #cm
+xmax = 70.0e4 #cm
 ymin = 0.0 #cm
 ymax = 50.0e4 #cm
 zmin = 0.0 #cm
@@ -23,13 +23,13 @@ zmax = 50.0e4 #cm
 centers, mesh = nsm_grid_generator.create_grid([ncellsx, ncellsy, ncellsz], [[xmin, xmax], [ymin, ymax], [zmin, zmax]]) # cm
 
 bh_radius = (xmax - xmin) / 12
-bh_center = [(3/10)*(xmax-xmin), (5/10)*(ymax-ymin), (5/10)*(zmax-zmin)]
+bh_center = [(2.5)*(xmax-xmin)/ncellsx, (5/10)*(ymax-ymin), (5/10)*(zmax-zmin)]
 
 print(f"bh_radius: {bh_radius} cm")
 print(f"bh_center: {bh_center} cm")
 
 emitter_radius = (xmax - xmin) / 12
-emitter_center = [(7/10)*(xmax-xmin), (5/10)*(ymax-ymin), (5/10)*(zmax-zmin)]
+emitter_center = [(4.5)*(xmax-xmin)/ncellsx, (5/10)*(ymax-ymin), (5/10)*(zmax-zmin)]
 
 rho_background = 3.347e+07 # g/ccm
 T_background   = 1.293e+00 # MeV
