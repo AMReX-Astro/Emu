@@ -1,5 +1,5 @@
 '''
-This test script is used to check if the periodic empty boundary conditions are correctly implemented in the EMU code.
+This test script is used to make a movie of the dense emmiter plot and a black hole.
 The periodic empty boundary conditions are implemented in the following way:
 The particles in the boundary cells should be autamatically set to zero.
 Created by Erick Urquilla. University of Tennessee Knoxville, USA.
@@ -9,6 +9,8 @@ import numpy as np
 import h5py
 import glob
 import matplotlib.pyplot as plt  
+import os
+import matplotlib.animation as animation
 
 # physical constants
 clight = 2.99792458e10 # cm/s
@@ -97,29 +99,16 @@ cell_x_faces = np.linspace(0, Lx, ncell[0] + 1)
 cell_y_faces = np.linspace(0, Ly, ncell[1] + 1)
 cell_z_faces = np.linspace(0, Lz, ncell[2] + 1)
 
-all_files_ee_ocupation_in_each_cell = np.zeros((len(directories), *ncell)) # number of particles units
-all_files_eebar_ocupation_in_each_cell = np.zeros((len(directories), *ncell)) # number of particles units
-all_files_uu_ocupation_in_each_cell = np.zeros((len(directories), *ncell)) # number of particles units    
-all_files_uubar_ocupation_in_each_cell = np.zeros((len(directories), *ncell)) # number of particles units    
-time = np.zeros(len(directories)) # seconds
+# Create a directory to store the individual frames
+frames_dir = 'frames'
+os.makedirs(frames_dir, exist_ok=True)
 
-x_pos_bh_cell = []
-y_pos_bh_cell = []
-z_pos_bh_cell = []
+# List to store the filenames of the frames
+frame_files = []
 
-N00_Re_bh_cell = []
-N11_Re_bh_cell = []
-N00_Rebar_bh_cell = []
-N11_Rebar_bh_cell = []
+for idx, dir in enumerate(directories):
 
-# Looping over all directories
-for i in range(len(directories)):
-
-    # Print directory name
-    print(f'{directories[i]}')
-    
-    # Open file
-    with h5py.File(directories[i], 'r') as hf:
+    with h5py.File(dir, 'r') as hf:
         
         N00_Re = np.array(hf['N00_Re']) # number of particles
         N11_Re = np.array(hf['N11_Re']) # number of particles
@@ -132,207 +121,132 @@ for i in range(len(directories)):
         pos_y = np.array(hf['pos_y']) # cm
         pos_z = np.array(hf['pos_z']) # cm
 
-        # Append time
-        time[i] = t[0]
+        d_bh_center = np.sqrt((pos_x - bh_center_x)**2 + (pos_y - bh_center_y)**2 + (pos_z - bh_center_z)**2)
+        mask = d_bh_center < bh_radius
+        if np.all(mask):
+            print(f'There are particles inside the black hole')
+            quit()
 
-        # Shape n_particle x 3 array
-        # The first index runs over the particles
-        # The second index is the cell index in the x direction
-        # The third index is the cell index in the y direction
-        # The fourth index is the cell index in the z direction
-        particle_cell = np.zeros((len(N00_Re),3))
+        mask = (pos_z > 20e4) & (pos_z < 30e4)
+        pos_x_slide = pos_x[mask]
+        pos_y_slide = pos_y[mask]
 
-        # Find index of cell in x direction
-        for j in range(ncell[0]):
-            mask = ( (pos_x > cell_x_faces[j]) & (pos_x < cell_x_faces[j+1]) )
-            particle_cell[:,0][mask] = j
+        N00_Re_slide = N00_Re[mask]
+        N11_Re_slide = N11_Re[mask]
+        N00_Rebar_slide = N00_Rebar[mask]
+        N11_Rebar_slide = N11_Rebar[mask]
 
-        # Find index of cell in y direction        
-        for j in range(ncell[1]):
-            mask = ( (pos_y > cell_y_faces[j]) & (pos_y < cell_y_faces[j+1]) )
-            particle_cell[:,1][mask] = j    
+        mask = N00_Re_slide > 1e48
+        pos_x_slide = pos_x_slide[mask]
+        pos_y_slide = pos_y_slide[mask]
+        N00_Re_slide = N00_Re_slide[mask]
 
-        # Find index of cell in z direction        
-        for j in range(ncell[2]):
-            mask = ( (pos_z > cell_z_faces[j]) & (pos_z < cell_z_faces[j+1]) )
-            particle_cell[:,2][mask] = j
+        mask = (pos_y > 20e4) & (pos_y < 30e4)
+        pos_x_slide_2 = pos_x[mask]
+        pos_z_slide_2 = pos_z[mask]
 
-        # Initialize arrays to store occupation numbers for each cell
-        ee_ocupation_in_each_cell = np.zeros(ncell)
-        eebar_ocupation_in_each_cell = np.zeros(ncell)
-        uu_ocupation_in_each_cell = np.zeros(ncell)
-        uubar_ocupation_in_each_cell = np.zeros(ncell)
+        N00_Re_slide_2 = N00_Re[mask]
 
-        # Loop over all cells in the x, y, and z directions
-        for j in range(ncell[0]):
-            for k in range(ncell[1]):
-                for l in range(ncell[2]):
-                    # Create a mask to identify particles in the current cell (j, k, l)
-                    mask = ( (particle_cell[:,0] == j) & (particle_cell[:,1] == k) & (particle_cell[:,2] == l) )
-                    
-                    # Print the number of particles of type N00 in the current cell
-                    # print(f'Cell ({j},{k},{l}) : N00_Re = {np.sum(N00_Re[mask])}')
-                    # print(f'Cell ({j},{k},{l}) : N00_Rebar = {np.sum(N00_Rebar[mask])}')
-                    # print(f'Cell ({j},{k},{l}) : N11_Re = {np.sum(N11_Re[mask])}')
-                    # print(f'Cell ({j},{k},{l}) : N11_Rebar = {np.sum(N11_Rebar[mask])}')
-                    
-                    # Sum the number of particles of each type in the current cell and store in the respective arrays
-                    ee_ocupation_in_each_cell[j,k,l] = np.sum(N00_Re[mask])
-                    eebar_ocupation_in_each_cell[j,k,l] = np.sum(N00_Rebar[mask])
-                    uu_ocupation_in_each_cell[j,k,l] = np.sum(N11_Re[mask])
-                    uubar_ocupation_in_each_cell[j,k,l] = np.sum(N11_Rebar[mask])
+        mask = N00_Re_slide_2 > 1e48
+        pos_x_slide_2 = pos_x_slide_2[mask]
+        pos_z_slide_2 = pos_z_slide_2[mask]
+        N00_Re_slide_2 = N00_Re_slide_2[mask]
 
-                    if j==2 and k==2 and l==2:
-                        x_pos_bh_cell.append( pos_x[mask] )
-                        y_pos_bh_cell.append( pos_y[mask] )
-                        z_pos_bh_cell.append( pos_z[mask] )
-                        N00_Re_bh_cell.append( N00_Re[mask] )
-                        N11_Re_bh_cell.append( N11_Re[mask] )
-                        N00_Rebar_bh_cell.append( N00_Rebar[mask] )
-                        N11_Rebar_bh_cell.append( N11_Rebar[mask] )
+        # Create a figure with two subplots side by side
+        fig2, (ax2, ax3) = plt.subplots(1, 2, figsize=(14, 7))
 
-        # Store the occupation numbers for the current file in the all_files arrays
-        all_files_ee_ocupation_in_each_cell[i] = ee_ocupation_in_each_cell
-        all_files_eebar_ocupation_in_each_cell[i] = eebar_ocupation_in_each_cell
-        all_files_uu_ocupation_in_each_cell[i] = uu_ocupation_in_each_cell
-        all_files_uubar_ocupation_in_each_cell[i] = uubar_ocupation_in_each_cell
+        # Scatter plot for particles in the x and y direction with N00_Re_slide as color
+        scatter = ax2.scatter(pos_x_slide, pos_y_slide, c=N00_Re_slide, cmap='viridis', marker='o', s=10)
 
-# Theoretical values for the number of particles
-N00_Re_theory = 3.0e+33
-N00_Rebar_theory = 2.5e+33
-N11_Re_theory = 1.0e+33
-N11_Rebar_theory = 1.0e+33
+        # Set the x and y axis labels
+        ax2.set_xlabel(r'$x \, (\mathrm{cm})$')
+        ax2.set_ylabel(r'$y \, (\mathrm{cm})$')
 
-rel_error_max = 0.05
+        # Create a quadratic mesh based on Lx, Ly, and ncell
+        x_mesh, y_mesh = np.meshgrid(np.linspace(0, Lx, ncell[0]+1), np.linspace(0, Ly, ncell[1]+1))
 
-# Print the distance traveled by the particles
-print(f'Distance traveled by particles = {time[-1]*clight} cm')
+        # Plot the mesh grid
+        ax2.plot(x_mesh, y_mesh, color='gray', linestyle='-', linewidth=0.5)
+        ax2.plot(x_mesh.T, y_mesh.T, color='gray', linestyle='-', linewidth=0.5)
 
-# Loop over all cells in the x, y, and z directions
-for i in range(ncell[0]):
-    for j in range(ncell[1]):
-        for k in range(ncell[2]):
+        # Draw a circle representing the black hole
+        circle = plt.Circle((bh_center_x, bh_center_y), bh_radius, color='black', alpha=0.5)
+        ax2.add_patch(circle)
 
-            # Check if the cell is in the second layer next to the boundary
-            if (i > 0) and (i < ncell[0] - 1) and (j > 0) and (j < ncell[1] - 1) and (k > 0) and (k < ncell[2] - 1):
+        # Set the aspect of the plot to be equal
+        ax2.set_aspect('equal', adjustable='box')
 
-                # Calculate the relative errors for the central cells
-                if i == 2 and j == 2 and k == 2:
+        # Set the limits of the plot to match the domain size
+        ax2.set_xlim([0, Lx])
+        ax2.set_ylim([0, Ly])
 
-                    # Calculate the distance of particles from the black hole center
-                    particle_distance_from_bh_center = np.sqrt(
-                        (np.array(x_pos_bh_cell[-1]) - bh_center_x)**2 + 
-                        (np.array(y_pos_bh_cell[-1]) - bh_center_y)**2 + 
-                        (np.array(z_pos_bh_cell[-1]) - bh_center_z)**2
-                    )  # cm
+        # Add a colorbar to the plot
+        cbar = plt.colorbar(scatter, ax=ax2)
+        cbar.set_label('$N_{00}$')
 
-                    # Mask for particles inside the black hole
-                    mask = particle_distance_from_bh_center < bh_radius
-                    particle_ins_bh = np.sum(N00_Re_bh_cell[-1][mask])
-                    
-                    # Mask for particles outside the black hole
-                    mask = particle_distance_from_bh_center > bh_radius
-                    particle_out_bh = np.sum(N00_Re_bh_cell[-1][mask])
+        # Set the limits for the colorbar
+        scatter.set_clim(vmin=1e48, vmax=2e50)
 
-                    # Print the number of particles inside and outside the black hole
-                    # print(f'3BoundaryLayer: Cell ({i},{j},{k}) : Number of particles inside the black hole = {particle_ins_bh}')
-                    # print(f'3BoundaryLayer: Cell ({i},{j},{k}) : Number of particles outside the black hole = {particle_out_bh}')
+        # Set the title of the plot with the first value of the time array
+        ax2.set_title(r'$t = {:.2e} \, \mathrm{{s}}$'.format(t[0]))
 
-                else:
-                   
-                    # Calculate relative errors for ee and eebar occupation numbers
-                    rel_error_ee    = np.abs(all_files_ee_ocupation_in_each_cell[-1, i, j, k] - N00_Re_theory) / N00_Re_theory
-                    rel_error_eebar = np.abs(all_files_eebar_ocupation_in_each_cell[-1, i, j, k] - N00_Rebar_theory) / N00_Rebar_theory
+        # Apply custom settings to the plot
+        leg2 = ax2.legend(framealpha=0.0, ncol=1, fontsize=10)
+        apply_custom_settings(ax2, leg2, False)
 
-                    # Print the relative errors for ee and eebar occupation numbers
-                    # print(f"2BoundaryLayer: Cell ({i},{j},{k}) : relative error in ee = {rel_error_ee}")
-                    # print(f"2BoundaryLayer: Cell ({i},{j},{k}) : relative error in eebar = {rel_error_eebar}")
+        # Scatter plot for particles in the x and z direction with N00_Re_slide_2 as color
+        scatter2 = ax3.scatter(pos_x_slide_2, pos_z_slide_2, c=N00_Re_slide_2, cmap='viridis', marker='o', s=10)
 
-            else:
+        # Set the x and z axis labels
+        ax3.set_xlabel(r'$x \, (\mathrm{cm})$')
+        ax3.set_ylabel(r'$z \, (\mathrm{cm})$')
 
-                # Calculate the relative errors for the boundary cells
-                rel_error_ee    = np.abs(all_files_ee_ocupation_in_each_cell[-1, i, j, k])
-                rel_error_eebar = np.abs(all_files_eebar_ocupation_in_each_cell[-1, i, j, k])
+        # Create a quadratic mesh based on Lx, Lz, and ncell
+        x_mesh_2, z_mesh_2 = np.meshgrid(np.linspace(0, Lx, ncell[0]+1), np.linspace(0, Lz, ncell[2]+1))
 
-                # Print the relative errors for the boundary cells
-                # print(f"1BoundaryLayer: Cell ({i},{j},{k}) : relative error in ee = {rel_error_ee}")
-                # print(f"1BoundaryLayer: Cell ({i},{j},{k}) : relative error in eebar = {rel_error_eebar}")
+        # Plot the mesh grid
+        ax3.plot(x_mesh_2, z_mesh_2, color='gray', linestyle='-', linewidth=0.5)
+        ax3.plot(x_mesh_2.T, z_mesh_2.T, color='gray', linestyle='-', linewidth=0.5)
 
-##########################################################################################
-# PLOTTING
-##########################################################################################
+        # Draw a circle representing the black hole
+        circle2 = plt.Circle((bh_center_x, bh_center_z), bh_radius, color='black', alpha=0.5)
+        ax3.add_patch(circle2)
 
-# Create a figure and axis for plotting electron occupation numbers
-fig1, ax1 = plt.subplots()
+        # Set the aspect of the plot to be equal
+        ax3.set_aspect('equal', adjustable='box')
 
-# Loop over all cells in the x, y, and z directions
-a = 1
-b = 1
+        # Set the limits of the plot to match the domain size
+        ax3.set_xlim([0, Lx])
+        ax3.set_ylim([0, Lz])
 
-for i in range(ncell[0]):
-    for j in range(ncell[1]):
-        for k in range(ncell[2]):
+        # Add a colorbar to the plot
+        cbar2 = plt.colorbar(scatter2, ax=ax3)
+        cbar2.set_label('$N_{00}$')
 
-            # Check if the cell is in the second layer next to the boundary
-            if (i > 0) and (i < ncell[0] - 1) and (j > 0) and (j < ncell[1] - 1) and (k > 0) and (k < ncell[2] - 1):
+        # Set the limits for the colorbar
+        scatter2.set_clim(vmin=1e48, vmax=2e50)
 
-                # Plot bh cell cells
-                if i == 2 and j == 2 and k == 2:
-                    
-                    particle_ins_bh_time = []
-                    particle_out_bh_time = []
+        # Set the title of the plot with the first value of the time array
+        ax3.set_title(r'$t = {:.2e} \, \mathrm{{s}}$'.format(t[0]))
 
-                    for l in range(len(directories)):
+        # Apply custom settings to the plot
+        leg3 = ax3.legend(framealpha=0.0, ncol=1, fontsize=10)
+        apply_custom_settings(ax3, leg3, False)
 
-                        # Calculate the distance of particles from the black hole center
-                        particle_distance_from_bh_center = np.sqrt(
-                            (np.array(x_pos_bh_cell[l]) - bh_center_x)**2 + 
-                            (np.array(y_pos_bh_cell[l]) - bh_center_y)**2 + 
-                            (np.array(z_pos_bh_cell[l]) - bh_center_z)**2
-                        )  # cm
+        # Adjust layout and save the figure
+        plt.tight_layout()
+        frame_filename = os.path.join(frames_dir, f'frame_{idx:04d}.png')
+        fig2.savefig(frame_filename, bbox_inches='tight')
+        frame_files.append(frame_filename)
+        plt.close(fig2)
 
-                        # Mask for particles inside the black hole
-                        mask = particle_distance_from_bh_center < bh_radius
-                        particle_ins_bh_time.append(np.sum(N00_Re_bh_cell[l][mask]))
-                        
-                        # Mask for particles outside the black hole
-                        mask = particle_distance_from_bh_center > bh_radius
-                        particle_out_bh_time.append(np.sum(N00_Re_bh_cell[l][mask]))
+# Create a movie from the frames
+fig, ax = plt.subplots()
+def update(frame_filename):
+    img = plt.imread(frame_filename)
+    ax.imshow(img)
+    ax.axis('off')
 
-                    ax1.plot(time, particle_ins_bh_time, label=f'Particles inside BH', linestyle='solid', color='black')
-                    ax1.plot(time, particle_out_bh_time, label=f"Particles ouside BH but in BH's cell", linestyle='solid', color='gray')
-
-                elif i == 4 and j == 2 and k == 2:
-                    # Plot emitter cells
-                    ax1.plot(time, all_files_ee_ocupation_in_each_cell[:, i, j, k], label=f"Emitter cell", linestyle='solid', color='blue')
-                else:
-                    # Plot cells that are not bh, emitter and boundary
-                    if a == 1:
-                        ax1.plot(time, all_files_ee_ocupation_in_each_cell[:, i, j, k], linestyle='dashed', color='orange', label=f"Low density cells")
-                        a = 0
-                    else:
-                        ax1.plot(time, all_files_ee_ocupation_in_each_cell[:, i, j, k], linestyle='dashed', color='orange')
-            else:              
-                # Plot boundary cells
-                if b == 1:
-                    ax1.plot(time, all_files_ee_ocupation_in_each_cell[:, i, j, k], linestyle='dotted', color='red', label=f"Boundary cells")
-                    b = 0
-                else:
-                    ax1.plot(time, all_files_ee_ocupation_in_each_cell[:, i, j, k], linestyle='dotted', color='red')
-
-# Set the x and y axis labels
-ax1.set_xlabel('time ($s$)')
-ax1.set_ylabel('$N_{ee}$')
-
-# # Set y-axis to logarithmic scale
-# ax1.set_yscale('log')
-
-# Add a legend to the plot
-leg1 = ax1.legend(framealpha=0.0, ncol=1, fontsize=10)
-
-# Apply custom settings to the plot
-apply_custom_settings(ax1, leg1, False)
-
-# Adjust layout and save the figure
-plt.tight_layout()
-fig1.savefig('electron_occupation.pdf', bbox_inches='tight')
+ani = animation.FuncAnimation(fig, update, frames=frame_files, repeat=False)
+ani.save('movie.mp4', writer='ffmpeg', fps=2)
+plt.close(fig)
