@@ -26,6 +26,8 @@ namespace GIdx
     void Initialize();
 }
 
+amrex::Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, MultiFab& mf_IMFP, const TestParams* parms);
+
 amrex::Real compute_dt(const amrex::Geometry& geom, const MultiFab& state, const FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
 
 void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, amrex::MultiFab& state, const amrex::Geometry& geom);

@@ -285,6 +285,13 @@ void evolve_flavor(const TestParams* parms)
     // Get a starting timestep
     const Real starting_dt = compute_dt(geom, state, neutrinos_old, parms);
 
+    //------------------------------------------------------------------------------
+    //FIXME: FIXME: Define a local multifab inside compute_max_IMFP function itself. Get rid of this here.
+    MultiFab mf_IMFP(ba, dm, 1, ngrow); 
+
+    Real max_IMFP = compute_max_IMFP(geom, state, mf_IMFP, parms);
+    //------------------------------------------------------------------------------
+
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
 
