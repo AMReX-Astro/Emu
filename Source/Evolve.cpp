@@ -26,6 +26,142 @@ namespace GIdx
     }
 }
 
+
+template <typename T> static inline AMREX_GPU_DEVICE T max3(T a, T b, T c) {
+  using std::max;
+  return max(max(a, b), c);
+}
+
+template <typename T> static inline AMREX_GPU_DEVICE T max4(T a, T b, T c, T d) {
+  using std::max;
+  return max(max(a, b), max(c, d));
+}
+
+template <typename T> static inline AMREX_GPU_DEVICE T max6(T a, T b, T c, T d, T e, T f) {
+  using std::max;
+  return max(max3(a, b, c), max3(d, e, f));
+}
+
+
+Real compute_max_IMFP_from_mf (MultiFab const& mf_IMFP)
+{
+    auto const& ma = mf_IMFP.const_arrays();
+    return ParReduce(TypeList<ReduceOpMax>{}, TypeList<Real>{},
+                     mf_IMFP, IntVect(0), // zero ghost cells
+           [=] AMREX_GPU_DEVICE (int box_no, int i, int j, int k)
+               noexcept -> GpuTuple<Real>
+           {
+               Array4<Real const> const& a = ma[box_no];
+               return { a(i,j,k) };
+           });
+}
+
+
+Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, MultiFab& mf_IMFP, const TestParams* parms){
+    //Create NuLib table object
+    using namespace nulib_private;
+    NuLib_tabulated NuLib_tabulated_obj(alltables_nulib, logrho_nulib, logtemp_nulib, 
+                                        yes_nulib, helperVarsReal_nulib, helperVarsInt_nulib);
+
+    int start_comp = GIdx::rho;
+    int num_comps = 3; //We only want to get GIdx::rho, GIdx::T and GIdx::Ye
+    MultiFab rho_T_ye_state(state, amrex::make_alias, start_comp, num_comps);
+
+    for(amrex::MFIter mfi(rho_T_ye_state); mfi.isValid(); ++mfi){
+        const amrex::Box& bx = mfi.validbox();
+        const amrex::Array4<amrex::Real>& mf_array = rho_T_ye_state.array(mfi);
+        const amrex::Array4<amrex::Real>& mf_IMFP_array = mf_IMFP.array(mfi);
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k){
+
+            //Get the values from the input arrays
+            const Real rho = mf_array(i, j, k, GIdx::rho - start_comp); // g/ccm
+            const Real temperature = mf_array(i, j, k, GIdx::T - start_comp); //erg
+            const Real Ye = mf_array(i, j, k, GIdx::Ye - start_comp);
+
+            double max_IMFP_abs_local = -10000; //Some random garbage value
+
+            if(parms->IMFP_method==2){
+                Real IMFP_abs[NUM_FLAVORS][NUM_FLAVORS]; // Neutrino inverse mean free path matrix for nucleon absortion: diag( k_e , k_u , k_t ) 
+                Real IMFP_absbar[NUM_FLAVORS][NUM_FLAVORS]; // Antineutrino inverse mean free path matrix for nucleon absortion: diag( kbar_e , kbar_u , kbar_t )
+
+                //--------------------- Values from NuLib table ---------------------------
+                int keyerr, anyerr;
+                double *helperVarsReal_nulib = NuLib_tabulated_obj.get_helperVarsReal_nulib();
+                int idx_group = NULIBVAR(idx_group);
+                //FIXME: specify neutrino energy using the following:
+                // double neutrino_energy = p.rdata(PIdx::pupt); locate energy bin using this. 
+
+                //idx_species = {0 for electron neutrino, 1 for electron antineutrino and 2 for all other heavier ones}
+                //electron neutrino: [0, 0]
+                int idx_species = 0;  
+                double absorption_opacity, scattering_opacity;
+                NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
+                                                  keyerr, anyerr, idx_species, idx_group);
+                if (anyerr) assert(0);
+    #ifdef DEBUG_INTERPOLATION_TABLES            
+                printf("(Evolve.cpp) absorption_opacity[e] interpolated = %17.6g\n", absorption_opacity);
+                printf("(Evolve.cpp) scattering_opacity[e] interpolated = %17.6g\n", scattering_opacity);
+    #endif            
+                
+                IMFP_abs[0][0] = absorption_opacity; 
+
+                //electron antineutrino: [1, 0]
+                idx_species = 1;  
+                NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
+                                                  keyerr, anyerr, idx_species, idx_group);
+                if (anyerr) assert(0);
+
+    #ifdef DEBUG_INTERPOLATION_TABLES            
+                printf("(Evolve.cpp) absorption_opacity[a] interpolated = %17.6g\n", absorption_opacity);
+                printf("(Evolve.cpp) scattering_opacity[a] interpolated = %17.6g\n", scattering_opacity);
+    #endif            
+
+                IMFP_absbar[0][0] = absorption_opacity; 
+
+                //heavier ones: muon neutrino[0,1], muon antineutruino[1,1], tau neutrino[0,2], tau antineutrino[1,2]
+                idx_species = 2;  
+                NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
+                                                  keyerr, anyerr, idx_species, idx_group);
+                if (anyerr) assert(0);
+
+    #ifdef DEBUG_INTERPOLATION_TABLES            
+                printf("(Evolve.cpp) absorption_opacity[x] interpolated = %17.6g\n", absorption_opacity);
+                printf("(Evolve.cpp) scattering_opacity[x] interpolated = %17.6g\n", scattering_opacity);
+    #endif
+
+                for (int i=1; i<NUM_FLAVORS; ++i) { //0->neutrino or 1->antineutrino
+                    IMFP_abs[i][i]     = absorption_opacity ; // ... fix it ... 
+                    IMFP_absbar[i][i]  = absorption_opacity ; // ... fix it ... 
+                }
+
+                //Calculate max of all IMFP_abs and IMFP_absbar.
+                if (NUM_FLAVORS == 2) {
+                    max_IMFP_abs_local = max4(IMFP_abs[0][0], IMFP_abs[1][1], 
+                                        IMFP_absbar[0][0], IMFP_absbar[1][1]);
+                } else if (NUM_FLAVORS == 3) {
+                    max_IMFP_abs_local = max6(IMFP_abs[0][0], IMFP_abs[1][1], IMFP_abs[2][2], 
+                                        IMFP_absbar[0][0], IMFP_absbar[1][1], IMFP_absbar[2][2]);   
+                }
+                //-----------------------------------------------------------------------
+            } else {
+
+                assert(0); //Only works for IMFP_method=2
+            }
+
+            mf_IMFP_array(i, j, k) = max_IMFP_abs_local;
+    
+        });
+    }
+
+    //Calculate the reduction of mf_IMFP to calculate the max IMFP value.
+    //FIXME: FIXME: Do we need additional reduction over MPI ranks?
+    Real max_IMFP = compute_max_IMFP_from_mf(mf_IMFP);
+
+    return max_IMFP; 
+}
+
+
 Real compute_dt(const Geometry& geom, const MultiFab& state, const FlavoredNeutrinoContainer& /* neutrinos */, const TestParams* parms)
 {
     AMREX_ASSERT(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0 || parms->collision_cfl_factor > 0.0);
