@@ -26,7 +26,8 @@ namespace GIdx
     void Initialize();
 }
 
-amrex::Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, MultiFab& mf_IMFP, const TestParams* parms);
+amrex::Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestParams* parms,
+                      const amrex::BoxArray& ba, const amrex::DistributionMapping& dm, const IntVect& ngrow);
 
 amrex::Real compute_dt(const amrex::Geometry& geom, const MultiFab& state, const FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
 
