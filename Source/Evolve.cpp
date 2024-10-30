@@ -57,8 +57,7 @@ Real compute_max_IMFP_from_mf (MultiFab const& mf_IMFP)
 }
 
 
-Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestParams* parms,
-                      const amrex::BoxArray& ba, const amrex::DistributionMapping& dm, const IntVect& ngrow){
+Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestParams* parms){
     //Create NuLib table object
     using namespace nulib_private;
     NuLib_tabulated NuLib_tabulated_obj(alltables_nulib, logrho_nulib, logtemp_nulib, 
@@ -68,7 +67,8 @@ Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestPar
     int num_comps = 3; //We only want to get GIdx::rho, GIdx::T and GIdx::Ye
     MultiFab rho_T_ye_state(state, amrex::make_alias, start_comp, num_comps);
 
-    MultiFab mf_IMFP(ba, dm, 1, ngrow); //ncomp=1
+    const amrex::IntVect ngrow(0, 0, 0); //We do not need ghost cells for IMFP
+    MultiFab mf_IMFP(state.boxarray, state.DistributionMap(), 1, ngrow); //ncomp=1
 
     for(amrex::MFIter mfi(rho_T_ye_state); mfi.isValid(); ++mfi){
         const amrex::Box& bx = mfi.validbox();
