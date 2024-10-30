@@ -57,7 +57,8 @@ Real compute_max_IMFP_from_mf (MultiFab const& mf_IMFP)
 }
 
 
-Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, MultiFab& mf_IMFP, const TestParams* parms){
+Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestParams* parms,
+                      const amrex::BoxArray& ba, const amrex::DistributionMapping& dm, const IntVect& ngrow){
     //Create NuLib table object
     using namespace nulib_private;
     NuLib_tabulated NuLib_tabulated_obj(alltables_nulib, logrho_nulib, logtemp_nulib, 
@@ -66,6 +67,8 @@ Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, MultiFab& mf_
     int start_comp = GIdx::rho;
     int num_comps = 3; //We only want to get GIdx::rho, GIdx::T and GIdx::Ye
     MultiFab rho_T_ye_state(state, amrex::make_alias, start_comp, num_comps);
+
+    MultiFab mf_IMFP(ba, dm, 1, ngrow); //ncomp=1
 
     for(amrex::MFIter mfi(rho_T_ye_state); mfi.isValid(); ++mfi){
         const amrex::Box& bx = mfi.validbox();
@@ -76,8 +79,10 @@ Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, MultiFab& mf_
 
             //Get the values from the input arrays
             const Real rho = mf_array(i, j, k, GIdx::rho - start_comp); // g/ccm
-            const Real temperature = mf_array(i, j, k, GIdx::T - start_comp); //erg
+            const Real T_grid = mf_array(i, j, k, GIdx::T - start_comp); //erg
             const Real Ye = mf_array(i, j, k, GIdx::Ye - start_comp);
+
+            const Real temperature = T_grid/ (1e6*CGSUnitsConst::eV); //convert temperature from erg to MeV.
 
             double max_IMFP_abs_local = -10000; //Some random garbage value
 
