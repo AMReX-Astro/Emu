@@ -285,6 +285,12 @@ void evolve_flavor(const TestParams* parms)
     // Get a starting timestep
     const Real starting_dt = compute_dt(geom, state, neutrinos_old, parms);
 
+     //------------------------------------------------------------------------------
+     Real max_IMFP = compute_max_IMFP(geom, state, parms);
+     printf("max_IMFP = %g\n", max_IMFP); //TODO: Remove comment
+     //------------------------------------------------------------------------------
+    
+
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
 
