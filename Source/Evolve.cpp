@@ -229,13 +229,13 @@ Real compute_dt(const Geometry& geom, const MultiFab& state, const FlavoredNeutr
             // Calculate dt_flavor_absorption
             dt_flavor_absorption = (1 / (PhysConst::c * max_IMFP_abs)) * parms->collision_cfl_factor;
 
-        } else if (parms->IMFP_method == 2) {
+        } /*else if (parms->IMFP_method == 2) {
             double max_IMFP_abs = compute_max_IMFP(geom, state, parms);
             printf("max_IMFP_abs = %g\n", max_IMFP_abs); //TODO: Remove comment
             // Calculate dt_flavor_absorption
             dt_flavor_absorption = (1 / (PhysConst::c * max_IMFP_abs)) * parms->collision_cfl_factor;
 
-        }
+        }*/
 
         // pick the appropriate timestep
         dt_flavor = min(dt_flavor_stupid, dt_flavor_adaptive, dt_flavor_absorption);
