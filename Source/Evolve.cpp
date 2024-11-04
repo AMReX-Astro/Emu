@@ -243,7 +243,7 @@ Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestPar
 }
 
 
-Real compute_dt(const Geometry& geom, const MultiFab& state, const FlavoredNeutrinoContainer& /* neutrinos */, const TestParams* parms)
+Real compute_dt(const Geometry& geom, const MultiFab& state, const FlavoredNeutrinoContainer& /* neutrinos */, const TestParams* parms, Real maximum_IMFP_abs)
 {
     AMREX_ASSERT(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0 || parms->collision_cfl_factor > 0.0);
 
@@ -294,16 +294,9 @@ Real compute_dt(const Geometry& geom, const MultiFab& state, const FlavoredNeutr
             dt_flavor_stupid = PhysConst::hbar / Vmax_stupid * parms->flavor_cfl_factor / parms->attenuation_hamiltonians;
         }
 
-        if (parms->IMFP_method == 1) {
-            // Use the IMFPs from the input file and find the maximum absorption IMFP
-            double max_IMFP_abs = std::numeric_limits<double>::lowest(); // Initialize max to lowest possible value
-            for (int i = 0; i < 2; ++i) {
-                for (int j = 0; j < NUM_FLAVORS; ++j) {
-                    max_IMFP_abs = std::max(max_IMFP_abs, parms->IMFP_abs[i][j]);
-                }
-            }
+        if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
             // Calculate dt_flavor_absorption
-            dt_flavor_absorption = (1 / (PhysConst::c * max_IMFP_abs)) * parms->collision_cfl_factor;
+            dt_flavor_absorption = (1 / (PhysConst::c * maximum_IMFP_abs)) * parms->collision_cfl_factor;
 
         } /*else if (parms->IMFP_method == 2) {
             double max_IMFP_abs = compute_max_IMFP(geom, state, parms);

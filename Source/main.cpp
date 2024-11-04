@@ -140,8 +140,11 @@ void evolve_flavor(const TestParams* parms)
     }
    
     // Compute the maximum Inverse Mean Free Path (IMFP) in the domain
-    Real max_IMFP = compute_max_IMFP(geom, state, parms);
-    printf("max_IMFP = %g\n", max_IMFP); //TODO: Remove comment
+    Real max_IMFP_absortion = 0.0; 
+    if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
+        max_IMFP_absortion = compute_max_IMFP(geom, state, parms);
+        printf("max_IMFP_absortion = %g\n", max_IMFP_absortion); //TODO: Remove comment
+    }
     
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... " << std::endl;
@@ -276,7 +279,7 @@ void evolve_flavor(const TestParams* parms)
         // because the last deposit_to_mesh call was at either the old time (forward Euler)
         // or the final RK stage, if using Runge-Kutta.
         printf("Setting next timestep... \n");
-        const Real dt = compute_dt(geom, state, neutrinos, parms);
+        const Real dt = compute_dt(geom, state, neutrinos, parms, max_IMFP_absortion);
         integrator.set_timestep(dt);
         //printf("current_dt = %g, dt = %g \n", current_dt, dt);
         printf("Done. \n");
@@ -287,7 +290,7 @@ void evolve_flavor(const TestParams* parms)
     integrator.set_post_timestep(post_timestep_fun);
 
     // Get a starting timestep
-    const Real starting_dt = compute_dt(geom, state, neutrinos_old, parms);
+    const Real starting_dt = compute_dt(geom, state, neutrinos_old, parms, max_IMFP_absortion);
 
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
