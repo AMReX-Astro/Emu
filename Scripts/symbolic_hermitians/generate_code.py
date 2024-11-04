@@ -539,7 +539,7 @@ if __name__ == "__main__":
     for t in tails:
 
         # Define n and nbar matrix
-        N = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")") # Derivative of the neutrino number matrix
+        N = HermitianMatrix(args.N, "mf_array(i\,j\,k\,GIdx::N{}{}_{}"+t+"-start_comp)")
         # Assign the trace of n and nbar to a variable
         trace_N = N.trace()
         code.append(["trace_n"+t+" = " + sympy.cxxcode(sympy.simplify(trace_N)) + ";"])
