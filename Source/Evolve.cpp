@@ -242,8 +242,26 @@ Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestPar
     }
 }
 
-
-Real compute_dt(const Geometry& geom, const MultiFab& state, const FlavoredNeutrinoContainer& /* neutrinos */, const TestParams* parms, Real maximum_IMFP_abs)
+/**
+ * @brief Computes the time step for the simulation based on various CFL factors.
+ *
+ * This function calculates the time step for the simulation by considering the
+ * CFL factors for translation, flavor, and collision. It uses the maximum IMFP
+ * value to determine the collision time step and combines it with the translation
+ * and flavor time steps to find the minimum time step for the simulation.
+ *
+ * @param geom The geometry of the simulation domain.
+ * @param state The MultiFab containing the state variables.
+ * @param neutrinos The container holding the flavored neutrinos.
+ * @param maximum_IMFP_abs The maximum inverse mean free path for absorption.
+ * @return The computed time step for the simulation.
+ */
+Real compute_dt(
+    const Geometry& geom,
+    const MultiFab& state,
+    const FlavoredNeutrinoContainer&,
+    const TestParams* parms,
+    Real maximum_IMFP_abs)
 {
     AMREX_ASSERT(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0 || parms->collision_cfl_factor > 0.0);
 
@@ -251,7 +269,7 @@ Real compute_dt(const Geometry& geom, const MultiFab& state, const FlavoredNeutr
     const auto dxi = geom.CellSizeArray();
     Real dt_translation = 0.0;
     if (parms->cfl_factor > 0.0) {
-        dt_translation = std::min(std::min(dxi[0],dxi[1]), dxi[2]) / PhysConst::c * parms->cfl_factor;
+        dt_translation = std::min(std::min(dxi[0], dxi[1]), dxi[2]) / PhysConst::c * parms->cfl_factor;
     }
 
     Real dt_flavor = 0.0;
@@ -265,7 +283,7 @@ Real compute_dt(const Geometry& geom, const MultiFab& state, const FlavoredNeutr
         using ReduceTuple = typename decltype(reduce_data)::Type;
         for (MFIter mfi(state); mfi.isValid(); ++mfi) {
             const Box& bx = mfi.fabbox();
-	        auto const& fab = state.array(mfi);
+            auto const& fab = state.array(mfi);
             reduce_op.eval(bx, reduce_data,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
             {
@@ -273,7 +291,7 @@ Real compute_dt(const Geometry& geom, const MultiFab& state, const FlavoredNeutr
                 #include "generated_files/Evolve.cpp_compute_dt_fill"
                 return {V_adaptive, V_stupid};
             });
-    	}
+        }
 
         // extract the reduced values from the combined reduced data structure
         auto rv = reduce_data.value();
@@ -298,17 +316,11 @@ Real compute_dt(const Geometry& geom, const MultiFab& state, const FlavoredNeutr
             // Calculate dt_flavor_absorption
             dt_flavor_absorption = (1 / (PhysConst::c * maximum_IMFP_abs)) * parms->collision_cfl_factor;
 
-        } /*else if (parms->IMFP_method == 2) {
-            double max_IMFP_abs = compute_max_IMFP(geom, state, parms);
-            printf("max_IMFP_abs = %g\n", max_IMFP_abs); //TODO: Remove comment
-            // Calculate dt_flavor_absorption
-            dt_flavor_absorption = (1 / (PhysConst::c * max_IMFP_abs)) * parms->collision_cfl_factor;
-
-        }*/
+        }
 
         // pick the appropriate timestep
         dt_flavor = min(dt_flavor_stupid, dt_flavor_adaptive, dt_flavor_absorption);
-        if(parms->max_adaptive_speedup>1) {
+        if(parms->max_adaptive_speedup > 1) {
             dt_flavor = min(dt_flavor_stupid*parms->max_adaptive_speedup, dt_flavor_adaptive, dt_flavor_absorption);
         }
     }
@@ -321,7 +333,7 @@ Real compute_dt(const Geometry& geom, const MultiFab& state, const FlavoredNeutr
     } else if (dt_flavor != 0.0) {
         dt = dt_flavor;
     } else {
-        amrex::Error("Timestep selection failed, try using both cfl_factor and flavor_cfl_factor");
+        amrex::Error("Timestep selection failed, both dt_translation and dt_flavor are zero. Try using both cfl_factor and flavor_cfl_factor.");
     }
 
     return dt;
