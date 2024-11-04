@@ -198,8 +198,7 @@ void ReadNuLibTable(const std::string nulib_table_name) {
     for(int i=0;i<ntemp_;i++) {
       logtemp_nulib[i] = log(logtemp_nulib[i]);
     }
-
-    //FIXME: FIXME: Make an assert that rho, temp and Ye are uniformally spaced. 
+ 
 
   //allocate memory for helperVars
   helperVarsReal_nulib = myManagedArena.allocate(24);
@@ -213,6 +212,37 @@ void ReadNuLibTable(const std::string nulib_table_name) {
   NULIBVAR_INT(nye) = nye_;
   NULIBVAR_INT(nspecies) = nspecies_;
   NULIBVAR_INT(ngroup) = ngroup_;
+
+  //Ensure that temp is uniformly spaced
+  double dtemp_old, dtemp;
+  dtemp = logtemp_nulib[1] - logtemp_nulib[0];
+  for (int i=1; i<ntemp_-1; i++) {
+    dtemp_old = dtemp;
+    dtemp = logtemp_nulib[i+1] - logtemp_nulib[i];
+    //printf("i = %d, dtemp = %f\n", i, dtemp);
+    assert( (dtemp - dtemp_old) < 1e-10);
+  }
+
+  //Ensure that rho is uniformly spaced
+  double drho_old, drho;
+  drho = logrho_nulib[1] - logrho_nulib[0];
+  for (int i=1; i<nrho_-1; i++) {
+    drho_old = drho;
+    drho = logrho_nulib[i+1] - logrho_nulib[i];
+    //printf("i = %d, drho = %f\n", i, drho);
+    assert( (drho - drho_old) < 1e-10);
+  }
+
+  //Ensure that Ye is uniformly spaced
+  double dye_old, dye;
+  dye = yes_nulib[1] - yes_nulib[0];
+  for (int i=1; i<nye_-1; i++) {
+    dye_old = dye;
+    dye = yes_nulib[i+1] - yes_nulib[i];
+    //printf("i = %d, dye = %f\n", i, dye);
+    assert( (dye - dye_old) < 1e-10);
+  }
+
 
   // set up some vars
   NULIBVAR(dtemp)  = (logtemp_nulib[ntemp_-1] - logtemp_nulib[0]) / (1.0*(ntemp_-1));
