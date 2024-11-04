@@ -138,7 +138,11 @@ void evolve_flavor(const TestParams* parms)
         amrex::Print() << "Reading NuLib table... " << std::endl;
         ReadNuLibTable(parms->nulib_table_name);
     }
-
+   
+    // Compute the maximum Inverse Mean Free Path (IMFP) in the domain
+    Real max_IMFP = compute_max_IMFP(geom, state, parms);
+    printf("max_IMFP = %g\n", max_IMFP); //TODO: Remove comment
+    
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... " << std::endl;
 
@@ -251,15 +255,15 @@ void evolve_flavor(const TestParams* parms)
         const int step = integrator.get_step_number();
         const Real time = integrator.get_time();
 
-    printf("Writing reduced data to file... \n");
-	rd.WriteReducedData0D(geom, state, neutrinos, time, step+1);
-    printf("Done. \n");
+        printf("Writing reduced data to file... \n");
+        rd.WriteReducedData0D(geom, state, neutrinos, time, step+1);
+        printf("Done. \n");
 
         run_fom += neutrinos.TotalNumberOfParticles();
 
         // Write the Mesh Data to Plotfile if required
-	bool write_plotfile       = parms->write_plot_every           > 0 && (step+1) % parms->write_plot_every           == 0;
-	bool write_plot_particles = parms->write_plot_particles_every > 0 && (step+1) % parms->write_plot_particles_every == 0;
+        bool write_plotfile       = parms->write_plot_every           > 0 && (step+1) % parms->write_plot_every           == 0;
+        bool write_plot_particles = parms->write_plot_particles_every > 0 && (step+1) % parms->write_plot_particles_every == 0;
         if (write_plotfile || write_plot_particles) {
             // Only include the Particle Data if write_plot_particles_every is satisfied
             int write_plot_particles = parms->write_plot_particles_every > 0 &&
@@ -284,12 +288,6 @@ void evolve_flavor(const TestParams* parms)
 
     // Get a starting timestep
     const Real starting_dt = compute_dt(geom, state, neutrinos_old, parms);
-
-     //------------------------------------------------------------------------------
-     Real max_IMFP = compute_max_IMFP(geom, state, parms);
-     printf("max_IMFP = %g\n", max_IMFP); //TODO: Remove comment
-     //------------------------------------------------------------------------------
-    
 
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
