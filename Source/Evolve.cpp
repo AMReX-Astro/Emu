@@ -263,6 +263,40 @@ Real compute_dt(
     const TestParams* parms,
     Real maximum_IMFP_abs)
 {
+
+    // ##################################################################
+
+
+    // Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestParams* parms){
+
+    int start_comp = GIdx::rho;
+    int num_comps = 3; //We only want to get GIdx::rho, GIdx::T and GIdx::Ye
+    MultiFab rho_T_ye_state(state, amrex::make_alias, start_comp, num_comps);
+
+    const amrex::IntVect ngrow(0, 0, 0); //We do not need ghost cells for IMFP
+    MultiFab multifab_trace_n(state.boxarray, state.DistributionMap(), 1, ngrow); //ncomp=1
+
+    for(amrex::MFIter mfi(rho_T_ye_state); mfi.isValid(); ++mfi){
+
+        const amrex::Box& bx = mfi.validbox();
+        const amrex::Array4<amrex::Real>& mf_array = rho_T_ye_state.array(mfi);
+        const amrex::Array4<amrex::Real>& multifab_trace_n_array = multifab_trace_n.array(mfi);
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k){
+
+            Real trace_n = 0.0;
+            Real trace_nbar = 0.0;
+            #include "generated_files/Evolve.cpp_compute_trace"
+            multifab_trace_n_array(i, j, k) = max(trace_n, trace_nbar);
+
+        });
+    }
+
+    Real max_trace = compute_max_IMFP_from_mf(multifab_trace_n);
+    printf("max_trace = %g\n", max_trace);
+
+    // ##################################################################
+
     AMREX_ASSERT(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0 || parms->collision_cfl_factor > 0.0);
 
 	// translation part of timestep limit
