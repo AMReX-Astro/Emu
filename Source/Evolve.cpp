@@ -167,7 +167,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
     NuLib_tabulated NuLib_tabulated_obj(alltables_nulib, logrho_nulib, logtemp_nulib, 
                                         yes_nulib, helperVarsReal_nulib, helperVarsInt_nulib);
 
-    
+    NuLib_energies NuLib_energies_obj(energy_bottom, energy_top);
 
 //The following commented loop can be used to print information about each particle in case debug is needed in future.
 /*    
@@ -344,9 +344,25 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
 
             //--------------------- Values from NuLib table ---------------------------
             double *helperVarsReal_nulib = NuLib_tabulated_obj.get_helperVarsReal_nulib();
-            int idx_group = NULIBVAR(idx_group);
-            //FIXME: specify neutrino energy using the following:
-            // double neutrino_energy = p.rdata(PIdx::pupt); locate energy bin using this. 
+            int *helperVarsInt_nulib = NuLib_tabulated_obj.get_helperVarsInt_nulib();
+
+            double *energy_bottom = NuLib_energies_obj.get_energy_bottom_nulib();
+            double *energy_top = NuLib_energies_obj.get_energy_top_nulib();
+
+            double neutrino_energy_erg = p.rdata(PIdx::pupt); //locate energy bin using this. 
+            double neutrino_energy_MeV = neutrino_energy_erg / (1e6*CGSUnitsConst::eV);
+
+            //Decide which energy bin to use (i.e. determine 'idx_group')
+            int idx_group = -1;
+            for (int i=0; i<NULIBVAR_INT(ngroup); i++){
+                if(neutrino_energy_MeV >= energy_bottom[i] && neutrino_energy_MeV <= energy_top[i]){
+                    idx_group = i;
+                    break;
+                }
+            }
+
+            if(idx_group == -1) assert(0); //abort if energy bin cannot be found.
+            //printf("Given neutrino energy = %f, selected bin index = %d\n", neutrino_energy_MeV, idx_group);
 
             //idx_species = {0 for electron neutrino, 1 for electron antineutrino and 2 for all other heavier ones}
             //electron neutrino: [0, 0]

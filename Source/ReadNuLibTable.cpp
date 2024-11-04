@@ -46,6 +46,8 @@ namespace nulib_private {
   double *yes_nulib;
   double *species_nulib; //TODO: Get rid of this?
   double *group_nulib;
+  double *energy_bottom;
+  double *energy_top;
   double *helperVarsReal_nulib;
   int *helperVarsInt_nulib;
 }
@@ -135,8 +137,6 @@ void ReadNuLibTable(const std::string nulib_table_name) {
     }
 
     //Allocate memory for energy bin determination.
-    double *energy_bottom;
-    double *energy_top;
     if (!(energy_bottom = myManagedArena.allocate(ngroup_) )) {
         printf("(ReadNuLibTable.cpp) Cannot allocate memory for NuLib table"); 
         assert(0);
@@ -201,32 +201,12 @@ void ReadNuLibTable(const std::string nulib_table_name) {
 
     //FIXME: FIXME: Make an assert that rho, temp and Ye are uniformally spaced. 
 
-    //---------------------------- Energy bin determeination --------------------------------
-    //FIXME: FIXME: Set from parameter file.
-    double given_energy = 55.0; //TODO: Is this log or linear in table?
-    int idx_group_;
-
-    //Decide which energy bin to use (i.e. determine 'idx_group')
-    for (int i=0; i<ngroup_; i++){
-        if(given_energy >= energy_bottom[i] && given_energy <= energy_top[i]){
-            idx_group_ = i;
-            break;
-        }
-    }
-
-    printf("Given neutrino energy = %f, selected bin index = %d\n", given_energy, idx_group);
-    myManagedArena.deallocate(energy_bottom, ngroup_);
-    myManagedArena.deallocate(energy_top, ngroup_);
-    //----------------------------------------------------------------------------------------------
-
   //allocate memory for helperVars
   helperVarsReal_nulib = myManagedArena.allocate(24);
   helperVarsInt_nulib = myManagedArena_Int.allocate(5);
   
   const double temp0_ = exp(logtemp_nulib[0]);
   const double temp1_ = exp(logtemp_nulib[1]);
-
-  NULIBVAR(idx_group) = idx_group_;
 
   NULIBVAR_INT(nrho) = nrho_;
   NULIBVAR_INT(ntemp) = ntemp_;
