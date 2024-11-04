@@ -26,23 +26,78 @@ namespace GIdx
     }
 }
 
-
+/**
+ * @brief Computes the maximum of three values.
+ *
+ * This function takes three arguments of the same type and returns the maximum value among them.
+ * It uses the standard library's `max` function to perform the comparison.
+ *
+ * @tparam T The type of the input values. Must support comparison via the `max` function.
+ * @param a The first value to compare.
+ * @param b The second value to compare.
+ * @param c The third value to compare.
+ * @return The maximum value among the three input values.
+ */
 template <typename T> static inline AMREX_GPU_DEVICE T max3(T a, T b, T c) {
   using std::max;
   return max(max(a, b), c);
 }
 
+/**
+ * @brief Computes the maximum of four values.
+ *
+ * This function takes four values of the same type and returns the maximum
+ * value among them. It uses the standard library's `max` function to compare
+ * the values.
+ *
+ * @tparam T The type of the values to be compared. This type must support
+ *           comparison using the `max` function.
+ * @param a The first value to compare.
+ * @param b The second value to compare.
+ * @param c The third value to compare.
+ * @param d The fourth value to compare.
+ * @return The maximum value among the four input values.
+ */
 template <typename T> static inline AMREX_GPU_DEVICE T max4(T a, T b, T c, T d) {
   using std::max;
   return max(max(a, b), max(c, d));
 }
 
+/**
+ * @brief Computes the maximum value among six given values.
+ *
+ * This function takes six input values of type T and returns the maximum
+ * value among them. It utilizes the `max3` function to find the maximum
+ * of three values and then compares the results of two such calls to
+ * determine the overall maximum.
+ *
+ * @tparam T The type of the input values. It should support comparison
+ * operations.
+ * @param a The first value to compare.
+ * @param b The second value to compare.
+ * @param c The third value to compare.
+ * @param d The fourth value to compare.
+ * @param e The fifth value to compare.
+ * @param f The sixth value to compare.
+ * @return The maximum value among the six input values.
+ */
 template <typename T> static inline AMREX_GPU_DEVICE T max6(T a, T b, T c, T d, T e, T f) {
   using std::max;
   return max(max3(a, b, c), max3(d, e, f));
 }
 
-
+/**
+ * @brief Computes the maximum Inverse Mean Free Path (IMFP) from a given MultiFab.
+ *
+ * This function performs a parallel reduction to find the maximum value of the 
+ * Inverse Mean Free Path (IMFP) stored in the provided MultiFab. It uses the 
+ * ParReduce function with a maximum reduction operation.
+ *
+ * @param mf_IMFP The MultiFab containing the IMFP values. It is assumed that 
+ *                the MultiFab is properly initialized and contains valid data.
+ * 
+ * @return The maximum IMFP value found in the MultiFab.
+ */
 Real compute_max_IMFP_from_mf (MultiFab const& mf_IMFP)
 {
     auto const& ma = mf_IMFP.const_arrays();
