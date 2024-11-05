@@ -28,6 +28,24 @@ namespace GIdx
 
 MultiFab compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestParams* parms);
 
+/**
+ * @brief Computes the time step size for the simulation based on various CFL factors and conditions.
+ *
+ * This function calculates the time step size considering translation, flavor, and collision CFL factors.
+ * It ensures that the time step is limited by the smallest of these factors to maintain stability.
+ *
+ * @param geom The geometry of the simulation domain.
+ * @param state The state MultiFab containing the simulation data.
+ * @param neutrinos The container for flavored neutrinos.
+ * @param parms Pointer to the structure containing simulation parameters.
+ * @param maximum_IMFP_abs The MultiFab containing the maximum inverse mean free path for absorption.
+ *
+ * @return The computed time step size.
+ *
+ * @note At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.
+ * @note The function handles periodic boundary conditions and black hole regions if specified in the parameters.
+ * @note The function performs a reduction operation to find the minimum time step across all cells and MPI ranks.
+ */
 amrex::Real compute_dt(const amrex::Geometry& geom, const MultiFab& state, const FlavoredNeutrinoContainer& neutrinos, const TestParams* parms, const MultiFab& maximum_IMFP_abs);
 
 void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, amrex::MultiFab& state, const amrex::Geometry& geom);
