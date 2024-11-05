@@ -401,12 +401,13 @@ Real compute_dt(
 
         // ##################################################################
 
-        ReduceOps<ReduceOpMin,ReduceOpMin> reduce_op;
-        ReduceData<Real,Real> reduce_data(reduce_op);
+        ReduceOps< ReduceOpMin, ReduceOpMin, ReduceOpMin > reduce_op;
+        ReduceData< Real , Real, Real > reduce_data(reduce_op);
         using ReduceTuple = typename decltype(reduce_data)::Type;
         for (MFIter mfi(state); mfi.isValid(); ++mfi) {
             const Box& bx = mfi.fabbox();
             auto const& fab = state.array(mfi);
+            auto const& multifab_IMFP = maximum_IMFP_abs.array(mfi);
             Real V_vac_max = FlavoredNeutrinoContainer::Vvac_max;
             reduce_op.eval(bx, reduce_data,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
@@ -424,8 +425,9 @@ Real compute_dt(
 
                 Real dt_adaptive = min_trace / V_adaptive;
                 Real dt_stupid   = min_trace / V_stupid;
+                Real dt_absorption = min_trace / multifab_IMFP(i, j, k);
 
-                return {dt_adaptive, dt_stupid};
+                return {dt_adaptive, dt_stupid, dt_absorption};
             });
         }
 
@@ -433,10 +435,12 @@ Real compute_dt(
         auto rv = reduce_data.value();
         Real min_dt_adaptive = amrex::get<0>(rv);
         Real min_dt_stupid   = amrex::get<1>(rv);
+        Real min_dt_absorption   = amrex::get<2>(rv);
 
         // reduce across MPI ranks
         ParallelDescriptor::ReduceRealMin(min_dt_adaptive);
         ParallelDescriptor::ReduceRealMin(min_dt_stupid  );
+        ParallelDescriptor::ReduceRealMin(min_dt_absorption);
 
         // ##################################################################
 
@@ -453,8 +457,7 @@ Real compute_dt(
 
         if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
             // Calculate dt_flavor_absorption
-            dt_flavor_absorption = (1 / (PhysConst::c * 1.0 )) * parms->collision_cfl_factor;
-            dt_flavor_absorption *= 1.0;
+            dt_flavor_absorption = ( min_dt_absorption / PhysConst::c ) * parms->collision_cfl_factor;
         }
 
         // pick the appropriate timestep
