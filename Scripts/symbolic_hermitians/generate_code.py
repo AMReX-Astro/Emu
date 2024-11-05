@@ -546,3 +546,22 @@ if __name__ == "__main__":
 
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_compute_trace"))
+
+    #========================#
+    # Evolve.cpp_compute_trace_2 #
+    #========================#
+
+    # List that will store the code for setting the derivative of the matrices N and Nbar to zero.
+    code = []
+
+    # Looping over neutrinos(tail: no tail) and antineutrinos(tail: bar)
+    for t in tails:
+
+        # Define n and nbar matrix
+        N = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::N{}{}_{}"+t+")")
+        # Assign the trace of n and nbar to a variable
+        trace_N = N.trace()
+        code.append(["trace_n"+t+" = " + sympy.cxxcode(sympy.simplify(trace_N)) + ";"])
+
+    code = [line for sublist in code for line in sublist]
+    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_compute_trace_2"))
