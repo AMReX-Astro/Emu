@@ -307,6 +307,37 @@ Real compute_dt(
 
             Real trace_n = 0.0;
             Real trace_nbar = 0.0;
+
+            if (parms->do_periodic_empty_bc == 1) {
+
+                if (i == 0 || i == geom.Domain().length(0) - 1 ||
+                    j == 0 || j == geom.Domain().length(1) - 1 ||
+                    k == 0 || k == geom.Domain().length(2) - 1) {
+
+                    multifab_trace_n_array(i, j, k) = std::numeric_limits<Real>::max();
+                    return;
+
+                }
+            }
+
+            if (parms->do_black_hole == 1) {
+
+                double cell_size_x = parms->Lx / parms->ncell[0];
+                double cell_size_y = parms->Ly / parms->ncell[1];
+                double cell_size_z = parms->Lz / parms->ncell[2];
+
+                double x_cell_center = (i + 0.5) * cell_size_x;
+                double y_cell_center = (j + 0.5) * cell_size_y;
+                double z_cell_center = (k + 0.5) * cell_size_z;
+
+                distance_from_bh = sqrt(pow(x_cell_center - parms->bh_x, 2) + pow(y_cell_center - parms->bh_y, 2) + pow(z_cell_center - parms->bh_z, 2));
+
+                if (distance_from_bh < parms->bh_radius) {
+                    multifab_trace_n_array(i, j, k) = std::numeric_limits<Real>::max();
+                    return;
+                }
+            }
+
             #include "generated_files/Evolve.cpp_compute_trace"
             multifab_trace_n_array(i, j, k) = max(trace_n, trace_nbar);
 
@@ -344,6 +375,9 @@ Real compute_dt(
             {
                 Real V_adaptive=0, V_adaptive2=0, V_stupid=0;
                 #include "generated_files/Evolve.cpp_compute_dt_fill"
+                #include "generated_files/Evolve.cpp_compute_trace"
+                V_adaptive *= max(trace_n, trace_nbar)
+                V_stupid   *= max(trace_n, trace_nbar)
                 return {V_adaptive, V_stupid};
             });
         }
@@ -365,8 +399,6 @@ Real compute_dt(
         if (parms->attenuation_hamiltonians != 0) {
             dt_flavor_adaptive = PhysConst::hbar / Vmax_adaptive * parms->flavor_cfl_factor / parms->attenuation_hamiltonians;
             dt_flavor_stupid = PhysConst::hbar / Vmax_stupid * parms->flavor_cfl_factor / parms->attenuation_hamiltonians;
-            dt_flavor_adaptive *= min_trace;
-            dt_flavor_stupid *= min_trace;
         }
 
         if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
