@@ -365,6 +365,9 @@ Real compute_dt(
                 // Calculate the minimum trace between neutrinos and antineutrinos
                 Real min_trace = min(trace_n, trace_nbar);
 
+                // Ensure that the minimum trace is not zero
+                if (min_trace == 0.0) min_trace = 1.0;
+
                 Real dt_adaptive = min_trace / std::abs(V_adaptive);     // dt = min(trN,trNbar)/|V_adaptive|
                 Real dt_stupid   = min_trace / std::abs(V_stupid);       // dt = min(trN,trNbar)/|V_stupid|
                 Real dt_absorption = min_trace / multifab_IMFP(i, j, k); // dt = 1/IMFP
