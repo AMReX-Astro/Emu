@@ -310,9 +310,9 @@ Real compute_dt(
 
             if (parms->do_periodic_empty_bc == 1) {
 
-                if (i == 0 || i == geom.Domain().length(0) - 1 ||
-                    j == 0 || j == geom.Domain().length(1) - 1 ||
-                    k == 0 || k == geom.Domain().length(2) - 1) {
+                if (i == 0 || i == parms->ncell[0] - 1 ||
+                    j == 0 || j == parms->ncell[1] - 1 ||
+                    k == 0 || k == parms->ncell[2] - 1) {
 
                     multifab_trace_n_array(i, j, k) = std::numeric_limits<Real>::max();
                     return;
@@ -320,7 +320,7 @@ Real compute_dt(
                 }
             }
 
-            if (parms->do_black_hole == 1) {
+            if (parms->do_blackhole == 1) {
 
                 double cell_size_x = parms->Lx / parms->ncell[0];
                 double cell_size_y = parms->Ly / parms->ncell[1];
@@ -330,7 +330,7 @@ Real compute_dt(
                 double y_cell_center = (j + 0.5) * cell_size_y;
                 double z_cell_center = (k + 0.5) * cell_size_z;
 
-                distance_from_bh = sqrt(pow(x_cell_center - parms->bh_x, 2) + pow(y_cell_center - parms->bh_y, 2) + pow(z_cell_center - parms->bh_z, 2));
+                Real distance_from_bh = sqrt(pow(x_cell_center - parms->bh_center_x, 2) + pow(y_cell_center - parms->bh_center_y, 2) + pow(z_cell_center - parms->bh_center_z, 2));
 
                 if (distance_from_bh < parms->bh_radius) {
                     multifab_trace_n_array(i, j, k) = std::numeric_limits<Real>::max();
@@ -364,32 +364,77 @@ Real compute_dt(
         // the potential from matter and neutrinos
         // compute "effective" potential (ergs) that produces characteristic timescale
         // when multiplied by hbar
-        ReduceOps<ReduceOpMax,ReduceOpMax> reduce_op;
+        // ReduceOps<ReduceOpMax,ReduceOpMax> reduce_op;
+        // ReduceData<Real,Real> reduce_data(reduce_op);
+        // using ReduceTuple = typename decltype(reduce_data)::Type;
+        // for (MFIter mfi(state); mfi.isValid(); ++mfi) {
+        //     const Box& bx = mfi.fabbox();
+        //     auto const& fab = state.array(mfi);
+        //     reduce_op.eval(bx, reduce_data,
+        //     [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
+        //     {
+        //         Real V_adaptive=0, V_adaptive2=0, V_stupid=0;
+        //         #include "generated_files/Evolve.cpp_compute_dt_fill"
+
+        //         Real trace_n = 0.0, trace_nbar = 0.0;
+        //         #include "generated_files/Evolve.cpp_compute_trace"
+
+        //         V_adaptive *= max(trace_n, trace_nbar);
+        //         V_stupid   *= max(trace_n, trace_nbar);
+        //         return {V_adaptive, V_stupid};
+        //     });
+        // }
+
+        // // extract the reduced values from the combined reduced data structure
+        // auto rv = reduce_data.value();
+        // Real Vmax_adaptive = amrex::get<0>(rv) + FlavoredNeutrinoContainer::Vvac_max;
+        // Real Vmax_stupid   = amrex::get<1>(rv) + FlavoredNeutrinoContainer::Vvac_max;
+
+        // // reduce across MPI ranks
+        // ParallelDescriptor::ReduceRealMax(Vmax_adaptive);
+        // ParallelDescriptor::ReduceRealMax(Vmax_stupid  );
+
+        // ##################################################################
+
+        ReduceOps<ReduceOpMin,ReduceOpMin> reduce_op;
         ReduceData<Real,Real> reduce_data(reduce_op);
         using ReduceTuple = typename decltype(reduce_data)::Type;
         for (MFIter mfi(state); mfi.isValid(); ++mfi) {
             const Box& bx = mfi.fabbox();
             auto const& fab = state.array(mfi);
+            Real V_vac_max = FlavoredNeutrinoContainer::Vvac_max;
             reduce_op.eval(bx, reduce_data,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
             {
                 Real V_adaptive=0, V_adaptive2=0, V_stupid=0;
                 #include "generated_files/Evolve.cpp_compute_dt_fill"
-                #include "generated_files/Evolve.cpp_compute_trace"
-                V_adaptive *= max(trace_n, trace_nbar)
-                V_stupid   *= max(trace_n, trace_nbar)
-                return {V_adaptive, V_stupid};
+
+                V_adaptive += V_vac_max;
+                V_stupid   += V_vac_max;
+                
+                Real trace_n = 0.0, trace_nbar = 0.0;
+                #include "generated_files/Evolve.cpp_compute_trace_2"
+
+                Real min_trace = min(trace_n, trace_nbar);
+
+                Real dt_adaptive = min_trace / V_adaptive;
+                Real dt_stupid   = min_trace / V_stupid;
+
+                return {dt_adaptive, dt_stupid};
             });
         }
 
         // extract the reduced values from the combined reduced data structure
         auto rv = reduce_data.value();
-        Real Vmax_adaptive = amrex::get<0>(rv) + FlavoredNeutrinoContainer::Vvac_max;
-        Real Vmax_stupid   = amrex::get<1>(rv) + FlavoredNeutrinoContainer::Vvac_max;
+        Real min_dt_adaptive = amrex::get<0>(rv);
+        Real min_dt_stupid   = amrex::get<1>(rv);
 
         // reduce across MPI ranks
-        ParallelDescriptor::ReduceRealMax(Vmax_adaptive);
-        ParallelDescriptor::ReduceRealMax(Vmax_stupid  );
+        ParallelDescriptor::ReduceRealMin(min_dt_adaptive);
+        ParallelDescriptor::ReduceRealMin(min_dt_stupid  );
+
+        // ##################################################################
+
 
         // define the dt associated with each method
         Real dt_flavor_adaptive = std::numeric_limits<Real>::max();
@@ -397,8 +442,8 @@ Real compute_dt(
         Real dt_flavor_absorption = std::numeric_limits<Real>::max(); // Initialize with infinity
 
         if (parms->attenuation_hamiltonians != 0) {
-            dt_flavor_adaptive = PhysConst::hbar / Vmax_adaptive * parms->flavor_cfl_factor / parms->attenuation_hamiltonians;
-            dt_flavor_stupid = PhysConst::hbar / Vmax_stupid * parms->flavor_cfl_factor / parms->attenuation_hamiltonians;
+            dt_flavor_adaptive = PhysConst::hbar * min_dt_adaptive * parms->flavor_cfl_factor / parms->attenuation_hamiltonians;
+            dt_flavor_stupid   = PhysConst::hbar * min_dt_stupid   * parms->flavor_cfl_factor / parms->attenuation_hamiltonians;
         }
 
         if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
