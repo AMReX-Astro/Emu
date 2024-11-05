@@ -138,7 +138,7 @@ Real compute_min_of_multifab (MultiFab const& multifab)
 
 MultiFab compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestParams* parms){
     
-    const amrex::IntVect ngrow(0, 0, 0); //We do not need ghost cells for IMFP
+    const amrex::IntVect ngrow(0, 0, 0); // We do not need ghost cells for IMFP
     MultiFab mf_IMFP(state.boxarray, state.DistributionMap(), 1, ngrow); //ncomp=1
     mf_IMFP.setVal(0.0);
 
@@ -188,87 +188,80 @@ MultiFab compute_max_IMFP(const Geometry& geom, const MultiFab& state, const Tes
 
                 const Real temperature = T_grid/ (1e6*CGSUnitsConst::eV); //convert temperature from erg to MeV.
 
-                double max_IMFP_abs_local = -10000; //Some random garbage value
+                double max_IMFP_abs_local = std::numeric_limits<double>::lowest(); // Initialize to the lowest possible value
 
-                if(parms->IMFP_method==2){
-                    Real IMFP_abs[NUM_FLAVORS][NUM_FLAVORS]; // Neutrino inverse mean free path matrix for nucleon absortion: diag( k_e , k_u , k_t ) 
-                    Real IMFP_absbar[NUM_FLAVORS][NUM_FLAVORS]; // Antineutrino inverse mean free path matrix for nucleon absortion: diag( kbar_e , kbar_u , kbar_t )
+                Real IMFP_abs[NUM_FLAVORS][NUM_FLAVORS]; // Neutrino inverse mean free path matrix for nucleon absortion: diag( k_e , k_u , k_t ) 
+                Real IMFP_absbar[NUM_FLAVORS][NUM_FLAVORS]; // Antineutrino inverse mean free path matrix for nucleon absortion: diag( kbar_e , kbar_u , kbar_t )
 
-                    //--------------------- Values from NuLib table ---------------------------
-                    int keyerr, anyerr;
-                    double *helperVarsReal_nulib = NuLib_tabulated_obj.get_helperVarsReal_nulib();
-                    int idx_group = NULIBVAR(idx_group);
-                    //FIXME: specify neutrino energy using the following:
-                    // double neutrino_energy = p.rdata(PIdx::pupt); locate energy bin using this. 
+                //--------------------- Values from NuLib table ---------------------------
+                int keyerr, anyerr;
+                double *helperVarsReal_nulib = NuLib_tabulated_obj.get_helperVarsReal_nulib();
+                int idx_group = NULIBVAR(idx_group);
+                //FIXME: specify neutrino energy using the following:
+                // double neutrino_energy = p.rdata(PIdx::pupt); locate energy bin using this. 
 
-                    //idx_species = {0 for electron neutrino, 1 for electron antineutrino and 2 for all other heavier ones}
-                    //electron neutrino: [0, 0]
-                    int idx_species = 0;  
-                    double absorption_opacity, scattering_opacity;
-                    NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
-                                                    keyerr, anyerr, idx_species, idx_group);
-                    if (anyerr) assert(0);
-        #ifdef DEBUG_INTERPOLATION_TABLES            
-                    printf("(Evolve.cpp) absorption_opacity[e] interpolated = %17.6g\n", absorption_opacity);
-                    printf("(Evolve.cpp) scattering_opacity[e] interpolated = %17.6g\n", scattering_opacity);
-        #endif            
-                    
-                    IMFP_abs[0][0] = absorption_opacity; 
+                //idx_species = {0 for electron neutrino, 1 for electron antineutrino and 2 for all other heavier ones}
+                //electron neutrino: [0, 0]
+                int idx_species = 0;  
+                double absorption_opacity, scattering_opacity;
+                NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
+                                                keyerr, anyerr, idx_species, idx_group);
+                if (anyerr) assert(0);
+                            
+                #ifdef DEBUG_INTERPOLATION_TABLES            
+                            printf("(Evolve.cpp) absorption_opacity[e] interpolated = %17.6g\n", absorption_opacity);
+                            printf("(Evolve.cpp) scattering_opacity[e] interpolated = %17.6g\n", scattering_opacity);
+                #endif            
+                
+                IMFP_abs[0][0] = absorption_opacity; 
 
-                    //electron antineutrino: [1, 0]
-                    idx_species = 1;  
-                    NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
-                                                    keyerr, anyerr, idx_species, idx_group);
-                    if (anyerr) assert(0);
+                //electron antineutrino: [1, 0]
+                idx_species = 1;
+                NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity,
+                                                keyerr, anyerr, idx_species, idx_group);
+                if (anyerr) assert(0);
 
-        #ifdef DEBUG_INTERPOLATION_TABLES            
-                    printf("(Evolve.cpp) absorption_opacity[a] interpolated = %17.6g\n", absorption_opacity);
-                    printf("(Evolve.cpp) scattering_opacity[a] interpolated = %17.6g\n", scattering_opacity);
-        #endif            
+                #ifdef DEBUG_INTERPOLATION_TABLES
+                            printf("(Evolve.cpp) absorption_opacity[a] interpolated = %17.6g\n", absorption_opacity);
+                            printf("(Evolve.cpp) scattering_opacity[a] interpolated = %17.6g\n", scattering_opacity);
+                #endif
 
-                    IMFP_absbar[0][0] = absorption_opacity; 
+                IMFP_absbar[0][0] = absorption_opacity;
 
-                    //heavier ones: muon neutrino[0,1], muon antineutruino[1,1], tau neutrino[0,2], tau antineutrino[1,2]
-                    idx_species = 2;  
-                    NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
-                                                    keyerr, anyerr, idx_species, idx_group);
-                    if (anyerr) assert(0);
+                //heavier ones: muon neutrino[0,1], muon antineutruino[1,1], tau neutrino[0,2], tau antineutrino[1,2]
+                idx_species = 2;
+                NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity,
+                                                keyerr, anyerr, idx_species, idx_group);
+                if (anyerr) assert(0);
 
-        #ifdef DEBUG_INTERPOLATION_TABLES            
-                    printf("(Evolve.cpp) absorption_opacity[x] interpolated = %17.6g\n", absorption_opacity);
-                    printf("(Evolve.cpp) scattering_opacity[x] interpolated = %17.6g\n", scattering_opacity);
-        #endif
+                #ifdef DEBUG_INTERPOLATION_TABLES
+                            printf("(Evolve.cpp) absorption_opacity[x] interpolated = %17.6g\n", absorption_opacity);
+                            printf("(Evolve.cpp) scattering_opacity[x] interpolated = %17.6g\n", scattering_opacity);
+                #endif
 
-                    for (int i=1; i<NUM_FLAVORS; ++i) { //0->neutrino or 1->antineutrino
-                        IMFP_abs[i][i]     = absorption_opacity ; // ... fix it ... 
-                        IMFP_absbar[i][i]  = absorption_opacity ; // ... fix it ... 
-                    }
-
-                    //Calculate max of all IMFP_abs and IMFP_absbar.
-                    if (NUM_FLAVORS == 2) {
-                        max_IMFP_abs_local = max4(IMFP_abs[0][0], IMFP_abs[1][1], 
-                                            IMFP_absbar[0][0], IMFP_absbar[1][1]);
-                    } else if (NUM_FLAVORS == 3) {
-                        max_IMFP_abs_local = max6(IMFP_abs[0][0], IMFP_abs[1][1], IMFP_abs[2][2], 
-                                            IMFP_absbar[0][0], IMFP_absbar[1][1], IMFP_absbar[2][2]);   
-                    }
-                    //-----------------------------------------------------------------------
-                } else {
-
-                    assert(0); //Only works for IMFP_method=2
+                for (int i=1; i<NUM_FLAVORS; ++i) { //0->neutrino or 1->antineutrino
+                    IMFP_abs[i][i]     = absorption_opacity ; // ... fix it ...
+                    IMFP_absbar[i][i]  = absorption_opacity ; // ... fix it ...
                 }
 
+                //Calculate max of all IMFP_abs and IMFP_absbar.
+                if (NUM_FLAVORS == 2) {
+                    max_IMFP_abs_local = max4(IMFP_abs[0][0], IMFP_abs[1][1],
+                                        IMFP_absbar[0][0], IMFP_absbar[1][1]);
+                } else if (NUM_FLAVORS == 3) {
+                    max_IMFP_abs_local = max6(IMFP_abs[0][0], IMFP_abs[1][1], IMFP_abs[2][2],
+                                        IMFP_absbar[0][0], IMFP_absbar[1][1], IMFP_absbar[2][2]);
+                }
+                //-----------------------------------------------------------------------
                 mf_IMFP_array(i, j, k) = max_IMFP_abs_local;
-        
             });
         }
-        
+        // Return the MultiFab with the maximum IMFP values
+        return mf_IMFP;
+    } else {
+        // If IMFP_method is not 1 or 2, return a MultiFab with zeros
         return mf_IMFP;
     }
-
-    // If IMFP_method is not 1 or 2, return a MultiFab with zeros
-    return mf_IMFP;
-
 }
 
 /**
