@@ -360,7 +360,7 @@ Real compute_dt(
                 V_stupid   += V_vac_max;
                 
                 Real trace_n = 0.0, trace_nbar = 0.0;
-                #include "generated_files/Evolve.cpp_compute_trace_2"
+                #include "generated_files/Evolve.cpp_compute_trace"
 
                 // Calculate the minimum trace between neutrinos and antineutrinos
                 Real min_trace = min(trace_n, trace_nbar);
