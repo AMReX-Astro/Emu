@@ -136,7 +136,11 @@ Real compute_min_of_multifab (MultiFab const& multifab)
            });
 }
 
-Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestParams* parms){
+MultiFab compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestParams* parms){
+    
+    const amrex::IntVect ngrow(0, 0, 0); //We do not need ghost cells for IMFP
+    MultiFab mf_IMFP(state.boxarray, state.DistributionMap(), 1, ngrow); //ncomp=1
+    mf_IMFP.setVal(0.0);
 
     // If IMFP_method is 1, use the IMFPs from the input file and find the maximum absorption IMFP
     if (parms->IMFP_method == 1) {
@@ -148,10 +152,18 @@ Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestPar
                 max_IMFP_abs = std::max(max_IMFP_abs, parms->IMFP_abs[i][j]);
             }
         }
-        return max_IMFP_abs;
+
+        for(amrex::MFIter mfi(mf_IMFP); mfi.isValid(); ++mfi){
+            const amrex::Box& bx = mfi.validbox();
+            const amrex::Array4<amrex::Real>& mf_IMFP_array = mf_IMFP.array(mfi);
+            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k){
+                mf_IMFP_array(i, j, k) = max_IMFP_abs;
+            });
+        }
+        return mf_IMFP;
 
     // If IMFP_method is 2, use the NuLib table to find the maximum absorption IMFP
-    }else if (parms->IMFP_method == 2)
+    } else if (parms->IMFP_method == 2)
     {
         //Create NuLib table object
         using namespace nulib_private;
@@ -161,9 +173,6 @@ Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestPar
         int start_comp = GIdx::rho;
         int num_comps = 3; //We only want to get GIdx::rho, GIdx::T and GIdx::Ye
         MultiFab rho_T_ye_state(state, amrex::make_alias, start_comp, num_comps);
-
-        const amrex::IntVect ngrow(0, 0, 0); //We do not need ghost cells for IMFP
-        MultiFab mf_IMFP(state.boxarray, state.DistributionMap(), 1, ngrow); //ncomp=1
 
         for(amrex::MFIter mfi(rho_T_ye_state); mfi.isValid(); ++mfi){
             const amrex::Box& bx = mfi.validbox();
@@ -253,17 +262,13 @@ Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestPar
         
             });
         }
-
-        //Calculate the reduction of mf_IMFP to calculate the max IMFP value.
-        //FIXME: FIXME: Do we need additional reduction over MPI ranks?
-        Real max_IMFP = compute_max_IMFP_from_mf(mf_IMFP);
-
-        return max_IMFP; 
-    }else
-    {
-        amrex::Error("Invalid IMFP method. Please check the input file.");
-        return -1;
+        
+        return mf_IMFP;
     }
+
+    // If IMFP_method is not 1 or 2, return a MultiFab with zeros
+    return mf_IMFP;
+
 }
 
 /**
@@ -285,67 +290,67 @@ Real compute_dt(
     const MultiFab& state,
     const FlavoredNeutrinoContainer&,
     const TestParams* parms,
-    Real maximum_IMFP_abs)
+    const MultiFab& maximum_IMFP_abs)
 {
 
     // ##################################################################
 
-    int start_comp = GIdx::rho;
-    int num_comps = 3; //We only want to get GIdx::rho, GIdx::T and GIdx::Ye
-    MultiFab rho_T_ye_state(state, amrex::make_alias, start_comp, num_comps);
+    // int start_comp = GIdx::rho;
+    // int num_comps = 3; //We only want to get GIdx::rho, GIdx::T and GIdx::Ye
+    // MultiFab rho_T_ye_state(state, amrex::make_alias, start_comp, num_comps);
 
-    const amrex::IntVect ngrow(0, 0, 0); //We do not need ghost cells for IMFP
-    MultiFab multifab_trace_n(state.boxarray, state.DistributionMap(), 1, ngrow); //ncomp=1
+    // const amrex::IntVect ngrow(0, 0, 0); //We do not need ghost cells for IMFP
+    // MultiFab multifab_trace_n(state.boxarray, state.DistributionMap(), 1, ngrow); //ncomp=1
 
-    for(amrex::MFIter mfi(rho_T_ye_state); mfi.isValid(); ++mfi){
+    // for(amrex::MFIter mfi(rho_T_ye_state); mfi.isValid(); ++mfi){
 
-        const amrex::Box& bx = mfi.validbox();
-        const amrex::Array4<amrex::Real>& mf_array = rho_T_ye_state.array(mfi);
-        const amrex::Array4<amrex::Real>& multifab_trace_n_array = multifab_trace_n.array(mfi);
+    //     const amrex::Box& bx = mfi.validbox();
+    //     const amrex::Array4<amrex::Real>& mf_array = rho_T_ye_state.array(mfi);
+    //     const amrex::Array4<amrex::Real>& multifab_trace_n_array = multifab_trace_n.array(mfi);
 
-        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k){
+    //     amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k){
 
-            Real trace_n = 0.0;
-            Real trace_nbar = 0.0;
+    //         Real trace_n = 0.0;
+    //         Real trace_nbar = 0.0;
 
-            if (parms->do_periodic_empty_bc == 1) {
+    //         if (parms->do_periodic_empty_bc == 1) {
 
-                if (i == 0 || i == parms->ncell[0] - 1 ||
-                    j == 0 || j == parms->ncell[1] - 1 ||
-                    k == 0 || k == parms->ncell[2] - 1) {
+    //             if (i == 0 || i == parms->ncell[0] - 1 ||
+    //                 j == 0 || j == parms->ncell[1] - 1 ||
+    //                 k == 0 || k == parms->ncell[2] - 1) {
 
-                    multifab_trace_n_array(i, j, k) = std::numeric_limits<Real>::max();
-                    return;
+    //                 multifab_trace_n_array(i, j, k) = std::numeric_limits<Real>::max();
+    //                 return;
 
-                }
-            }
+    //             }
+    //         }
 
-            if (parms->do_blackhole == 1) {
+    //         if (parms->do_blackhole == 1) {
 
-                double cell_size_x = parms->Lx / parms->ncell[0];
-                double cell_size_y = parms->Ly / parms->ncell[1];
-                double cell_size_z = parms->Lz / parms->ncell[2];
+    //             double cell_size_x = parms->Lx / parms->ncell[0];
+    //             double cell_size_y = parms->Ly / parms->ncell[1];
+    //             double cell_size_z = parms->Lz / parms->ncell[2];
 
-                double x_cell_center = (i + 0.5) * cell_size_x;
-                double y_cell_center = (j + 0.5) * cell_size_y;
-                double z_cell_center = (k + 0.5) * cell_size_z;
+    //             double x_cell_center = (i + 0.5) * cell_size_x;
+    //             double y_cell_center = (j + 0.5) * cell_size_y;
+    //             double z_cell_center = (k + 0.5) * cell_size_z;
 
-                Real distance_from_bh = sqrt(pow(x_cell_center - parms->bh_center_x, 2) + pow(y_cell_center - parms->bh_center_y, 2) + pow(z_cell_center - parms->bh_center_z, 2));
+    //             Real distance_from_bh = sqrt(pow(x_cell_center - parms->bh_center_x, 2) + pow(y_cell_center - parms->bh_center_y, 2) + pow(z_cell_center - parms->bh_center_z, 2));
 
-                if (distance_from_bh < parms->bh_radius) {
-                    multifab_trace_n_array(i, j, k) = std::numeric_limits<Real>::max();
-                    return;
-                }
-            }
+    //             if (distance_from_bh < parms->bh_radius) {
+    //                 multifab_trace_n_array(i, j, k) = std::numeric_limits<Real>::max();
+    //                 return;
+    //             }
+    //         }
 
-            #include "generated_files/Evolve.cpp_compute_trace"
-            multifab_trace_n_array(i, j, k) = max(trace_n, trace_nbar);
+    //         #include "generated_files/Evolve.cpp_compute_trace"
+    //         multifab_trace_n_array(i, j, k) = max(trace_n, trace_nbar);
 
-        });
-    }
+    //     });
+    // }
 
-    Real min_trace = compute_min_of_multifab(multifab_trace_n);
-    printf("min_trace = %g\n", min_trace);
+    // Real min_trace = compute_min_of_multifab(multifab_trace_n);
+    // printf("min_trace = %g\n", min_trace);
 
     // ##################################################################
 
@@ -448,8 +453,8 @@ Real compute_dt(
 
         if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
             // Calculate dt_flavor_absorption
-            dt_flavor_absorption = (1 / (PhysConst::c * maximum_IMFP_abs)) * parms->collision_cfl_factor;
-            dt_flavor_absorption *= min_trace;
+            dt_flavor_absorption = (1 / (PhysConst::c * 1.0 )) * parms->collision_cfl_factor;
+            dt_flavor_absorption *= 1.0;
         }
 
         // pick the appropriate timestep
