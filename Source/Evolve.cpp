@@ -136,6 +136,19 @@ Real compute_min_of_multifab (MultiFab const& multifab)
            });
 }
 
+/**
+ * @brief Computes the maximum Inverse Mean Free Path (IMFP) for absorption and emission processes.
+ *
+ * This function calculates the maximum IMFP for absorption processes based on the specified method in the parameters.
+ * It supports two methods:
+ * 1. Using IMFP values from the input file.
+ * 2. Using a NuLib table to interpolate IMFP values.
+ *
+ * @param geom The geometry of the computational domain.
+ * @param state The MultiFab containing the state variables.
+ * @param parms Pointer to the TestParams structure containing the parameters for the computation.
+ * @return A MultiFab containing the maximum IMFP values.
+ */
 MultiFab compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestParams* parms){
     
     const amrex::IntVect ngrow(0, 0, 0); // We do not need ghost cells for IMFP

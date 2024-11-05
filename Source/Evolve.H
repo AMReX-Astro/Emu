@@ -26,6 +26,19 @@ namespace GIdx
     void Initialize();
 }
 
+/**
+ * @brief Computes the maximum Inverse Mean Free Path (IMFP) for absorption and emission processes.
+ *
+ * This function calculates the maximum IMFP for absorption processes based on the specified method in the parameters.
+ * It supports two methods:
+ * 1. Using IMFP values from the input file.
+ * 2. Using a NuLib table to interpolate IMFP values.
+ *
+ * @param geom The geometry of the computational domain.
+ * @param state The MultiFab containing the state variables.
+ * @param parms Pointer to the TestParams structure containing the parameters for the computation.
+ * @return A MultiFab containing the maximum IMFP values.
+ */
 MultiFab compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestParams* parms);
 
 /**
