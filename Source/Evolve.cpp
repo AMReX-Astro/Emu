@@ -304,7 +304,7 @@ Real compute_dt(
 
 	// Get the cell size array
     const auto dxi = geom.CellSizeArray();
-    Real dt_translation = 0.0; 
+    Real dt_translation = 0.0;
     if (parms->cfl_factor > 0.0) {
         // Calculate the time step size based on the translation CFL factor
         // dt = (min(dx,dy,dz)/c) * cfl_factor
