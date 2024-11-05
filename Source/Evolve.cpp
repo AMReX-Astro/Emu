@@ -272,34 +272,43 @@ MultiFab compute_max_IMFP(const Geometry& geom, const MultiFab& state, const Tes
 }
 
 /**
- * @brief Computes the time step for the simulation based on various CFL factors.
+ * @brief Computes the time step size for the simulation based on various CFL factors and conditions.
  *
- * This function calculates the time step for the simulation by considering the
- * CFL factors for translation, flavor, and collision. It uses the maximum IMFP
- * value to determine the collision time step and combines it with the translation
- * and flavor time steps to find the minimum time step for the simulation.
+ * This function calculates the time step size considering translation, flavor, and collision CFL factors.
+ * It ensures that the time step is limited by the smallest of these factors to maintain stability.
  *
  * @param geom The geometry of the simulation domain.
- * @param state The MultiFab containing the state variables.
- * @param neutrinos The container holding the flavored neutrinos.
- * @param maximum_IMFP_abs The maximum inverse mean free path for absorption.
- * @return The computed time step for the simulation.
+ * @param state The state MultiFab containing the simulation data.
+ * @param neutrinos The container for flavored neutrinos.
+ * @param parms Pointer to the structure containing simulation parameters.
+ * @param maximum_IMFP_abs The MultiFab containing the maximum inverse mean free path for absorption.
+ * 
+ * @return The computed time step size.
+ *
+ * @note At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.
+ * @note The function handles periodic boundary conditions and black hole regions if specified in the parameters.
+ * @note The function performs a reduction operation to find the minimum time step across all cells and MPI ranks.
  */
 Real compute_dt(
     const Geometry& geom,
     const MultiFab& state,
-    const FlavoredNeutrinoContainer&,
+    const FlavoredNeutrinoContainer& neutrinos,
     const TestParams* parms,
     const MultiFab& maximum_IMFP_abs)
-{
+{   
+    // Initialize the maximum real value
+    const Real max_real = std::numeric_limits<Real>::max();
 
-    AMREX_ASSERT(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0 || parms->collision_cfl_factor > 0.0);
+    AMREX_ASSERT_WITH_MESSAGE(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0 || parms->collision_cfl_factor > 0.0,
+                              "Error: At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.");
 
-	// translation part of timestep limit
+	// Get the cell size array
     const auto dxi = geom.CellSizeArray();
-    Real dt_translation = 0.0;
+    Real dt_translation = 0.0; 
     if (parms->cfl_factor > 0.0) {
-        dt_translation = std::min(std::min(dxi[0], dxi[1]), dxi[2]) / PhysConst::c * parms->cfl_factor;
+        // Calculate the time step size based on the translation CFL factor
+        // dt = (min(dx,dy,dz)/c) * cfl_factor
+        dt_translation = std::min({dxi[0], dxi[1], dxi[2]}) / PhysConst::c * parms->cfl_factor;
     }
 
     Real dt_flavor = 0.0;
@@ -316,30 +325,31 @@ Real compute_dt(
             reduce_op.eval(bx, reduce_data,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
             {
-
+                // Check if the cell is at the boundary or inside the black hole
                 if (parms->do_periodic_empty_bc == 1) {
-
+                    // Check if the cell is at the boundary
                     if (i == 0 || i == parms->ncell[0] - 1 ||
                         j == 0 || j == parms->ncell[1] - 1 ||
                         k == 0 || k == parms->ncell[2] - 1) {
-
-                        return {std::numeric_limits<Real>::max(), std::numeric_limits<Real>::max(), std::numeric_limits<Real>::max()};
-
+                        return {max_real,max_real,max_real};
                     }
                 }else if (parms->do_blackhole == 1) {
+                    // Check if the cell is inside the black hole
 
+                    // Calculate the cell size
                     double cell_size_x = parms->Lx / parms->ncell[0];
                     double cell_size_y = parms->Ly / parms->ncell[1];
                     double cell_size_z = parms->Lz / parms->ncell[2];
-
+                    // Calculate the cell center coordinates
                     double x_cell_center = (i + 0.5) * cell_size_x;
                     double y_cell_center = (j + 0.5) * cell_size_y;
                     double z_cell_center = (k + 0.5) * cell_size_z;
-
+                    // Calculate the distance from the black hole center
                     Real distance_from_bh = sqrt(pow(x_cell_center - parms->bh_center_x, 2) + pow(y_cell_center - parms->bh_center_y, 2) + pow(z_cell_center - parms->bh_center_z, 2));
 
+                    // Check if the cell is inside the black hole
                     if (distance_from_bh < parms->bh_radius) {
-                        return {std::numeric_limits<Real>::max(), std::numeric_limits<Real>::max(), std::numeric_limits<Real>::max()};
+                        return {max_real,max_real,max_real};
                     }
                 }
 
@@ -352,11 +362,12 @@ Real compute_dt(
                 Real trace_n = 0.0, trace_nbar = 0.0;
                 #include "generated_files/Evolve.cpp_compute_trace_2"
 
+                // Calculate the minimum trace between neutrinos and antineutrinos
                 Real min_trace = min(trace_n, trace_nbar);
 
-                Real dt_adaptive = min_trace / V_adaptive;
-                Real dt_stupid   = min_trace / V_stupid;
-                Real dt_absorption = min_trace / multifab_IMFP(i, j, k);
+                Real dt_adaptive = min_trace / std::abs(V_adaptive);     // dt = min(trN,trNbar)/|V_adaptive|
+                Real dt_stupid   = min_trace / std::abs(V_stupid);       // dt = min(trN,trNbar)/|V_stupid|
+                Real dt_absorption = min_trace / multifab_IMFP(i, j, k); // dt = 1/IMFP
 
                 return {dt_adaptive, dt_stupid, dt_absorption};
             });
@@ -374,17 +385,20 @@ Real compute_dt(
         ParallelDescriptor::ReduceRealMin(min_dt_absorption);
 
         // define the dt associated with each method
-        Real dt_flavor_adaptive = std::numeric_limits<Real>::max();
-        Real dt_flavor_stupid = std::numeric_limits<Real>::max();
-        Real dt_flavor_absorption = std::numeric_limits<Real>::max(); // Initialize with infinity
+        Real dt_flavor_adaptive = max_real;
+        Real dt_flavor_stupid = max_real;
+        Real dt_flavor_absorption = max_real; // Initialize with infinity
 
         if (parms->attenuation_hamiltonians != 0) {
-            dt_flavor_adaptive = PhysConst::hbar * min_dt_adaptive * parms->flavor_cfl_factor / parms->attenuation_hamiltonians;
+            // dt = min( min(trN,trNbar)/|V_adaptive| ) * hbar * flavor_cfl_factor / attenuation_hamiltonians
+            dt_flavor_adaptive = PhysConst::hbar * min_dt_adaptive * parms->flavor_cfl_factor / parms->attenuation_hamiltonians; 
+            // dt = min( min(trN,trNbar)/|V_stupid| ) * hbar * flavor_cfl_factor / attenuation_hamiltonians
             dt_flavor_stupid   = PhysConst::hbar * min_dt_stupid   * parms->flavor_cfl_factor / parms->attenuation_hamiltonians;
         }
 
         if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
             // Calculate dt_flavor_absorption
+            // dt = min( min( trN, trNbar ) / IMFP ) * collision_cfl_factor / c
             dt_flavor_absorption = ( min_dt_absorption / PhysConst::c ) * parms->collision_cfl_factor;
         }
 
@@ -398,12 +412,14 @@ Real compute_dt(
     Real dt = 0.0;
     if (dt_translation != 0.0 && dt_flavor != 0.0) {
         dt = std::min(dt_translation, dt_flavor);
-    } else if (dt_translation != 0.0) {
-        dt = dt_translation;
-    } else if (dt_flavor != 0.0) {
-        dt = dt_flavor;
     } else {
-        amrex::Error("Timestep selection failed, both dt_translation and dt_flavor are zero. Try using both cfl_factor and flavor_cfl_factor.");
+        if (dt_translation != 0.0) {
+            dt = dt_translation;
+        } else if (dt_flavor != 0.0) {
+            dt = dt_flavor;
+        } else {
+            amrex::Error("Timestep selection failed, both dt_translation and dt_flavor are zero. Try using both cfl_factor and flavor_cfl_factor.");
+        }
     }
 
     return dt;
