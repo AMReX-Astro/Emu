@@ -111,6 +111,30 @@ Real compute_max_IMFP_from_mf (MultiFab const& mf_IMFP)
            });
 }
 
+/**
+ * @brief Computes the minimum value in a MultiFab.
+ *
+ * This function performs a parallel reduction to find the minimum value
+ * stored in the provided MultiFab. It uses the
+ * ParReduce function with a minimum reduction operation.
+ *
+ * @param multifab The MultiFab containing the values. It is assumed that
+ *                the MultiFab is properly initialized and contains valid data.
+ *
+ * @return The minimum value found in the MultiFab.
+ */
+Real compute_min_of_multifab (MultiFab const& multifab)
+{
+    auto const& ma = multifab.const_arrays();
+    return ParReduce(TypeList<ReduceOpMin>{}, TypeList<Real>{},
+                     multifab, IntVect(0), // zero ghost cells
+           [=] AMREX_GPU_DEVICE (int box_no, int i, int j, int k)
+               noexcept -> GpuTuple<Real>
+           {
+               Array4<Real const> const& a = ma[box_no];
+               return { a(i,j,k) };
+           });
+}
 
 Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestParams* parms){
 
@@ -266,9 +290,6 @@ Real compute_dt(
 
     // ##################################################################
 
-
-    // Real compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestParams* parms){
-
     int start_comp = GIdx::rho;
     int num_comps = 3; //We only want to get GIdx::rho, GIdx::T and GIdx::Ye
     MultiFab rho_T_ye_state(state, amrex::make_alias, start_comp, num_comps);
@@ -292,8 +313,8 @@ Real compute_dt(
         });
     }
 
-    Real max_trace = compute_max_IMFP_from_mf(multifab_trace_n);
-    printf("max_trace = %g\n", max_trace);
+    Real min_trace = compute_min_of_multifab(multifab_trace_n);
+    printf("min_trace = %g\n", min_trace);
 
     // ##################################################################
 
@@ -344,12 +365,14 @@ Real compute_dt(
         if (parms->attenuation_hamiltonians != 0) {
             dt_flavor_adaptive = PhysConst::hbar / Vmax_adaptive * parms->flavor_cfl_factor / parms->attenuation_hamiltonians;
             dt_flavor_stupid = PhysConst::hbar / Vmax_stupid * parms->flavor_cfl_factor / parms->attenuation_hamiltonians;
+            dt_flavor_adaptive *= min_trace;
+            dt_flavor_stupid *= min_trace;
         }
 
         if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
             // Calculate dt_flavor_absorption
             dt_flavor_absorption = (1 / (PhysConst::c * maximum_IMFP_abs)) * parms->collision_cfl_factor;
-
+            dt_flavor_absorption *= min_trace;
         }
 
         // pick the appropriate timestep
