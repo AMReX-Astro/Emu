@@ -293,67 +293,6 @@ Real compute_dt(
     const MultiFab& maximum_IMFP_abs)
 {
 
-    // ##################################################################
-
-    // int start_comp = GIdx::rho;
-    // int num_comps = 3; //We only want to get GIdx::rho, GIdx::T and GIdx::Ye
-    // MultiFab rho_T_ye_state(state, amrex::make_alias, start_comp, num_comps);
-
-    // const amrex::IntVect ngrow(0, 0, 0); //We do not need ghost cells for IMFP
-    // MultiFab multifab_trace_n(state.boxarray, state.DistributionMap(), 1, ngrow); //ncomp=1
-
-    // for(amrex::MFIter mfi(rho_T_ye_state); mfi.isValid(); ++mfi){
-
-    //     const amrex::Box& bx = mfi.validbox();
-    //     const amrex::Array4<amrex::Real>& mf_array = rho_T_ye_state.array(mfi);
-    //     const amrex::Array4<amrex::Real>& multifab_trace_n_array = multifab_trace_n.array(mfi);
-
-    //     amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k){
-
-    //         Real trace_n = 0.0;
-    //         Real trace_nbar = 0.0;
-
-    //         if (parms->do_periodic_empty_bc == 1) {
-
-    //             if (i == 0 || i == parms->ncell[0] - 1 ||
-    //                 j == 0 || j == parms->ncell[1] - 1 ||
-    //                 k == 0 || k == parms->ncell[2] - 1) {
-
-    //                 multifab_trace_n_array(i, j, k) = std::numeric_limits<Real>::max();
-    //                 return;
-
-    //             }
-    //         }
-
-    //         if (parms->do_blackhole == 1) {
-
-    //             double cell_size_x = parms->Lx / parms->ncell[0];
-    //             double cell_size_y = parms->Ly / parms->ncell[1];
-    //             double cell_size_z = parms->Lz / parms->ncell[2];
-
-    //             double x_cell_center = (i + 0.5) * cell_size_x;
-    //             double y_cell_center = (j + 0.5) * cell_size_y;
-    //             double z_cell_center = (k + 0.5) * cell_size_z;
-
-    //             Real distance_from_bh = sqrt(pow(x_cell_center - parms->bh_center_x, 2) + pow(y_cell_center - parms->bh_center_y, 2) + pow(z_cell_center - parms->bh_center_z, 2));
-
-    //             if (distance_from_bh < parms->bh_radius) {
-    //                 multifab_trace_n_array(i, j, k) = std::numeric_limits<Real>::max();
-    //                 return;
-    //             }
-    //         }
-
-    //         #include "generated_files/Evolve.cpp_compute_trace"
-    //         multifab_trace_n_array(i, j, k) = max(trace_n, trace_nbar);
-
-    //     });
-    // }
-
-    // Real min_trace = compute_min_of_multifab(multifab_trace_n);
-    // printf("min_trace = %g\n", min_trace);
-
-    // ##################################################################
-
     AMREX_ASSERT(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0 || parms->collision_cfl_factor > 0.0);
 
 	// translation part of timestep limit
@@ -365,41 +304,6 @@ Real compute_dt(
 
     Real dt_flavor = 0.0;
     if (parms->flavor_cfl_factor > 0.0 && parms->collision_cfl_factor > 0.0) {
-        // define the reduction operator to get the max contribution to
-        // the potential from matter and neutrinos
-        // compute "effective" potential (ergs) that produces characteristic timescale
-        // when multiplied by hbar
-        // ReduceOps<ReduceOpMax,ReduceOpMax> reduce_op;
-        // ReduceData<Real,Real> reduce_data(reduce_op);
-        // using ReduceTuple = typename decltype(reduce_data)::Type;
-        // for (MFIter mfi(state); mfi.isValid(); ++mfi) {
-        //     const Box& bx = mfi.fabbox();
-        //     auto const& fab = state.array(mfi);
-        //     reduce_op.eval(bx, reduce_data,
-        //     [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
-        //     {
-        //         Real V_adaptive=0, V_adaptive2=0, V_stupid=0;
-        //         #include "generated_files/Evolve.cpp_compute_dt_fill"
-
-        //         Real trace_n = 0.0, trace_nbar = 0.0;
-        //         #include "generated_files/Evolve.cpp_compute_trace"
-
-        //         V_adaptive *= max(trace_n, trace_nbar);
-        //         V_stupid   *= max(trace_n, trace_nbar);
-        //         return {V_adaptive, V_stupid};
-        //     });
-        // }
-
-        // // extract the reduced values from the combined reduced data structure
-        // auto rv = reduce_data.value();
-        // Real Vmax_adaptive = amrex::get<0>(rv) + FlavoredNeutrinoContainer::Vvac_max;
-        // Real Vmax_stupid   = amrex::get<1>(rv) + FlavoredNeutrinoContainer::Vvac_max;
-
-        // // reduce across MPI ranks
-        // ParallelDescriptor::ReduceRealMax(Vmax_adaptive);
-        // ParallelDescriptor::ReduceRealMax(Vmax_stupid  );
-
-        // ##################################################################
 
         ReduceOps< ReduceOpMin, ReduceOpMin, ReduceOpMin > reduce_op;
         ReduceData< Real , Real, Real > reduce_data(reduce_op);
@@ -412,6 +316,33 @@ Real compute_dt(
             reduce_op.eval(bx, reduce_data,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
             {
+
+                if (parms->do_periodic_empty_bc == 1) {
+
+                    if (i == 0 || i == parms->ncell[0] - 1 ||
+                        j == 0 || j == parms->ncell[1] - 1 ||
+                        k == 0 || k == parms->ncell[2] - 1) {
+
+                        return {std::numeric_limits<Real>::max(), std::numeric_limits<Real>::max(), std::numeric_limits<Real>::max()};
+
+                    }
+                }else if (parms->do_blackhole == 1) {
+
+                    double cell_size_x = parms->Lx / parms->ncell[0];
+                    double cell_size_y = parms->Ly / parms->ncell[1];
+                    double cell_size_z = parms->Lz / parms->ncell[2];
+
+                    double x_cell_center = (i + 0.5) * cell_size_x;
+                    double y_cell_center = (j + 0.5) * cell_size_y;
+                    double z_cell_center = (k + 0.5) * cell_size_z;
+
+                    Real distance_from_bh = sqrt(pow(x_cell_center - parms->bh_center_x, 2) + pow(y_cell_center - parms->bh_center_y, 2) + pow(z_cell_center - parms->bh_center_z, 2));
+
+                    if (distance_from_bh < parms->bh_radius) {
+                        return {std::numeric_limits<Real>::max(), std::numeric_limits<Real>::max(), std::numeric_limits<Real>::max()};
+                    }
+                }
+
                 Real V_adaptive=0, V_adaptive2=0, V_stupid=0;
                 #include "generated_files/Evolve.cpp_compute_dt_fill"
 
@@ -441,9 +372,6 @@ Real compute_dt(
         ParallelDescriptor::ReduceRealMin(min_dt_adaptive);
         ParallelDescriptor::ReduceRealMin(min_dt_stupid  );
         ParallelDescriptor::ReduceRealMin(min_dt_absorption);
-
-        // ##################################################################
-
 
         // define the dt associated with each method
         Real dt_flavor_adaptive = std::numeric_limits<Real>::max();
