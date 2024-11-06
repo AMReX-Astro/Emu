@@ -140,13 +140,8 @@ void evolve_flavor(const TestParams* parms)
     }
    
     // Compute the maximum Inverse Mean Free Path (IMFP) in the domain
-    MultiFab max_IMFP_absortion(ba, dm, 1, 0);
-    max_IMFP_absortion.setVal(0.0);
-    if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
-        max_IMFP_absortion = compute_max_IMFP(geom, state, parms);
-        // printf("max_IMFP_absortion = %g\n", max_IMFP_absortion); //TODO: Remove comment
-    }
-    
+    MultiFab max_IMFP_absortion = compute_max_IMFP(geom, state, parms);
+
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... " << std::endl;
 
