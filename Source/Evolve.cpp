@@ -166,13 +166,7 @@ MultiFab compute_max_IMFP(const Geometry& geom, const MultiFab& state, const Tes
             }
         }
 
-        for(amrex::MFIter mfi(mf_IMFP); mfi.isValid(); ++mfi){
-            const amrex::Box& bx = mfi.validbox();
-            const amrex::Array4<amrex::Real>& mf_IMFP_array = mf_IMFP.array(mfi);
-            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k){
-                mf_IMFP_array(i, j, k) = max_IMFP_abs;
-            });
-        }
+        mf_IMFP.setVal(max_IMFP_abs);
         return mf_IMFP;
 
     // If IMFP_method is 2, use the NuLib table to find the maximum absorption IMFP
@@ -324,10 +318,11 @@ Real compute_dt(
         ReduceData< Real , Real, Real > reduce_data(reduce_op);
         using ReduceTuple = typename decltype(reduce_data)::Type;
         for (MFIter mfi(state); mfi.isValid(); ++mfi) {
-            const Box& bx = mfi.fabbox();
+            const Box& bx = mfi.validbox();
             auto const& fab = state.array(mfi);
             auto const& multifab_IMFP = maximum_IMFP_abs.array(mfi);
             Real V_vac_max = FlavoredNeutrinoContainer::Vvac_max;
+            Real max_real = std::numeric_limits<Real>::max();
             reduce_op.eval(bx, reduce_data,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
             {
@@ -372,8 +367,7 @@ Real compute_dt(
                 Real min_trace = min(trace_n, trace_nbar);
 
                 // Ensure that the minimum trace is not zero
-                if (min_trace == 0.0) min_trace = 1.0;
-
+                if (min_trace < 1.0) min_trace = 1.0;
                 Real dt_adaptive = min_trace / std::abs(V_adaptive);     // dt = min(trN,trNbar)/|V_adaptive|
                 Real dt_stupid   = min_trace / std::abs(V_stupid);       // dt = min(trN,trNbar)/|V_stupid|
                 Real dt_absorption = min_trace / multifab_IMFP(i, j, k); // dt = 1/IMFP
