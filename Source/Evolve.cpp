@@ -320,7 +320,12 @@ Real compute_dt(
                 if (min_trace < 1.0) min_trace = 1.0;
                 Real dt_adaptive = min_trace / std::abs(V_adaptive);     // dt = min(trN,trNbar)/|V_adaptive|
                 Real dt_stupid   = min_trace / std::abs(V_stupid);       // dt = min(trN,trNbar)/|V_stupid|
-                Real dt_absorption = min_trace / multifab_IMFP(i, j, k); // dt = 1/IMFP
+                Real dt_absorption = max_real;
+
+                // Calculate the absorption time step
+                if multifab_multifab_IMFP(i, j, k) > 0.0) {
+                    dt_absorption = min_trace / multifab_IMFP(i, j, k); // dt = min(trN,trNbar)/IMFP
+                }
 
                 return {dt_adaptive, dt_stupid, dt_absorption};
             });
