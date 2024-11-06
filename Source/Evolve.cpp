@@ -323,7 +323,7 @@ Real compute_dt(
                 Real dt_absorption = max_real;
 
                 // Calculate the absorption time step
-                if multifab_multifab_IMFP(i, j, k) > 0.0) {
+                if (multifab_IMFP(i, j, k) > 0.0) {
                     dt_absorption = min_trace / multifab_IMFP(i, j, k); // dt = min(trN,trNbar)/IMFP
                 }
 
