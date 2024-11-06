@@ -87,56 +87,6 @@ template <typename T> static inline AMREX_GPU_DEVICE T max6(T a, T b, T c, T d, 
 }
 
 /**
- * @brief Computes the maximum Inverse Mean Free Path (IMFP) from a given MultiFab.
- *
- * This function performs a parallel reduction to find the maximum value of the 
- * Inverse Mean Free Path (IMFP) stored in the provided MultiFab. It uses the 
- * ParReduce function with a maximum reduction operation.
- *
- * @param mf_IMFP The MultiFab containing the IMFP values. It is assumed that 
- *                the MultiFab is properly initialized and contains valid data.
- * 
- * @return The maximum IMFP value found in the MultiFab.
- */
-Real compute_max_IMFP_from_mf (MultiFab const& mf_IMFP)
-{
-    auto const& ma = mf_IMFP.const_arrays();
-    return ParReduce(TypeList<ReduceOpMax>{}, TypeList<Real>{},
-                     mf_IMFP, IntVect(0), // zero ghost cells
-           [=] AMREX_GPU_DEVICE (int box_no, int i, int j, int k)
-               noexcept -> GpuTuple<Real>
-           {
-               Array4<Real const> const& a = ma[box_no];
-               return { a(i,j,k) };
-           });
-}
-
-/**
- * @brief Computes the minimum value in a MultiFab.
- *
- * This function performs a parallel reduction to find the minimum value
- * stored in the provided MultiFab. It uses the
- * ParReduce function with a minimum reduction operation.
- *
- * @param multifab The MultiFab containing the values. It is assumed that
- *                the MultiFab is properly initialized and contains valid data.
- *
- * @return The minimum value found in the MultiFab.
- */
-Real compute_min_of_multifab (MultiFab const& multifab)
-{
-    auto const& ma = multifab.const_arrays();
-    return ParReduce(TypeList<ReduceOpMin>{}, TypeList<Real>{},
-                     multifab, IntVect(0), // zero ghost cells
-           [=] AMREX_GPU_DEVICE (int box_no, int i, int j, int k)
-               noexcept -> GpuTuple<Real>
-           {
-               Array4<Real const> const& a = ma[box_no];
-               return { a(i,j,k) };
-           });
-}
-
-/**
  * @brief Computes the maximum Inverse Mean Free Path (IMFP) for absorption and emission processes.
  *
  * This function calculates the maximum IMFP for absorption processes based on the specified method in the parameters.
