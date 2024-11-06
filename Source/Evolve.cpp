@@ -89,7 +89,7 @@ template <typename T> static inline AMREX_GPU_DEVICE T max6(T a, T b, T c, T d, 
 /**
  * @brief Computes the maximum Inverse Mean Free Path (IMFP) for absorption and emission processes.
  *
- * This function calculates the maximum IMFP for absorption processes based on the specified method in the parameters.
+ * This function calculates the maximum IMFP for absorption processes on every cell center based on the specified method in the parameters.
  * It supports two methods:
  * 1. Using IMFP values from the input file.
  * 2. Using a NuLib table to interpolate IMFP values.
@@ -97,7 +97,7 @@ template <typename T> static inline AMREX_GPU_DEVICE T max6(T a, T b, T c, T d, 
  * @param geom The geometry of the computational domain.
  * @param state The MultiFab containing the state variables.
  * @param parms Pointer to the TestParams structure containing the parameters for the computation.
- * @return A MultiFab containing the maximum IMFP values.
+ * @return A MultiFab containing the maximum IMFP values for each cell center.
  */
 MultiFab compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestParams* parms){
     
