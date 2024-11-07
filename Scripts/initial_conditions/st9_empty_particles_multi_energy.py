@@ -16,12 +16,22 @@ import amrex_plot_tools as amrex
 nphi_equator = 16 # number of direction in equator
 NF = 3 # number of flavors
 
+'''
+--------- NuLib table energy bins ---------
 # Energy bin centers extracted from NuLib table
 energies_center_Mev = [1, 3, 5.23824, 8.00974, 11.4415, 15.6909, 20.9527, 27.4681, 35.5357, 45.5254, 57.8951, 73.2117, 92.1775, 115.662, 144.741, 180.748, 225.334, 280.542] # Energy in Mev
 # Energy bin bottom extracted from NuLib table
 energies_bottom_Mev = [0, 2, 4, 6.47649, 9.54299, 13.3401, 18.0418, 23.8636, 31.0725, 39.9989, 51.0519, 64.7382, 81.6853, 102.67, 128.654, 160.828, 200.668, 250]
 # Energy bin top extracted from NuLib table
 energies_top_Mev = [2, 4, 6.47649, 9.54299, 13.3401, 18.0418, 23.8636, 31.0725, 39.9989, 51.0519, 64.7382, 81.6853, 102.67, 128.654, 160.828, 200.668, 250, 311.085]
+'''
+
+# Energy bin centers extracted from NuLib table
+energies_center_Mev = [15.6909, 20.9527, 27.4681, 35.5357, 45.5254, 57.8951, 73.2117, 92.1775, 115.662, 144.741, 180.748, 225.334, 280.542] # Energy in Mev
+# Energy bin bottom extracted from NuLib table
+energies_bottom_Mev = [13.3401, 18.0418, 23.8636, 31.0725, 39.9989, 51.0519, 64.7382, 81.6853, 102.67, 128.654, 160.828, 200.668, 250]
+# Energy bin top extracted from NuLib table
+energies_top_Mev = [18.0418, 23.8636, 31.0725, 39.9989, 51.0519, 64.7382, 81.6853, 102.67, 128.654, 160.828, 200.668, 250, 311.085]
 
 # Energies in ergs
 energies_center_erg = np.array(energies_center_Mev) * 1e6*amrex.eV # Energy in ergs
