@@ -148,6 +148,7 @@ void evolve_flavor(const TestParams* parms)
     // We store old-time and new-time data
     FlavoredNeutrinoContainer neutrinos_old(geom, dm, ba);
     FlavoredNeutrinoContainer neutrinos_new(geom, dm, ba);
+    FlavoredNeutrinoContainer neutrinos_dt(geom, dm, ba);
 
     // Track the Figure of Merit for the simulation
     // defined as number of particles advanced per microsecond of walltime
@@ -275,7 +276,7 @@ void evolve_flavor(const TestParams* parms)
         // because the last deposit_to_mesh call was at either the old time (forward Euler)
         // or the final RK stage, if using Runge-Kutta.
         printf("Setting next timestep... \n");
-        const Real dt = compute_dt(geom, state, neutrinos, parms, max_IMFP_absortion);
+        const Real dt = compute_dt(geom, state, neutrinos, neutrinos_dt, parms, max_IMFP_absortion);
         integrator.set_timestep(dt);
         //printf("current_dt = %g, dt = %g \n", current_dt, dt);
         printf("Done. \n");
@@ -286,8 +287,8 @@ void evolve_flavor(const TestParams* parms)
     integrator.set_post_timestep(post_timestep_fun);
 
     // Get a starting timestep
-    const Real starting_dt = compute_dt(geom, state, neutrinos_old, parms, max_IMFP_absortion);
-
+    const Real starting_dt = compute_dt(geom, state, neutrinos_old, neutrinos_dt, parms, max_IMFP_absortion);
+    
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
 
