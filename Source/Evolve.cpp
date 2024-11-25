@@ -378,7 +378,6 @@ Real compute_dt(
         AMREX_ASSERT_WITH_MESSAGE(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0,
                                 "Error: At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.");
 
-        // Compute time step with brute force method
         deposit_to_mesh(neutrinos, state, geom);
         state.FillBoundary(geom.periodicity());
         neutrinos_dt.copyParticles(neutrinos, true);
@@ -397,8 +396,6 @@ Real compute_dt(
 
             FlavoredNeutrinoContainer::ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
             FlavoredNeutrinoContainer::ParticleType* pstruct_dt = &(pti_time_derivative.GetArrayOfStructs()[0]);
-
-            Real ydot_limit = 1.0e-15;
 
             reduce_op.eval(np, reduce_data,
             [=] AMREX_GPU_DEVICE (int i) -> Real
