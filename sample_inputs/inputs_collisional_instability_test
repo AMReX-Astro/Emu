@@ -6,7 +6,7 @@ attenuation_hamiltonians = 1.0
 
 collision_cfl_factor = 1e-1
 cfl_factor = 1e-1
-flavor_cfl_factor = 1e-1
+flavor_cfl_factor = 1e0
 max_adaptive_speedup = 0
 maxError = 1e-6
 
@@ -15,9 +15,9 @@ integration.rk.type = 4
 
 # Domain size in 3D index space
 ncell = (1, 1, 1)
-Lx = 1 # cm
-Ly = 1 # cm
-Lz = 1 # cm
+Lx = 1e4 # cm
+Ly = 1e4 # cm
+Lz = 1e4 # cm
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
@@ -27,13 +27,13 @@ particle_data_filename = "particle_input.dat"
 max_grid_size = 16
 
 # Number of steps to run
-nsteps = 1000
+nsteps = 3000
 
 # Minimum timestep (s)
 minimum_time_step = 1e-15
 
 # Time step method
-time_step_method = 0
+time_step_method = 1
 
 # Simulation end time
 end_time = 5.0e19
