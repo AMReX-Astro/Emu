@@ -249,11 +249,6 @@ Real compute_dt(
 {   
     // Initialize the maximum real value
     const Real max_real = std::numeric_limits<Real>::max();
-    
-    // FIXME
-    // TEMPORARY FLAG: PUT THIS IN IMPUT PARAMETERS
-    int time_step_method = 0;
-    // FIXME
 
 	// Get the cell size array
     const auto dxi = geom.CellSizeArray();
@@ -265,7 +260,7 @@ Real compute_dt(
     }
     Real dt_flavor = 0.0;
 
-    if ( time_step_method == 0 ){
+    if ( parms->time_step_method == 0 ){
 
         AMREX_ASSERT_WITH_MESSAGE(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0 || parms->collision_cfl_factor > 0.0,
                                 "Error: At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.");
@@ -373,7 +368,7 @@ Real compute_dt(
                 dt_flavor = min(dt_flavor_stupid*parms->max_adaptive_speedup, dt_flavor_adaptive, dt_flavor_absorption);
             }
         }
-    } else if ( time_step_method == 1 ){
+    } else if ( parms->time_step_method == 1 ){
 
         AMREX_ASSERT_WITH_MESSAGE(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0,
                                 "Error: At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.");
