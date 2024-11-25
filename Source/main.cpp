@@ -255,9 +255,8 @@ void evolve_flavor(const TestParams* parms)
         const int step = integrator.get_step_number();
         const Real time = integrator.get_time();
 
-        printf("Writing reduced data to file... \n");
+        // Write the reduced data to file
         rd.WriteReducedData0D(geom, state, neutrinos, time, step+1);
-        printf("Done. \n");
 
         run_fom += neutrinos.TotalNumberOfParticles();
 
