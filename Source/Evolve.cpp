@@ -258,6 +258,7 @@ Real compute_dt(
         // dt = (min(dx,dy,dz)/c) * cfl_factor
         dt_translation = std::min({dxi[0], dxi[1], dxi[2]}) / PhysConst::c * parms->cfl_factor;
     }
+
     Real dt_flavor = 0.0;
 
     if ( parms->time_step_method == 0 ){
@@ -400,13 +401,14 @@ Real compute_dt(
                 FlavoredNeutrinoContainer::ParticleType& p_dt = pstruct_dt[i];
                 
                 auto update_dt = [&] (int idx) {
-                    p_dt.rdata(idx) = std::numeric_limits<Real>::max();
                     if (std::abs(p_dt.rdata(idx)) > 0) {
-                        if (p.rdata(idx) > 1.0){
+                        if ( std::abs(p.rdata(idx)) > 1.0){
                             p_dt.rdata(idx) = parms->flavor_cfl_factor * std::abs( p.rdata(idx) / p_dt.rdata(idx));
                         } else{
                             p_dt.rdata(idx) = parms->flavor_cfl_factor * std::abs( 1.0          / p_dt.rdata(idx));
                         }
+                    }else{
+                        p_dt.rdata(idx) = max_real;
                     }
                 };
 
@@ -458,7 +460,6 @@ Real compute_dt(
                     p_dt.rdata(PIdx::N22_Re)
                 });
                 #endif
-
                 return min_dt;
 
             });
@@ -472,7 +473,7 @@ Real compute_dt(
         // Reduce across MPI ranks
         ParallelDescriptor::ReduceRealMin(qke_dt);
 
-        Real dt_flavor = qke_dt;
+        dt_flavor = qke_dt;
     }
 
     Real dt = 0.0;
@@ -489,6 +490,7 @@ Real compute_dt(
     }
     
     if (dt<parms->minimum_time_step) dt = parms->minimum_time_step;
+    printf("dt = %g, dt_flavor = %g, dt_translation = %g\n", dt, dt_flavor, dt_translation);
 
     return dt;
 }
