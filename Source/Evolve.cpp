@@ -320,7 +320,7 @@ Real compute_dt(
                 Real dt_stupid   = max_real;
                 Real dt_absorption = max_real;
 
-                Real minimum_potential_abs = 1e-10;
+                Real minimum_potential_abs = parms->flavor_cfl_factor * PhysConst::hbar / parms->minimum_time_step;
 
                 // Ensure that the minimum trace is not zero
                 if (std::abs(V_adaptive) > minimum_potential_abs){
@@ -329,7 +329,7 @@ Real compute_dt(
                 }
 
                 // Calculate the absorption time step
-                if (multifab_IMFP(i, j, k) > minimum_potential_abs) {
+                if ( ( PhysConst::c * multifab_IMFP(i, j, k) ) > ( parms->collision_cfl_factor / parms->minimum_time_step) ) {
                     dt_absorption = parms->collision_cfl_factor * ( 1.0 / ( PhysConst::c * multifab_IMFP(i, j, k) ) );
                 }
 
