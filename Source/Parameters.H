@@ -17,7 +17,9 @@ struct TestParams : public amrex::Gpu::Managed
     IntVect ncell; // Number of cells in the domain
     IntVect nppc; // Number of points of particle emission per cell in each dimension
     Real Lx, Ly, Lz; // Length of the domain in each dimension
-    int max_grid_size; // Maximum grid size subdivisions of the domain for parallelization 
+    int max_grid_size_x; // Maximum grid size subdivisions in x of the domain for parallelization 
+    int max_grid_size_y; // Maximum grid size subdivisions in y of the domain for parallelization
+    int max_grid_size_z; // Maximum grid size subdivisions in z of the domain for parallelization
     int nsteps; // Number of time steps
     Real end_time; // End time of the simulation
     int write_plot_every; // Write plot files every n steps
@@ -84,7 +86,9 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("Ly", Ly);
         pp.get("Lz", Lz);
         pp.get("nppc",  nppc);
-        pp.get("max_grid_size", max_grid_size);
+        pp.get("max_grid_size_x", max_grid_size_x);
+        pp.get("max_grid_size_y", max_grid_size_y);
+        pp.get("max_grid_size_z", max_grid_size_z);
         pp.get("nsteps", nsteps);
         pp.get("end_time", end_time);
         pp.get("cfl_factor", cfl_factor);

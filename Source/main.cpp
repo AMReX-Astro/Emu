@@ -85,7 +85,9 @@ void evolve_flavor(const TestParams* parms)
     BoxArray ba(domain);
 
     // Break up boxarray "ba" into chunks no larger than "max_grid_size" along a direction
-    ba.maxSize(parms->max_grid_size);
+    const IntVect mgs(parms->max_grid_size_x, parms->max_grid_size_y, parms->max_grid_size_z);
+    ba.maxSize(mgs);
+    amrex::Print() << "Number of boxes created: " << ba.size() << std::endl;
 
     // This defines the physical box, [0,1] in each dimension
     RealBox real_box({AMREX_D_DECL(     0.0,      0.0,      0.0)},
