@@ -117,7 +117,6 @@ MultiFab compute_max_IMFP(const Geometry& geom, const MultiFab& state, const Tes
         }
 
         mf_IMFP.setVal(max_IMFP_abs);
-        return mf_IMFP;
 
     // If IMFP_method is 2, use the NuLib table to find the maximum absorption IMFP
     } else if (parms->IMFP_method == 2)
@@ -213,12 +212,9 @@ MultiFab compute_max_IMFP(const Geometry& geom, const MultiFab& state, const Tes
                 mf_IMFP_array(i, j, k) = max_IMFP_abs_local;
             });
         }
-        // Return the MultiFab with the maximum IMFP values
-        return mf_IMFP;
-    } else {
-        // If IMFP_method is not 1 or 2, return a MultiFab with zeros
-        return mf_IMFP;
     }
+    // Return the MultiFab with the maximum IMFP values
+    return mf_IMFP;
 }
 
 /**
