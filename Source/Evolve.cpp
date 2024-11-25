@@ -272,7 +272,6 @@ Real compute_dt(
             auto const& fab = state.array(mfi);
             auto const& multifab_IMFP = maximum_IMFP_abs.array(mfi);
             Real V_vac_max = FlavoredNeutrinoContainer::Vvac_max;
-            Real max_real = std::numeric_limits<Real>::max();
             reduce_op.eval(bx, reduce_data,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
             {
@@ -309,22 +308,25 @@ Real compute_dt(
 
                 V_adaptive += V_vac_max;
                 V_stupid   += V_vac_max;
-                
-                Real trace_n = 0.0, trace_nbar = 0.0;
-                #include "generated_files/Evolve.cpp_compute_trace"
 
-                // Calculate the minimum trace between neutrinos and antineutrinos
-                Real min_trace = min(trace_n, trace_nbar);
+                V_adaptive *= parms->attenuation_hamiltonians;
+                V_stupid   *= parms->attenuation_hamiltonians;
 
-                // Ensure that the minimum trace is not zero
-                if (min_trace < 1.0) min_trace = 1.0;
-                Real dt_adaptive = min_trace / std::abs(V_adaptive);     // dt = min(trN,trNbar)/|V_adaptive|
-                Real dt_stupid   = min_trace / std::abs(V_stupid);       // dt = min(trN,trNbar)/|V_stupid|
+                Real dt_adaptive = max_real;
+                Real dt_stupid   = max_real;
                 Real dt_absorption = max_real;
 
+                Real minimum_potential_abs = 1e-10;
+
+                // Ensure that the minimum trace is not zero
+                if (std::abs(V_adaptive) > minimum_potential_abs){
+                    Real dt_adaptive = parms->flavor_cfl_factor * ( PhysConst::hbar / std::abs(V_adaptive) ) ;
+                    Real dt_stupid   = parms->flavor_cfl_factor * ( PhysConst::hbar / std::abs(V_stupid  ) ) ;
+                }
+
                 // Calculate the absorption time step
-                if (multifab_IMFP(i, j, k) > 0.0) {
-                    dt_absorption = min_trace / multifab_IMFP(i, j, k); // dt = min(trN,trNbar)/IMFP
+                if (multifab_IMFP(i, j, k) > minimum_potential_abs) {
+                    dt_absorption = parms->collision_cfl_factor * ( 1.0 / ( PhysConst::c * multifab_IMFP(i, j, k) ) );
                 }
 
                 return {dt_adaptive, dt_stupid, dt_absorption};
@@ -347,17 +349,12 @@ Real compute_dt(
         Real dt_flavor_stupid = max_real;
         Real dt_flavor_absorption = max_real; // Initialize with infinity
 
-        if (parms->attenuation_hamiltonians != 0) {
-            // dt = min( min(trN,trNbar)/|V_adaptive| ) * hbar * flavor_cfl_factor / attenuation_hamiltonians
-            dt_flavor_adaptive = PhysConst::hbar * min_dt_adaptive * parms->flavor_cfl_factor / parms->attenuation_hamiltonians; 
-            // dt = min( min(trN,trNbar)/|V_stupid| ) * hbar * flavor_cfl_factor / attenuation_hamiltonians
-            dt_flavor_stupid   = PhysConst::hbar * min_dt_stupid   * parms->flavor_cfl_factor / parms->attenuation_hamiltonians;
-        }
-
         if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
-            // Calculate dt_flavor_absorption
-            // dt = min( min( trN, trNbar ) / IMFP ) * collision_cfl_factor / c
-            dt_flavor_absorption = ( min_dt_absorption / PhysConst::c ) * parms->collision_cfl_factor;
+            dt_flavor_absorption = min_dt_absorption;
+        }
+        if (parms->attenuation_hamiltonians != 0) {
+            dt_flavor_adaptive = min_dt_adaptive; 
+            dt_flavor_stupid   = min_dt_stupid;
         }
 
         // pick the appropriate timestep
