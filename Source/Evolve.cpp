@@ -241,8 +241,9 @@ MultiFab compute_max_IMFP(const Geometry& geom, const MultiFab& state, const Tes
  */
 Real compute_dt(
     const Geometry& geom,
-    const MultiFab& state,
-    const FlavoredNeutrinoContainer& neutrinos,
+    MultiFab& state,
+    FlavoredNeutrinoContainer& neutrinos,
+    FlavoredNeutrinoContainer& neutrinos_dt,
     const TestParams* parms,
     const MultiFab& maximum_IMFP_abs)
 {   
