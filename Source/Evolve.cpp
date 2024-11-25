@@ -326,8 +326,8 @@ Real compute_dt(
 
                     // Ensure that the minimum trace is not zero
                     if (std::abs(V_adaptive) > 0.0){
-                        Real dt_adaptive = parms->flavor_cfl_factor * ( PhysConst::hbar / std::abs(V_adaptive) ) ;
-                        Real dt_stupid   = parms->flavor_cfl_factor * ( PhysConst::hbar / std::abs(V_stupid  ) ) ;
+                        dt_adaptive = parms->flavor_cfl_factor * ( PhysConst::hbar / std::abs(V_adaptive) ) ;
+                        dt_stupid   = parms->flavor_cfl_factor * ( PhysConst::hbar / std::abs(V_stupid  ) ) ;
                     }
 
                     // Calculate the absorption time step
