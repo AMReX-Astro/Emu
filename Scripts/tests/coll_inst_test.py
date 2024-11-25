@@ -150,12 +150,6 @@ if __name__ == "__main__":
     rel_error_bar = np.abs( bbar - b_lsa ) / np.abs( ( bbar + b_lsa ) / 2 )
     rel_error_max = 0.05
 
-    print(f"{rel_error} ---> relative error in ImOmega : EMU")
-    print(f"{rel_error_bar} ---> relative error in ImOmegabar : EMU")
-
-    myassert( rel_error     < rel_error_max )
-    myassert( rel_error_bar < rel_error_max )
-    
     ######################################################################################
     ######################################################################################
 
@@ -274,3 +268,11 @@ if __name__ == "__main__":
     plt.legend()
     plt.savefig('EMU_Julien_LucasLSA_Neu.pdf')
     plt.close()
+
+    # Asserts
+
+    print(f"{rel_error} ---> relative error in ImOmega : EMU")
+    print(f"{rel_error_bar} ---> relative error in ImOmegabar : EMU")
+
+    myassert( rel_error     < rel_error_max )
+    myassert( rel_error_bar < rel_error_max )
