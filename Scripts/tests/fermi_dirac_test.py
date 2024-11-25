@@ -18,6 +18,10 @@ directories = directories[mask]
 # Sort the data file names by time step number
 directories = sorted(directories, key=lambda x: int(x.split("plt")[1].split(".")[0]))
 
+#
+# Energy bins from NuLib table (Cutted)
+# The following energy bins should be the same as the st9_empty_particles_multi_energy initial condition script
+#
 # Energy bin centers extracted from NuLib table
 energies_center_Mev = np.array([15.6909, 20.9527, 27.4681, 35.5357, 45.5254, 57.8951, 73.2117, 92.1775, 115.662, 144.741, 180.748, 225.334, 280.542]) # Energy in Mev
 # Energy bin bottom extracted from NuLib table
