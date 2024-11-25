@@ -30,6 +30,7 @@ struct TestParams : public amrex::Gpu::Managed
     bool do_restart; // Flag to restart from a previous simulation
     std::string restart_dir; // Directory path to restart from in case do_restart is true
     Real maxError;
+    Real minimum_time_step; // Minimum time step allowed in the simulation
 
     // File name with particles' initial conditions
     // This includes energy, momentum, N, Nbar, phase space volume, and others. 
@@ -94,7 +95,8 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("do_restart", do_restart);
         pp.get("restart_dir", restart_dir);
         pp.get("maxError", maxError);
-
+        pp.get("minimum_time_step", minimum_time_step);
+        
         // File name with particles' initial conditions
         // This includes energy, momentum, N, Nbar, phase space volume, and others. 
         pp.get("particle_data_filename",particle_data_filename);

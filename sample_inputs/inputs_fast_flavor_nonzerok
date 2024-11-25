@@ -30,6 +30,9 @@ max_grid_size = 10
 # Number of steps to run
 nsteps = 5000
 
+# Minimum timestep (s)
+minimum_time_step = 1e-15
+
 # Simulation end time
 end_time = 1.0e-10
 
