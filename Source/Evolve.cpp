@@ -303,6 +303,10 @@ Real compute_dt(
                     }
                 }
 
+                // V_stupid = Max(N_ab,Nbar_ab, Ye*rho/Mp)*4.0*sqrt(2)*GF
+                // V_adaptive id the magnitud of vector the following vector
+                // |vec{H}| = | sqrt(2)*GF * ( (N_ab - Nbar_ab) + (F - Fbar) + Ye*rho/Mp ) |
+
                 Real V_adaptive=0, V_adaptive2=0, V_stupid=0;
                 #include "generated_files/Evolve.cpp_compute_dt_fill"
 
