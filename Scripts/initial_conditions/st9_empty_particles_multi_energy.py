@@ -17,6 +17,7 @@ nphi_equator = 16 # number of direction in equator
 NF = 3 # number of flavors
 
 '''
+# Energy bins from NuLib table (No cutted)
 --------- NuLib table energy bins ---------
 # Energy bin centers extracted from NuLib table
 energies_center_Mev = [1, 3, 5.23824, 8.00974, 11.4415, 15.6909, 20.9527, 27.4681, 35.5357, 45.5254, 57.8951, 73.2117, 92.1775, 115.662, 144.741, 180.748, 225.334, 280.542] # Energy in Mev
@@ -26,6 +27,11 @@ energies_bottom_Mev = [0, 2, 4, 6.47649, 9.54299, 13.3401, 18.0418, 23.8636, 31.
 energies_top_Mev = [2, 4, 6.47649, 9.54299, 13.3401, 18.0418, 23.8636, 31.0725, 39.9989, 51.0519, 64.7382, 81.6853, 102.67, 128.654, 160.828, 200.668, 250, 311.085]
 '''
 
+# The following energy bins are an extraction of the NuLib table
+# I have delete the first five energy bin to make the fermi-dirac test facter
+# If I simulation want to run with all energy bins the user must change the energy bins manually
+
+# Energy bins from NuLib table (Cutted)
 # Energy bin centers extracted from NuLib table
 energies_center_Mev = [15.6909, 20.9527, 27.4681, 35.5357, 45.5254, 57.8951, 73.2117, 92.1775, 115.662, 144.741, 180.748, 225.334, 280.542] # Energy in Mev
 # Energy bin bottom extracted from NuLib table
