@@ -197,8 +197,8 @@ MultiFab compute_max_IMFP(const Geometry& geom, const MultiFab& state, const Tes
                 #endif
 
                 for (int i=1; i<NUM_FLAVORS; ++i) { //0->neutrino or 1->antineutrino
-                    IMFP_abs[i][i]     = absorption_opacity ; // ... fix it ...
-                    IMFP_absbar[i][i]  = absorption_opacity ; // ... fix it ...
+                    IMFP_abs[i][i]     = absorption_opacity ;
+                    IMFP_absbar[i][i]  = absorption_opacity ;
                 }
 
                 //Calculate max of all IMFP_abs and IMFP_absbar.
