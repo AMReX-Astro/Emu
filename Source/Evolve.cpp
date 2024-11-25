@@ -328,16 +328,14 @@ Real compute_dt(
                     Real dt_stupid   = max_real;
                     Real dt_absorption = max_real;
 
-                    Real minimum_potential_abs = parms->flavor_cfl_factor * PhysConst::hbar / parms->minimum_time_step;
-
                     // Ensure that the minimum trace is not zero
-                    if (std::abs(V_adaptive) > minimum_potential_abs){
+                    if (std::abs(V_adaptive) > 0.0){
                         Real dt_adaptive = parms->flavor_cfl_factor * ( PhysConst::hbar / std::abs(V_adaptive) ) ;
                         Real dt_stupid   = parms->flavor_cfl_factor * ( PhysConst::hbar / std::abs(V_stupid  ) ) ;
                     }
 
                     // Calculate the absorption time step
-                    if ( ( PhysConst::c * multifab_IMFP(i, j, k) ) > ( parms->collision_cfl_factor / parms->minimum_time_step) ) {
+                    if ( multifab_IMFP(i, j, k) > 0.0 ) {
                         dt_absorption = parms->collision_cfl_factor * ( 1.0 / ( PhysConst::c * multifab_IMFP(i, j, k) ) );
                     }
 
@@ -375,8 +373,115 @@ Real compute_dt(
                 dt_flavor = min(dt_flavor_stupid*parms->max_adaptive_speedup, dt_flavor_adaptive, dt_flavor_absorption);
             }
         }
-    }
+    } else if ( time_step_method == 1 ){
 
+        AMREX_ASSERT_WITH_MESSAGE(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0,
+                                "Error: At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.");
+
+        // Compute time step with brute force method
+        deposit_to_mesh(neutrinos, state, geom);
+        state.FillBoundary(geom.periodicity());
+        neutrinos_dt.copyParticles(neutrinos, true);
+        interpolate_rhs_from_mesh(neutrinos_dt, state, geom, parms);
+
+        ReduceOps<ReduceOpMin> reduce_op;
+        ReduceData<Real> reduce_data(reduce_op);
+
+        const int lev = 0;
+        FNParIter pti_time_derivative(neutrinos_dt, lev);
+        for (FNParIter pti(neutrinos, lev); pti.isValid(); ++pti)
+        {
+
+            const int np = pti.numParticles();
+            const int np_dt = pti_time_derivative.numParticles();
+
+            FlavoredNeutrinoContainer::ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
+            FlavoredNeutrinoContainer::ParticleType* pstruct_dt = &(pti_time_derivative.GetArrayOfStructs()[0]);
+
+            Real ydot_limit = 1.0e-15;
+
+            reduce_op.eval(np, reduce_data,
+            [=] AMREX_GPU_DEVICE (int i) -> Real
+            {
+
+                FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
+                FlavoredNeutrinoContainer::ParticleType& p_dt = pstruct_dt[i];
+                
+                auto update_dt = [&] (int idx) {
+                    p_dt.rdata(idx) = std::numeric_limits<Real>::max();
+                    if (std::abs(p_dt.rdata(idx)) > 0) {
+                        if (p.rdata(idx) > 1.0){
+                            p_dt.rdata(idx) = parms->flavor_cfl_factor * std::abs( p.rdata(idx) / p_dt.rdata(idx));
+                        } else{
+                            p_dt.rdata(idx) = parms->flavor_cfl_factor * std::abs( 1.0          / p_dt.rdata(idx));
+                        }
+                    }
+                };
+
+                update_dt(PIdx::N00_Rebar);
+                update_dt(PIdx::N01_Rebar);
+                update_dt(PIdx::N01_Imbar);
+                update_dt(PIdx::N11_Rebar);
+                update_dt(PIdx::N00_Re);
+                update_dt(PIdx::N01_Re);
+                update_dt(PIdx::N01_Im);
+                update_dt(PIdx::N11_Re);
+
+                #if NUM_FLAVORS == 3 
+                update_dt(PIdx::N02_Rebar);
+                update_dt(PIdx::N02_Imbar);
+                update_dt(PIdx::N12_Rebar);
+                update_dt(PIdx::N12_Imbar);
+                update_dt(PIdx::N22_Rebar);
+                update_dt(PIdx::N02_Re);
+                update_dt(PIdx::N02_Im);
+                update_dt(PIdx::N12_Re);
+                update_dt(PIdx::N12_Im);
+                update_dt(PIdx::N22_Re);
+                #endif
+
+                Real min_dt = std::min({
+                    p_dt.rdata(PIdx::N00_Rebar),
+                    p_dt.rdata(PIdx::N01_Rebar),
+                    p_dt.rdata(PIdx::N01_Imbar),
+                    p_dt.rdata(PIdx::N11_Rebar),
+                    p_dt.rdata(PIdx::N00_Re),
+                    p_dt.rdata(PIdx::N01_Re),
+                    p_dt.rdata(PIdx::N01_Im),
+                    p_dt.rdata(PIdx::N11_Re)
+                });
+
+                #if NUM_FLAVORS == 3 
+                min_dt = std::min({
+                    min_dt,
+                    p_dt.rdata(PIdx::N02_Rebar),
+                    p_dt.rdata(PIdx::N02_Imbar),
+                    p_dt.rdata(PIdx::N12_Rebar),
+                    p_dt.rdata(PIdx::N12_Imbar),
+                    p_dt.rdata(PIdx::N22_Rebar),
+                    p_dt.rdata(PIdx::N02_Re),
+                    p_dt.rdata(PIdx::N02_Im),
+                    p_dt.rdata(PIdx::N12_Re),
+                    p_dt.rdata(PIdx::N12_Im),
+                    p_dt.rdata(PIdx::N22_Re)
+                });
+                #endif
+
+                return min_dt;
+
+            });
+
+            ++pti_time_derivative;
+        }
+
+        // Extract the reduced value
+        Real qke_dt = amrex::get<0>(reduce_data.value());
+
+        // Reduce across MPI ranks
+        ParallelDescriptor::ReduceRealMin(qke_dt);
+
+        Real dt_flavor = qke_dt;
+    }
 
     Real dt = 0.0;
     if (dt_translation != 0.0 && dt_flavor != 0.0) {
@@ -390,6 +495,8 @@ Real compute_dt(
             amrex::Error("Timestep selection failed, both dt_translation and dt_flavor are zero. Try using both cfl_factor and flavor_cfl_factor.");
         }
     }
+    
+    if (dt<parms->minimum_time_step) dt = parms->minimum_time_step;
 
     return dt;
 }
