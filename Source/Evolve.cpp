@@ -249,9 +249,11 @@ Real compute_dt(
 {   
     // Initialize the maximum real value
     const Real max_real = std::numeric_limits<Real>::max();
-
-    AMREX_ASSERT_WITH_MESSAGE(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0 || parms->collision_cfl_factor > 0.0,
-                              "Error: At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.");
+    
+    // FIXME
+    // TEMPORARY FLAG: PUT THIS IN IMPUT PARAMETERS
+    int time_step_method = 0;
+    // FIXME
 
 	// Get the cell size array
     const auto dxi = geom.CellSizeArray();
@@ -261,113 +263,120 @@ Real compute_dt(
         // dt = (min(dx,dy,dz)/c) * cfl_factor
         dt_translation = std::min({dxi[0], dxi[1], dxi[2]}) / PhysConst::c * parms->cfl_factor;
     }
-
     Real dt_flavor = 0.0;
-    if (parms->flavor_cfl_factor > 0.0 && parms->collision_cfl_factor > 0.0) {
 
-        ReduceOps< ReduceOpMin, ReduceOpMin, ReduceOpMin > reduce_op;
-        ReduceData< Real , Real, Real > reduce_data(reduce_op);
-        using ReduceTuple = typename decltype(reduce_data)::Type;
-        for (MFIter mfi(state); mfi.isValid(); ++mfi) {
-            const Box& bx = mfi.validbox();
-            auto const& fab = state.array(mfi);
-            auto const& multifab_IMFP = maximum_IMFP_abs.array(mfi);
-            Real V_vac_max = FlavoredNeutrinoContainer::Vvac_max;
-            reduce_op.eval(bx, reduce_data,
-            [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
-            {
-                // Check if the cell is at the boundary or inside the black hole
-                if (parms->do_periodic_empty_bc == 1) {
-                    // Check if the cell is at the boundary
-                    if (i == 0 || i == parms->ncell[0] - 1 ||
-                        j == 0 || j == parms->ncell[1] - 1 ||
-                        k == 0 || k == parms->ncell[2] - 1) {
-                        return {max_real,max_real,max_real};
+    if ( time_step_method == 0 ){
+
+        AMREX_ASSERT_WITH_MESSAGE(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0 || parms->collision_cfl_factor > 0.0,
+                                "Error: At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.");
+
+        if (parms->flavor_cfl_factor > 0.0 && parms->collision_cfl_factor > 0.0) {
+
+            ReduceOps< ReduceOpMin, ReduceOpMin, ReduceOpMin > reduce_op;
+            ReduceData< Real , Real, Real > reduce_data(reduce_op);
+            using ReduceTuple = typename decltype(reduce_data)::Type;
+            for (MFIter mfi(state); mfi.isValid(); ++mfi) {
+                const Box& bx = mfi.validbox();
+                auto const& fab = state.array(mfi);
+                auto const& multifab_IMFP = maximum_IMFP_abs.array(mfi);
+                Real V_vac_max = FlavoredNeutrinoContainer::Vvac_max;
+                reduce_op.eval(bx, reduce_data,
+                [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
+                {
+                    // Check if the cell is at the boundary or inside the black hole
+                    if (parms->do_periodic_empty_bc == 1) {
+                        // Check if the cell is at the boundary
+                        if (i == 0 || i == parms->ncell[0] - 1 ||
+                            j == 0 || j == parms->ncell[1] - 1 ||
+                            k == 0 || k == parms->ncell[2] - 1) {
+                            return {max_real,max_real,max_real};
+                        }
+                    }else if (parms->do_blackhole == 1) {
+                        // Check if the cell is inside the black hole
+
+                        // Calculate the cell size
+                        double cell_size_x = parms->Lx / parms->ncell[0];
+                        double cell_size_y = parms->Ly / parms->ncell[1];
+                        double cell_size_z = parms->Lz / parms->ncell[2];
+                        // Calculate the cell center coordinates
+                        double x_cell_center = (i + 0.5) * cell_size_x;
+                        double y_cell_center = (j + 0.5) * cell_size_y;
+                        double z_cell_center = (k + 0.5) * cell_size_z;
+                        // Calculate the distance from the black hole center
+                        Real distance_from_bh = sqrt(pow(x_cell_center - parms->bh_center_x, 2) + pow(y_cell_center - parms->bh_center_y, 2) + pow(z_cell_center - parms->bh_center_z, 2));
+
+                        // Check if the cell is inside the black hole
+                        if (distance_from_bh < parms->bh_radius) {
+                            return {max_real,max_real,max_real};
+                        }
                     }
-                }else if (parms->do_blackhole == 1) {
-                    // Check if the cell is inside the black hole
 
-                    // Calculate the cell size
-                    double cell_size_x = parms->Lx / parms->ncell[0];
-                    double cell_size_y = parms->Ly / parms->ncell[1];
-                    double cell_size_z = parms->Lz / parms->ncell[2];
-                    // Calculate the cell center coordinates
-                    double x_cell_center = (i + 0.5) * cell_size_x;
-                    double y_cell_center = (j + 0.5) * cell_size_y;
-                    double z_cell_center = (k + 0.5) * cell_size_z;
-                    // Calculate the distance from the black hole center
-                    Real distance_from_bh = sqrt(pow(x_cell_center - parms->bh_center_x, 2) + pow(y_cell_center - parms->bh_center_y, 2) + pow(z_cell_center - parms->bh_center_z, 2));
+                    // V_stupid = Max(N_ab,Nbar_ab, Ye*rho/Mp)*4.0*sqrt(2)*GF
+                    // V_adaptive id the magnitud of vector the following vector
+                    // |vec{H}| = | sqrt(2)*GF * ( (N_ab - Nbar_ab) + (F - Fbar) + Ye*rho/Mp ) |
 
-                    // Check if the cell is inside the black hole
-                    if (distance_from_bh < parms->bh_radius) {
-                        return {max_real,max_real,max_real};
+                    Real V_adaptive=0, V_adaptive2=0, V_stupid=0;
+                    #include "generated_files/Evolve.cpp_compute_dt_fill"
+
+                    V_adaptive += V_vac_max;
+                    V_stupid   += V_vac_max;
+
+                    V_adaptive *= parms->attenuation_hamiltonians;
+                    V_stupid   *= parms->attenuation_hamiltonians;
+
+                    Real dt_adaptive = max_real;
+                    Real dt_stupid   = max_real;
+                    Real dt_absorption = max_real;
+
+                    Real minimum_potential_abs = parms->flavor_cfl_factor * PhysConst::hbar / parms->minimum_time_step;
+
+                    // Ensure that the minimum trace is not zero
+                    if (std::abs(V_adaptive) > minimum_potential_abs){
+                        Real dt_adaptive = parms->flavor_cfl_factor * ( PhysConst::hbar / std::abs(V_adaptive) ) ;
+                        Real dt_stupid   = parms->flavor_cfl_factor * ( PhysConst::hbar / std::abs(V_stupid  ) ) ;
                     }
-                }
 
-                // V_stupid = Max(N_ab,Nbar_ab, Ye*rho/Mp)*4.0*sqrt(2)*GF
-                // V_adaptive id the magnitud of vector the following vector
-                // |vec{H}| = | sqrt(2)*GF * ( (N_ab - Nbar_ab) + (F - Fbar) + Ye*rho/Mp ) |
+                    // Calculate the absorption time step
+                    if ( ( PhysConst::c * multifab_IMFP(i, j, k) ) > ( parms->collision_cfl_factor / parms->minimum_time_step) ) {
+                        dt_absorption = parms->collision_cfl_factor * ( 1.0 / ( PhysConst::c * multifab_IMFP(i, j, k) ) );
+                    }
 
-                Real V_adaptive=0, V_adaptive2=0, V_stupid=0;
-                #include "generated_files/Evolve.cpp_compute_dt_fill"
+                    return {dt_adaptive, dt_stupid, dt_absorption};
+                });
+            }
 
-                V_adaptive += V_vac_max;
-                V_stupid   += V_vac_max;
+            // extract the reduced values from the combined reduced data structure
+            auto rv = reduce_data.value();
+            Real min_dt_adaptive = amrex::get<0>(rv);
+            Real min_dt_stupid   = amrex::get<1>(rv);
+            Real min_dt_absorption   = amrex::get<2>(rv);
 
-                V_adaptive *= parms->attenuation_hamiltonians;
-                V_stupid   *= parms->attenuation_hamiltonians;
+            // reduce across MPI ranks
+            ParallelDescriptor::ReduceRealMin(min_dt_adaptive);
+            ParallelDescriptor::ReduceRealMin(min_dt_stupid  );
+            ParallelDescriptor::ReduceRealMin(min_dt_absorption);
 
-                Real dt_adaptive = max_real;
-                Real dt_stupid   = max_real;
-                Real dt_absorption = max_real;
+            // define the dt associated with each method
+            Real dt_flavor_adaptive = max_real;
+            Real dt_flavor_stupid = max_real;
+            Real dt_flavor_absorption = max_real; // Initialize with infinity
 
-                Real minimum_potential_abs = parms->flavor_cfl_factor * PhysConst::hbar / parms->minimum_time_step;
+            if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
+                dt_flavor_absorption = min_dt_absorption;
+            }
+            if (parms->attenuation_hamiltonians != 0) {
+                dt_flavor_adaptive = min_dt_adaptive; 
+                dt_flavor_stupid   = min_dt_stupid;
+            }
 
-                // Ensure that the minimum trace is not zero
-                if (std::abs(V_adaptive) > minimum_potential_abs){
-                    Real dt_adaptive = parms->flavor_cfl_factor * ( PhysConst::hbar / std::abs(V_adaptive) ) ;
-                    Real dt_stupid   = parms->flavor_cfl_factor * ( PhysConst::hbar / std::abs(V_stupid  ) ) ;
-                }
-
-                // Calculate the absorption time step
-                if ( ( PhysConst::c * multifab_IMFP(i, j, k) ) > ( parms->collision_cfl_factor / parms->minimum_time_step) ) {
-                    dt_absorption = parms->collision_cfl_factor * ( 1.0 / ( PhysConst::c * multifab_IMFP(i, j, k) ) );
-                }
-
-                return {dt_adaptive, dt_stupid, dt_absorption};
-            });
-        }
-
-        // extract the reduced values from the combined reduced data structure
-        auto rv = reduce_data.value();
-        Real min_dt_adaptive = amrex::get<0>(rv);
-        Real min_dt_stupid   = amrex::get<1>(rv);
-        Real min_dt_absorption   = amrex::get<2>(rv);
-
-        // reduce across MPI ranks
-        ParallelDescriptor::ReduceRealMin(min_dt_adaptive);
-        ParallelDescriptor::ReduceRealMin(min_dt_stupid  );
-        ParallelDescriptor::ReduceRealMin(min_dt_absorption);
-
-        // define the dt associated with each method
-        Real dt_flavor_adaptive = max_real;
-        Real dt_flavor_stupid = max_real;
-        Real dt_flavor_absorption = max_real; // Initialize with infinity
-
-        if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
-            dt_flavor_absorption = min_dt_absorption;
-        }
-        if (parms->attenuation_hamiltonians != 0) {
-            dt_flavor_adaptive = min_dt_adaptive; 
-            dt_flavor_stupid   = min_dt_stupid;
-        }
-
-        // pick the appropriate timestep
-        dt_flavor = min(dt_flavor_stupid, dt_flavor_adaptive, dt_flavor_absorption);
-        if(parms->max_adaptive_speedup > 1) {
-            dt_flavor = min(dt_flavor_stupid*parms->max_adaptive_speedup, dt_flavor_adaptive, dt_flavor_absorption);
+            // pick the appropriate timestep
+            dt_flavor = min(dt_flavor_stupid, dt_flavor_adaptive, dt_flavor_absorption);
+            if(parms->max_adaptive_speedup > 1) {
+                dt_flavor = min(dt_flavor_stupid*parms->max_adaptive_speedup, dt_flavor_adaptive, dt_flavor_absorption);
+            }
         }
     }
+
 
     Real dt = 0.0;
     if (dt_translation != 0.0 && dt_flavor != 0.0) {
