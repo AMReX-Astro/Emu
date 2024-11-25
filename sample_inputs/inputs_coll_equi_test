@@ -32,6 +32,9 @@ nsteps = 1000
 # Minimum timestep (s)
 minimum_time_step = 1e-15
 
+# Time step method
+time_step_method = 0
+
 # Simulation end time
 end_time = 5.0e9
 
