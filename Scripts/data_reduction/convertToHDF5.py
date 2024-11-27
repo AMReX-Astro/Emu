@@ -49,14 +49,19 @@ def convert_to_HDF5(sim_directory, DELETE_ALL_BUT_LAST_RESTART=False):
         if d==fluid_directories[0]:
             NF = eds.get_num_flavors()
             allData = h5py.File(sim_directory+"/allData.h5","w")
+            allData["dx(cm)"] = eds.dx
+            allData["dy(cm)"] = eds.dy
             allData["dz(cm)"] = eds.dz
+            allData["Nx"] = eds.Nx
+            allData["Ny"] = eds.Ny
+            allData["Nz"] = eds.Nz
             allData.create_dataset("t(s)", data=np.zeros(0), maxshape=(None,), dtype=datatype)
             allData.create_dataset("it", data=np.zeros(0), maxshape=(None,), dtype=int)
 
             # create fluid data sets
-            maxshape = (None, eds.Nz)
-            chunkshape = (1, eds.Nz)
-            zeros = np.zeros((0,eds.Nz))
+            maxshape = (None,eds.Nx,eds.Ny,eds.Nz)
+            chunkshape = (1,eds.Nx,eds.Ny,eds.Nz)
+            zeros = np.zeros((0,eds.Nx,eds.Ny,eds.Nz))
             varlist = []
             for v in fluid_vars:
                 for f1 in range(NF):
