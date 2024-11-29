@@ -397,8 +397,10 @@ Real compute_dt(
                 FlavoredNeutrinoContainer::ParticleType& p_dt = pstruct_dt[i];
                 
                 auto update_dt = [&] (int idx) {
-                    if (p.rdata(idx)) {
-                        amrex::Abort("Error: NaN value detected in rho, T_grid, or Ye.");
+                    if (std::isnan(p.rdata(idx))) {
+                        amrex::Abort("Error: NaN value detected in N or Nbar.");
+                        p_dt.rdata(idx) = -1.0;
+                        return;
                     }
                     if (std::abs(p_dt.rdata(idx)) > 0) {
                         if ( std::abs(p.rdata(idx)) > 1.0){
@@ -473,6 +475,11 @@ Real compute_dt(
         ParallelDescriptor::ReduceRealMin(qke_dt);
 
         dt_flavor = qke_dt;
+    }
+
+    if (dt_flavor < 0.0) {
+        printf("Error: NaN value detected in N or Nbar. Aborting...\n");
+        std::abort();
     }
 
     Real dt = 0.0;
