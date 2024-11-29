@@ -397,6 +397,9 @@ Real compute_dt(
                 FlavoredNeutrinoContainer::ParticleType& p_dt = pstruct_dt[i];
                 
                 auto update_dt = [&] (int idx) {
+                    if (p.rdata(idx)) {
+                        amrex::Abort("Error: NaN value detected in rho, T_grid, or Ye.");
+                    }
                     if (std::abs(p_dt.rdata(idx)) > 0) {
                         if ( std::abs(p.rdata(idx)) > 1.0){
                             p_dt.rdata(idx) = parms->flavor_cfl_factor * std::abs( p.rdata(idx) / p_dt.rdata(idx));
