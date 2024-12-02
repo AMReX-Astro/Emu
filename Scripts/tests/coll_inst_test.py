@@ -21,6 +21,64 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-na", "--no_assert", action="store_true", help="If --no_assert is supplied, do not raise assertion errors if the test error > tolerance.")
 args = parser.parse_args()
 
+############################################################
+############################################################
+# PLOT SETTINGS
+import matplotlib as mpl
+import matplotlib.pyplot as plt 
+from matplotlib.ticker import AutoLocator, AutoMinorLocator, LogLocator
+import os
+import cv2
+import glob
+
+# Font settings
+mpl.rcParams['font.size'] = 22
+mpl.rcParams['font.family'] = 'serif'
+mpl.rc('text', usetex=False)
+
+# Tick settings
+mpl.rcParams['xtick.major.width'] = 2
+mpl.rcParams['xtick.major.pad'] = 8
+mpl.rcParams['xtick.minor.size'] = 4
+
+mpl.rcParams['xtick.minor.width'] = 2
+mpl.rcParams['ytick.major.size'] = 7
+mpl.rcParams['ytick.major.width'] = 2
+mpl.rcParams['ytick.minor.size'] = 4
+mpl.rcParams['ytick.minor.width'] = 2
+
+# Axis linewidth
+mpl.rcParams['axes.linewidth'] = 2
+
+# Tick direction and enabling ticks on all sides
+mpl.rcParams['xtick.direction'] = 'in'
+mpl.rcParams['ytick.direction'] = 'in'
+mpl.rcParams['xtick.top'] = True
+mpl.rcParams['ytick.right'] = True
+
+# Function to apply custom tick locators and other settings to an Axes object
+def apply_custom_settings(ax, leg, log_scale_y=False):
+
+    if log_scale_y:
+        # Use LogLocator for the y-axis if it's in log scale
+        ax.set_yscale('log')
+        ax.yaxis.set_major_locator(LogLocator(base=10.0))
+        ax.yaxis.set_minor_locator(LogLocator(base=10.0, subs='auto', numticks=100))
+    else:
+        # Use AutoLocator for regular scales
+        ax.yaxis.set_major_locator(AutoLocator())
+        ax.yaxis.set_minor_locator(AutoMinorLocator())
+    
+    # Apply the AutoLocator for the x-axis
+    ax.xaxis.set_major_locator(AutoLocator())
+    ax.xaxis.set_minor_locator(AutoMinorLocator())
+    
+    # Legend settings
+    leg.get_frame().set_edgecolor('w')
+    leg.get_frame().set_linewidth(0.0)
+############################################################
+############################################################
+
 if __name__ == "__main__":
 
     # Create a list of data files to read
@@ -54,50 +112,52 @@ if __name__ == "__main__":
     print(f'{b} ---> EMU : Im Omega')
     print(f'{bbar} ---> EMU : Im Omegabar')
 
-    # Plots
-    import matplotlib.pyplot as plt 
-
-    # Plots N and Nbar
-    plt.plot(t, N_avg_mag[:,0,0], label = r'$N_{ee}$')
-    plt.plot(t, N_avg_mag[:,0,1], label = r'$N_{eu}$')
-    plt.plot(t, N_avg_mag[:,1,1], label = r'$N_{uu}$')
-    plt.plot(t, Nbar_avg_mag[:,0,0], label = r'$\bar{N}_{ee}$')
-    plt.plot(t, Nbar_avg_mag[:,0,1], label = r'$\bar{N}_{eu}$')
-    plt.plot(t, Nbar_avg_mag[:,1,1], label = r'$\bar{N}_{uu}$')
-    plt.legend()
-    plt.xlabel(r'$t$ (s)')
-    plt.ylabel(r'$N$ and $\bar{N}$')
-    plt.savefig('N_and_Nbar.pdf')
+    # Plots    
+    fig, ax = plt.subplots()
+    ax.plot(t, N_avg_mag[:,0,0], label = r'$N_{ee}$')
+    ax.plot(t, N_avg_mag[:,0,1], label = r'$N_{eu}$')
+    ax.plot(t, N_avg_mag[:,1,1], label = r'$N_{uu}$')
+    ax.plot(t, Nbar_avg_mag[:,0,0], label = r'$\bar{N}_{ee}$')
+    ax.plot(t, Nbar_avg_mag[:,0,1], label = r'$\bar{N}_{eu}$')
+    ax.plot(t, Nbar_avg_mag[:,1,1], label = r'$\bar{N}_{uu}$')
+    ax.set_xlabel(r'$t$ (s)')
+    ax.set_ylabel(r'$N$ and $\bar{N}$')
+    leg = ax.legend(framealpha=0.0, ncol=1, fontsize=12)
+    apply_custom_settings(ax, leg, log_scale_y=False)
+    plt.tight_layout()
+    fig.savefig('N_and_Nbar.pdf', bbox_inches='tight')
     plt.clf()
 
-    # Plots N and F
-    plt.plot(t, N_avg_mag[:,0,0], label = r'$N_{ee}$')
-    plt.plot(t, N_avg_mag[:,0,1], label = r'$N_{eu}$')
-    plt.plot(t, N_avg_mag[:,1,1], label = r'$N_{uu}$')
-    plt.plot(t[l1:l2], N_avg_mag[:,0,1][l1:l2], label = f'Im Omega = {b}')
-    plt.plot(t, F_avg_mag[:,0,0,1], label = r'$F^x_{eu}$') 
-    plt.plot(t, F_avg_mag[:,1,0,1], label = r'$F^y_{eu}$')
-    plt.plot(t, F_avg_mag[:,2,0,1], label = r'$F^z_{eu}$')
-    plt.legend()
-    plt.xlabel(r'$t$ (s)')
-    plt.ylabel(r'$N$ and $\vec{F}$')
-    plt.yscale('log')
-    plt.savefig('N_and_F.pdf')
+    fig, ax = plt.subplots()
+    ax.plot(t, N_avg_mag[:,0,0], label = r'$N_{ee}$')
+    ax.plot(t, N_avg_mag[:,0,1], label = r'$N_{eu}$')
+    ax.plot(t, N_avg_mag[:,1,1], label = r'$N_{uu}$')
+    ax.plot(t[l1:l2], N_avg_mag[:,0,1][l1:l2], label = f'Im Omega = {b:.2e}')
+    ax.plot(t, F_avg_mag[:,0,0,1], label = r'$F^x_{eu}$') 
+    ax.plot(t, F_avg_mag[:,1,0,1], label = r'$F^y_{eu}$')
+    ax.plot(t, F_avg_mag[:,2,0,1], label = r'$F^z_{eu}$')
+    ax.set_xlabel(r'$t$ (s)')
+    ax.set_ylabel(r'$N$ and $\vec{F}$')
+    leg = ax.legend(framealpha=0.0, ncol=1, fontsize=12)
+    apply_custom_settings(ax, leg, log_scale_y=True)
+    plt.tight_layout()
+    fig.savefig('N_and_F.pdf', bbox_inches='tight')
     plt.clf()
 
-    # Plots Nbar and Fbar
-    plt.plot(t, Nbar_avg_mag[:,0,0], label = r'$\bar{N}_{ee}$')
-    plt.plot(t, Nbar_avg_mag[:,0,1], label = r'$\bar{N}_{eu}$')
-    plt.plot(t, Nbar_avg_mag[:,1,1], label = r'$\bar{N}_{uu}$')
-    plt.plot(t[l1:l2], Nbar_avg_mag[:,0,1][l1:l2], label = f'Im Omega = {bbar}')
-    plt.plot(t, Fbar_avg_mag[:,0,0,1], label = r'$\bar{F}^x_{eu}$')
-    plt.plot(t, Fbar_avg_mag[:,1,0,1], label = r'$\bar{F}^y_{eu}$')
-    plt.plot(t, Fbar_avg_mag[:,2,0,1], label = r'$\bar{F}^z_{eu}$')
-    plt.legend()
-    plt.xlabel(r'$t$ (s)')
-    plt.ylabel(r'$\bar{N}$ and $\vec{\bar{F}}$')
-    plt.yscale('log')
-    plt.savefig('Nbar_and_Fbar.pdf')
+    fig, ax = plt.subplots()
+    ax.plot(t, Nbar_avg_mag[:,0,0], label = r'$\bar{N}_{ee}$')
+    ax.plot(t, Nbar_avg_mag[:,0,1], label = r'$\bar{N}_{eu}$')
+    ax.plot(t, Nbar_avg_mag[:,1,1], label = r'$\bar{N}_{uu}$')
+    ax.plot(t[l1:l2], Nbar_avg_mag[:,0,1][l1:l2], label = f'Im Omega = {bbar:.2e}')
+    ax.plot(t, Fbar_avg_mag[:,0,0,1], label = r'$\bar{F}^x_{eu}$')
+    ax.plot(t, Fbar_avg_mag[:,1,0,1], label = r'$\bar{F}^y_{eu}$')
+    ax.plot(t, Fbar_avg_mag[:,2,0,1], label = r'$\bar{F}^z_{eu}$')
+    ax.set_xlabel(r'$t$ (s)')
+    ax.set_ylabel(r'$\bar{N}$ and $\vec{\bar{F}}$')
+    leg = ax.legend(framealpha=0.0, ncol=1, fontsize=12)
+    apply_custom_settings(ax, leg, log_scale_y=True)
+    plt.tight_layout()
+    fig.savefig('Nbar_and_Fbar.pdf', bbox_inches='tight')
     plt.clf()
 
     ######################################################################################
@@ -256,17 +316,19 @@ if __name__ == "__main__":
     print(f"{rel_error_j} ---> relative erroror in Julien script")
 
     # Plotting Julien, EMU and Lucas LSA data
-    plt.plot(t, N_avg_mag[:,0,1], label = r'$N_{eu}$ EMU')
-    plt.plot(t[l1:l2], N_avg_mag[:,0,1][l1:l2],  label = f'Im Omega EMU = {b}',  linestyle = 'dashed')
-    plt.plot(time,N_eu_julien, label = r'$N_{eu}$ Julien script')
-    plt.plot(time[p1:p2],N_eu_julien[p1:p2], label = f'Im Omega Julien = {bj}',  linestyle = 'dashed')
-    plt.plot(time[p1:p2], 1e23*np.exp(ImOmega_Lucas_LSA*time[p1:p2]), label = f'Im Omega Lucas LSA = {ImOmega_Lucas_LSA}', linestyle = 'dashed')
-    plt.xlabel(r'$t \ (\mathrm{s})$')
-    plt.ylabel(r'$N_{eu}$')
-    plt.title(f"Collisional flavor instability test")
-    plt.yscale('log')
-    plt.legend()
-    plt.savefig('EMU_Julien_LucasLSA_Neu.pdf')
+    fig, ax = plt.subplots()
+    ax.plot(t, N_avg_mag[:,0,1], label = r'$N_{eu}$ EMU')
+    ax.plot(t[l1:l2], N_avg_mag[:,0,1][l1:l2],  label = f'Im Omega EMU = {b:.2e}',  linestyle = 'dashed')
+    ax.plot(time, N_eu_julien, label = r'$N_{eu}$ Julien script')
+    ax.plot(time[p1:p2], N_eu_julien[p1:p2], label = f'Im Omega Julien = {bj:.2e}',  linestyle = 'dashed')
+    ax.plot(time[p1:p2], 1e23*np.exp(ImOmega_Lucas_LSA*time[p1:p2]), label = f'Im Omega Lucas LSA = {ImOmega_Lucas_LSA:.2e}', linestyle = 'dashed')
+    ax.set_xlabel(r'$t \ (\mathrm{s})$')
+    ax.set_ylabel(r'$N_{eu}$')
+    ax.set_title(f"Collisional flavor instability test")
+    leg = ax.legend(framealpha=0.0, ncol=1, fontsize=12)
+    apply_custom_settings(ax, leg, log_scale_y=True)
+    plt.tight_layout()
+    fig.savefig('EMU_Julien_LucasLSA_Neu.pdf', bbox_inches='tight')
     plt.close()
 
     # Asserts
