@@ -7,12 +7,10 @@ Created by Erick Urquilla. University of Tennessee Knoxville, USA.
 import numpy as np
 import argparse
 import glob
-import EmuReader
 import sys
 import os
 importpath = os.path.dirname(os.path.realpath(__file__))+"/../data_reduction/"
 sys.path.append(importpath)
-import amrex_plot_tools as amrex
 import numpy as np
 import h5py
 import glob
@@ -28,7 +26,6 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt 
 from matplotlib.ticker import AutoLocator, AutoMinorLocator, LogLocator
 import os
-import cv2
 import glob
 
 # Font settings
