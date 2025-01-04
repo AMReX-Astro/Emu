@@ -93,12 +93,12 @@ def writehdf5files(dire):
         unique_cell_index = np.unique(cell_index, axis=0)
 
         for i in range(unique_cell_index.shape[0]):
-            mask_cell_group = np.all(cell_index == unique_cell_index[i], axis=1)
-            cell_group = rdata[mask_cell_group]
             cell_filename = f"{dire}_particles/cell_{unique_cell_index[i,0]}_{unique_cell_index[i,1]}_{unique_cell_index[i,2]}.h5"              
             if os.path.exists(cell_filename):
                 print(f"file {cell_filename} already exists")
             else:
+                mask_cell_group = np.all(cell_index == unique_cell_index[i], axis=1)
+                cell_group = rdata[mask_cell_group]
                 with h5py.File(cell_filename, 'w') as cell_hf:
                     for label in labels:
                         cell_hf.create_dataset(label, data=cell_group[:, rkey[label]], maxshape=(None,), chunks=True)
