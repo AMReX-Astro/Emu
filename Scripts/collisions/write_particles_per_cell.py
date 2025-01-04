@@ -79,7 +79,7 @@ def writehdf5files(dire):
     assert nlevels==1
     level = 0
 
-    gridID = grid_i + grid_data.nx*grid_j + grid_data.nx*grid_data.ny*grid_k
+    gridID = grid_i + N_grid_x*grid_j + N_grid_x*N_grid_y*grid_k
     
     # read particle data on a single grid
     idata, rdata = amrex.read_particle_data(dire, ptype="neutrinos", level_gridID=(level,gridID))
@@ -103,35 +103,39 @@ def writehdf5files(dire):
                 for label in labels:
                     cell_hf.create_dataset(label, data=cell_group[:, rkey[label]], maxshape=(None,), chunks=True)
 
-dir_particles_binary = sorted(glob.glob("plt*/neutrinos"))
-dir_particles_binary = [dir_particles_binary[i].split('/')[0] for i in range(len(dir_particles_binary))] # remove "neutrinos"
-dir_particles_hdf5 = sorted(glob.glob("plt*_particles"))
-dir_particles_hdf5 = [dir_particles_hdf5[i].split('_')[0] for i in range(len(dir_particles_hdf5))]
-directories = [d for d in dir_particles_binary if d not in dir_particles_hdf5]
+directories = sorted(glob.glob("plt*/neutrinos"))
+directories = [directories[i].split('/')[0] for i in range(len(directories))] # remove "neutrinos"
 
 if not directories:
     print("No new directories to process.")
     sys.exit(0)
 
 parser = argparse.ArgumentParser(description='Process some directories.')
-parser.add_argument('--index', type=int, default=-2, help='index of the directory to analyze')
-parser.add_argument('--grid_i', type=int, required=True, help='grid index in the x direction')
-parser.add_argument('--grid_j', type=int, required=True, help='grid index in the y direction')
-parser.add_argument('--grid_k', type=int, required=True, help='grid index in the z direction')
+parser.add_argument('--fi', type=int, default=-2, help='index of the directory to analyze')
+parser.add_argument('--gi', type=int, required=True, help='grid index in the x direction')
+parser.add_argument('--gj', type=int, required=True, help='grid index in the y direction')
+parser.add_argument('--gk', type=int, required=True, help='grid index in the z direction')
+parser.add_argument('--ngi', type=int, required=True, help='grid index in the x direction')
+parser.add_argument('--ngj', type=int, required=True, help='grid index in the y direction')
+parser.add_argument('--ngk', type=int, required=True, help='grid index in the z direction')
 args = parser.parse_args()
 
-if args.index >= -1:
-    if args.index == -1:
+if args.fi >= -1:
+    if args.fi == -1:
         directories = [directories[-1]]
-    elif args.index < len(directories):
-        directories = [directories[args.index]]
+    elif args.fi < len(directories):
+        directories = [directories[args.fi]]
     else:
-        print(f"Index {args.index} is out of range. Exiting.")
+        print(f"Index {args.fi} is out of range. Exiting.")
         sys.exit(1)
 
-grid_i = args.grid_i
-grid_j = args.grid_j
-grid_k = args.grid_k
+grid_i = args.gi
+grid_j = args.gj
+grid_k = args.gk
+
+N_grid_x = args.ngi
+N_grid_y = args.ngj
+N_grid_z = args.ngk
 
 print(f"Directories to process: {directories}")
 
