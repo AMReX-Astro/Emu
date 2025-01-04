@@ -84,7 +84,7 @@ def processing_grid(parms):
     # get unique cell index
     unique_cell_index = np.unique(cell_index, axis=0)
 
-    def process_cell(i):
+    for i in range(unique_cell_index.shape[0]):
         cell_filename = f"{direct}_particles/cell_{unique_cell_index[i,0]}_{unique_cell_index[i,1]}_{unique_cell_index[i,2]}.h5"              
         if os.path.exists(cell_filename):
             print(f"file {cell_filename} already exists")
@@ -94,9 +94,6 @@ def processing_grid(parms):
             with h5py.File(cell_filename, 'w') as cell_hf:
                 for label in labels:
                     cell_hf.create_dataset(label, data=cell_group[:, rkey[label]], maxshape=(None,), chunks=True)
-
-    with ThreadPoolExecutor() as executor:
-        executor.map(process_cell, range(unique_cell_index.shape[0]))
 
 # Reading directories
 dir_particles_binary = sorted(glob.glob("plt*/neutrinos"))
