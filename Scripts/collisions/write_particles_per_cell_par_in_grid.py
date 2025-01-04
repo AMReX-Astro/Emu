@@ -149,8 +149,14 @@ print(f"Directories to process: {directories}")
 # Run on CPU parallelized over grids
 start_time_gpu = time.time()
 for dir in directories:
+
+    if not os.path.exists(dir + "_particles"):
+        os.makedirs(dir + "_particles")
+
     parameters = [[i, dir] for i in range(ngrids)]
+
     with Pool(mp.cpu_count()) as pool:
         pool.map(processing_grid, parameters)
+
 end_time_gpu = time.time()
 print(f"GPU processing time: {end_time_gpu - start_time_gpu} seconds")
