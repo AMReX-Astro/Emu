@@ -28,6 +28,7 @@ import shutil
 # misc #
 ########
 fluid_vars = ["N","Fx","Fy","Fz"]
+# fluid_vars = ["N","Fx","Fy","Fz","Pxx","Pxy","Pxz","Pyy","Pyz","Pzz"] # Use this line to write the pressure moment in the H5 file.
 nunubar = ["","bar"]
 
 def convert_to_HDF5(sim_directory, DELETE_ALL_BUT_LAST_RESTART=False):
