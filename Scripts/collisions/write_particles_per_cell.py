@@ -115,9 +115,9 @@ parser.add_argument('--fi', type=int, default=-2, help='index of the directory t
 parser.add_argument('--gi', type=int, required=True, help='grid index in the x direction')
 parser.add_argument('--gj', type=int, required=True, help='grid index in the y direction')
 parser.add_argument('--gk', type=int, required=True, help='grid index in the z direction')
-parser.add_argument('--ngi', type=int, required=True, help='grid index in the x direction')
-parser.add_argument('--ngj', type=int, required=True, help='grid index in the y direction')
-parser.add_argument('--ngk', type=int, required=True, help='grid index in the z direction')
+parser.add_argument('--ngi', type=int, required=True, help='number of grid cell in the x direction')
+parser.add_argument('--ngj', type=int, required=True, help='number of grid cell in the y direction')
+parser.add_argument('--ngk', type=int, required=True, help='number of grid cell in the z direction')
 args = parser.parse_args()
 
 if args.fi >= -1:
