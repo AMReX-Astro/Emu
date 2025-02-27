@@ -128,7 +128,7 @@ pipeline {
 		stage('Fermi-Dirac test'){ steps{
 				dir('Exec'){
 					sh 'python ../Scripts/initial_conditions/st9_empty_particles_multi_energy.py'
-					sh 'python ../Scripts/collisions/nsm_constant_background_rho_Ye_T__writer.py'
+					sh 'python ../Scripts/collisions/nsm_constant_background_rho_Ye_T_writer.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fermi_dirac_test'
 					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
 					sh 'python ../Scripts/tests/fermi_dirac_test.py'
