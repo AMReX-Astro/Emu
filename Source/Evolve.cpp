@@ -827,6 +827,17 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         // Compute the time derivative of \( N_{ab} \) using the Quantum Kinetic Equations (QKE).
         #include "generated_files/Evolve.cpp_dfdt_fill"
 
+        double t_coll_stop = 1.698836375440867e-09;
+
+        if (p.rdata(PIdx::time) <= t_coll_stop){
+            if (p.rdata(PIdx::pupz) > 0.0){
+                p.rdata(PIdx::N00_Re) += 2.0*2.4456499999999995e+31/t_coll_stop;
+            }
+            // if (p.rdata(PIdx::pupz) < 0.0){
+                // p.rdata(PIdx::N11_Re) += 2.0*1.2228000000000005e+31/t_coll_stop;
+            // }
+        }
+
         // set the dx/dt values 
         p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
         p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
