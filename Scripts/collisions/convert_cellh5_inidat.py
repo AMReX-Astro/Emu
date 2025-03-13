@@ -64,8 +64,16 @@ n_particles = len(data[labels[0]])
 # Initialize a NumPy array to store all particles
 particles = np.zeros((n_particles, n_variables))
 
+# Volume of the simulation box
+volume = 1e5**3 # ccm
+
 for label in rkey:
+
+    print(f'Writing {label} to particles')
     particles[:, rkey[label]] = data[label]
+    
+    if (label.startswith('N') | label.startswith('Vphase')):
+        particles[:, rkey[label]] /= volume
 
 # Write particles initial condition file
 write_particles(np.array(particles), NF, "particle_input.dat")
