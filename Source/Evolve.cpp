@@ -827,15 +827,21 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         // Compute the time derivative of \( N_{ab} \) using the Quantum Kinetic Equations (QKE).
         #include "generated_files/Evolve.cpp_dfdt_fill"
 
-        double t_coll_stop = 1.698836375440867e-09;
+        if (parms->continuos_or_discrete_emission == 0){
 
-        if (p.rdata(PIdx::time) <= t_coll_stop){
-            if (p.rdata(PIdx::pupz) > 0.0){
-                p.rdata(PIdx::N00_Re) += 2.0*2.4456499999999995e+31/t_coll_stop;
-            }
-            // if (p.rdata(PIdx::pupz) < 0.0){
-                // p.rdata(PIdx::N11_Re) += 2.0*1.2228000000000005e+31/t_coll_stop;
-            // }
+            if (p.rdata(PIdx::time) <= parms->emission_time){
+                if (parms->beam == 0){ // 0 injection in electron neutrinos in right beam
+                    if (p.rdata(PIdx::pupz) > 0.0){
+                        p.rdata(PIdx::N00_Re) += parms->physical_neutrino_emmited / parms->emission_time;
+                    }            
+                }
+                if (parms->beam == 1){ // 1 injection in muon neutrinos in left beam
+                    if (p.rdata(PIdx::pupz) < 0.0){
+                        p.rdata(PIdx::N11_Re) += parms->physical_neutrino_emmited / parms->emission_time;
+                    }
+                }
+            }    
+
         }
 
         // set the dx/dt values 
@@ -911,6 +917,32 @@ void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, con
                 #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
                 return;
             }
+        });
+    }
+}
+
+void discrete_emission(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms){
+
+    const int lev = 0;
+    for (FNParIter pti(neutrinos, lev); pti.isValid(); ++pti)
+    {
+        const int np  = pti.numParticles();
+        FlavoredNeutrinoContainer::ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
+
+        amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
+            FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
+
+            if (parms->beam == 0){ // 0 injection in electron neutrinos in right beam
+                if (p.rdata(PIdx::pupz) > 0.0){
+                    p.rdata(PIdx::N00_Re) += parms->physical_neutrino_emmited / parms->number_discrete_emmision_packets;
+                }            
+            }
+            if (parms->beam == 1){ // 1 injection in muon neutrinos in left beam
+                if (p.rdata(PIdx::pupz) < 0.0){
+                    p.rdata(PIdx::N11_Re) += parms->physical_neutrino_emmited / parms->number_discrete_emmision_packets;
+                }
+            }
+
         });
     }
 }

@@ -78,9 +78,23 @@ struct TestParams : public amrex::Gpu::Managed
     std::string background_rho_Ye_T_table_name; // Background matter table file name
     int boundary_condition_type; // Boundary condition type flag
 
+    //Fast Flavor Conversion at the Edge of Instability
+    int beam; // Beam flag: 0  injection in muon neutrinos in right beam, 1 injection in electron neutrinos in left beam
+    Real emission_time; // Time of emission in seconds
+    Real physical_neutrino_emmited; // number of neutrino emmited in emission time emission_time
+    Real number_discrete_emmision_packets; // physical_neutrino_emmited in discrete packets
+    int continuos_or_discrete_emission; // Flag to choose between continuous or discrete emission. 0 for continuous, 1 for discrete
+
     void Initialize(){
 
         ParmParse pp;
+        
+        pp.get("beam", beam);
+        pp.get("emission_time", emission_time);
+        pp.get("physical_neutrino_emmited", physical_neutrino_emmited);
+        pp.get("number_discrete_emmision_packets", number_discrete_emmision_packets);
+        pp.get("continuos_or_discrete_emission", continuos_or_discrete_emission);
+
         pp.get("ncell", ncell);
         pp.get("Lx", Lx);
         pp.get("Ly", Ly);

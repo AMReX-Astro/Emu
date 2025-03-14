@@ -216,6 +216,9 @@ void evolve_flavor(const TestParams* parms)
         interpolate_rhs_from_mesh(neutrinos_rhs, state, geom, parms);
     };
 
+    Real count_of_discrete_emmision_packets = 0.0;
+    Real time_to_emit = parms->emission_time / parms->number_discrete_emmision_packets;
+
     // Create a function to call after every integrator timestep.
     auto post_timestep_fun = [&] () {
         /* Post-timestep function. The integrator new-time data is the latest data available. */
@@ -228,6 +231,21 @@ void evolve_flavor(const TestParams* parms)
         // If a black hole is present in the simulation it will set N=0 and Nbar=0 for all particles inside the black hole.
         if ( parms->do_periodic_empty_bc == 1 ){
             empty_particles_at_boundary_cells(neutrinos, parms);
+        }
+
+        if (parms->continuos_or_discrete_emission == 1){
+
+            const Real time_ = integrator.get_time();
+            amrex::Print() << "Current simulation time: " << time_ << std::endl;
+            amrex::Print() << "Discrete emission packets count: " << count_of_discrete_emmision_packets << std::endl;
+
+            if (count_of_discrete_emmision_packets < parms->number_discrete_emmision_packets){
+                if (time_>=time_to_emit){
+                    discrete_emission(neutrinos, parms);
+                    count_of_discrete_emmision_packets += 1.0;
+                    time_to_emit += parms->emission_time / parms->number_discrete_emmision_packets;
+                }
+            }
         }
 
         const Real current_dt = integrator.get_timestep(); //FIXME: FIXME: Pass this to neutrinos.CreateParticlesAtBoundary.
