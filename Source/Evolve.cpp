@@ -946,3 +946,152 @@ void discrete_emission(FlavoredNeutrinoContainer& neutrinos, const TestParams* p
         });
     }
 }
+
+void restore_beams_to_average(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms){
+
+    using PType = typename FlavoredNeutrinoContainer::ParticleType;
+    amrex::ReduceOps<ReduceOpSum,ReduceOpSum,ReduceOpSum,ReduceOpSum> reduce_ops;
+
+    auto particleResult1 = amrex::ParticleReduce< ReduceData<amrex::Real, amrex::Real, amrex::Real, amrex::Real> >(neutrinos,
+        [=] AMREX_GPU_DEVICE(const PType& p) noexcept -> amrex::GpuTuple<amrex::Real, amrex::Real, amrex::Real, amrex::Real> {
+            if (p.rdata(PIdx::pupz) > 0.0 && p.rdata(PIdx::pupx) == 0.0){
+                return GpuTuple{p.rdata(PIdx::N00_Re),p.rdata(PIdx::N01_Re), p.rdata(PIdx::N01_Im),p.rdata(PIdx::N11_Re)};
+            }
+            return GpuTuple{0.0, 0.0, 0.0, 0.0};
+        }, reduce_ops);
+    Real N00Re_pz_pos  = amrex::get<0>(particleResult1);
+    Real N01Re_pz_pos  = amrex::get<1>(particleResult1);
+    Real N01Im_pz_pos  = amrex::get<2>(particleResult1);
+    Real N11Re_pz_pos  = amrex::get<3>(particleResult1);
+    ParallelDescriptor::ReduceRealSum(N00Re_pz_pos);
+    ParallelDescriptor::ReduceRealSum(N01Re_pz_pos);
+    ParallelDescriptor::ReduceRealSum(N01Im_pz_pos);
+    ParallelDescriptor::ReduceRealSum(N11Re_pz_pos);
+
+    N00Re_pz_pos /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+    N01Re_pz_pos /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+    N01Im_pz_pos /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+    N11Re_pz_pos /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+
+    auto particleResult2 = amrex::ParticleReduce< ReduceData<amrex::Real, amrex::Real, amrex::Real, amrex::Real> >(neutrinos,
+        [=] AMREX_GPU_DEVICE(const PType& p) noexcept -> amrex::GpuTuple<amrex::Real, amrex::Real, amrex::Real, amrex::Real> {
+            if (p.rdata(PIdx::pupz) < 0.0 && p.rdata(PIdx::pupx) == 0.0){
+                return GpuTuple{p.rdata(PIdx::N00_Re),p.rdata(PIdx::N01_Re), p.rdata(PIdx::N01_Im),p.rdata(PIdx::N11_Re)};
+            }
+            return GpuTuple{0.0, 0.0, 0.0, 0.0};
+        }, reduce_ops);
+    Real N00Re_pz_neg  = amrex::get<0>(particleResult2);
+    Real N01Re_pz_neg  = amrex::get<1>(particleResult2);
+    Real N01Im_pz_neg  = amrex::get<2>(particleResult2);
+    Real N11Re_pz_neg  = amrex::get<3>(particleResult2);
+    ParallelDescriptor::ReduceRealSum(N00Re_pz_neg);
+    ParallelDescriptor::ReduceRealSum(N01Re_pz_neg);
+    ParallelDescriptor::ReduceRealSum(N01Im_pz_neg);
+    ParallelDescriptor::ReduceRealSum(N11Re_pz_neg);
+    
+    N00Re_pz_neg /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+    N01Re_pz_neg /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+    N01Im_pz_neg /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+    N11Re_pz_neg /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+    
+
+
+    
+    auto particleResult3 = amrex::ParticleReduce< ReduceData<amrex::Real, amrex::Real, amrex::Real, amrex::Real> >(neutrinos,
+        [=] AMREX_GPU_DEVICE(const PType& p) noexcept -> amrex::GpuTuple<amrex::Real, amrex::Real, amrex::Real, amrex::Real> {
+            if (p.rdata(PIdx::pupz) == 0.0 && p.rdata(PIdx::pupx) > 0.0){
+                return GpuTuple{p.rdata(PIdx::N00_Re),p.rdata(PIdx::N01_Re), p.rdata(PIdx::N01_Im),p.rdata(PIdx::N11_Re)};
+            }
+            return GpuTuple{0.0, 0.0, 0.0, 0.0};
+        }, reduce_ops);
+    Real N00Re_px_pos  = amrex::get<0>(particleResult3);
+    Real N01Re_px_pos  = amrex::get<1>(particleResult3);
+    Real N01Im_px_pos  = amrex::get<2>(particleResult3);
+    Real N11Re_px_pos  = amrex::get<3>(particleResult3);
+    ParallelDescriptor::ReduceRealSum(N00Re_px_pos);
+    ParallelDescriptor::ReduceRealSum(N01Re_px_pos);
+    ParallelDescriptor::ReduceRealSum(N01Im_px_pos);
+    ParallelDescriptor::ReduceRealSum(N11Re_px_pos);
+
+    N00Re_px_pos /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+    N01Re_px_pos /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+    N01Im_px_pos /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+    N11Re_px_pos /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+
+
+
+    auto particleResult4 = amrex::ParticleReduce< ReduceData<amrex::Real, amrex::Real, amrex::Real, amrex::Real> >(neutrinos,
+        [=] AMREX_GPU_DEVICE(const PType& p) noexcept -> amrex::GpuTuple<amrex::Real, amrex::Real, amrex::Real, amrex::Real> {
+            if (p.rdata(PIdx::pupz) == 0.0 && p.rdata(PIdx::pupx) < 0.0){
+                return GpuTuple{p.rdata(PIdx::N00_Re),p.rdata(PIdx::N01_Re), p.rdata(PIdx::N01_Im),p.rdata(PIdx::N11_Re)};
+            }
+            return GpuTuple{0.0, 0.0, 0.0, 0.0};
+        }, reduce_ops);
+    Real N00Re_px_neg  = amrex::get<0>(particleResult4);
+    Real N01Re_px_neg  = amrex::get<1>(particleResult4);
+    Real N01Im_px_neg  = amrex::get<2>(particleResult4);
+    Real N11Re_px_neg  = amrex::get<3>(particleResult4);
+    ParallelDescriptor::ReduceRealSum(N00Re_px_neg);
+    ParallelDescriptor::ReduceRealSum(N01Re_px_neg);
+    ParallelDescriptor::ReduceRealSum(N01Im_px_neg);
+    ParallelDescriptor::ReduceRealSum(N11Re_px_neg);
+
+    N00Re_px_neg /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+    N01Re_px_neg /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+    N01Im_px_neg /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+    N11Re_px_neg /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
+
+    const int lev = 0;
+    for (FNParIter pti(neutrinos, lev); pti.isValid(); ++pti)
+    {
+        const int np  = pti.numParticles();
+        FlavoredNeutrinoContainer::ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
+
+        amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
+
+            FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
+
+            if (p.rdata(PIdx::pupz) > 0.0){
+                
+                p.rdata(PIdx::N00_Re) = N00Re_pz_pos;
+                
+                p.rdata(PIdx::N01_Re) = N01Re_pz_pos;
+                
+                p.rdata(PIdx::N01_Im) = N01Im_pz_pos;
+                                
+                p.rdata(PIdx::N11_Re) = N11Re_pz_pos;
+            }
+            if (p.rdata(PIdx::pupz) < 0.0){
+                
+                p.rdata(PIdx::N00_Re) = N00Re_pz_neg;
+                
+                p.rdata(PIdx::N01_Re) = N01Re_pz_neg;
+                
+                p.rdata(PIdx::N01_Im) = N01Im_pz_neg;
+                
+                p.rdata(PIdx::N11_Re) = N11Re_pz_neg;
+            }
+            if (p.rdata(PIdx::pupx) > 0.0){
+                
+                p.rdata(PIdx::N00_Re) = N00Re_px_pos;
+                
+                p.rdata(PIdx::N01_Re) = N01Re_px_pos;
+                
+                p.rdata(PIdx::N01_Im) = N01Im_px_pos;
+                
+                p.rdata(PIdx::N11_Re) = N11Re_px_pos;
+            }
+            if (p.rdata(PIdx::pupx) < 0.0){
+                
+                p.rdata(PIdx::N00_Re) = N00Re_px_neg;
+                
+                p.rdata(PIdx::N01_Re) = N01Re_px_neg;
+                
+                p.rdata(PIdx::N01_Im) = N01Im_px_neg;
+                
+                p.rdata(PIdx::N11_Re) = N11Re_px_neg;
+            }
+
+        });
+    }
+}

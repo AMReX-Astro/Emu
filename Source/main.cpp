@@ -241,6 +241,9 @@ void evolve_flavor(const TestParams* parms)
 
             if (count_of_discrete_emmision_packets < parms->number_discrete_emmision_packets){
                 if (time_>=time_to_emit){
+                    if (parms->average_on_beams == 1){
+                        restore_beams_to_average(neutrinos, parms);
+                    }
                     discrete_emission(neutrinos, parms);
                     count_of_discrete_emmision_packets += 1.0;
                     time_to_emit += parms->emission_time / parms->number_discrete_emmision_packets;

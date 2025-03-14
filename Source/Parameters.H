@@ -84,7 +84,8 @@ struct TestParams : public amrex::Gpu::Managed
     Real physical_neutrino_emmited; // number of neutrino emmited in emission time emission_time
     Real number_discrete_emmision_packets; // physical_neutrino_emmited in discrete packets
     int continuos_or_discrete_emission; // Flag to choose between continuous or discrete emission. 0 for continuous, 1 for discrete
-
+    int average_on_beams; // Flag to set all the particles N to the beams average. 1 for true, 0 for false.
+    
     void Initialize(){
 
         ParmParse pp;
@@ -94,6 +95,7 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("physical_neutrino_emmited", physical_neutrino_emmited);
         pp.get("number_discrete_emmision_packets", number_discrete_emmision_packets);
         pp.get("continuos_or_discrete_emission", continuos_or_discrete_emission);
+        pp.get("average_on_beams", average_on_beams);
 
         pp.get("ncell", ncell);
         pp.get("Lx", Lx);
