@@ -973,6 +973,8 @@ void restore_beams_to_average(FlavoredNeutrinoContainer& neutrinos, const TestPa
     N01Im_pz_pos /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
     N11Re_pz_pos /= (parms->ncell[0]*parms->ncell[1]*parms->ncell[2]);
 
+
+
     auto particleResult2 = amrex::ParticleReduce< ReduceData<amrex::Real, amrex::Real, amrex::Real, amrex::Real> >(neutrinos,
         [=] AMREX_GPU_DEVICE(const PType& p) noexcept -> amrex::GpuTuple<amrex::Real, amrex::Real, amrex::Real, amrex::Real> {
             if (p.rdata(PIdx::pupz) < 0.0 && p.rdata(PIdx::pupx) == 0.0){
@@ -1050,46 +1052,47 @@ void restore_beams_to_average(FlavoredNeutrinoContainer& neutrinos, const TestPa
         amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
 
             FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
+            Real rand;
 
             if (p.rdata(PIdx::pupz) > 0.0){
-                
-                p.rdata(PIdx::N00_Re) = N00Re_pz_pos;
-                
-                p.rdata(PIdx::N01_Re) = N01Re_pz_pos;
-                
-                p.rdata(PIdx::N01_Im) = N01Im_pz_pos;
-                                
-                p.rdata(PIdx::N11_Re) = N11Re_pz_pos;
+                rand = amrex::Random();
+                p.rdata(PIdx::N00_Re) = N00Re_pz_pos + N00Re_pz_pos * parms->perturbation_amplitude * rand;
+                rand = amrex::Random();
+                p.rdata(PIdx::N01_Re) = N01Re_pz_pos + N01Re_pz_pos * parms->perturbation_amplitude * rand;
+                rand = amrex::Random();
+                p.rdata(PIdx::N01_Im) = N01Im_pz_pos + N01Im_pz_pos * parms->perturbation_amplitude * rand;
+                rand = amrex::Random();                
+                p.rdata(PIdx::N11_Re) = N11Re_pz_pos + N11Re_pz_pos * parms->perturbation_amplitude * rand;
             }
             if (p.rdata(PIdx::pupz) < 0.0){
-                
-                p.rdata(PIdx::N00_Re) = N00Re_pz_neg;
-                
-                p.rdata(PIdx::N01_Re) = N01Re_pz_neg;
-                
-                p.rdata(PIdx::N01_Im) = N01Im_pz_neg;
-                
-                p.rdata(PIdx::N11_Re) = N11Re_pz_neg;
+                rand = amrex::Random();
+                p.rdata(PIdx::N00_Re) = N00Re_pz_neg + N00Re_pz_neg * parms->perturbation_amplitude * rand;
+                rand = amrex::Random();
+                p.rdata(PIdx::N01_Re) = N01Re_pz_neg + N01Re_pz_neg * parms->perturbation_amplitude * rand;
+                rand = amrex::Random();
+                p.rdata(PIdx::N01_Im) = N01Im_pz_neg + N01Im_pz_neg * parms->perturbation_amplitude * rand;
+                rand = amrex::Random();
+                p.rdata(PIdx::N11_Re) = N11Re_pz_neg + N11Re_pz_neg * parms->perturbation_amplitude * rand;
             }
             if (p.rdata(PIdx::pupx) > 0.0){
-                
-                p.rdata(PIdx::N00_Re) = N00Re_px_pos;
-                
-                p.rdata(PIdx::N01_Re) = N01Re_px_pos;
-                
-                p.rdata(PIdx::N01_Im) = N01Im_px_pos;
-                
-                p.rdata(PIdx::N11_Re) = N11Re_px_pos;
+                rand = amrex::Random();
+                p.rdata(PIdx::N00_Re) = N00Re_px_pos + N00Re_px_pos * parms->perturbation_amplitude * rand;
+                rand = amrex::Random();
+                p.rdata(PIdx::N01_Re) = N01Re_px_pos + N01Re_px_pos * parms->perturbation_amplitude * rand;
+                rand = amrex::Random();
+                p.rdata(PIdx::N01_Im) = N01Im_px_pos + N01Im_px_pos * parms->perturbation_amplitude * rand;
+                rand = amrex::Random();
+                p.rdata(PIdx::N11_Re) = N11Re_px_pos + N11Re_px_pos * parms->perturbation_amplitude * rand;
             }
             if (p.rdata(PIdx::pupx) < 0.0){
-                
-                p.rdata(PIdx::N00_Re) = N00Re_px_neg;
-                
-                p.rdata(PIdx::N01_Re) = N01Re_px_neg;
-                
-                p.rdata(PIdx::N01_Im) = N01Im_px_neg;
-                
-                p.rdata(PIdx::N11_Re) = N11Re_px_neg;
+                rand = amrex::Random();
+                p.rdata(PIdx::N00_Re) = N00Re_px_neg + N00Re_px_neg * parms->perturbation_amplitude * rand;
+                rand = amrex::Random();
+                p.rdata(PIdx::N01_Re) = N01Re_px_neg + N01Re_px_neg * parms->perturbation_amplitude * rand;
+                rand = amrex::Random();
+                p.rdata(PIdx::N01_Im) = N01Im_px_neg + N01Im_px_neg * parms->perturbation_amplitude * rand;
+                rand = amrex::Random();
+                p.rdata(PIdx::N11_Re) = N11Re_px_neg + N11Re_px_neg * parms->perturbation_amplitude * rand;
             }
 
         });
