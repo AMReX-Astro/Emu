@@ -834,21 +834,21 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         // Compute the time derivative of \( N_{ab} \) using the Quantum Kinetic Equations (QKE).
         #include "generated_files/Evolve.cpp_dfdt_fill"
 
-        if (parms->continuos_or_discrete_emission == 0){
-
-            if (p.rdata(PIdx::time) <= parms->emission_time){
-                if (parms->beam == 0){ // 0 injection in electron neutrinos in right beam
-                    if (p.rdata(PIdx::pupz) > 0.0){
-                        p.rdata(PIdx::N00_Re) += parms->physical_neutrino_emmited / parms->emission_time;
-                    }            
-                }
-                if (parms->beam == 1){ // 1 injection in muon neutrinos in left beam
-                    if (p.rdata(PIdx::pupz) < 0.0){
-                        p.rdata(PIdx::N11_Re) += parms->physical_neutrino_emmited / parms->emission_time;
+        if (parms->do_ffcei){
+            if (parms->continuos_or_discrete_emission == 0){
+                if (p.rdata(PIdx::time) <= parms->emission_time){
+                    if (parms->beam == 0){ // 0 injection in electron neutrinos in right beam
+                        if (p.rdata(PIdx::pupz) > 0.0){
+                            p.rdata(PIdx::N00_Re) += parms->physical_neutrino_emmited / parms->emission_time;
+                        }
+                    }
+                    if (parms->beam == 1){ // 1 injection in muon neutrinos in left beam
+                        if (p.rdata(PIdx::pupz) < 0.0){
+                            p.rdata(PIdx::N11_Re) += parms->physical_neutrino_emmited / parms->emission_time;
+                        }
                     }
                 }
-            }    
-
+            }
         }
 
         // set the dx/dt values 
