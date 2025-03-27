@@ -79,23 +79,31 @@ struct TestParams : public amrex::Gpu::Managed
     int boundary_condition_type; // Boundary condition type flag
 
     //Fast Flavor Conversion at the Edge of Instability
+    int do_ffcei; // Flag to include fast flavor conversion at the edge of instability
     int beam; // Beam flag: 0  injection in muon neutrinos in right beam, 1 injection in electron neutrinos in left beam
     Real emission_time; // Time of emission in seconds
     Real physical_neutrino_emmited; // number of neutrino emmited in emission time emission_time
     Real number_discrete_emmision_packets; // physical_neutrino_emmited in discrete packets
     int continuos_or_discrete_emission; // Flag to choose between continuous or discrete emission. 0 for continuous, 1 for discrete
     int average_on_beams; // Flag to set all the particles N to the beams average. 1 for true, 0 for false.
+    Real do_k0_time_limit_seconds; // time limit for the k0 to be imposed
+    int do_k0_this_times; // number of times k0 will be imposed
     
     void Initialize(){
 
         ParmParse pp;
-        
-        pp.get("beam", beam);
-        pp.get("emission_time", emission_time);
-        pp.get("physical_neutrino_emmited", physical_neutrino_emmited);
-        pp.get("number_discrete_emmision_packets", number_discrete_emmision_packets);
-        pp.get("continuos_or_discrete_emission", continuos_or_discrete_emission);
-        pp.get("average_on_beams", average_on_beams);
+
+        pp.get("do_ffcei", do_ffcei);
+        if (do_ffcei == 1) {
+            pp.get("beam", beam);
+            pp.get("emission_time", emission_time);
+            pp.get("physical_neutrino_emmited", physical_neutrino_emmited);
+            pp.get("number_discrete_emmision_packets", number_discrete_emmision_packets);
+            pp.get("continuos_or_discrete_emission", continuos_or_discrete_emission);
+            pp.get("average_on_beams", average_on_beams);
+            pp.get("do_k0_time_limit_seconds", do_k0_time_limit_seconds);
+            pp.get("do_k0_this_times", do_k0_this_times);
+        }
 
         pp.get("ncell", ncell);
         pp.get("Lx", Lx);

@@ -216,8 +216,17 @@ void evolve_flavor(const TestParams* parms)
         interpolate_rhs_from_mesh(neutrinos_rhs, state, geom, parms);
     };
 
-    Real count_of_discrete_emmision_packets = 0.0;
-    Real time_to_emit = parms->emission_time / parms->number_discrete_emmision_packets;
+    int count_of_discrete_emmision_packets; // counts the number of discrete emission packets
+    int count_of_times_k0_is_impose; // counts the number of times k0 is imposed
+    Real time_to_emit; // seconds - time to emit the next discrete emission packet
+    Real time_k0_will_be_impose; // seconds - time to impose the next k0
+
+    if (parms->do_ffcei == 1){
+        count_of_discrete_emmision_packets = 0; // counts the number of discrete emission packets
+        count_of_times_k0_is_impose = 0; // counts the number of times k0 is imposed
+        time_to_emit = parms->emission_time / parms->number_discrete_emmision_packets; // seconds - time to emit the next discrete emission packet
+        time_k0_will_be_impose = parms->do_k0_time_limit_seconds / parms->do_k0_this_times; // seconds - time to impose the next k0
+    }
 
     // Create a function to call after every integrator timestep.
     auto post_timestep_fun = [&] () {
@@ -233,22 +242,33 @@ void evolve_flavor(const TestParams* parms)
             empty_particles_at_boundary_cells(neutrinos, parms);
         }
 
-        if (parms->continuos_or_discrete_emission == 1){
+        // Routines for investigating sequential instabilities
+        if (parms->do_ffcei == 1){
 
-            const Real time_ = integrator.get_time();
-            amrex::Print() << "Current simulation time: " << time_ << std::endl;
-            amrex::Print() << "Discrete emission packets count: " << count_of_discrete_emmision_packets << std::endl;
+            const Real time_ = integrator.get_time(); // seconds
 
-            if (count_of_discrete_emmision_packets < parms->number_discrete_emmision_packets){
-                if (time_>=time_to_emit){
-                    if (parms->average_on_beams == 1){
+            // Set the N and Nbar to the average of the beams on each angular direction.
+            if (parms->average_on_beams == 1){
+                if (count_of_times_k0_is_impose < parms->do_k0_this_times){
+                    if (time_>=time_k0_will_be_impose){
                         restore_beams_to_average(neutrinos, parms);
+                        count_of_times_k0_is_impose += 1;
+                        time_k0_will_be_impose += parms->do_k0_time_limit_seconds / parms->do_k0_this_times;
                     }
-                    discrete_emission(neutrinos, parms);
-                    count_of_discrete_emmision_packets += 1.0;
-                    time_to_emit += parms->emission_time / parms->number_discrete_emmision_packets;
                 }
             }
+
+            // Do discrete emission and set the N and Nbar to the average of the beams on each angular direction.
+            if (parms->continuos_or_discrete_emission == 1){
+                if (count_of_discrete_emmision_packets < parms->number_discrete_emmision_packets){
+                    if (time_>=time_to_emit){
+                        discrete_emission(neutrinos, parms);
+                        count_of_discrete_emmision_packets += 1;
+                        time_to_emit += parms->emission_time / parms->number_discrete_emmision_packets;
+                    }
+                }
+            }
+
         }
 
         const Real current_dt = integrator.get_timestep(); //FIXME: FIXME: Pass this to neutrinos.CreateParticlesAtBoundary.
