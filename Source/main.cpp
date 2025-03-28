@@ -218,14 +218,18 @@ void evolve_flavor(const TestParams* parms)
 
     int count_of_discrete_emmision_packets; // counts the number of discrete emission packets
     int count_of_times_k0_is_impose; // counts the number of times k0 is imposed
+    int count_of_perturbation_in_Px_Py; // counts the number of times P in x and y direction is randomized
     Real time_to_emit; // seconds - time to emit the next discrete emission packet
     Real time_k0_will_be_impose; // seconds - time to impose the next k0
+    Real time_perturbation_Px_Py; // seconds - time to randomize the next P in x and y direction
 
     if (parms->do_ffcei == 1){
         count_of_discrete_emmision_packets = 0; // counts the number of discrete emission packets
         count_of_times_k0_is_impose = 0; // counts the number of times k0 is imposed
+        count_of_perturbation_in_Px_Py = 0; // counts the number of times P in x and y direction is randomized
         time_to_emit = parms->emission_time / parms->number_discrete_emmision_packets; // seconds - time to emit the next discrete emission packet
         time_k0_will_be_impose = parms->do_k0_time_limit_seconds / parms->do_k0_this_times; // seconds - time to impose the next k0
+        time_perturbation_Px_Py = parms->perturb_Px_Py_time_limit_seconds / parms->perturb_Px_Py_this_times; // seconds - time to randomize the next P in x and y direction
     }
 
     // Create a function to call after every integrator timestep.
@@ -265,6 +269,17 @@ void evolve_flavor(const TestParams* parms)
                         discrete_emission(neutrinos, parms);
                         count_of_discrete_emmision_packets += 1;
                         time_to_emit += parms->emission_time / parms->number_discrete_emmision_packets;
+                    }
+                }
+            }
+
+            // Perturb the P in x and y direction.
+            if (parms->perturb_Px_Py == 1){
+                if (count_of_perturbation_in_Px_Py < parms->perturb_Px_Py_this_times){
+                    if (time_>=time_perturbation_Px_Py){
+                        perturb_momentum_Px_Py(neutrinos, parms);
+                        count_of_perturbation_in_Px_Py += 1;
+                        time_perturbation_Px_Py += parms->perturb_Px_Py_time_limit_seconds / parms->perturb_Px_Py_this_times;
                     }
                 }
             }

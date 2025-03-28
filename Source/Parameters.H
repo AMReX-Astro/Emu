@@ -88,7 +88,10 @@ struct TestParams : public amrex::Gpu::Managed
     int average_on_beams; // Flag to set all the particles N to the beams average. 1 for true, 0 for false.
     Real do_k0_time_limit_seconds; // time limit for the k0 to be imposed
     int do_k0_this_times; // number of times k0 will be imposed
-    
+    int perturb_Px_Py; // Flag to randomize the momentum in x and y direction. 1 for true, 0 for false.
+    int perturb_Px_Py_this_times; // number of times the Px and Py will be randomized
+    Real perturb_Px_Py_time_limit_seconds; // time limit for the randomization of the Px and Py
+
     void Initialize(){
 
         ParmParse pp;
@@ -103,6 +106,10 @@ struct TestParams : public amrex::Gpu::Managed
             pp.get("average_on_beams", average_on_beams);
             pp.get("do_k0_time_limit_seconds", do_k0_time_limit_seconds);
             pp.get("do_k0_this_times", do_k0_this_times);
+            pp.get("perturb_Px_Py", perturb_Px_Py);
+            pp.get("perturb_Px_Py_this_times", perturb_Px_Py_this_times);
+            pp.get("perturb_Px_Py_time_limit_seconds", perturb_Px_Py_time_limit_seconds);
+
         }
 
         pp.get("ncell", ncell);
