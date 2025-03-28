@@ -40,4 +40,6 @@ void discrete_emission(FlavoredNeutrinoContainer& neutrinos, const TestParams* p
 
 void restore_beams_to_average(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
 
+void Randomization_Px_Py(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
+
 #endif

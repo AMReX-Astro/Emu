@@ -1102,6 +1102,31 @@ void restore_beams_to_average(FlavoredNeutrinoContainer& neutrinos, const TestPa
                 p.rdata(PIdx::N11_Re) = N11Re_px_neg + N11Re_px_neg * parms->perturbation_amplitude * rand;
             }
 
-        });    
+        });
+    }
+}
+
+void Randomization_Px_Py(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms){
+
+    const int lev = 0;
+    for (FNParIter pti(neutrinos, lev); pti.isValid(); ++pti)
+    {
+        const int np  = pti.numParticles();
+        FlavoredNeutrinoContainer::ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
+
+        amrex::ParallelForRNG(np, [=] AMREX_GPU_DEVICE (int i, amrex::RandomEngine const& engine){
+
+            FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
+
+            Real rand_ang;
+            symmetric_uniform(&rand_ang, engine);
+            rand_ang *= M_PI; // random angle in [-pi, pi]
+
+            Real N01_mag = sqrt(p.rdata(PIdx::N01_Re)*p.rdata(PIdx::N01_Re) + p.rdata(PIdx::N01_Im)*p.rdata(PIdx::N01_Im));
+
+            p.rdata(PIdx::N01_Re) = N01_mag * cos(rand_ang); // new real part
+            p.rdata(PIdx::N01_Im) = N01_mag * sin(rand_ang); // new imaginary part
+
+        });
     }
 }
