@@ -277,7 +277,7 @@ void evolve_flavor(const TestParams* parms)
             if (parms->perturb_Px_Py == 1){
                 if (count_of_perturbation_in_Px_Py < parms->perturb_Px_Py_this_times){
                     if (time_>=time_perturbation_Px_Py){
-                        perturb_momentum_Px_Py(neutrinos, parms);
+                        Randomization_Px_Py(neutrinos, parms);
                         count_of_perturbation_in_Px_Py += 1;
                         time_perturbation_Px_Py += parms->perturb_Px_Py_time_limit_seconds / parms->perturb_Px_Py_this_times;
                     }
