@@ -36,10 +36,4 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const a
 
 void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
 
-void discrete_emission(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
-
-void restore_beams_to_average(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
-
-void Randomization_Px_Py(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
-
 #endif

@@ -35,6 +35,7 @@
 #include "EosTable.H"
 #include "NuLibTable.H"
 #include "ReadInput_RhoTempYe.H"
+#include "Ffcei.H"
 
 using namespace amrex;
 

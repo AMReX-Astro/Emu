@@ -8,6 +8,7 @@ CEXE_sources += ReadEosTable.cpp
 CEXE_sources += ReadNuLibTable.cpp
 CEXE_sources += ReadInput_RhoTempYe.cpp
 CEXE_sources += ReadHDF5RhoYeT.cpp
+CEXE_sources += Ffcei.cpp
 
 CEXE_headers += Evolve.H
 CEXE_headers += FlavoredNeutrinoContainer.H
@@ -26,3 +27,4 @@ CEXE_headers += NuLibTableFunctions.H
 CEXE_headers += NuLibTableHelpers.H
 CEXE_headers += ReadInput_RhoTempYe.H
 CEXE_headers += ReadHdf5RhoYeT.H
+CEXE_headers += Ffcei.H
