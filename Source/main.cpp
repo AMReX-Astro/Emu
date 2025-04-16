@@ -215,6 +215,16 @@ void evolve_flavor(const TestParams* parms)
 
         // Step 3: Interpolate Mesh to construct the neutrino RHS in place
         interpolate_rhs_from_mesh(neutrinos_rhs, state, geom, parms);
+
+        // if (parms->do_ffcei == 1){
+        //     if (parms->do_BGK == 1){
+        //         FlavoredNeutrinoContainer neutrinos_for_BGK(geom, dm, ba);
+        //         neutrinos_for_BGK.copyParticles(neutrinos, true);
+        //         printf("do_BGK_subgrid\n");
+        //         do_BGK_subgrid(neutrinos_for_BGK, parms, neutrinos_rhs);
+        //     }
+        // }
+
     };
 
     int count_of_discrete_emmision_packets; // counts the number of discrete emission packets
@@ -283,6 +293,10 @@ void evolve_flavor(const TestParams* parms)
                         time_perturbation_Px_Py += parms->perturb_Px_Py_time_limit_seconds / parms->perturb_Px_Py_this_times;
                     }
                 }
+            }
+
+            if (parms->do_BGK == 1){
+                do_BGK_subgrid_instantaneuos(neutrinos, parms);
             }
 
         }
