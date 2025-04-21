@@ -266,11 +266,19 @@ void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, FlavoredNeutrinoContai
     [=] AMREX_GPU_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p,
                           amrex::Array4<amrex::Real> const& sarr)
     {
+        Real Gn;
         int i_indx = amrex::Math::floor((p.pos(0) - plo[0]) * dxi[0]);
         int j_indx = amrex::Math::floor((p.pos(1) - plo[1]) * dxi[1]);
         int k_indx = amrex::Math::floor((p.pos(2) - plo[2]) * dxi[2]);
         
-        sarr(i_indx, j_indx, k_indx, 0) = 0;
+        if (NUM_FLAVORS==2) {
+            Gn = sqrt(2) * PhysConst::GF * std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 2) * ( (p.rdata(PIdx::N00_Re)-p.rdata(PIdx::N11_Rebar)) - (p.rdata(PIdx::N00_Rebar)-p.rdata(PIdx::N11_Rebar)) ) / (PhysConst::hbar*inv_cell_volume);
+            if (Gn>0.0){
+                sarr(i_indx,j_indx,k_indx,0) += Gn;
+            } else{
+                sarr(i_indx,j_indx,k_indx,1) += -Gn;
+            }
+        }        
     });
 }
 
