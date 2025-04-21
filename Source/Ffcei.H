@@ -16,7 +16,7 @@ void restore_beams_to_average(FlavoredNeutrinoContainer& neutrinos, const TestPa
 
 void Randomization_Px_Py(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
 
-void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms, FlavoredNeutrinoContainer& neutrinos_dot);
+void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, FlavoredNeutrinoContainer& neutrinos_dot, MultiFab& PandNG,  const Geometry& geom, const TestParams* parms);
 
 void do_BGK_subgrid_instantaneuos(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
 

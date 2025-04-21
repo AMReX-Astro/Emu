@@ -192,6 +192,9 @@ void evolve_flavor(const TestParams* parms)
     amrex::Print() << "Done. " << std::endl;
 
     TimeIntegrator<FlavoredNeutrinoContainer> integrator(neutrinos_old);
+    
+    // Create a MultiFab to hold the positives and negatives values of G the ELN-XLN angular distributions
+    MultiFab PosNegG(ba, dm, 2, 0);
 
     // Create a RHS source function we will integrate
     auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, const FlavoredNeutrinoContainer& neutrinos, Real /* time */) {
@@ -224,14 +227,14 @@ void evolve_flavor(const TestParams* parms)
             }
         }
 
-        // if (parms->do_ffcei == 1){
-        //     if (parms->do_BGK == 1){
-        //         FlavoredNeutrinoContainer neutrinos_for_BGK(geom, dm, ba);
-        //         neutrinos_for_BGK.copyParticles(neutrinos, true);
-        //         printf("do_BGK_subgrid\n");
-        //         do_BGK_subgrid(neutrinos_for_BGK, parms, neutrinos_rhs);
-        //     }
-        // }
+        if (parms->do_ffcei == 1){
+            if (parms->do_BGK == 1){
+                FlavoredNeutrinoContainer neutrinos_for_BGK(geom, dm, ba);
+                neutrinos_for_BGK.copyParticles(neutrinos, true);
+                printf("do_BGK_subgrid\n");
+                do_BGK_subgrid(neutrinos_for_BGK, neutrinos_rhs, PosNegG, geom, parms);
+            }
+        }
 
     };
 
