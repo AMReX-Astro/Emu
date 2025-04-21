@@ -327,6 +327,28 @@ void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, FlavoredNeutrinoContai
             }
         }
     });
+
+    const int lev = 0;
+    FNParIter pti_neutrinos_dot(neutrinos_dot, lev);
+
+    for (FNParIter pti_neutrinos(neutrinos, lev); pti_neutrinos.isValid(); ++pti_neutrinos)
+    {
+        const int np  = pti_neutrinos.numParticles();
+        FlavoredNeutrinoContainer::ParticleType* pstruct_neutrinos = &(pti_neutrinos.GetArrayOfStructs()[0]);
+        FlavoredNeutrinoContainer::ParticleType* pstruct_neutrinos_rhs = &(pti_neutrinos_dot.GetArrayOfStructs()[0]);
+
+        amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
+
+            FlavoredNeutrinoContainer::ParticleType& p = pstruct_neutrinos[i];
+            FlavoredNeutrinoContainer::ParticleType& p_rhs = pstruct_neutrinos_rhs[i];
+
+            p_rhs.rdata(PIdx::N00_Re) += p.rdata(PIdx::N00_Re);
+            p_rhs.rdata(PIdx::N00_Rebar) += p.rdata(PIdx::N00_Rebar);
+            p_rhs.rdata(PIdx::N11_Re) += p.rdata(PIdx::N11_Re);
+            p_rhs.rdata(PIdx::N11_Rebar) += p.rdata(PIdx::N11_Rebar);
+        });
+        ++pti_neutrinos_dot;
+    }
 }
 
 void do_BGK_subgrid_instantaneuos(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms){
