@@ -20,6 +20,39 @@ namespace
   }
 }
 
+void continuos_emission(FlavoredNeutrinoContainer& neutrinos_rhs, FlavoredNeutrinoContainer& neutrinos, const TestParams* parms){
+
+    const int lev = 0;
+    FNParIter pti_neutrinos_rhs(neutrinos_rhs, lev);
+
+    for (FNParIter pti_neutrinos(neutrinos, lev); pti_neutrinos.isValid(); ++pti_neutrinos)
+    {
+        const int np  = pti_neutrinos.numParticles();
+        FlavoredNeutrinoContainer::ParticleType* pstruct_neutrinos = &(pti_neutrinos.GetArrayOfStructs()[0]);
+        FlavoredNeutrinoContainer::ParticleType* pstruct_neutrinos_rhs = &(pti_neutrinos_rhs.GetArrayOfStructs()[0]);
+
+        amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
+
+            FlavoredNeutrinoContainer::ParticleType& p = pstruct_neutrinos[i];
+            FlavoredNeutrinoContainer::ParticleType& p_rhs = pstruct_neutrinos_rhs[i];
+
+            if (p.rdata(PIdx::time) <= parms->emission_time){
+                if (parms->beam == 0){ // 0 injection in electron neutrinos in right beam
+                    if (p.rdata(PIdx::pupz) > 0.0){
+                        p_rhs.rdata(PIdx::N00_Re) += parms->physical_neutrino_emmited / parms->emission_time;
+                    }
+                }
+                if (parms->beam == 1){ // 1 injection in muon neutrinos in left beam
+                    if (p.rdata(PIdx::pupz) < 0.0){
+                        p_rhs.rdata(PIdx::N11_Re) += parms->physical_neutrino_emmited / parms->emission_time;
+                    }
+                }
+            }
+        });
+        ++pti_neutrinos_rhs;
+    }
+}
+
 void discrete_emission(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms){
 
     const int lev = 0;

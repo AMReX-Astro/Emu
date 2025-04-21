@@ -216,6 +216,14 @@ void evolve_flavor(const TestParams* parms)
         // Step 3: Interpolate Mesh to construct the neutrino RHS in place
         interpolate_rhs_from_mesh(neutrinos_rhs, state, geom, parms);
 
+        if (parms->do_ffcei == 1){
+            if (parms->continuos_or_discrete_emission == 0){
+                FlavoredNeutrinoContainer neutrinos_for_ce(geom, dm, ba);
+                neutrinos_for_ce.copyParticles(neutrinos, true);
+                continuos_emission(neutrinos_rhs, neutrinos_for_ce, parms);
+            }
+        }
+
         // if (parms->do_ffcei == 1){
         //     if (parms->do_BGK == 1){
         //         FlavoredNeutrinoContainer neutrinos_for_BGK(geom, dm, ba);
