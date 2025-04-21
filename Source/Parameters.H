@@ -110,8 +110,8 @@ struct TestParams : public amrex::Gpu::Managed
             pp.get("perturb_Px_Py", perturb_Px_Py);
             pp.get("perturb_Px_Py_this_times", perturb_Px_Py_this_times);
             pp.get("perturb_Px_Py_time_limit_seconds", perturb_Px_Py_time_limit_seconds);
-            pp.get("do_BGK", do_BGK);
         }
+        pp.get("do_BGK", do_BGK);
 
         pp.get("ncell", ncell);
         pp.get("Lx", Lx);

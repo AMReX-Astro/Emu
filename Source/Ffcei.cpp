@@ -272,11 +272,11 @@ void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, FlavoredNeutrinoContai
         int k_indx = amrex::Math::floor((p.pos(2) - plo[2]) * dxi[2]);
         
         if (NUM_FLAVORS==2) {
-            Gn = sqrt(2) * PhysConst::GF * std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 2) * ( (p.rdata(PIdx::N00_Re)-p.rdata(PIdx::N11_Rebar)) - (p.rdata(PIdx::N00_Rebar)-p.rdata(PIdx::N11_Rebar)) ) / (PhysConst::hbar*inv_cell_volume);
+            Gn = sqrt(2) * PhysConst::GF * std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 2) * ( (p.rdata(PIdx::N00_Re)-p.rdata(PIdx::N11_Rebar)) - (p.rdata(PIdx::N00_Rebar)-p.rdata(PIdx::N11_Rebar)) ) / inv_cell_volume;
             if (Gn>0.0){
-                sarr(i_indx,j_indx,k_indx,0) += Gn;
+                sarr(i_indx,j_indx,k_indx,0) += Gn / (4.0*MathConst::pi);
             } else{
-                sarr(i_indx,j_indx,k_indx,1) += -Gn;
+                sarr(i_indx,j_indx,k_indx,1) += -Gn / (4.0*MathConst::pi);
             }
         }        
     });
@@ -298,7 +298,7 @@ void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, FlavoredNeutrinoContai
             if (A > 0.0 && B > 0.0) {
 
                 Real tau = 2 * MathConst::pi / sqrt(A*B);
-                Gn = sqrt(2) * PhysConst::GF * std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 2) * ( (p.rdata(PIdx::N00_Re)-p.rdata(PIdx::N11_Rebar)) - (p.rdata(PIdx::N00_Rebar)-p.rdata(PIdx::N11_Rebar)) ) / (PhysConst::hbar*inv_cell_volume);
+                Gn = sqrt(2) * PhysConst::GF * std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 2) * ( (p.rdata(PIdx::N00_Re)-p.rdata(PIdx::N11_Rebar)) - (p.rdata(PIdx::N00_Rebar)-p.rdata(PIdx::N11_Rebar)) ) / inv_cell_volume;
                 Real P;
                 if (B > A) {
                     if (Gn > 0.0) {

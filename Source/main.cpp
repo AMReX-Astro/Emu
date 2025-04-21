@@ -227,15 +227,11 @@ void evolve_flavor(const TestParams* parms)
             }
         }
 
-        if (parms->do_ffcei == 1){
-            if (parms->do_BGK == 1){
-                FlavoredNeutrinoContainer neutrinos_for_BGK(geom, dm, ba);
-                neutrinos_for_BGK.copyParticles(neutrinos, true);
-                printf("do_BGK_subgrid\n");
-                do_BGK_subgrid(neutrinos_for_BGK, neutrinos_rhs, PosNegG, geom, parms);
-            }
+        if (parms->do_BGK == 1){
+            FlavoredNeutrinoContainer neutrinos_for_BGK(geom, dm, ba);
+            neutrinos_for_BGK.copyParticles(neutrinos, true);
+            do_BGK_subgrid(neutrinos_for_BGK, neutrinos_rhs, PosNegG, geom, parms);
         }
-
     };
 
     int count_of_discrete_emmision_packets; // counts the number of discrete emission packets
@@ -306,9 +302,9 @@ void evolve_flavor(const TestParams* parms)
                 }
             }
 
-            if (parms->do_BGK == 1){
-                do_BGK_subgrid_instantaneuos(neutrinos, parms);
-            }
+            // if (parms->do_BGK == 1){
+            //     do_BGK_subgrid_instantaneuos(neutrinos, parms);
+            // }
 
         }
 
