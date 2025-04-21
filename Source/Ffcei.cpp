@@ -280,6 +280,53 @@ void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, FlavoredNeutrinoContai
             }
         }        
     });
+
+    amrex::MeshToParticle(neutrinos, PandNG, 0,
+    [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
+                              amrex::Array4<const amrex::Real> const& sarr)
+    {
+        Real Gn;
+        int i_indx = amrex::Math::floor((p.pos(0) - plo[0]) * dxi[0]);
+        int j_indx = amrex::Math::floor((p.pos(1) - plo[1]) * dxi[1]);
+        int k_indx = amrex::Math::floor((p.pos(2) - plo[2]) * dxi[2]);
+
+        if (NUM_FLAVORS==2) {
+
+            Real A = sarr(i_indx,j_indx,k_indx,1);
+            Real B = sarr(i_indx,j_indx,k_indx,0);
+
+            if (A > 0.0 && B > 0.0) {
+
+                Real tau = 2 * MathConst::pi / sqrt(A*B);
+                Gn = sqrt(2) * PhysConst::GF * std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 2) * ( (p.rdata(PIdx::N00_Re)-p.rdata(PIdx::N11_Rebar)) - (p.rdata(PIdx::N00_Rebar)-p.rdata(PIdx::N11_Rebar)) ) / (PhysConst::hbar*inv_cell_volume);
+                Real P;
+                if (B > A) {
+                    if (Gn > 0.0) {
+                        P = 1 - 0.5 * A / B;
+                    } else {
+                        P = 0.5;
+                    }
+                } else {
+                    if (Gn < 0.0) {
+                        P = 1 - 0.5 * A / B;
+                    } else {
+                        P = 0.5;
+                    }
+                }
+
+                Real N00Re_asim    = P * p.rdata(PIdx::N00_Re)    - (1.0 - P) * p.rdata(PIdx::N11_Re);
+                Real N00Rebar_asim = P * p.rdata(PIdx::N00_Rebar) - (1.0 - P) * p.rdata(PIdx::N11_Rebar);
+                Real N11Re_asim    =  0.5 * ( 1.0 - P ) * p.rdata(PIdx::N00_Re)    + 0.5 * (1.0 + P) * p.rdata(PIdx::N11_Re);
+                Real N11Rebar_asim = 0.5 * ( 1.0 - P )  * p.rdata(PIdx::N00_Rebar) + 0.5 * (1.0 + P) * p.rdata(PIdx::N11_Rebar);
+
+                p.rdata(PIdx::N00_Re) = -( 1.0 / tau ) * (p.rdata(PIdx::N00_Re) - N00Re_asim);
+                p.rdata(PIdx::N00_Rebar) = -( 1.0 / tau ) * (p.rdata(PIdx::N00_Rebar) - N00Rebar_asim);
+                p.rdata(PIdx::N11_Re) = -( 1.0 / tau ) * (p.rdata(PIdx::N11_Re) - N11Re_asim);
+                p.rdata(PIdx::N11_Rebar) = -( 1.0 / tau ) * (p.rdata(PIdx::N11_Rebar) - N11Rebar_asim);
+
+            }
+        }
+    });
 }
 
 void do_BGK_subgrid_instantaneuos(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms){
