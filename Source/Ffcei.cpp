@@ -306,15 +306,15 @@ void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, FlavoredNeutrinoContai
                 Real P;
                 if (B > A) {
                     if (Gn > 0.0) {
-                        P = 1 - 0.5 * A / B;
+                        P = 1.0 - 2.0 * A / ( 3.0 * B );
                     } else {
-                        P = 0.5;
+                        P = 1.0/3.0;
                     }
                 } else {
                     if (Gn < 0.0) {
-                        P = 1 - 0.5 * A / B;
+                        P = 1.0 - 2.0 * A / ( 3.0 * B );
                     } else {
-                        P = 0.5;
+                        P = 1.0/3.0;
                     }
                 }
 
