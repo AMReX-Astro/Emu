@@ -301,11 +301,6 @@ void evolve_flavor(const TestParams* parms)
                     }
                 }
             }
-
-            // if (parms->do_BGK == 1){
-            //     do_BGK_subgrid_instantaneuos(neutrinos, parms);
-            // }
-
         }
 
         const Real current_dt = integrator.get_timestep(); //FIXME: FIXME: Pass this to neutrinos.CreateParticlesAtBoundary.

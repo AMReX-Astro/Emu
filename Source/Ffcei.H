@@ -18,6 +18,4 @@ void Randomization_Px_Py(FlavoredNeutrinoContainer& neutrinos, const TestParams*
 
 void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, FlavoredNeutrinoContainer& neutrinos_dot, MultiFab& PandNG,  const Geometry& geom, const TestParams* parms);
 
-void do_BGK_subgrid_instantaneuos(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
-
 #endif
