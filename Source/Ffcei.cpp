@@ -48,6 +48,20 @@ void continuos_emission(FlavoredNeutrinoContainer& neutrinos_rhs, FlavoredNeutri
                     }
                 }
             }
+            // Aborpsion the same amount of neutrinos emmited 
+            // if ( ( p.rdata(PIdx::time) > parms->emission_time ) && ( p.rdata(PIdx::time) <= 2.0*parms->emission_time ) ){
+            //     if (parms->beam == 0){ // 0 injection in electron neutrinos in right beam
+            //         if (p.rdata(PIdx::pupz) > 0.0){
+            //             p_rhs.rdata(PIdx::N00_Re) -= parms->physical_neutrino_emmited / parms->emission_time;
+            //         }
+            //     }
+            //     if (parms->beam == 1){ // 1 injection in muon neutrinos in left beam
+            //         if (p.rdata(PIdx::pupz) < 0.0){
+            //             p_rhs.rdata(PIdx::N11_Re) -= parms->physical_neutrino_emmited / parms->emission_time;
+            //         }
+            //     }
+            // }
+
         });
         ++pti_neutrinos_rhs;
     }
