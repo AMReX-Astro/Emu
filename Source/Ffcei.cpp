@@ -262,6 +262,10 @@ void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, FlavoredNeutrinoContai
     const auto dxi = geom.InvCellSizeArray();
     const Real inv_cell_volume = dxi[0]*dxi[1]*dxi[2];
 
+    Real d_Omega = 4.0 * MathConst::pi * parms->number_of_particles;
+
+    PandNG.setVal(0.0);
+
     amrex::ParticleToMesh(neutrinos, PandNG, 0,
     [=] AMREX_GPU_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p,
                           amrex::Array4<amrex::Real> const& sarr)
@@ -274,9 +278,9 @@ void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, FlavoredNeutrinoContai
         if (NUM_FLAVORS==2) {
             Gn = sqrt(2) * ( PhysConst::GF / PhysConst::hbar ) * ( (p.rdata(PIdx::N00_Re)-p.rdata(PIdx::N00_Rebar)) - (p.rdata(PIdx::N11_Re)-p.rdata(PIdx::N11_Rebar)) ) * inv_cell_volume;
             if (Gn>0.0){
-                sarr(i_indx,j_indx,k_indx,0) += Gn / (4.0*MathConst::pi);
+                sarr(i_indx,j_indx,k_indx,0) += d_Omega * Gn / (4.0*MathConst::pi); // B positive ELN-XLN
             } else{
-                sarr(i_indx,j_indx,k_indx,1) += -Gn / (4.0*MathConst::pi);
+                sarr(i_indx,j_indx,k_indx,1) += d_Omega * ( -1.0 * Gn ) / (4.0*MathConst::pi); // A negative ELN-XLN
             }
         }        
     });
@@ -295,47 +299,38 @@ void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, FlavoredNeutrinoContai
             Real A = sarr(i_indx,j_indx,k_indx,1);
             Real B = sarr(i_indx,j_indx,k_indx,0);
 
-            // printf("B: %e, A: %e\n", B, A);
-
             if (A > 0.0 && B > 0.0) {
 
                 Real sigma = sqrt(A*B) / ( 2 * MathConst::pi );
-                // printf("sigma: %e\n", sigma);
-
                 Gn = sqrt(2) * ( PhysConst::GF / PhysConst::hbar ) * ( (p.rdata(PIdx::N00_Re)-p.rdata(PIdx::N00_Rebar)) - (p.rdata(PIdx::N11_Re)-p.rdata(PIdx::N11_Rebar)) ) * inv_cell_volume;
-                Real P;
+                Real P=0.0;
+
                 if (B > A) {
                     if (Gn > 0.0) {
-                        P = 1.0 - 2.0 * A / ( 3.0 * B );
+                        P = 1.0 - A / ( 2.0 * B );
                     } else {
-                        P = 1.0/3.0;
+                        P = 1.0 / 2.0;
                     }
                 } else {
-                    if (Gn < 0.0) {
-                        P = 1.0 - 2.0 * A / ( 3.0 * B );
+                    if (Gn > 0.0) {
+                        P = 1.0 / 2.0;
                     } else {
-                        P = 1.0/3.0;
+                        P = 1.0 - B / ( 2.0 * A );
                     }
                 }
 
                 Real N00Re_asim    = P * p.rdata(PIdx::N00_Re)    + (1.0 - P) * p.rdata(PIdx::N11_Re);
                 Real N00Rebar_asim = P * p.rdata(PIdx::N00_Rebar) + (1.0 - P) * p.rdata(PIdx::N11_Rebar);
-                Real N11Re_asim    =  0.5 * ( 1.0 - P ) * p.rdata(PIdx::N00_Re)    + 0.5 * (1.0 + P) * p.rdata(PIdx::N11_Re);
-                Real N11Rebar_asim = 0.5 * ( 1.0 - P )  * p.rdata(PIdx::N00_Rebar) + 0.5 * (1.0 + P) * p.rdata(PIdx::N11_Rebar);
+                Real N11Re_asim    = ( 1.0 - P ) * p.rdata(PIdx::N00_Re)    + P * p.rdata(PIdx::N11_Re);
+                Real N11Rebar_asim = ( 1.0 - P ) * p.rdata(PIdx::N00_Rebar) + P * p.rdata(PIdx::N11_Rebar);
 
-                // printf("Asymptotic State: N00Re_asim = %e, N00Rebar_asim = %e, N11Re_asim = %e, N11Rebar_asim = %e\n", 
-                    // N00Re_asim, N00Rebar_asim, N11Re_asim, N11Rebar_asim);
-                // printf("Current Values: N00Re = %e, N00Rebar = %e, N11Re = %e, N11Rebar = %e\n", 
-                    // p.rdata(PIdx::N00_Re), p.rdata(PIdx::N00_Rebar), p.rdata(PIdx::N11_Re), p.rdata(PIdx::N11_Rebar));
+                // printf("Asymptotic State: N00Re_asim = %e, N00Rebar_asim = %e, N11Re_asim = %e, N11Rebar_asim = %e\n", N00Re_asim, N00Rebar_asim, N11Re_asim, N11Rebar_asim);
+                // printf("Current Values: N00Re = %e, N00Rebar = %e, N11Re = %e, N11Rebar = %e\n", p.rdata(PIdx::N00_Re), p.rdata(PIdx::N00_Rebar), p.rdata(PIdx::N11_Re), p.rdata(PIdx::N11_Rebar));
 
                 p.rdata(PIdx::N00_Re) = -sigma * (p.rdata(PIdx::N00_Re) - N00Re_asim);
                 p.rdata(PIdx::N00_Rebar) = -sigma * (p.rdata(PIdx::N00_Rebar) - N00Rebar_asim);
                 p.rdata(PIdx::N11_Re) = -sigma * (p.rdata(PIdx::N11_Re) - N11Re_asim);
                 p.rdata(PIdx::N11_Rebar) = -sigma * (p.rdata(PIdx::N11_Rebar) - N11Rebar_asim);
-                
-                // printf("Final Values: N00_Re = %e, N00_Rebar = %e, N11_Re = %e, N11_Rebar = %e\n", 
-                    //    p.rdata(PIdx::N00_Re), p.rdata(PIdx::N00_Rebar), 
-                    //    p.rdata(PIdx::N11_Re), p.rdata(PIdx::N11_Rebar));
 
             }
         }

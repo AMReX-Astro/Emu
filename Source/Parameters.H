@@ -92,6 +92,7 @@ struct TestParams : public amrex::Gpu::Managed
     int perturb_Px_Py_this_times; // number of times the Px and Py will be randomized
     Real perturb_Px_Py_time_limit_seconds; // time limit for the randomization of the Px and Py
     int do_BGK; // Flag to include BGK subgrid. 1 for true, 0 for false.
+    int number_of_particles; // Number of particles in the simulation
 
     void Initialize(){
 
@@ -112,6 +113,9 @@ struct TestParams : public amrex::Gpu::Managed
             pp.get("perturb_Px_Py_time_limit_seconds", perturb_Px_Py_time_limit_seconds);
         }
         pp.get("do_BGK", do_BGK);
+        if (do_BGK == 1) {
+            pp.get("number_of_particles", number_of_particles);
+        }
 
         pp.get("ncell", ncell);
         pp.get("Lx", Lx);
