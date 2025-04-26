@@ -319,24 +319,53 @@ void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, FlavoredNeutrinoContai
                 Gn = sqrt(2) * ( PhysConst::GF / PhysConst::hbar ) * ( (p.rdata(PIdx::N00_Re)-p.rdata(PIdx::N00_Rebar)) - (p.rdata(PIdx::N11_Re)-p.rdata(PIdx::N11_Rebar)) ) * inv_cell_volume;
                 Real P=0.0;
 
+                // ----------------------------------------------------------------------
+                // Sherwood Box3D: Asymptotic-state prediction for fast flavor transformation in neutron star mergers
+                // https://journals.aps.org/prd/abstract/10.1103/PhysRevD.110.103019
+                // ----------------------------------------------------------------------
+
+                // if (B > A) {
+                //     if (Gn > 0.0) {
+                //         P = 1.0 - 2.0 * A / ( 3.0 * B );
+                //     } else {
+                //         P = 1.0 / 3.0;
+                //     }
+                // } else {
+                //     if (Gn > 0.0) {
+                //         P = 1.0 / 3.0;
+                //     } else {
+                //         P = 1.0 - 2.0 * B / ( 3.0 * A );
+                //     }
+                // }
+
+                // Real N00Re_asim    = P * p.rdata(PIdx::N00_Re)    + (1.0 - P) * p.rdata(PIdx::N11_Re);
+                // Real N00Rebar_asim = P * p.rdata(PIdx::N00_Rebar) + (1.0 - P) * p.rdata(PIdx::N11_Rebar);
+                // Real N11Re_asim    = 0.5 * ( 1.0 - P ) * p.rdata(PIdx::N00_Re)    + 0.5 * ( 1.0 + P ) * p.rdata(PIdx::N11_Re);
+                // Real N11Rebar_asim = 0.5 * ( 1.0 - P ) * p.rdata(PIdx::N00_Rebar) + 0.5 * ( 1.0 + P ) * p.rdata(PIdx::N11_Rebar);
+
+                // ----------------------------------------------------------------------
+                // Jiabao L. Asymptotic states of fast neutrino-flavor conversions in the three-flavor framework
+                // https://arxiv.org/abs/2503.18145
+                // ----------------------------------------------------------------------
+
                 if (B > A) {
                     if (Gn > 0.0) {
-                        P = 1.0 - 2.0 * A / ( 3.0 * B );
+                        P = 1.0 - 1.0 * A / ( 2.0 * B );
                     } else {
-                        P = 1.0 / 3.0;
+                        P = 1.0 / 2.0;
                     }
                 } else {
                     if (Gn > 0.0) {
-                        P = 1.0 / 3.0;
+                        P = 1.0 / 2.0;
                     } else {
-                        P = 1.0 - 2.0 * B / ( 3.0 * A );
+                        P = 1.0 - 1.0 * B / ( 2.0 * A );
                     }
                 }
 
                 Real N00Re_asim    = P * p.rdata(PIdx::N00_Re)    + (1.0 - P) * p.rdata(PIdx::N11_Re);
                 Real N00Rebar_asim = P * p.rdata(PIdx::N00_Rebar) + (1.0 - P) * p.rdata(PIdx::N11_Rebar);
-                Real N11Re_asim    = 0.5 * ( 1.0 - P ) * p.rdata(PIdx::N00_Re)    + 0.5 * ( 1.0 + P ) * p.rdata(PIdx::N11_Re);
-                Real N11Rebar_asim = 0.5 * ( 1.0 - P ) * p.rdata(PIdx::N00_Rebar) + 0.5 * ( 1.0 + P ) * p.rdata(PIdx::N11_Rebar);
+                Real N11Re_asim    = ( 1.0 - P ) * p.rdata(PIdx::N00_Re)    + P * p.rdata(PIdx::N11_Re);
+                Real N11Rebar_asim = ( 1.0 - P ) * p.rdata(PIdx::N00_Rebar) + P * p.rdata(PIdx::N11_Rebar);
 
                 p.rdata(PIdx::N00_Re)    = -1.0 * sigma * ( p.rdata(PIdx::N00_Re)    - N00Re_asim    );
                 p.rdata(PIdx::N00_Rebar) = -1.0 * sigma * ( p.rdata(PIdx::N00_Rebar) - N00Rebar_asim );
