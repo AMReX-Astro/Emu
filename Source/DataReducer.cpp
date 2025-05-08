@@ -141,7 +141,7 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
 	        Real TrN = 0;
           Real Vphase = p.rdata(PIdx::Vphase);
 #include "generated_files/DataReducer.cpp_fill_particles"
-	        return GpuTuple{TrN,TrHN, Vphase};
+          return amrex::GpuTuple<amrex::Real, amrex::Real, amrex::Real>{TrN, TrHN, Vphase};
       }, reduce_ops);
   Real TrN  = amrex::get<0>(particleResult);
   Real TrHN = amrex::get<1>(particleResult);
