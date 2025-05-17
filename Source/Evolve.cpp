@@ -496,7 +496,7 @@ Real compute_dt(
     }
     
     if (dt<parms->minimum_time_step) dt = parms->minimum_time_step;
-    printf("dt = %g, dt_flavor = %g, dt_translation = %g\n", dt, dt_flavor, dt_translation);
+    // printf("dt = %g, dt_flavor = %g, dt_translation = %g\n", dt, dt_flavor, dt_translation);
 
     return dt;
 }
