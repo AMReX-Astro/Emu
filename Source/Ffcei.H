@@ -8,9 +8,9 @@
 #include <AMReX_ParticleMesh.H>
 #include <FlavoredNeutrinoContainer.H>
 
-void continuos_emission(FlavoredNeutrinoContainer& neutrinos_rhs, FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
+void continuos_emission(FlavoredNeutrinoContainer& neutrinos_rhs, FlavoredNeutrinoContainer& neutrinos, const TestParams* parms, const Geometry& geom);
 
-void discrete_emission(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
+void discrete_emission(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms, const Geometry& geom);
 
 void restore_beams_to_average(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms);
 

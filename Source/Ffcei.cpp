@@ -20,7 +20,10 @@ namespace
   }
 }
 
-void continuos_emission(FlavoredNeutrinoContainer& neutrinos_rhs, FlavoredNeutrinoContainer& neutrinos, const TestParams* parms){
+void continuos_emission(FlavoredNeutrinoContainer& neutrinos_rhs, FlavoredNeutrinoContainer& neutrinos, const TestParams* parms, const Geometry& geom){
+
+    const auto dxi = geom.InvCellSizeArray();
+    const Real cell_volume = 1.0 / (dxi[0]*dxi[1]*dxi[2]);
 
     const int lev = 0;
     FNParIter pti_neutrinos_rhs(neutrinos_rhs, lev);
@@ -39,12 +42,12 @@ void continuos_emission(FlavoredNeutrinoContainer& neutrinos_rhs, FlavoredNeutri
             if (p.rdata(PIdx::time) <= parms->emission_time){
                 if (parms->beam == 0){ // 0 injection in electron neutrinos in right beam
                     if (p.rdata(PIdx::pupz) > 0.0){
-                        p_rhs.rdata(PIdx::N00_Re) += parms->physical_neutrino_emmited / parms->emission_time;
+                        p_rhs.rdata(PIdx::N00_Re) += cell_volume * parms->physical_neutrino_emmited / parms->emission_time;
                     }
                 }
                 if (parms->beam == 1){ // 1 injection in muon neutrinos in left beam
                     if (p.rdata(PIdx::pupz) < 0.0){
-                        p_rhs.rdata(PIdx::N11_Re) += parms->physical_neutrino_emmited / parms->emission_time;
+                        p_rhs.rdata(PIdx::N11_Re) += cell_volume * parms->physical_neutrino_emmited / parms->emission_time;
                     }
                 }
             }
@@ -67,7 +70,10 @@ void continuos_emission(FlavoredNeutrinoContainer& neutrinos_rhs, FlavoredNeutri
     }
 }
 
-void discrete_emission(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms){
+void discrete_emission(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms, const Geometry& geom){
+
+    const auto dxi = geom.InvCellSizeArray();
+    const Real cell_volume = 1.0 / (dxi[0]*dxi[1]*dxi[2]);
 
     const int lev = 0;
     for (FNParIter pti(neutrinos, lev); pti.isValid(); ++pti)
@@ -80,12 +86,12 @@ void discrete_emission(FlavoredNeutrinoContainer& neutrinos, const TestParams* p
 
             if (parms->beam == 0){ // 0 injection in electron neutrinos in right beam
                 if (p.rdata(PIdx::pupz) > 0.0){
-                    p.rdata(PIdx::N00_Re) += parms->physical_neutrino_emmited / parms->number_discrete_emmision_packets;
+                    p.rdata(PIdx::N00_Re) += cell_volume * parms->physical_neutrino_emmited / parms->number_discrete_emmision_packets;
                 }            
             }
             if (parms->beam == 1){ // 1 injection in muon neutrinos in left beam
                 if (p.rdata(PIdx::pupz) < 0.0){
-                    p.rdata(PIdx::N11_Re) += parms->physical_neutrino_emmited / parms->number_discrete_emmision_packets;
+                    p.rdata(PIdx::N11_Re) += cell_volume * parms->physical_neutrino_emmited / parms->number_discrete_emmision_packets;
                 }
             }
 

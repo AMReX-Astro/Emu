@@ -223,7 +223,7 @@ void evolve_flavor(const TestParams* parms)
             if (parms->continuos_or_discrete_emission == 0){
                 FlavoredNeutrinoContainer neutrinos_for_ce(geom, dm, ba);
                 neutrinos_for_ce.copyParticles(neutrinos, true);
-                continuos_emission(neutrinos_rhs, neutrinos_for_ce, parms);
+                continuos_emission(neutrinos_rhs, neutrinos_for_ce, parms, geom);
             }
         }
 
@@ -284,7 +284,7 @@ void evolve_flavor(const TestParams* parms)
             if (parms->continuos_or_discrete_emission == 1){
                 if (count_of_discrete_emmision_packets < parms->number_discrete_emmision_packets){
                     if (time_>=time_to_emit){
-                        discrete_emission(neutrinos, parms);
+                        discrete_emission(neutrinos, parms, geom);
                         count_of_discrete_emmision_packets += 1;
                         time_to_emit += parms->emission_time / parms->number_discrete_emmision_packets;
                     }

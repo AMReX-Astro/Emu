@@ -82,8 +82,8 @@ struct TestParams : public amrex::Gpu::Managed
     int do_ffcei; // Flag to include fast flavor conversion at the edge of instability
     int beam; // Beam flag: 0  injection in muon neutrinos in right beam, 1 injection in electron neutrinos in left beam
     Real emission_time; // Time of emission in seconds
-    Real physical_neutrino_emmited; // number of neutrino emmited in emission time emission_time
-    Real number_discrete_emmision_packets; // physical_neutrino_emmited in discrete packets
+    Real physical_neutrino_emmited; // number density of neutrino emmited in emission time emission_time (1/ccm)
+    Real number_discrete_emmision_packets; // physical neutrino number density emmited in discrete packets (1/ccm)
     int continuos_or_discrete_emission; // Flag to choose between continuous or discrete emission. 0 for continuous, 1 for discrete
     int average_on_beams; // Flag to set all the particles N to the beams average. 1 for true, 0 for false.
     Real do_k0_time_limit_seconds; // time limit for the k0 to be imposed
