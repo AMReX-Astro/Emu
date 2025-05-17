@@ -280,7 +280,7 @@ void evolve_flavor(const TestParams* parms)
                 }
             }
 
-            // Do discrete emission and set the N and Nbar to the average of the beams on each angular direction.
+            // Do discrete emission
             if (parms->continuos_or_discrete_emission == 1){
                 if (count_of_discrete_emmision_packets < parms->number_discrete_emmision_packets){
                     if (time_>=time_to_emit){
