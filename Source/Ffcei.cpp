@@ -206,45 +206,37 @@ void restore_beams_to_average(FlavoredNeutrinoContainer& neutrinos, const TestPa
             FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
             Real rand;
 
-            if (p.rdata(PIdx::pupz) > 0.0){
+            if (p.rdata(PIdx::pupz) > 0.0 && p.rdata(PIdx::pupx) == 0.0){
+                p.rdata(PIdx::N00_Re) = N00Re_pz_pos;
+                p.rdata(PIdx::N11_Re) = N11Re_pz_pos;
                 symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N00_Re) = N00Re_pz_pos + N00Re_pz_pos * parms->perturbation_amplitude * rand;
+                p.rdata(PIdx::N01_Re) = N01Re_pz_pos + ( N00Re_pz_pos - N11Re_pz_pos ) * parms->perturbation_amplitude * rand;
                 symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N01_Re) = N01Re_pz_pos + N01Re_pz_pos * parms->perturbation_amplitude * rand;
-                symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N01_Im) = N01Im_pz_pos + N01Im_pz_pos * parms->perturbation_amplitude * rand;
-                symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N11_Re) = N11Re_pz_pos + N11Re_pz_pos * parms->perturbation_amplitude * rand;
+                p.rdata(PIdx::N01_Im) = N01Im_pz_pos + ( N00Re_pz_pos - N11Re_pz_pos ) * parms->perturbation_amplitude * rand;
             }
-            if (p.rdata(PIdx::pupz) < 0.0){
+            if (p.rdata(PIdx::pupz) < 0.0 && p.rdata(PIdx::pupx) == 0.0){
+                p.rdata(PIdx::N00_Re) = N00Re_pz_neg;
+                p.rdata(PIdx::N11_Re) = N11Re_pz_neg;
                 symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N00_Re) = N00Re_pz_neg + N00Re_pz_neg * parms->perturbation_amplitude * rand;
+                p.rdata(PIdx::N01_Re) = N01Re_pz_neg + ( N00Re_pz_neg - N11Re_pz_neg ) * parms->perturbation_amplitude * rand;
                 symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N01_Re) = N01Re_pz_neg + N01Re_pz_neg * parms->perturbation_amplitude * rand;
-                symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N01_Im) = N01Im_pz_neg + N01Im_pz_neg * parms->perturbation_amplitude * rand;
-                symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N11_Re) = N11Re_pz_neg + N11Re_pz_neg * parms->perturbation_amplitude * rand;
+                p.rdata(PIdx::N01_Im) = N01Im_pz_neg + ( N00Re_pz_neg - N11Re_pz_neg ) * parms->perturbation_amplitude * rand;
             }
-            if (p.rdata(PIdx::pupx) > 0.0){
+            if (p.rdata(PIdx::pupz) == 0.0 && p.rdata(PIdx::pupx) > 0.0){
+                p.rdata(PIdx::N00_Re) = N00Re_px_pos;
+                p.rdata(PIdx::N11_Re) = N11Re_px_pos;
                 symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N00_Re) = N00Re_px_pos + N00Re_px_pos * parms->perturbation_amplitude * rand;
+                p.rdata(PIdx::N01_Re) = N01Re_px_pos + ( N00Re_px_pos - N11Re_px_pos ) * parms->perturbation_amplitude * rand;
                 symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N01_Re) = N01Re_px_pos + N01Re_px_pos * parms->perturbation_amplitude * rand;
-                symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N01_Im) = N01Im_px_pos + N01Im_px_pos * parms->perturbation_amplitude * rand;
-                symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N11_Re) = N11Re_px_pos + N11Re_px_pos * parms->perturbation_amplitude * rand;
+                p.rdata(PIdx::N01_Im) = N01Im_px_pos + ( N00Re_px_pos - N11Re_px_pos ) * parms->perturbation_amplitude * rand;
             }
-            if (p.rdata(PIdx::pupx) < 0.0){
+            if (p.rdata(PIdx::pupz) == 0.0 && p.rdata(PIdx::pupx) < 0.0){
+                p.rdata(PIdx::N00_Re) = N00Re_px_neg;
+                p.rdata(PIdx::N11_Re) = N11Re_px_neg;
                 symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N00_Re) = N00Re_px_neg + N00Re_px_neg * parms->perturbation_amplitude * rand;
+                p.rdata(PIdx::N01_Re) = N01Re_px_neg + ( N00Re_px_neg - N11Re_px_neg ) * parms->perturbation_amplitude * rand;
                 symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N01_Re) = N01Re_px_neg + N01Re_px_neg * parms->perturbation_amplitude * rand;
-                symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N01_Im) = N01Im_px_neg + N01Im_px_neg * parms->perturbation_amplitude * rand;
-                symmetric_uniform(&rand, engine);
-                p.rdata(PIdx::N11_Re) = N11Re_px_neg + N11Re_px_neg * parms->perturbation_amplitude * rand;
+                p.rdata(PIdx::N01_Im) = N01Im_px_neg + ( N00Re_px_neg - N11Re_px_neg ) * parms->perturbation_amplitude * rand;
             }
 
         });
