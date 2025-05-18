@@ -268,8 +268,8 @@ void Randomization_Px_Py(FlavoredNeutrinoContainer& neutrinos, const TestParams*
     }
 }
 
-void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, FlavoredNeutrinoContainer& neutrinos_dot, MultiFab& PandNG,  const Geometry& geom, const TestParams* parms){
-    
+void compute_A_and_B(FlavoredNeutrinoContainer& neutrinos, MultiFab& PandNG,  const Geometry& geom, const TestParams* parms){
+
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
     const Real inv_cell_volume = dxi[0]*dxi[1]*dxi[2];
@@ -296,6 +296,15 @@ void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, FlavoredNeutrinoContai
             }
         }        
     });
+}
+
+void do_BGK_subgrid(FlavoredNeutrinoContainer& neutrinos, FlavoredNeutrinoContainer& neutrinos_dot, MultiFab& PandNG,  const Geometry& geom, const TestParams* parms){
+
+    const auto plo = geom.ProbLoArray();
+    const auto dxi = geom.InvCellSizeArray();
+    const Real inv_cell_volume = dxi[0]*dxi[1]*dxi[2];
+
+    compute_A_and_B(neutrinos, PandNG, geom, parms);
 
     amrex::MeshToParticle(neutrinos, PandNG, 0,
     [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
