@@ -266,6 +266,9 @@ void evolve_flavor(const TestParams* parms)
 
         run_fom += neutrinos.TotalNumberOfParticles();
 
+        // Print the current step and time
+        printf("step = %d, t = %g s\n", step+1, time);
+
         // Write the Mesh Data to Plotfile if required
         bool write_plotfile       = parms->write_plot_every           > 0 && (step+1) % parms->write_plot_every           == 0;
         bool write_plot_particles = parms->write_plot_particles_every > 0 && (step+1) % parms->write_plot_particles_every == 0;
@@ -280,11 +283,11 @@ void evolve_flavor(const TestParams* parms)
         // Note: this won't be the same as the new-time grid data
         // because the last deposit_to_mesh call was at either the old time (forward Euler)
         // or the final RK stage, if using Runge-Kutta.
-        printf("Setting next timestep... \n");
+        // printf("Setting next timestep... \n");
         const Real dt = compute_dt(geom, state, neutrinos, neutrinos_dt, parms, max_IMFP_absortion);
         integrator.set_timestep(dt);
         //printf("current_dt = %g, dt = %g \n", current_dt, dt);
-        printf("Done. \n");
+        // printf("Done. \n");
     };
 
     // Attach our RHS and post timestep hooks to the integrator
