@@ -274,7 +274,7 @@ void compute_A_and_B(FlavoredNeutrinoContainer& neutrinos, MultiFab& PandNG,  co
     const auto dxi = geom.InvCellSizeArray();
     const Real inv_cell_volume = dxi[0]*dxi[1]*dxi[2];
 
-    Real d_Omega = 4.0 * MathConst::pi * parms->number_of_particles;
+    Real d_Omega = 4.0 * MathConst::pi / parms->number_of_particles;
 
     PandNG.setVal(0.0);
 
