@@ -5,6 +5,9 @@ clasifyin it per cell. The data can be found in the directories plt*_particles
 The particle data is stored in hdf5 files with the following labels: cell_i_j_k.h5
 where i, j, k are the cell indexes in the x, y, z directions respectively.
 i=0, j=0, k=0 is the cell with the minimum x, y, z coordinates.
+
+Run this script with the command:
+python write_particles_per_cell.py --fi -1 --bi 4 --bj 4 --bk 4 --nbi 96 --nbj 96 --nbk 64
 '''
 
 import os
@@ -79,29 +82,42 @@ def writehdf5files(dire):
     assert nlevels==1
     level = 0
 
-    gridID = grid_i + N_grid_x*grid_j + N_grid_x*N_grid_y*grid_k
-    
-    # read particle data on a single grid
-    idata, rdata = amrex.read_particle_data(dire, ptype="neutrinos", level_gridID=(level,gridID))
-    
-    # get cell index for each particle
-    cell_x_index = (rdata[:,rkey['pos_x']] / grid_data.dx).astype(int)
-    cell_y_index = (rdata[:,rkey['pos_y']] / grid_data.dy).astype(int)
-    cell_z_index = (rdata[:,rkey['pos_z']] / grid_data.dz).astype(int)
-    cell_index = np.stack((cell_x_index, cell_y_index, cell_z_index), axis=1)
-    # get unique cell index
-    unique_cell_index = np.unique(cell_index, axis=0)
+    if (n_box_x < 0) and (n_box_y < 0) and (n_box_z < 0):
+        ngrids = len(header.grids[level])
+        print(f"Number of grids in level {level}: {ngrids}")
+        boxes = np.arange(len(header.grids[level]))
+        print(f"Boxes to process: {boxes}")
+    else:
+        boxes = [box_i + n_box_x * box_j + n_box_x * n_box_y * box_k]
 
-    for i in range(unique_cell_index.shape[0]):
-        cell_filename = f"{dire}_particles/cell_{unique_cell_index[i,0]}_{unique_cell_index[i,1]}_{unique_cell_index[i,2]}.h5"              
-        if os.path.exists(cell_filename):
-            print(f"file {cell_filename} already exists")
-        else:
-            mask_cell_group = np.all(cell_index == unique_cell_index[i], axis=1)
-            cell_group = rdata[mask_cell_group]
-            with h5py.File(cell_filename, 'w') as cell_hf:
-                for label in labels:
-                    cell_hf.create_dataset(label, data=cell_group[:, rkey[label]], maxshape=(None,), chunks=True)
+    print(f"Boxes to process: {boxes}")
+
+    # loop over all boxes
+    for gridID in boxes:
+
+        print(f"Processing grid {gridID} in directory {dire}")
+
+        # read particle data on a single grid
+        idata, rdata = amrex.read_particle_data(dire, ptype="neutrinos", level_gridID=(level,gridID))
+        
+        # get cell index for each particle
+        cell_x_index = (rdata[:,rkey['pos_x']] / grid_data.dx).astype(int)
+        cell_y_index = (rdata[:,rkey['pos_y']] / grid_data.dy).astype(int)
+        cell_z_index = (rdata[:,rkey['pos_z']] / grid_data.dz).astype(int)
+        cell_index = np.stack((cell_x_index, cell_y_index, cell_z_index), axis=1)
+        # get unique cell index
+        unique_cell_index = np.unique(cell_index, axis=0)
+
+        for i in range(unique_cell_index.shape[0]):
+            cell_filename = f"{dire}_particles/cell_{unique_cell_index[i,0]}_{unique_cell_index[i,1]}_{unique_cell_index[i,2]}.h5"              
+            if os.path.exists(cell_filename):
+                print(f"file {cell_filename} already exists")
+            else:
+                mask_cell_group = np.all(cell_index == unique_cell_index[i], axis=1)
+                cell_group = rdata[mask_cell_group]
+                with h5py.File(cell_filename, 'w') as cell_hf:
+                    for label in labels:
+                        cell_hf.create_dataset(label, data=cell_group[:, rkey[label]], maxshape=(None,), chunks=True)
 
 directories = sorted(glob.glob("plt*/neutrinos"))
 directories = [directories[i].split('/')[0] for i in range(len(directories))] # remove "neutrinos"
@@ -111,13 +127,13 @@ if not directories:
     sys.exit(0)
 
 parser = argparse.ArgumentParser(description='Process some directories.')
-parser.add_argument('--fi', type=int, default=-2, help='index of the directory to analyze')
-parser.add_argument('--gi', type=int, required=True, help='grid index in the x direction')
-parser.add_argument('--gj', type=int, required=True, help='grid index in the y direction')
-parser.add_argument('--gk', type=int, required=True, help='grid index in the z direction')
-parser.add_argument('--ngi', type=int, required=True, help='number of grid cell in the x direction')
-parser.add_argument('--ngj', type=int, required=True, help='number of grid cell in the y direction')
-parser.add_argument('--ngk', type=int, required=True, help='number of grid cell in the z direction')
+parser.add_argument('--fi', type=int, default=-2, help='index of the plt file to be analyzed')
+parser.add_argument('--bi', type=int, default=-2, help='chosen box index in the x direction')
+parser.add_argument('--bj', type=int, default=-2, help='chosen box index in the y direction')
+parser.add_argument('--bk', type=int, default=-2, help='chosen box index in the z direction')
+parser.add_argument('--nbi', type=int, default=-2, help='number of boxes in the x direction')
+parser.add_argument('--nbj', type=int, default=-2, help='number of boxes in the y direction')
+parser.add_argument('--nbk', type=int, default=-2, help='number of boxes in the z direction')
 args = parser.parse_args()
 
 if args.fi >= -1:
@@ -129,13 +145,14 @@ if args.fi >= -1:
         print(f"Index {args.fi} is out of range. Exiting.")
         sys.exit(1)
 
-grid_i = args.gi
-grid_j = args.gj
-grid_k = args.gk
-
-N_grid_x = args.ngi
-N_grid_y = args.ngj
-N_grid_z = args.ngk
+box_i = args.bi
+box_j = args.bj
+box_k = args.bk
+print(f"Box indices: i={box_i}, j={box_j}, k={box_k}")
+n_box_x = args.nbi
+n_box_y = args.nbj
+n_box_z = args.nbk
+print(f"Number of boxes: nbi={n_box_x}, nbj={n_box_y}, nbk={n_box_z}")
 
 print(f"Directories to process: {directories}")
 
