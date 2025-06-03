@@ -121,6 +121,7 @@ def writehdf5files(dire):
 
 directories = sorted(glob.glob("plt*/neutrinos"))
 directories = [directories[i].split('/')[0] for i in range(len(directories))] # remove "neutrinos"
+directories.sort(key=lambda x: int(x.split('plt')[-1]))
 
 if not directories:
     print("No new directories to process.")
