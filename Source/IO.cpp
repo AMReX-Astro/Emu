@@ -45,11 +45,11 @@ neutrinos_for_IO.copyParticles(neutrinos, true);
     {
         auto neutrino_varnames = neutrinos.get_attribute_names();
 #ifdef AMREX_USE_HDF5
-        // neutrinos.CheckpointHDF5(plotfilename, "neutrinos", true, neutrino_varnames);
-        neutrinos_for_IO.WritePlotFile(plotfilename, "neutrinos", neutrino_varnames);
+        neutrinos.CheckpointHDF5(plotfilename, "neutrinos", true, neutrino_varnames);
+        // neutrinos_for_IO.WritePlotFile(plotfilename, "neutrinos", neutrino_varnames);
 #else
-        // neutrinos.Checkpoint(plotfilename, "neutrinos", true, neutrino_varnames);
-        neutrinos_for_IO.WritePlotFile(plotfilename, "neutrinos", neutrino_varnames);
+        neutrinos.Checkpoint(plotfilename, "neutrinos", true, neutrino_varnames);
+        // neutrinos_for_IO.WritePlotFile(plotfilename, "neutrinos", neutrino_varnames);
 #endif
     }
 
