@@ -78,6 +78,8 @@ struct TestParams : public amrex::Gpu::Managed
     std::string background_rho_Ye_T_table_name; // Background matter table file name
     int boundary_condition_type; // Boundary condition type flag
 
+    int set_equilibrium_distribution; // Flag to set the equilibrium distribution function for neutrinos and antineutrinos
+
     void Initialize(){
 
         ParmParse pp;
@@ -168,6 +170,11 @@ struct TestParams : public amrex::Gpu::Managed
 
         // Flag for collision term treatment
         pp.get("IMFP_method", IMFP_method);
+
+        if(IMFP_method>0){
+            // Set equilibrium distribution function for neutrinos and antineutrinos
+            pp.get("set_equilibrium_distribution", set_equilibrium_distribution);
+        }
 
         if(IMFP_method==0) {
             // Do nothing

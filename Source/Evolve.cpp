@@ -808,19 +808,59 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         }
         else AMREX_ASSERT_WITH_MESSAGE(false, "only available opacity_method is 0, 1 or 2");
 
+        double f_nu_e[13] = {
+            7.0994208997377517e-03, 1.6569992071255989e-02, 2.7850408881147370e-02, 3.2482205465428897e-02, 2.6448855470892776e-02, 1.6173687053825551e-02, 7.5060897551031645e-03, 2.5305516364041926e-03, 5.8710787249954973e-04, 8.8210207810425468e-05, 8.0248563560583814e-06, 4.0510307523564364e-07, 9.9916360277372577e-09
+        };
+
+        double f_nubar_e[13] = {
+            1.0632765554671197e-03, 2.1415041884161211e-03, 6.9580613700387338e-03, 1.0469241982139077e-02, 1.0568833493640193e-02, 7.8050071074430823e-03, 4.2861128000531027e-03, 1.7231255532653416e-03, 4.8702920994658761e-04, 9.0724750699417242e-05, 1.0209047968987736e-05, 6.2239191451207997e-07, 1.8012817621610205e-08
+        };
+
+        double f_nu_x[13] = {
+            2.5496937465583415e-04, 2.8043232483444201e-04, 3.0020429828160784e-04, 2.6514710466691839e-04, 1.9393713337566092e-04, 1.1584115899831680e-04, 5.5211469049980155e-05, 2.0028543916201174e-05, 5.3919157047453655e-06, 1.0219092363027128e-06, 1.2548604018241358e-07, 9.5420200320866388e-09, 4.1036284808555850e-10
+        };
+
+        double energybinsbottom_ergs[13] = {
+            0.0000000000000000e+00, 3.2043599999999999e-06, 6.4087199999999999e-06, 1.0376518769999999e-05, 1.5289603739999999e-05, 2.1373081199999998e-05, 2.8906531560000000e-05, 3.8234423520000002e-05, 4.9784539140000002e-05, 6.4085597819999999e-05, 8.1794493359999999e-05, 1.0372192884000000e-04, 1.3087407330000000e-04
+        };
+
+        double energybinstopMeV_ergs[13] = {
+            3.2043599999999999e-06, 6.4087199999999999e-06, 1.0376518769999999e-05, 1.5289603739999999e-05, 2.1373081199999998e-05, 2.8906531560000000e-05, 3.8234423520000002e-05, 4.9784539140000002e-05, 6.4085597819999999e-05, 8.1794493359999999e-05, 1.0372192884000000e-04, 1.3087407330000000e-04, 1.6449582060000000e-04
+        };
+
+        double energybinsMeV_ergs[13] = {
+            1.6021800000000000e-06, 4.8065399999999999e-06, 8.3925392760000003e-06, 1.2832981146000000e-05, 1.8332143560000002e-05, 2.5139806379999999e-05, 3.3570477540000001e-05, 4.4008680239999999e-05, 5.6935068480000001e-05, 7.2939244500000000e-05, 9.2758211099999997e-05, 1.1729880216000001e-04, 1.4768574804000000e-04
+        };
+
         // Compute equilibrium distribution functions and include Pauli blocking term if requested
-        if(parms->IMFP_method==1 || parms->IMFP_method==2){       
+        if(parms->IMFP_method==1 || parms->IMFP_method==2){
 
-            for (int i=0; i<NUM_FLAVORS; ++i) {
+            if (parms-> set_equilibrium_distribution == 1){
+                for (int bin = 0; bin < 13; ++bin) {
+                    if (p.rdata(PIdx::pupt) >= energybinsbottom_ergs[bin] && p.rdata(PIdx::pupt) < energybinstopMeV_ergs[bin]) {
+                        f_eq[0][0] = f_nu_e[bin];
+                        f_eqbar[0][0] = f_nubar_e[bin];
+                        f_eq[1][1] = f_nu_x[bin];
+                        f_eqbar[1][1] = f_nu_x[bin];
+                        #if NUM_FLAVORS == 3
+                        f_eq[2][2] = f_nu_x[bin];
+                        f_eqbar[2][2] = f_nu_x[bin];
+                        #endif
+                        break;
+                    }
+                }
+            } else {
+                for (int i=0; i<NUM_FLAVORS; ++i) {
 
-                // Calculate the Fermi-Dirac distribution for neutrinos and antineutrinos.
-                f_eq[i][i]    = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munu[i][i]    ) / T_pp ) );
-                f_eqbar[i][i] = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munubar[i][i] ) / T_pp ) );
+                    // Calculate the Fermi-Dirac distribution for neutrinos and antineutrinos.
+                    f_eq[i][i]    = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munu[i][i]    ) / T_pp ) );
+                    f_eqbar[i][i] = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munubar[i][i] ) / T_pp ) );
 
-                // Include the Pauli blocking term
-                if (parms->Do_Pauli_blocking == 1){
-                    IMFP_abs[i][i]    = IMFP_abs[i][i]    / ( 1 - f_eq[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
-                    IMFP_absbar[i][i] = IMFP_absbar[i][i] / ( 1 - f_eqbar[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
+                    // Include the Pauli blocking term
+                    if (parms->Do_Pauli_blocking == 1){
+                        IMFP_abs[i][i]    = IMFP_abs[i][i]    / ( 1 - f_eq[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
+                        IMFP_absbar[i][i] = IMFP_absbar[i][i] / ( 1 - f_eqbar[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
+                    }
                 }
             }
         }
