@@ -274,8 +274,6 @@ void compute_A_and_B(FlavoredNeutrinoContainer& neutrinos, MultiFab& PandNG,  co
     const auto dxi = geom.InvCellSizeArray();
     const Real inv_cell_volume = dxi[0]*dxi[1]*dxi[2];
 
-    Real d_Omega = 4.0 * MathConst::pi / parms->number_of_particles;
-
     PandNG.setVal(0.0);
 
     amrex::ParticleToMesh(neutrinos, PandNG, 0,
@@ -290,9 +288,9 @@ void compute_A_and_B(FlavoredNeutrinoContainer& neutrinos, MultiFab& PandNG,  co
         if (NUM_FLAVORS==2) {
             Gn = sqrt(2) * ( PhysConst::GF / PhysConst::hbar ) * ( (p.rdata(PIdx::N00_Re)-p.rdata(PIdx::N00_Rebar)) - (p.rdata(PIdx::N11_Re)-p.rdata(PIdx::N11_Rebar)) ) * inv_cell_volume;
             if (Gn>0.0){
-                amrex::Gpu::Atomic::AddNoRet(&sarr(i_indx,j_indx,k_indx,0), d_Omega * Gn / (4.0*MathConst::pi)); // B positive ELN-XLN
+                amrex::Gpu::Atomic::AddNoRet(&sarr(i_indx,j_indx,k_indx,0), +1.0 * Gn ); // B positive ELN-XLN
             } else{
-                amrex::Gpu::Atomic::AddNoRet(&sarr(i_indx,j_indx,k_indx,1), d_Omega * ( -1.0 * Gn ) / (4.0*MathConst::pi)); // A negative ELN-XLN
+                amrex::Gpu::Atomic::AddNoRet(&sarr(i_indx,j_indx,k_indx,1), -1.0 * Gn ); // A negative ELN-XLN
             }
         }        
     });
