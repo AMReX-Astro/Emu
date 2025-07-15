@@ -7,9 +7,9 @@ perturbation_amplitude = 0.0
 attenuation_hamiltonians = 1.0
 
 # Controles de paso de tiempo
-collision_cfl_factor = 0.25
-cfl_factor = 0.25
-flavor_cfl_factor = 0.25
+collision_cfl_factor = 1e-15
+cfl_factor = 1e-15
+flavor_cfl_factor = 1e-15
 max_adaptive_speedup = 0
 maxError = 1e-6
 
@@ -40,13 +40,13 @@ max_grid_size_z = 1
 nsteps = 80000
 
 # Paso de tiempo mínimo (s)
-minimum_time_step = 1e-15
+minimum_time_step = 1.25e-13
 
 # Método para calcular el paso de tiempo óptimo
 time_step_method = 1
 
 # Forzar tiempo final de la simulación (s)
-end_time = 5.0e19
+end_time = 1e-8
 
 # Activa señales FPE para obtener un backtrace
 amrex.fpe_trap_invalid = 1
