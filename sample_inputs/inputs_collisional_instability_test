@@ -58,6 +58,8 @@ write_plot_particles_every = 10
 do_restart = 0
 restart_dir = ""
 
+set_equilibrium_distribution = 0
+
 ###############################
 # NEUTRINO PHYSICS PARAMETERS #
 ###############################
