@@ -4,9 +4,9 @@ perturbation_amplitude = 0.0
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 1.0
 
-collision_cfl_factor = 1e-1
-cfl_factor = 1e-1
-flavor_cfl_factor = 1e0
+collision_cfl_factor = 0.25
+cfl_factor = 0.25
+flavor_cfl_factor = 0.25
 max_adaptive_speedup = 0
 maxError = 1e-6
 
@@ -29,7 +29,7 @@ max_grid_size_y = 1
 max_grid_size_z = 1
 
 # Number of steps to run
-nsteps = 3000
+nsteps = 80000
 
 # Minimum timestep (s)
 minimum_time_step = 1e-15
@@ -49,10 +49,10 @@ T_MeV = 7.0
 Ye = 0
 
 # Write plotfiles
-write_plot_every = 10
+write_plot_every = 400
 
 # Write particle data in plotfiles
-write_plot_particles_every = 10
+write_plot_particles_every = 400
 
 # checkpointing
 do_restart = 0
