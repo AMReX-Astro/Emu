@@ -121,8 +121,7 @@ pipeline {
 					sh 'python ../Scripts/initial_conditions/st7_empty_particles.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_coll_equi_test'
 					sh 'python ../Scripts/tests/coll_equi_test.py'
-					archiveArtifacts artifacts: '*.pdf'
-					sh 'rm -rf plt* *pdf'
+					sh 'rm -rf plt*'
 				}
 			}
 		}
@@ -134,7 +133,6 @@ pipeline {
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fermi_dirac_test'
 					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
 					sh 'python ../Scripts/tests/fermi_dirac_test.py'
-					archiveArtifacts artifacts: '*.pdf'
 					sh 'rm -rf plt* *pdf rho_Ye_T.hdf5'
 				}
 			}
