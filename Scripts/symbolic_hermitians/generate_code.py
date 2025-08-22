@@ -325,6 +325,8 @@ if __name__ == "__main__":
                 sgn =  1
             line = "Real "+Vlist[icomp]+" = "+str(sgn)+"*("+M2list[icomp] + ")*PhysConst::c4/(2.*p.rdata(PIdx::pupt));"
             code.append(line)
+            line = Vlist[icomp]+" *= parms->attenuation_vacuum;"
+            code.append(line)
     write_code(code, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_Vvac_fill"))
 
     #============================#
@@ -404,11 +406,11 @@ if __name__ == "__main__":
             line = line + ");"
             code.append(line)
             code.append("")
-        line = "inside_parentheses = SI_partial + SI_partialbar"
+        line = "inside_parentheses = parms->attenuation_self_interaction * ( SI_partial + SI_partialbar )"
 
         # matter potential
         if("V00" in Vlist[icomp]):
-            line = line + " + " + rhoye
+            line = line + " + parms->attenuation_matter * " + rhoye
 
         line = line + ";"
         code.append(line)

@@ -60,6 +60,9 @@ struct TestParams : public amrex::Gpu::Managed
 
     // Attenuation to Hamiltonians
     Real attenuation_hamiltonians; // Multiplication factor to [N,H]
+    Real attenuation_vacuum;
+    Real attenuation_matter;
+    Real attenuation_self_interaction;
 
     // Black hole properties
     int do_blackhole; // Flag to include a black hole in the simulation 
@@ -139,7 +142,10 @@ struct TestParams : public amrex::Gpu::Managed
 
         // attenuation to hamiltonians
         pp.get("attenuation_hamiltonians", attenuation_hamiltonians);
-        
+        pp.get("attenuation_vacuum", attenuation_vacuum);
+        pp.get("attenuation_matter", attenuation_matter);
+        pp.get("attenuation_self_interaction", attenuation_self_interaction);
+
         // Boundary condition type
         pp.get("boundary_condition_type", boundary_condition_type);
         pp.get("do_periodic_empty_bc",  do_periodic_empty_bc);

@@ -3,6 +3,9 @@ perturbation_amplitude = 0.0
 
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 0
+attenuation_vacuum = 1.0
+attenuation_matter = 1.0
+attenuation_self_interaction = 1.0
 
 collision_cfl_factor = 1e-1
 cfl_factor = 1e-2
@@ -94,6 +97,7 @@ deltaCP_degrees = 0
 # opacity stuff #
 #################
 IMFP_method = 1
+set_equilibrium_distribution= 0
 
 Do_Pauli_blocking = 0 # If 1, it will multiply the inverse mean free path by 1 / (1 - f_eq); if 0, do nothing.
 

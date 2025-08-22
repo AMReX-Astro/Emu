@@ -6,6 +6,9 @@ maxError = 1e-6
 
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 1
+attenuation_vacuum = 1.0
+attenuation_matter = 1.0
+attenuation_self_interaction = 1.0
 
 perturbation_type = 0
 perturbation_amplitude = 0
