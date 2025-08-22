@@ -44,7 +44,7 @@ pipeline {
 
 		stage('Fast Flavor'){ steps{
 				dir('Exec'){
-				sh 'python ../Scripts/initial_conditions/st2_2beam_fast_flavor.py'
+					sh 'python ../Scripts/initial_conditions/st2_2beam_fast_flavor.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fast_flavor'
 					sh 'python ../Scripts/tests/fast_flavor_test.py'
 					sh 'rm -rf plt*'
@@ -54,7 +54,7 @@ pipeline {
 
 		stage('Fast Flavor k'){ steps{
 				dir('Exec'){
-				sh 'python ../Scripts/initial_conditions/st3_2beam_fast_flavor_nonzerok.py'
+					sh 'python ../Scripts/initial_conditions/st3_2beam_fast_flavor_nonzerok.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fast_flavor_nonzerok'
 					sh 'python ../Scripts/tests/fast_flavor_k_test.py'
 					sh 'rm -rf plt*'
@@ -80,6 +80,28 @@ pipeline {
 			}
 		}
 
+		stage('Collisions flavor instability'){ steps{
+				dir('Exec'){
+					sh 'python ../Scripts/initial_conditions/st8_coll_inst_test.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_collisional_instability_test'
+					sh 'python ../Scripts/data_reduction/reduce_data.py'
+					sh 'python ../Scripts/tests/coll_inst_test.py'
+					archiveArtifacts artifacts: '*.pdf'
+					sh 'rm -rf plt* *pdf'
+				}
+			}
+		}
+		stage('BC periodic empty'){ steps{
+				dir('Exec'){
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_bc_periodic_init'
+					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
+					sh 'python ../Scripts/tests/bc_empty_init_test.py'
+					archiveArtifacts artifacts: '*.pdf'
+					sh 'rm -rf plt* *pdf'
+				}
+			}
+		}
+
 		stage('Fiducial 3F CPU HDF5'){ steps{
 				dir('Exec'){
 					sh 'cp ../makefiles/GNUmakefile_jenkins_HDF5 GNUmakefile'
@@ -92,27 +114,6 @@ pipeline {
 			}
 		}
 
-		stage('Collisions flavor instability'){ steps{
-				dir('Exec'){
-					sh 'cp ../makefiles/GNUmakefile_jenkins_HDF5_CUDA GNUmakefile'
-					sh 'make realclean; make generate NUM_FLAVORS=2; make -j NUM_FLAVORS=2'
-					sh 'python ../Scripts/initial_conditions/st8_coll_inst_test.py'
-					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_collisional_instability_test'
-					sh 'python ../Scripts/data_reduction/reduce_data.py'
-					sh 'python ../Scripts/tests/coll_inst_test.py'
-					sh 'rm -rf plt* *pdf'
-				}
-			}
-		}
-		stage('BC periodic empty'){ steps{
-				dir('Exec'){
-					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_bc_periodic_init'
-					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
-					sh 'python ../Scripts/tests/bc_empty_init_test.py'
-					sh 'rm -rf plt* *pdf'
-				}
-			}
-		}
 		stage('Collisions to equilibrium'){ steps{
 				dir('Exec'){
 					sh 'cp ../makefiles/GNUmakefile_jenkins_HDF5_CUDA GNUmakefile'
@@ -120,6 +121,7 @@ pipeline {
 					sh 'python ../Scripts/initial_conditions/st7_empty_particles.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_coll_equi_test'
 					sh 'python ../Scripts/tests/coll_equi_test.py'
+					archiveArtifacts artifacts: '*.pdf'
 					sh 'rm -rf plt* *pdf'
 				}
 			}
@@ -132,6 +134,7 @@ pipeline {
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fermi_dirac_test'
 					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
 					sh 'python ../Scripts/tests/fermi_dirac_test.py'
+					archiveArtifacts artifacts: '*.pdf'
 					sh 'rm -rf plt* *pdf rho_Ye_T.hdf5'
 				}
 			}
