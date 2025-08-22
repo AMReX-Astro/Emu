@@ -38,8 +38,16 @@ def convert_to_HDF5(sim_directory, DELETE_ALL_BUT_LAST_RESTART=False):
 
     # fluid_directories = sorted(glob.glob(sim_directory+"/plt*/neutrinos"))
     # fluid_directories = [d[:-10] if d.endswith('/neutrinos') else d for d in fluid_directories]
-    fluid_directories = sorted(glob.glob(sim_directory+"/plt*"))
-    fluid_directories.sort(key=lambda x: int(x.split('plt')[-1]))
+    fluid_directories = sorted(set(glob.glob(sim_directory+"/plt*")))
+
+    def get_plt_number(x):
+        try:
+            return int(x.split('plt')[-1])
+        except ValueError:
+            return None
+    fluid_directories = [d for d in fluid_directories if get_plt_number(d) is not None]
+    # Remove duplicates and sort by plt number
+    fluid_directories = sorted(set(fluid_directories), key=lambda x: int(x.split('plt')[-1]))
     nfluid = len(fluid_directories)
     
     print(fluid_directories)
