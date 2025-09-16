@@ -4,9 +4,9 @@ perturbation_amplitude = 1e-6
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 0
 
-collision_cfl_factor = 100
-cfl_factor = 100
-flavor_cfl_factor = 100
+collision_cfl_factor = 55
+cfl_factor = 55
+flavor_cfl_factor = 0
 max_adaptive_speedup = 0
 maxError = 1e-6
 
@@ -24,10 +24,10 @@ nppc  = (1, 1, 1)
 particle_data_filename = "particle_input.dat"
 
 # Maximum size of each grid in the domain
-max_grid_size = 16
+max_grid_size = 2
 
 # Number of steps to run
-nsteps = 2000
+nsteps = 6000
 
 # Simulation end time
 end_time = 5.0e9
@@ -36,10 +36,10 @@ end_time = 5.0e9
 amrex.fpe_trap_invalid=1
 
 # Write plotfiles
-write_plot_every = 2000
+write_plot_every = 6000
 
 # Write particle data in plotfiles
-write_plot_particles_every = 2000
+write_plot_particles_every = 6000
 
 # checkpointing
 do_restart = 0
