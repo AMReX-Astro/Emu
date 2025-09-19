@@ -70,6 +70,37 @@ void continuos_emission(FlavoredNeutrinoContainer& neutrinos_rhs, FlavoredNeutri
     }
 }
 
+void check_positive_particle_number(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms, const Geometry& geom){
+
+    const auto dxi = geom.InvCellSizeArray();
+    const Real cell_volume = 1.0 / (dxi[0]*dxi[1]*dxi[2]);
+
+    const int lev = 0;
+    for (FNParIter pti(neutrinos, lev); pti.isValid(); ++pti)
+    {
+        const int np  = pti.numParticles();
+        FlavoredNeutrinoContainer::ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
+
+        amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
+            FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
+
+            if (p.rdata(PIdx::N00_Re) < 0.0) {
+                p.rdata(PIdx::N00_Re) = 0.0;
+            }
+            if (p.rdata(PIdx::N11_Re) < 0.0) {
+                p.rdata(PIdx::N11_Re) = 0.0;
+            }
+            if (p.rdata(PIdx::N00_Rebar) < 0.0) {
+                p.rdata(PIdx::N00_Rebar) = 0.0;
+            }
+            if (p.rdata(PIdx::N11_Rebar) < 0.0) {
+                p.rdata(PIdx::N11_Rebar) = 0.0;
+            }
+
+        });
+    }
+}
+
 void discrete_emission(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms, const Geometry& geom){
 
     const auto dxi = geom.InvCellSizeArray();

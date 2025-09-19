@@ -301,6 +301,9 @@ void evolve_flavor(const TestParams* parms)
                     }
                 }
             }
+
+            // Check that the particle number is always positive
+            check_positive_particle_number(neutrinos, parms, geom);
         }
 
         const Real current_dt = integrator.get_timestep(); //FIXME: FIXME: Pass this to neutrinos.CreateParticlesAtBoundary.
