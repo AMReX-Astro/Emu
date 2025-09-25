@@ -27,9 +27,9 @@ struct TestParams : public amrex::Gpu::Managed
     Real rho_in; // Density in g/ccm
     Real Ye_in; // Electron fraction (dimensionless quantity)
     Real kT_in; // Temperature in erg
-    Real vupx_in; //
-    Real vupy_in; //
-    Real vupz_in; //
+    Real vupx_in; // X-component of velocity, cm/s
+    Real vupy_in; // Y-component, cm/s
+    Real vupz_in; // Z-component, cm/s
     Real cfl_factor, flavor_cfl_factor, collision_cfl_factor;
     Real max_adaptive_speedup; 
     bool do_restart; // Flag to restart from a previous simulation
