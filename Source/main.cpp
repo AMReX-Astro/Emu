@@ -119,10 +119,16 @@ void evolve_flavor(const TestParams* parms)
     //Else set rho, T and Ye to constant value throughout the grid using values from parameter file.
     if (parms->read_rho_T_Ye_from_table){
         set_rho_T_Ye(state, geom, parms);
+	state.setVal(parms->vupx_in, GIdx::vup_x,1); // cm/s 
+	state.setVal(parms->vupy_in, GIdx::vup_y,1); // cm/s
+	state.setVal(parms->vupz_in, GIdx::vup_z,1); // cm/s
     } else {      
         state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
-        state.setVal(parms->Ye_in,GIdx::Ye,1);
-        state.setVal(parms->kT_in,GIdx::T,1); // erg
+        state.setVal(parms->Ye_in,GIdx::Ye,1); 
+        state.setVal(parms->kT_in,GIdx::T,1); // erg/s
+	state.setVal(parms->vupx_in, GIdx::vup_x,1); // cm/s
+	state.setVal(parms->vupy_in, GIdx::vup_y,1); // cm/s
+	state.setVal(parms->vupz_in, GIdx::vup_z,1); // cm/s
     }
 
     state.FillBoundary(geom.periodicity());
