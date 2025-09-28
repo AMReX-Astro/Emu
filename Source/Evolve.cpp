@@ -329,7 +329,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             double mue_out, muhat_out; // mue_out : Electron chemical potential. muhat_out : neutron minus proton chemical potential
             int keyerr, anyerr;
             EOS_tabulated_obj.get_mue_muhat(rho, temperature, Ye, mue_out, muhat_out, keyerr, anyerr);
-            if (anyerr) assert(0); //If there is an error in interpolation call, stop execution. 
+            if (anyerr) AMREX_ASSERT(0); //If there is an error in interpolation call, stop execution. 
 
 //#define DEBUG_INTERPOLATION_TABLES
 #ifdef DEBUG_INTERPOLATION_TABLES
@@ -361,7 +361,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
                 }
             }
 
-            if(idx_group == -1) assert(0); //abort if energy bin cannot be found.
+            if(idx_group == -1) AMREX_ASSERT(0); //abort if energy bin cannot be found.
             //printf("Given neutrino energy = %f, selected bin index = %d\n", neutrino_energy_MeV, idx_group);
 
             //idx_species = {0 for electron neutrino, 1 for electron antineutrino and 2 for all other heavier ones}
@@ -370,7 +370,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             double absorption_opacity, scattering_opacity;
             NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
                                               keyerr, anyerr, idx_species, idx_group);
-            if (anyerr) assert(0);
+            if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES            
             printf("(Evolve.cpp) absorption_opacity[e] interpolated = %17.6g\n", absorption_opacity);
@@ -384,7 +384,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             idx_species = 1;  
             NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
                                               keyerr, anyerr, idx_species, idx_group);
-            if (anyerr) assert(0);
+            if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES            
             printf("(Evolve.cpp) absorption_opacity[a] interpolated = %17.6g\n", absorption_opacity);
@@ -398,7 +398,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             idx_species = 2;  
             NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
                                               keyerr, anyerr, idx_species, idx_group);
-            if (anyerr) assert(0);
+            if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES            
             printf("(Evolve.cpp) absorption_opacity[x] interpolated = %17.6g\n", absorption_opacity);
