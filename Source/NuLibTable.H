@@ -12,7 +12,7 @@ void ReadNuLibTable(const std::string nulib_table_name);
 
 namespace nulib_private {
 
-// table data
+  // table data
   extern double *alltables_nulib;
   //extern double *epstable;
   extern double *logrho_nulib;
@@ -20,6 +20,8 @@ namespace nulib_private {
   extern double *yes_nulib;
   extern double *species_nulib;
   extern double *group_nulib;
+  extern double *energy_bottom;
+  extern double *energy_top;
   	
 #define NULIBVAR(VAR) helperVarsReal_nulib[helperVarsEnumReal_nulib::VAR] 
 //WARNING: If the number of variables is increased here, then memory allocation for helperVarsReal/helperVarsInt pointer in GRHydroX_ReadEOSTable.cxx will also need to be increased.

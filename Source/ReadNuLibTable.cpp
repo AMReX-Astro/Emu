@@ -46,6 +46,8 @@ namespace nulib_private {
   double *yes_nulib;
   double *species_nulib; //TODO: Get rid of this?
   double *group_nulib;
+  double *energy_bottom;
+  double *energy_top;
   double *helperVarsReal_nulib;
   int *helperVarsInt_nulib;
 }
@@ -99,7 +101,7 @@ void ReadNuLibTable(const std::string nulib_table_name) {
     READ_BCAST_EOS_HDF5("number_species",   &nspecies_,   H5T_NATIVE_INT, H5S_ALL, 1);
     READ_BCAST_EOS_HDF5("number_groups",   &ngroup_,   H5T_NATIVE_INT, H5S_ALL, 1);
     
-    assert(nspecies_ == 2); //For now, the code only works when NuLib table has (e,a,x) values.
+    AMREX_ASSERT(nspecies_ == 2); //For now, the code only works when NuLib table has (e,a,x) values.
 
     printf("(ReadNuLibTable.cpp) nrho = %d, ntemp = %d, nye = %d, nspecies=%d, ngroup=%d\n", nrho_, ntemp_, nye_, nspecies_, ngroup_);
 
@@ -111,39 +113,37 @@ void ReadNuLibTable(const std::string nulib_table_name) {
     double *alltables_temp;
     if (!(alltables_temp = myManagedArena.allocate(nrho_ * ntemp_ * nye_ * nspecies_ * ngroup_ * NTABLES_NULIB) )) {  
         printf("(ReadNuLibTable.cpp) Cannot allocate memory for NuLib table"); 
-        assert(0);
+        AMREX_ASSERT(0);
     }
     if (!(logrho_nulib = myManagedArena.allocate(nrho_) )) {
         printf("(ReadNuLibTable.cpp) Cannot allocate memory for NuLib table"); 
-        assert(0);
+        AMREX_ASSERT(0);
     }
     if (!(logtemp_nulib = myManagedArena.allocate(ntemp_) )) {
         printf("(ReadNuLibTable.cpp) Cannot allocate memory for NuLib table"); 
-        assert(0);             
+        AMREX_ASSERT(0);
     }
     if (!(yes_nulib = myManagedArena.allocate(nye_) )) {
         printf("(ReadNuLibTable.cpp) Cannot allocate memory for NuLib table"); 
-        assert(0);
+        AMREX_ASSERT(0);
     }
     if (!(species_nulib = myManagedArena.allocate(nspecies_) )) {
         printf("(ReadNuLibTable.cpp) Cannot allocate memory for NuLib table"); 
-        assert(0);
+        AMREX_ASSERT(0);
     }
     if (!(group_nulib = myManagedArena.allocate(ngroup_) )) {
         printf("(ReadNuLibTable.cpp) Cannot allocate memory for NuLib table"); 
-        assert(0);
+        AMREX_ASSERT(0);
     }
 
     //Allocate memory for energy bin determination.
-    double *energy_bottom;
-    double *energy_top;
     if (!(energy_bottom = myManagedArena.allocate(ngroup_) )) {
         printf("(ReadNuLibTable.cpp) Cannot allocate memory for NuLib table"); 
-        assert(0);
+        AMREX_ASSERT(0);
     } 
     if (!(energy_top = myManagedArena.allocate(ngroup_) )) {
         printf("(ReadNuLibTable.cpp) Cannot allocate memory for NuLib table"); 
-        assert(0);
+        AMREX_ASSERT(0);
     }
 
     // Prepare HDF5 to read hyperslabs into alltables_temp
@@ -172,7 +172,7 @@ void ReadNuLibTable(const std::string nulib_table_name) {
     // the table kind is the fastest changing index
     if (!(alltables_nulib = myManagedArena.allocate(nrho_ * ntemp_ * nye_ * nspecies_ * ngroup_ * NTABLES_NULIB) )) {
         printf("(ReadNuLibTable.cpp) Cannot allocate memory for NuLib table");
-        assert(0);
+        AMREX_ASSERT(0);
     }
 
     for(int iv = 0;iv<NTABLES_NULIB;iv++) 
@@ -198,26 +198,7 @@ void ReadNuLibTable(const std::string nulib_table_name) {
     for(int i=0;i<ntemp_;i++) {
       logtemp_nulib[i] = log(logtemp_nulib[i]);
     }
-
-    //FIXME: FIXME: Make an assert that rho, temp and Ye are uniformally spaced. 
-
-    //---------------------------- Energy bin determeination --------------------------------
-    //FIXME: FIXME: Set from parameter file.
-    double given_energy = 55.0; //TODO: Is this log or linear in table?
-    int idx_group_;
-
-    //Decide which energy bin to use (i.e. determine 'idx_group')
-    for (int i=0; i<ngroup_; i++){
-        if(given_energy >= energy_bottom[i] && given_energy <= energy_top[i]){
-            idx_group_ = i;
-            break;
-        }
-    }
-
-    printf("Given neutrino energy = %f, selected bin index = %d\n", given_energy, idx_group);
-    myManagedArena.deallocate(energy_bottom, ngroup_);
-    myManagedArena.deallocate(energy_top, ngroup_);
-    //----------------------------------------------------------------------------------------------
+ 
 
   //allocate memory for helperVars
   helperVarsReal_nulib = myManagedArena.allocate(24);
@@ -226,13 +207,42 @@ void ReadNuLibTable(const std::string nulib_table_name) {
   const double temp0_ = exp(logtemp_nulib[0]);
   const double temp1_ = exp(logtemp_nulib[1]);
 
-  NULIBVAR(idx_group) = idx_group_;
-
   NULIBVAR_INT(nrho) = nrho_;
   NULIBVAR_INT(ntemp) = ntemp_;
   NULIBVAR_INT(nye) = nye_;
   NULIBVAR_INT(nspecies) = nspecies_;
   NULIBVAR_INT(ngroup) = ngroup_;
+
+  //Ensure that temp is uniformly spaced
+  double dtemp_old, dtemp;
+  dtemp = logtemp_nulib[1] - logtemp_nulib[0];
+  for (int i=1; i<ntemp_-1; i++) {
+    dtemp_old = dtemp;
+    dtemp = logtemp_nulib[i+1] - logtemp_nulib[i];
+    //printf("i = %d, dtemp = %f\n", i, dtemp);
+    AMREX_ASSERT( (dtemp - dtemp_old) < 1e-10);
+  }
+
+  //Ensure that rho is uniformly spaced
+  double drho_old, drho;
+  drho = logrho_nulib[1] - logrho_nulib[0];
+  for (int i=1; i<nrho_-1; i++) {
+    drho_old = drho;
+    drho = logrho_nulib[i+1] - logrho_nulib[i];
+    //printf("i = %d, drho = %f\n", i, drho);
+    AMREX_ASSERT( (drho - drho_old) < 1e-10);
+  }
+
+  //Ensure that Ye is uniformly spaced
+  double dye_old, dye;
+  dye = yes_nulib[1] - yes_nulib[0];
+  for (int i=1; i<nye_-1; i++) {
+    dye_old = dye;
+    dye = yes_nulib[i+1] - yes_nulib[i];
+    //printf("i = %d, dye = %f\n", i, dye);
+    AMREX_ASSERT( (dye - dye_old) < 1e-10);
+  }
+
 
   // set up some vars
   NULIBVAR(dtemp)  = (logtemp_nulib[ntemp_-1] - logtemp_nulib[0]) / (1.0*(ntemp_-1));
