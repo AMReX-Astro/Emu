@@ -406,12 +406,35 @@ if __name__ == "__main__":
             code.append("")
         line = "inside_parentheses = SI_partial + SI_partialbar"
 
-        # matter potential
-        if("V00" in Vlist[icomp]):
-            line = line + " + " + rhoye
+        # matter potential 
 
-        line = line + ";"
-        code.append(line)
+        theta12 = sympy.symbols('parms->theta12',real=True)
+        theta13 = sympy.symbols('parms->theta13',real=True)
+        costheta12 = sympy.cos(theta12)
+        sintheta12 = sympy.sin(theta12)
+
+        for t in tails:
+            if t=="bar":
+                gamma1 = "std::pow(" + str(sintheta12)+ ", 2)"
+                gamma2 = "std::pow(" + str(costheta12) + ", 2)"
+            else:
+                gamma1 = "std::pow(" + str(costheta12) + ", 2)"
+                gamma2 = "std::pow(" + str(sintheta12)+ ", 2)"
+
+            for icomp in range(len(Vlist)):
+                line = Vlist[icomp]+  " += "  + gamma1 + " * (p.rdata(PIdx::pupt) / parms->mass1) + " 
+                line = line + " " + gamma2 + "*(p.rdata(PIdx::pupt) / parms->mass1) *"
+
+                for i in range(len(direction)):
+                    line = line + " ("+ str(sgn(t,Vlist[icomp])) + ") * " + rhoye + " - "
+                    line = line + string_interp + "vup_"+direction[i]+") * (" + str(sgn(t,Vlist[icomp])) + ") * " 
+                    line = line + string_interp+Flist[i][icomp]+t+ ")"
+                    if direction.index("z")==i:
+                        line = line + ";"
+                    else:
+                        line = line + " + "  
+            code.append(line)
+
         code.append("")
 
         # add/subtract the potential as appropriate
