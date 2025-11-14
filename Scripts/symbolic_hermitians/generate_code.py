@@ -406,29 +406,12 @@ if __name__ == "__main__":
             code.append("")
         line = "inside_parentheses = SI_partial + SI_partialbar"
 
-        # matter potential 
+        # matter potential
+        if("V00" in Vlist[icomp]):
+            line = line + " + " + rhoye
 
-        theta12 = sympy.symbols('parms->theta12',real=True)
-        theta13 = sympy.symbols('parms->theta13',real=True)
-        costheta12 = sympy.cos(theta12)
-        sintheta12 = sympy.sin(theta12)
-        c = sympy.symbols("PhysConst\:\:c", real=True)
-
-        for t in tails:
-            for icomp in range(len(Vlist)):
-                line = Vlist[icomp] +  " += "  + "*(p.rdata(PIdx::pupt)) / " + c + " * " + rhoye
-
-                for i in range(len(direction)):
-                    line = line + " - "
-                    line = line + string_interp + "pup"+direction[i]+")) / " +  c + " * (" + str(sgn(t,Vlist[icomp])) + ") * " 
-                    line = line + string_interp+Flist[i][icomp]+t+ ")"
-                    
-                    if direction.index("z")==i:
-                        line = line + ";"
-                    else:
-                        line = line + " + "  
-            code.append(line)
-
+        line = line + ";"
+        code.append(line)
         code.append("")
 
         # add/subtract the potential as appropriate
