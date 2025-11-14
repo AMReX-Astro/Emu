@@ -18,9 +18,9 @@ namespace GIdx
     enum {
         rho, T, Ye, // g/ccm, MeV, unitless
         #include "generated_files/Evolve.H_fill"
-        vup_x,
-	vup_y,
-	vup_z,
+        vupx,
+	vupy,
+	vupz,
 	ncomp
     };
 
