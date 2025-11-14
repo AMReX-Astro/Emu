@@ -407,8 +407,25 @@ if __name__ == "__main__":
         line = "inside_parentheses = SI_partial + SI_partialbar"
 
         # matter potential
+        def construct_vupt(fluid_velocity):
+            c = sympy.symbols("PhysConst\:\:c", real=True)
+            fluid_beta_sqr = fluid_velocity + "/ std::pow("+ str(c) + ", 2)"
+            fluid_gamma = "std::pow(1 - " + fluid_beta_sqr + ", -0.5)"
+            v_t = fluid_gamma + " * " + str(c)
+            return v_t
+
         if("V00" in Vlist[icomp]):
-            line = line + " + " + rhoye
+            vup_sqr = ""
+            for t in tails:
+                line = line + " + " +  rhoye
+                line = line + " * (-1) * p.rdata(PIdx::pupt)" + " * (-1) * " + string_interp + "vup"+direction[i]+") / p.rdata(PIdx::pupt)"
+                for i in range(len(direction)):
+                    # using (-1) in front of vup for now; will need to implement contraction with the metric once the metric is stored 
+                    line = line + " * p.rdata(PIdx::pup"+direction[i]+") * (-1) * " + string_interp + "vup"+direction[i]+") / p.rdata(PIdx::pupt)"
+                    vup_sqr = vup_sqr + " + std::pow(" + string_interp + "vup"+direction[i]+"), 2)"
+                vupt = construct_vupt(vup_sqr)
+                # Again, using (-1) in front of vup for now; will need to implement contraction with the metric once metric is stored
+                line = line + " + (-1) * p.rdata(PIdx::pupt) * " + vupt + " /  p.rdata(PIdx::pupt)"
 
         line = line + ";"
         code.append(line)
