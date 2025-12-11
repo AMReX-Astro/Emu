@@ -7,6 +7,7 @@ import os
 importpath = os.path.dirname(os.path.realpath(__file__))+"/../data_reduction/"
 sys.path.append(importpath)
 import amrex_plot_tools as amrex
+import matplotlib.pyplot as plt 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-na", "--no_assert", action="store_true", help="If --no_assert is supplied, do not raise assertion errors if the test error > tolerance.")
@@ -111,3 +112,10 @@ if __name__ == "__main__":
     print("conservation_errorbar:", conservation_errorbar)
     myassert(conservation_errorbar < tolerance)
 
+plt.plot(t, Nee_analytic, linestyle='-', label='Analytic')
+plt.plot(t, Nee, linestyle='--', label="EMU")
+plt.title("Difference in MSW Analytic Solution and Relativistic EMU Solution")
+plt.xlabel("Time (s)")
+plt.ylabel("N_ee (cm^-3)")
+plt.legend()
+plt.savefig("msw.pdf")
