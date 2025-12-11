@@ -407,26 +407,28 @@ if __name__ == "__main__":
         line = "inside_parentheses = SI_partial + SI_partialbar"
 
         # matter potential
-        def construct_vupt(fluid_velocity):
-            c = sympy.symbols("PhysConst\:\:c", real=True)
-            fluid_beta_sqr = fluid_velocity + "/ std::pow("+ str(c) + ", 2)"
-            fluid_gamma = "std::pow(1 - " + fluid_beta_sqr + ", -0.5)"
-            v_t = fluid_gamma + " * " + str(c)
-            return v_t
-
         if("V00" in Vlist[icomp]):
-            vup_sqr = ""
-            for t in tails:
-                line = line + " + " +  rhoye
-                line = line + " * (-1) * p.rdata(PIdx::pupt)" + " * (-1) * " + string_interp + "vup"+direction[i]+") / p.rdata(PIdx::pupt)"
-                for i in range(len(direction)):
-                    # using (-1) in front of vup for now; will need to implement contraction with the metric once the metric is stored 
-                    line = line + " * p.rdata(PIdx::pup"+direction[i]+") * (-1) * " + string_interp + "vup"+direction[i]+") / p.rdata(PIdx::pupt)"
-                    vup_sqr = vup_sqr + " + std::pow(" + string_interp + "vup"+direction[i]+"), 2)"
-                vupt = construct_vupt(vup_sqr)
-                # Again, using (-1) in front of vup for now; will need to implement contraction with the metric once metric is stored
-                line = line + " + (-1) * p.rdata(PIdx::pupt) * " + vupt + " /  p.rdata(PIdx::pupt)"
+            
+            # We will introduce the relativistic correction in a separate variable, the frame-invariant correction [ -p^a u_a / (p^t) ]
+            lorentz_line = "double lorentz_factor = 1.0 / sqrt(1.0 - "
+            for i in range(len(direction)):
+                lorentz_line = lorentz_line + "std::pow(" + string_interp + "vup"+direction[i]+"), 2)"
+                if direction[i] != direction[-1]:
+                    lorentz_line = lorentz_line + " + "
+            lorentz_line = lorentz_line + ");"
+            code.append(lorentz_line)
+            velocity_line = "double relativistic_correction = (-1/p.rdata(PIdx::pupt)) * lorentz_factor * ("
 
+            for i in range(len(direction)):
+                # using (-1)vupt = vdownt for now; will need to implement contraction with the metric once the metric is stored 
+                # use sympy to create a matrix for the metric tensor and use symbolic matrix operations built in
+                velocity_line = velocity_line + "p.rdata(PIdx::pup"+direction[i]+") * " + string_interp + "vup"+direction[i]+") + "
+            # Again, using (-1)*vup for now; will need to implement contraction with the metric once metric is stored
+            velocity_line = velocity_line + " p.rdata(PIdx::pupt) * (-1)"
+            velocity_line = velocity_line + ");"
+            code.append(velocity_line)
+            # We can easily comment out the relativistic correction below, for testing purposes 
+            line = line + " + " +  rhoye  + " * relativistic_correction "
         line = line + ";"
         code.append(line)
         code.append("")
