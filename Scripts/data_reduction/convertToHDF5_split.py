@@ -59,8 +59,13 @@ def convert_to_HDF5(sim_directory, DELETE_ALL_BUT_LAST_RESTART=False):
         ad = eds.ds.all_data()
         datatype = ad['boxlib',"N00_Re"].d.dtype
         
+        out_file = sim_directory + "/mesh_" + d.split('/')[-1] + ".h5"
+        if os.path.exists(out_file):
+            print(f"Skipping existing file: {out_file}")
+            continue
+        
         NF = eds.get_num_flavors()
-        allData = h5py.File(sim_directory+"/mesh_"+d.split('/')[-1]+".h5","w")
+        allData = h5py.File(out_file,"w")
         allData["dx(cm)"] = eds.dx
         allData["dy(cm)"] = eds.dy
         allData["dz(cm)"] = eds.dz
