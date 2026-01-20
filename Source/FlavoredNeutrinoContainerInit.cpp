@@ -369,6 +369,36 @@ InitParticles(const TestParams* parms)
 			p.rdata(PIdx::N22_Rebar) *= 1. + parms->perturbation_amplitude*rand;
 #endif
 		}
+	    if(parms->perturbation_type == 3){
+	      // random perturbations to the off-diagonals
+	      Real rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N01_Re)    = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N01_Im)    = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N01_Rebar) = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N01_Imbar) = parms->perturbation_amplitude*rand;
+#if NUM_FLAVORS==3
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N02_Re)    = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N02_Im)    = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N12_Re)    = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N12_Im)    = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N02_Rebar) = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N02_Imbar) = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N12_Rebar) = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N12_Imbar) = parms->perturbation_amplitude*rand;
+#endif
+	    }
 
 	  } // loop over direction
 	} // loop over location
