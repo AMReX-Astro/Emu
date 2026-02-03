@@ -27,7 +27,7 @@ struct TestParams : public amrex::Gpu::Managed
     Real kT_in; // Temperature in erg
     Real vupx_in; // X-component of velocity, cm/s
     Real vupy_in; // Y-component, cm/s
-    Real vupz_in ; // Z-component, cm/s
+    Real vupz_in; // Z-component, cm/s
     Real cfl_factor, flavor_cfl_factor, collision_cfl_factor;
     Real max_adaptive_speedup; 
     bool do_restart; // Flag to restart from a previous simulation
@@ -146,9 +146,9 @@ struct TestParams : public amrex::Gpu::Managed
             pp.get("Ye", Ye_in); // Electron fraction (dimensionless quantity)
             pp.get("T_MeV", kT_in); // Temperature in erg
             kT_in *= 1e6 * CGSUnitsConst::eV; // convert to cgs : erg
-            pp.get("vupx", vupx_in); // Velocity cm s^-1
-            pp.get("vupy", vupy_in); // Velocity cm s^-1
-            pp.get("vupz", vupz_in); // Velocity cm s^-1
+            pp.get("vupx", vupx_in); // Velocity cm/s
+            pp.get("vupy", vupy_in); // Velocity cm/s
+            pp.get("vupz", vupz_in); // Velocity cm/s
 
         } else if(read_rho_T_Ye_from_table==1){ 
             // Read background matter from a table

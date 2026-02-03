@@ -117,16 +117,16 @@ void evolve_flavor(const TestParams* parms)
     //Else set rho, T and Ye to constant value throughout the grid using values from parameter file.
     if (parms->read_rho_T_Ye_from_table){
         set_rho_T_Ye(state, geom, parms);
-	state.setVal(parms->vupx_in, GIdx::vupx,1); // cm/s 
-	state.setVal(parms->vupy_in, GIdx::vupy,1); // cm/s
-	state.setVal(parms->vupz_in, GIdx::vupz,1); // cm/s
+	    state.setVal(parms->vupx_in, GIdx::vupx,1); // cm/s 
+	    state.setVal(parms->vupy_in, GIdx::vupy,1); // cm/s
+	    state.setVal(parms->vupz_in, GIdx::vupz,1); // cm/s
     } else {      
         state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
         state.setVal(parms->Ye_in,GIdx::Ye,1); 
         state.setVal(parms->kT_in,GIdx::T,1); // erg/s
-	state.setVal(parms->vupx_in, GIdx::vupx,1); // cm/s
-	state.setVal(parms->vupy_in, GIdx::vupy,1); // cm/s
-	state.setVal(parms->vupz_in, GIdx::vupz,1); // cm/s
+	    state.setVal(parms->vupx_in,GIdx::vupx,1); // cm/s
+	    state.setVal(parms->vupy_in,GIdx::vupy,1); // cm/s
+	    state.setVal(parms->vupz_in,GIdx::vupz,1); // cm/s
     }
 
     state.FillBoundary(geom.periodicity());
@@ -207,10 +207,28 @@ void evolve_flavor(const TestParams* parms)
         //    to the current particles in neutrinos.
     
         neutrinos_rhs.copyParticles(neutrinos, true);
-
         // Step 3: Interpolate Mesh to construct the neutrino RHS in place
         interpolate_rhs_from_mesh(neutrinos_rhs, state, geom, parms);
-    };
+    //     const int lev = 0;
+
+    //     for (FNParIter pti(neutrinos_rhs, lev); pti.isValid(); ++pti)
+    //     {
+    //         const int np = pti.numParticles();
+    //         FlavoredNeutrinoContainer::ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
+
+    //         for (int i = 0; i < np; ++i) {
+    //             FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
+
+    //             amrex::Print()
+    //                 << "(main.cpp) pid =" << p.id()
+    //                 << "(main.cpp) dp_ex/dt =" << p.rdata(PIdx::N01_Re)
+    //                 << " dp_eebar/dt=" << p.rdata(PIdx::N00_Rebar)
+    //                 << "(main.cpp) d(z)/dt =" << p.rdata(PIdx::z)
+    //                 << "(main.cpp) four-momentum (up) = { " << p.rdata(PIdx::pupt) << " , " << p.rdata(PIdx::pupx) << " , " << p.rdata(PIdx::pupy) << " , " << p.rdata(PIdx::pupz) << " } \n"
+    //                 << "\n";
+    //         }
+    //     }
+     };
 
     // Create a function to call after every integrator timestep.
     auto post_timestep_fun = [&] () {
@@ -282,6 +300,24 @@ void evolve_flavor(const TestParams* parms)
         integrator.set_timestep(dt);
         //printf("current_dt = %g, dt = %g \n", current_dt, dt);
         printf("Done. \n");
+        const int lev = 0;
+        for (FNParIter pti(neutrinos, lev); pti.isValid(); ++pti)
+        {
+            const int np = pti.numParticles();
+            FlavoredNeutrinoContainer::ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
+
+            for (int i = 0; i < np; ++i) {
+                FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
+
+                amrex::Print()
+                    << "\n(main.cpp) pid =" << p.id()
+                    << "\n(main.cpp) dp_ex/dt =" << p.rdata(PIdx::N01_Re)
+                    << "\n dp_eebar/dt=" << p.rdata(PIdx::N00_Rebar)
+                    << "\n(main.cpp) d(z)/dt =" << p.rdata(PIdx::z)
+                    << "\n(main.cpp) four-momentum (up) = { " << p.rdata(PIdx::pupt) << " , " << p.rdata(PIdx::pupx) << " , " << p.rdata(PIdx::pupy) << " , " << p.rdata(PIdx::pupz) << " } \n"
+                    << "\n";
+            }
+        }
     };
 
     // Attach our RHS and post timestep hooks to the integrator

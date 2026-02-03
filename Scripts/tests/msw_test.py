@@ -113,9 +113,10 @@ if __name__ == "__main__":
     myassert(conservation_errorbar < tolerance)
 
 plt.plot(t, Nee_analytic, linestyle='-', label='Analytic')
-plt.plot(t, Nee, linestyle='--', label="EMU")
+plt.plot(t, Nee, linestyle='--', label="EMU: Nee")
+plt.plot(t, Nee, linestyle='dashdot', label="EMU: Neebar")
 plt.title("Difference in MSW Analytic Solution and Relativistic EMU Solution")
 plt.xlabel("Time (s)")
-plt.ylabel("N_ee (cm^-3)")
+plt.ylabel("N_ee/N_eebar (cm^-3)")
 plt.legend()
 plt.savefig("msw.pdf")

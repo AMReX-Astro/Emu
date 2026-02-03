@@ -22,6 +22,9 @@ namespace GIdx
         names.push_back("rho");
         names.push_back("T");
         names.push_back("Ye");
+        names.push_back("vupx");
+        names.push_back("vupy");
+        names.push_back("vupz");
         #include "generated_files/Evolve.cpp_grid_names_fill"
     }
 }
@@ -170,24 +173,20 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
     NuLib_energies NuLib_energies_obj(energy_bottom, energy_top);
 
 //The following commented loop can be used to print information about each particle in case debug is needed in future.
-/*    
-    const int lev = 0;
-#ifdef _OPENMP
-#pragma omp parallel
-#endif
-    for (FNParIter pti(neutrinos_rhs, lev); pti.isValid(); ++pti)
-    {
-        const int np  = pti.numParticles();
-        FlavoredNeutrinoContainer::ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
+// const int lev = 0;
+// #ifdef _OPENMP
+// #pragma omp parallel
+// #endif
+//     for (FNParIter pti(neutrinos_rhs, lev); pti.isValid(); ++pti)
+//     {
+//         const int np  = pti.numParticles();
+//         FlavoredNeutrinoContainer::ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
 
-        amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
-            FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
-                //printf("(Inside Evolve.cpp) Partile i = %d,  Vphase = %g \n", i, p.rdata(PIdx::Vphase));
-        });
-    }
-*/
-    
-    
+//         amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
+//             FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
+//                 //printf("(Inside Evolve.cpp) Partile i = %d,  Vphase = %g \n", i, p.rdata(PIdx::Vphase));
+//         });
+//     }
     
     amrex::MeshToParticle(neutrinos_rhs, state, 0,
     [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
@@ -275,11 +274,22 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         Real T_pp = 0; // erg
         Real Ye_pp = 0;
         Real rho_pp = 0; // g/ccm
+        Real vupz_pp = GIdx::vupz;
+        Real vupy_pp = GIdx::vupy;
+        Real vupx_pp = GIdx::vupx;
 
         for (int k = sz.first(); k <= sz.last(); ++k) {
             for (int j = sy.first(); j <= sy.last(); ++j) {
                 for (int i = sx.first(); i <= sx.last(); ++i) {
                     #include "generated_files/Evolve.cpp_interpolate_from_mesh_fill"
+                    // We need to be inside of this x,y,z grid loop, as we access grid variables inside of this generated file!!
+                    printf("(Evolve.cpp) relativistic_correction = %e\n", relativistic_correction);
+                    printf("(Evolve.cpp) lorentz factor = %e\n", lorentz_factor);
+                    printf("(Evolve.cpp) four-velocity: %e\n,", vupt);
+                    printf("                            %e\n", sarr(i, j, k, GIdx::vupz));
+                    printf("                            %e\n,", sarr(i, j, k, GIdx::vupy));
+                    printf("                            %e\n", sarr(i, j, k, GIdx::vupz));
+                    printf("(Evolve.cpp) grid temperature = %e\n", sarr(i, j, k, GIdx::T));  
                 }
             }
         }

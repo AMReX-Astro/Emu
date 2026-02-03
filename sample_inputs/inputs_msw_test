@@ -10,6 +10,8 @@ attenuation_hamiltonians = 1
 perturbation_type = 0
 perturbation_amplitude = 0
 
+#Erick said change integration type to 0. Does it really matter? We just wanna compare the two at each timestep right? 
+#We don't care about the number of iterations it performs
 integration.type = 1
 integration.rk.type = 4
 
@@ -41,7 +43,8 @@ T_MeV = 10
 Ye = 1
 vupx = 0
 vupy = 0
-vupz = 0
+# Testing to create a gamma *(c +/- u) effect in the two particles with opposite momenta
+vupz = 0.9 #  2.69813E10 # 0.9c in cm/s 
 
 
 # Write plotfiles

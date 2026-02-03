@@ -18,10 +18,7 @@ namespace GIdx
     enum {
         rho, T, Ye, // g/ccm, MeV, unitless
         #include "generated_files/Evolve.H_fill"
-        vupx,
-	vupy,
-	vupz,
-	ncomp
+        vupx, vupy, vupz, ncomp
     };
 
     extern amrex::Vector<std::string> names;
