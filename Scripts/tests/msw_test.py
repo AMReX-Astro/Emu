@@ -43,6 +43,7 @@ print("rho*Ye shoud be ", rhoYe," g/cm^3")
 
 
 def minkowski_kinematic_correction(matter_3velocity, lorentz, antimatter):
+    # Elliott, Richers
     #  Relativistic Correction is a scalar, i.e. the expression is CS-invariant. 
     # TODO Find a good paper to cite here as the starting point. I used the expression in Richer's Caltech SummerSchool Notes 
     # Our equation of motion is now the geodesic equation
@@ -122,10 +123,6 @@ if __name__ == "__main__":
     # theoretical oscillation probabilities, no background matter velocity 
     def Psurv(dm2, sin2theta,E):
         return 1. - np.sin(t * dm2/(4.*E*hbar))**2 * sin2theta
-    # TODO Add analytic relativistic correction here, read in 3 velocity and particle data 
-
-    def Prelativistic(dm2, sin2theta,E):
-        return 1. - np.sin(t * dm2/(4.*E*hbar))**2 * sin2theta
     
     # Eventually create separate file for Modified MSW test 
     def myassert(condition):
@@ -135,6 +132,7 @@ if __name__ == "__main__":
     # calculate errors
 
     Nee_static = Psurv(dm2_eff, sin2_eff, E)
+    # For now, don't calculate error based on static case. In future, separate these two tests into diff files
     # error_ee = np.max(np.abs( Nee - Nee_analytic ) )
     # print("f_ee error:", error_ee)
     # myassert( error_ee < tolerance )
@@ -168,15 +166,14 @@ if __name__ == "__main__":
     conservation_errorbar = np.max(np.abs( (Neebar+Nxxbar) -1. ))
     print("conservation_errorbar:", conservation_errorbar)
     myassert(conservation_errorbar < tolerance)
+    
 
-# print(Nee.shape)
 plt.plot(t, Nee_static, linestyle='-', label='Static: Nee')
 plt.plot(t, Neebar_static, linestyle='-', label='Static: Neebar')
 plt.plot(t, Nee_analytic, linestyle='-.', label='Analytic: Nee')
 plt.plot(t, Neebar_analytic, linestyle='-.', label='Analytic: Neebar')
 plt.plot(t, Nee, linestyle=':', label="EMU: Nee")
 plt.plot(t, Neebar, linestyle=':', label="EMU: Neebar")
-# TODO Add another trace for the theoretical relativistic analytic solution
 plt.title("Nee/Neebar for Static & Relativistic Matter Backgrounds, 1D MSW Test")
 plt.xlabel("Time (s)")
 plt.ylabel("N_ij (cm^-3)")

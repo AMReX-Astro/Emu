@@ -417,8 +417,6 @@ if __name__ == "__main__":
                     lorentz_line = lorentz_line + " + "
             lorentz_line = lorentz_line + "));"
             code.append(lorentz_line)
-            # TODO:  Need to modify amrex multifab again to take the time component as well. 
-            #       Should probably do it while it's fresh since it took a WHILE to finally get the hang. 
             vupt_line = "double vupt = (-1) * lorentz_factor;"
             code.append(vupt_line)
             velocity_line = "double relativistic_correction = (-1/p.rdata(PIdx::pupt)) * lorentz_factor * ("
