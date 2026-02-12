@@ -127,6 +127,7 @@ void evolve_flavor(const TestParams* parms)
 	    state.setVal(parms->vupx_in,GIdx::vupx,1); // cm/s
 	    state.setVal(parms->vupy_in,GIdx::vupy,1); // cm/s
 	    state.setVal(parms->vupz_in,GIdx::vupz,1); // cm/s
+        amrex::Print() << "main.cpp line 130: " << parms->vupx_in <<  parms->vupy_in << parms->vupz_in << std::endl;
     }
 
     state.FillBoundary(geom.periodicity());

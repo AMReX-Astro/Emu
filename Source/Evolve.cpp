@@ -274,9 +274,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         Real T_pp = 0; // erg
         Real Ye_pp = 0;
         Real rho_pp = 0; // g/ccm
-        Real vupz_pp = GIdx::vupz;
-        Real vupy_pp = GIdx::vupy;
-        Real vupx_pp = GIdx::vupx;
 
         for (int k = sz.first(); k <= sz.last(); ++k) {
             for (int j = sy.first(); j <= sy.last(); ++j) {
@@ -284,12 +281,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
                     #include "generated_files/Evolve.cpp_interpolate_from_mesh_fill"
                     // We need to be inside of this x,y,z grid loop, as we access grid variables inside of this generated file!!
                     printf("(Evolve.cpp) relativistic_correction = %e\n", relativistic_correction);
-                    printf("(Evolve.cpp) lorentz factor = %e\n", lorentz_factor);
-                    printf("(Evolve.cpp) four-velocity: %e\n,", vupt);
-                    printf("                            %e\n", sarr(i, j, k, GIdx::vupz));
-                    printf("                            %e\n,", sarr(i, j, k, GIdx::vupy));
-                    printf("                            %e\n", sarr(i, j, k, GIdx::vupz));
-                    printf("(Evolve.cpp) grid temperature = %e\n", sarr(i, j, k, GIdx::T));  
+                    printf("(Evolve.cpp) lorentz factor = %e,\n", lorentz_factor);
+                    // TODO: need to modify reading in process all over again to store vupt on the grid in sarr. Should probably do this asap while it is still fresh. 
+                    printf("(Evolve.cpp) four-velocity (t, x, y, z):    { %e, %e, %e, %e } \n", vupt, sarr(i, j, k, GIdx::vupx), sarr(i, j, k, GIdx::vupy), sarr(i, j, k, GIdx::vupz));
                 }
             }
         }

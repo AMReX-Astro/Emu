@@ -23,6 +23,16 @@ mp = 1.6726219e-24 # g
 GF = 1.1663787e-5 / (1e9*eV)**2 * (hbar*clight)**3 #erg cm^3
 NF = 2
 
+# open msw input file, read in background velocities 
+# TODO will need to read in metric components in the future for calculation of the correction! 
+with open('../sample_inputs/inputs_msw_test') as f:
+    lines = [l for l in f.readlines() if 'vup' in l]
+    strings = [l.split('=') for l in lines]
+    
+bg_velocity_components = {s[0].strip(): float(s[1].strip()) for s in strings} # relative (unitless) velocities
+bg_velocity = tuple([s for s in bg_velocity_components.values()])
+bg_lorentz = 1/(np.sqrt(1- np.sum([v_i**2 for v_i in bg_velocity_components.values()])))
+
 tolerance = 7e-2
 
 # E and rho*Ye that induces resonance
@@ -30,6 +40,25 @@ E = dm21c4 * np.sin(2.*theta12)/(8.*np.pi*hbar*clight)
 rhoYe = 4.*np.pi*hbar*clight*mp / (np.tan(2.*theta12)*np.sqrt(2.)*GF)
 print("E should be ",E,"erg")
 print("rho*Ye shoud be ", rhoYe," g/cm^3")
+
+
+def minkowski_kinematic_correction(matter_3velocity, lorentz, antimatter):
+    #  Relativistic Correction is a scalar, i.e. the expression is CS-invariant. 
+    # TODO Find a good paper to cite here as the starting point. I used the expression in Richer's Caltech SummerSchool Notes 
+    # Our equation of motion is now the geodesic equation
+    # J^a = ne u^a (flux density of electrons in matter J^a) > ne = -(J^a * u_a)
+    # This scalar for a constant matter density background is -(p^a u_a)/ (p_t)
+    # We treat neutrinos as massless particles, therefore their relativistic energy E = pc = hf
+    # We define the velocities to be unitless, in terms of c. 
+    # p^a = (E/c, E*vx/c^2, E*vy/c^2, E*vz/c^2) but with velocities in terms of v/c, 
+    # p^a ~ E/c (1 , nhat)
+    # Therefore, p^a contracted with u_a is p^a(-u^a), and p_t = -p^t = E/c = E in unitless velocities
+    #  Using a Minkowski metric, - + + + 
+    vdownz = matter_3velocity[2]
+    if antimatter:
+        return lorentz * (1 + vdownz)
+    else: 
+        return lorentz * (1 - vdownz)
 
 if __name__ == "__main__":
 
@@ -40,20 +69,22 @@ if __name__ == "__main__":
     Nxx = []
     Neebar = []
     Nxxbar = []
-    pupt = []
 
     nfiles = len(glob.glob("plt[0-9][0-9][0-9][0-9][0-9]"))
     for i in range(nfiles):
-        
         plotfile = "plt"+str(i).zfill(5)
         idata, rdata = EmuReader.read_particle_data(plotfile, ptype="neutrinos")
+
+        # We know that we set particle 1 to be fully in electron flavor state at t = 0
         p = rdata[0]
         t.append(p[rkey["time"]])
         Nee.append(p[rkey["N00_Re"]])
         Nxx.append(p[rkey["N11_Re"]])
+        
+        # We know that we set particle 2 to be fully in anti-electron flavor state at t = 0 
+        p = rdata[1]
         Neebar.append(p[rkey["N00_Rebar"]])
         Nxxbar.append(p[rkey["N11_Rebar"]])
-        pupt.append(p[rkey["pupt"]])
 
     t = np.array(t)
     Nee = np.array(Nee)
@@ -66,6 +97,11 @@ if __name__ == "__main__":
 
     # The potential we use
     V = np.sqrt(2.) * GF * rhoYe/mp
+
+    # Relativistic Correction Calculations, e/ebar
+    correction_e = minkowski_kinematic_correction(bg_velocity, bg_lorentz, antimatter=False)
+    correction_ebar = minkowski_kinematic_correction(bg_velocity, bg_lorentz, antimatter=True)
+    # print(correction_e, correction_ebar)
     
     # Richers(2019) B3
     C    = np.cos(2.*theta12) + 2.*V*E/dm21c4
@@ -75,31 +111,52 @@ if __name__ == "__main__":
     dm2_eff    = dm21c4 * np.sqrt(np.sin(2.*theta12)**2 + C**2)
     dm2_effbar = dm21c4 * np.sqrt(np.sin(2.*theta12)**2 + Cbar**2)
 
-    # theoretical oscillation probabilities
+    # Elliott, Richers 
+    C_relativ = np.cos(2.*theta12) + 2.*correction_e*V*E/dm21c4
+    Cbar_relativ = np.cos(2.*theta12) - 2.*correction_ebar*V*E/dm21c4
+    sin2_eff_rel    = np.sin(2.*theta12)**2 / (np.sin(2.*theta12)**2 + C_relativ**2)
+    sin2_effbar_rel = np.sin(2.*theta12)**2 / (np.sin(2.*theta12)**2 + Cbar_relativ**2)
+    dm2_eff_rel    = dm21c4 * np.sqrt(np.sin(2.*theta12)**2 + C_relativ**2)
+    dm2_effbar_rel = dm21c4 * np.sqrt(np.sin(2.*theta12)**2 + Cbar_relativ**2)
+
+    # theoretical oscillation probabilities, no background matter velocity 
     def Psurv(dm2, sin2theta,E):
         return 1. - np.sin(t * dm2/(4.*E*hbar))**2 * sin2theta
+    # TODO Add analytic relativistic correction here, read in 3 velocity and particle data 
 
+    def Prelativistic(dm2, sin2theta,E):
+        return 1. - np.sin(t * dm2/(4.*E*hbar))**2 * sin2theta
+    
+    # Eventually create separate file for Modified MSW test 
     def myassert(condition):
         if not args.no_assert:
             assert(condition)
     
     # calculate errors
-    Nee_analytic = Psurv(dm2_eff, sin2_eff, E)
+
+    Nee_static = Psurv(dm2_eff, sin2_eff, E)
+    # error_ee = np.max(np.abs( Nee - Nee_analytic ) )
+    # print("f_ee error:", error_ee)
+    # myassert( error_ee < tolerance )
+
+    Neebar_static = Psurv(dm2_effbar, sin2_effbar, E)
+
+    Nee_analytic = Psurv(dm2_eff_rel, sin2_eff_rel, E)
     error_ee = np.max(np.abs( Nee - Nee_analytic ) )
     print("f_ee error:", error_ee)
     myassert( error_ee < tolerance )
     
-    Nxx_analytic = 1. - Psurv(dm2_eff, sin2_eff, E)
+    Nxx_analytic = 1. - Psurv(dm2_eff_rel, sin2_eff_rel, E)
     error_xx = np.max(np.abs( Nxx - Nxx_analytic ) )
     print("f_xx error:", error_xx)
     myassert( error_xx < tolerance )
     
-    Neebar_analytic = Psurv(dm2_effbar, sin2_effbar, E)
+    Neebar_analytic = Psurv(dm2_effbar_rel, sin2_effbar_rel, E)
     error_eebar = np.max(np.abs( Neebar - Neebar_analytic ) )
     print("f_eebar error:", error_eebar)
     myassert( error_eebar < tolerance )
     
-    Nxxbar_analytic = 1. - Psurv(dm2_effbar, sin2_effbar, E)
+    Nxxbar_analytic = 1. - Psurv(dm2_effbar_rel, sin2_effbar_rel, E)
     error_xxbar = np.max(np.abs( Nxxbar - Nxxbar_analytic ) )
     print("f_xxbar error:", error_xxbar)
     myassert( error_xxbar < tolerance )
@@ -112,11 +169,16 @@ if __name__ == "__main__":
     print("conservation_errorbar:", conservation_errorbar)
     myassert(conservation_errorbar < tolerance)
 
-plt.plot(t, Nee_analytic, linestyle='-', label='Analytic')
-plt.plot(t, Nee, linestyle='--', label="EMU: Nee")
-plt.plot(t, Nee, linestyle='dashdot', label="EMU: Neebar")
-plt.title("Difference in MSW Analytic Solution and Relativistic EMU Solution")
+# print(Nee.shape)
+plt.plot(t, Nee_static, linestyle='-', label='Static: Nee')
+plt.plot(t, Neebar_static, linestyle='-', label='Static: Neebar')
+plt.plot(t, Nee_analytic, linestyle='-.', label='Analytic: Nee')
+plt.plot(t, Neebar_analytic, linestyle='-.', label='Analytic: Neebar')
+plt.plot(t, Nee, linestyle=':', label="EMU: Nee")
+plt.plot(t, Neebar, linestyle=':', label="EMU: Neebar")
+# TODO Add another trace for the theoretical relativistic analytic solution
+plt.title("Nee/Neebar for Static & Relativistic Matter Backgrounds, 1D MSW Test")
 plt.xlabel("Time (s)")
-plt.ylabel("N_ee/N_eebar (cm^-3)")
+plt.ylabel("N_ij (cm^-3)")
 plt.legend()
 plt.savefig("msw.pdf")

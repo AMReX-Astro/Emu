@@ -16,9 +16,9 @@ namespace GIdx
   //    with units of number density. Could add total number density later
   //    too, but this helps with subtractive cancellation errors
     enum {
-        rho, T, Ye, // g/ccm, MeV, unitless
+        rho, T, Ye, vupx, vupy, vupz, // g/ccm, MeV, unitless, unitless (x3)
         #include "generated_files/Evolve.H_fill"
-        vupx, vupy, vupz, ncomp
+        ncomp
     };
 
     extern amrex::Vector<std::string> names;

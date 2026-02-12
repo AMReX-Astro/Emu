@@ -417,6 +417,8 @@ if __name__ == "__main__":
                     lorentz_line = lorentz_line + " + "
             lorentz_line = lorentz_line + "));"
             code.append(lorentz_line)
+            # TODO:  Need to modify amrex multifab again to take the time component as well. 
+            #       Should probably do it while it's fresh since it took a WHILE to finally get the hang. 
             vupt_line = "double vupt = (-1) * lorentz_factor;"
             code.append(vupt_line)
             velocity_line = "double relativistic_correction = (-1/p.rdata(PIdx::pupt)) * lorentz_factor * ("
@@ -426,7 +428,7 @@ if __name__ == "__main__":
                 # use sympy to create a matrix for the metric tensor and use symbolic matrix operations built in
                 velocity_line = velocity_line + "p.rdata(PIdx::pup"+direction[i]+") * " + string_interp + "vup"+direction[i]+") + "
             # Again, using (-1)*vup for now; will need to implement contraction with the metric once metric is stored
-            velocity_line = velocity_line + " p.rdata(PIdx::pupt) * vupt"
+            velocity_line = velocity_line + " p.rdata(PIdx::pupt) * (-1)"
             velocity_line = velocity_line + ");"
             code.append(velocity_line)
             # We can easily comment out the relativistic correction below, for testing purposes 
