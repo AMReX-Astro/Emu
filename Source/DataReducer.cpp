@@ -150,7 +150,7 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   ParallelDescriptor::ReduceRealSum(TrHN);
   ParallelDescriptor::ReduceRealSum(Vphase);
 
-  printf("TrN=%g, TrHN=%g, Vphase=%g\n", TrN, TrHN, Vphase);
+  amrex::Print() << "TrN=" << TrN << ", TrHN=" << TrHN << ", Vphase=" << Vphase << std::endl;
 
   //=============================//
   // Do reductions over the grid //
