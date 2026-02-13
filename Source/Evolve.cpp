@@ -311,7 +311,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         }
 
         // If opacity_method is 1, the code will use the inverse mean free paths in the input parameters to compute the collision term.
-        if(parms->IMFP_method==1){
+        if(parms->IMFP_method==0){
+            // do nothing
+        }
+        else if(parms->IMFP_method==1){
             for (int i=0; i<NUM_FLAVORS; ++i) {
 
                 IMFP_abs[i][i]    = parms->IMFP_abs[0][i]; // 1/cm : Read absorption inverse mean free path from input parameters file.
