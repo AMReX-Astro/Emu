@@ -7,6 +7,8 @@
 
 #include "ReadHDF5RhoYeT.H"
 
+#include <assert.h>
+
 #ifdef AMREX_USE_MPI
 #include <mpi.h>
 #define BCAST(buffer, size) MPI_Bcast(buffer, size, MPI_BYTE, my_reader_process, MPI_COMM_WORLD)
