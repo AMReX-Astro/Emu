@@ -85,10 +85,13 @@ Do_Pauli_blocking = 0 # If 1, it will multiply the inverse mean free path by 1 /
 boundary_condition_type = 0
 
 #################
-# Background Ye, T and rho
+# Background Ye, T and rho. Adding constant v for now
 #################
 read_rho_T_Ye_from_table = 1
 background_rho_Ye_T_table_name = "./rho_Ye_T.hdf5"
+vupx = 0.0
+vupy = 0.0
+vupz = 0.0
 
 #################
 # Blackhole
