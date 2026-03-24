@@ -26,11 +26,11 @@ mp = 1.6726219e-24 # g
 GF = 1.1663787e-5 / (1e9*eV)**2 * (hbar*clight)**3 #erg cm^3
 NF = 2
 
-tolerance = 7e-2
+tolerance = 1e-7
 
 # open msw input file, read in background velocities 
 # TODO will need to read in metric components in the future for calculation of the correction! 
-with open('../sample_inputs/inputs_msw_test') as f:
+with open('../sample_inputs/inputs_relativistic_msw_test') as f:
     lines = [l for l in f.readlines() if 'vup' in l]
     strings = [l.split('=') for l in lines]
     
@@ -115,8 +115,8 @@ if __name__ == "__main__":
     dm2_effbar = dm21c4 * np.sqrt(np.sin(2.*theta12)**2 + Cbar**2)
 
     # Elliott, Richers adapted from Richers(2019) B3
-    C_relativ = np.cos(2.*theta12) + 2.*correction_e*V*E/dm21c4
-    Cbar_relativ = np.cos(2.*theta12) - 2.*correction_ebar*V*E/dm21c4
+    C_relativ = np.cos(2.*theta12) + (2.*correction_e*V*E)/dm21c4
+    Cbar_relativ = np.cos(2.*theta12) - (2.*correction_ebar*V*E)/dm21c4
     sin2_eff_rel    = np.sin(2.*theta12)**2 / (np.sin(2.*theta12)**2 + C_relativ**2)
     sin2_effbar_rel = np.sin(2.*theta12)**2 / (np.sin(2.*theta12)**2 + Cbar_relativ**2)
     dm2_eff_rel    = dm21c4 * np.sqrt(np.sin(2.*theta12)**2 + C_relativ**2)
@@ -134,11 +134,6 @@ if __name__ == "__main__":
     # calculate errors
 
     Nee_static = Psurv(dm2_eff, sin2_eff, E)
-    # For now, don't calculate error based on static case. In future, separate these two tests into diff files
-    # error_ee = np.max(np.abs( Nee - Nee_analytic ) )
-    # print("f_ee error:", error_ee)
-    # myassert( error_ee < tolerance )
-
     Neebar_static = Psurv(dm2_effbar, sin2_effbar, E)
 
     Nee_analytic = Psurv(dm2_eff_rel, sin2_eff_rel, E)

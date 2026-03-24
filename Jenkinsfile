@@ -33,6 +33,16 @@ pipeline {
 			}
 		}
 
+		stage('MSW Relativistic'){ steps{
+				dir('Exec'){
+					sh 'python ../Scripts/initial_conditions/st0_msw_test.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_relativistic_msw_test'
+					sh 'python ../Scripts/tests/relativistic_msw_test.py'
+					sh 'rm -rf plt*'
+				}
+			}
+		}
+
 		stage('Bipolar'){ steps{
 				dir('Exec'){
 					sh 'python ../Scripts/initial_conditions/st1_bipolar_test.py'

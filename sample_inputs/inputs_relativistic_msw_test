@@ -44,7 +44,7 @@ Ye = 1
 # Give BG matter a relativistic velocity (velocities relative to c i.e. v/c where c in cm/s) to test relativistic correction validity 
 vupx = 0
 vupy = 0
-vupz = 0.0
+vupz = 0.9
 
 
 # Write plotfiles
