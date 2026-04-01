@@ -10,8 +10,6 @@ attenuation_hamiltonians = 1
 perturbation_type = 0
 perturbation_amplitude = 0
 
-#Erick said change integration type to 0. Does it really matter? We just wanna compare the two at each timestep right? 
-#We don't care about the number of iterations it performs
 integration.type = 1
 integration.rk.type = 4
 
@@ -41,7 +39,7 @@ amrex.fpe_trap_invalid=1
 rho_g_ccm = 1346160134.709288
 T_MeV = 10
 Ye = 1
-# Give BG matter a relativistic velocity (velocities relative to c i.e. v/c where c in cm/s) to test relativistic correction validity 
+# Adding constant background v for now
 vupx = 0
 vupy = 0
 vupz = 0.0
