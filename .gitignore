@@ -45,4 +45,5 @@ Scripts/symbolic_hermitians/__pycache__
 Source/generated_files
 metric/outdated/
 .DS_Store
+metric/main3d.gnu.DEBUG.MPI.ex
 *~
