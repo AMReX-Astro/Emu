@@ -46,4 +46,5 @@ Source/generated_files
 metric/outdated/
 .DS_Store
 metric/main3d.gnu.DEBUG.MPI.ex
+amrex/
 *~

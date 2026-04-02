@@ -27,7 +27,7 @@ void Euler( DummyParticle& p, double dt, int steps)
 {   
    
 
-    CylindricalMetric metric;
+    SphericalMetric metric;
 
 
     for(int i=0; i<steps; i++)
@@ -66,21 +66,21 @@ int main()
     p.time= 0.0;
     p.x1= 1.0;
     p.x2= 1.0;
-    p.x3= 0.0;
+    p.x3= 1.0;
     
     // the folloing is chosen to replicate null particle (p.p=0)
     p.pupt= 3.0;
     p.pupx1= 2.0;
-    p.pupx2= 2.0;
-    p.pupx3= 1.0;
+    p.pupx2= 1.0;
+    p.pupx3= 2.0;
 
     double t= 5;
-    int steps= 100;
+    int steps= 10000;
     double dt= t/steps;
 
     Euler(p,dt, steps);
     
-    CylindricalMetric metric;
+    SphericalMetric metric;
     //metric.coord_conv(p);
 
     std::cout << "final values\n";

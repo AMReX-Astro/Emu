@@ -399,4 +399,200 @@ public:
 
 };
 
+
+
+// child class- SphericalMetric
+
+class SphericalMetric : public Metric
+{
+public:
+
+    void coord_conv(DummyParticle& p) const override
+    {  
+        
+        //position coord conversion
+        const amrex::Real r = std::sqrt(p.x1*p.x1 + p.x2*p.x2 + p.x3*p.x3);  // r= sqrt(x^2 + y^2 + z^2)
+        const amrex::Real theta = std::acos(p.x3/r);                         //theta= arccos(z/r)
+        const amrex::Real phi = std::atan2(p.x2,p.x1);                       // phi= arctan(y/x)
+        
+        p.x1 = r;     
+        p.x2 = theta;
+        p.x3 = phi;
+       
+        //momentum coord conversersion
+        const Mat4 J = jacobian(p);
+        
+        FourVec p_old = {p.pupt, p.pupx1, p.pupx2, p.pupx3};  // original 4-momentum in cartesian
+
+        FourVec p_new{};
+
+        for (int mu = 0; mu < 4; mu++) {
+            for (int nu = 0; nu < 4; nu++) {
+                p_new[mu] += J[mu][nu] * p_old[nu];
+            }
+        }
+
+        p.pupt = p_new[0];
+        p.pupx1= p_new[1];
+        p.pupx2= p_new[2];
+        p.pupx3= p_new[3];
+
+    }
+
+    void coord_conv_inv(DummyParticle& p) const override
+    {
+        
+        //momentum coord inverse conversersion
+        const Mat4 J = jacobian_inv(p);
+        
+        FourVec p_old = {p.pupt, p.pupx1, p.pupx2, p.pupx3};  // original 4-momentum in cartesian
+
+        FourVec p_new{};
+
+        for (int mu = 0; mu < 4; mu++) {
+            for (int nu = 0; nu < 4; nu++) {
+                p_new[mu] += J[mu][nu] * p_old[nu];
+            }
+        }
+
+        p.pupt = p_new[0];
+        p.pupx1= p_new[1];
+        p.pupx2= p_new[2];
+        p.pupx3= p_new[3];
+
+        //position coord inverse conversion
+        const amrex::Real x = p.x1*std::sin(p.x2)*std::cos(p.x3);    //x=r*sin(theta)*cos(phi)
+        const amrex::Real y = p.x1*std::sin(p.x2)*std::sin(p.x3);    //y=r*sin(theta)*sin(phi)
+        const amrex::Real z = p.x1*std::cos(p.x2);                   //z=r*cos(theta)
+
+
+        p.x1 = x;     
+        p.x2 = y;
+        p.x3 = z;
+       
+
+    }
+
+
+    Mat4 jacobian(const DummyParticle& p) const override
+    {
+        
+
+        Mat4 J{};
+
+        for (int mu = 0; mu < 4; mu++) {
+            for (int nu = 0; nu < 4; nu++) {
+                J[mu][nu] = 0.0;
+            }
+        }
+
+        J[0][0] = 1.0;
+        J[1][1] = std::sin(p.x2)*std::cos(p.x3);          //cos(phi)       
+        J[1][2] = std::sin(p.x2)*std::sin(p.x3);          //sin(phi)      
+        J[1][3] = std::cos(p.x2);                         //cos(theta)
+        J[2][1] = std::cos(p.x2)*std::cos(p.x3) / p.x1;   //cos(theta)cos(phi)/r 
+        J[2][2] = std::cos(p.x2)*std::sin(p.x3) / p.x1;   //cos(theta)sin(phi)/r
+        J[2][3] = -std::sin(p.x2) / p.x1;                 //-sin(theta)/r
+        J[3][1] = -std::sin(p.x3)/ (p.x1*std::sin(p.x2)); //-sin(phi)/(r sin(theta))
+        J[3][2] = std::cos(p.x3)/ (p.x1*std::sin(p.x2));  //cos(phi)/( r sin(theta))
+
+        return J;
+    }
+
+    Mat4 jacobian_inv(const DummyParticle& p) const override
+    {
+
+        Mat4 J{};
+
+        for (int mu = 0; mu < 4; mu++) {
+            for (int nu = 0; nu < 4; nu++) {
+                J[mu][nu] = 0.0;
+            }
+        }
+
+        J[0][0] = 1.0;
+        J[1][1] = std::sin(p.x2)*std::cos(p.x3);            //sin(theta)cos(phi)
+        J[1][2] = p.x1*std::cos(p.x2)*std::cos(p.x3);       //r*cos(theta)*cos(phi)  
+        J[1][3] = -p.x1*std::sin(p.x2)*std::sin(p.x3);      //r*cos(theta)*cos(phi)   
+        J[2][1] = std::sin(p.x2)*std::sin(p.x3);            //siin(theta)sin(phi)
+        J[2][2] = p.x1*std::cos(p.x2)*std::sin(p.x3);       //r*cos(theta)*sin(phi)
+        J[2][3] = p.x1*std::sin(p.x2)*std::cos(p.x3);       //r*sin(theta)cos(phi)
+        J[3][1] = std::cos(p.x2);                           //cos(ttheta)
+        J[3][2] = -p.x1*std::sin(p.x2);                     //-r*sin(theta)
+
+        return J;
+    }
+ 
+    
+    Mat4 gmunu(const DummyParticle& p) const override
+    {   
+        const amrex::Real x = p.x1;
+        const amrex::Real y = p.x2;
+        const amrex::Real z = p.x3;
+        const amrex::Real r = std::sqrt(x*x + y*y + z*z);
+        const amrex::Real theta = std::acos(z/r);
+
+        Mat4 g{};
+        for (int mu = 0; mu < 4; ++mu) {
+            for (int nu = 0; nu < 4; ++nu) g[mu][nu] = 0.0;
+        }
+        g[0][0] = -1.0;
+        g[1][1] =  1.0;
+        g[2][2] =  r*r;
+        g[3][3] =  r*r*std::sin(theta)*std::sin(theta);
+        return g;
+    }
+
+    amrex::Real detg(const DummyParticle& p) const override
+    {
+        const amrex::Real x = p.x1;
+        const amrex::Real y = p.x2;
+        const amrex::Real z = p.x3;
+        const amrex::Real r = std::sqrt(x*x + y*y + z*z);
+        const amrex::Real theta = std::acos(z/r);
+          
+        return -std::pow(r,4)*std::sin(theta)*std::sin(theta);
+    }
+
+    Christoffel christoffel(const DummyParticle& p) const override
+    {
+        
+        const amrex::Real x = p.x1;
+        const amrex::Real y = p.x2;
+        const amrex::Real z = p.x3;
+        const amrex::Real r = std::sqrt(x*x + y*y + z*z);
+        const amrex::Real theta = std::acos(z/r);
+
+        Christoffel Gamma{};
+
+        for (int alpha = 0; alpha < 4; ++alpha) {
+            for (int mu = 0; mu < 4; ++mu) {
+                for (int nu = 0; nu < 4; ++nu) {
+                    Gamma[alpha][mu][nu] = 0.0;
+                }
+            }
+        }
+
+        // coordinate order: (t, r, theta, phi)
+        Gamma[1][2][2] = -r;             
+        Gamma[1][3][3] = -r*std::sin(theta)*std::sin(theta);
+        Gamma[2][1][2] =  1.0/r;   
+        Gamma[2][2][1] =  1.0/r;    
+        Gamma[2][3][3] = -std::sin(theta)*std::cos(theta);
+        Gamma[3][1][3] = 1.0/r;
+        Gamma[3][3][1] = 1.0/r;
+        Gamma[3][2][3] = 1.0/std::tan(theta);
+        Gamma[3][3][2] = 1.0/std::tan(theta);
+
+
+
+        return Gamma;
+    }
+
+    
+
+
+};
+
+
 #endif
