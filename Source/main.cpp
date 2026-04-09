@@ -117,10 +117,16 @@ void evolve_flavor(const TestParams* parms)
     //Else set rho, T and Ye to constant value throughout the grid using values from parameter file.
     if (parms->read_rho_T_Ye_from_table){
         set_rho_T_Ye(state, geom, parms);
+	    state.setVal(parms->vupx_in, GIdx::vupx,1); // cm/s 
+	    state.setVal(parms->vupy_in, GIdx::vupy,1); // cm/s
+	    state.setVal(parms->vupz_in, GIdx::vupz,1); // cm/s
     } else {      
         state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
-        state.setVal(parms->Ye_in,GIdx::Ye,1);
-        state.setVal(parms->kT_in,GIdx::T,1); // erg
+        state.setVal(parms->Ye_in,GIdx::Ye,1); 
+        state.setVal(parms->kT_in,GIdx::T,1); // erg/s
+	    state.setVal(parms->vupx_in,GIdx::vupx,1); // cm/s
+	    state.setVal(parms->vupy_in,GIdx::vupy,1); // cm/s
+	    state.setVal(parms->vupz_in,GIdx::vupz,1); // cm/s
     }
 
     state.FillBoundary(geom.periodicity());
@@ -201,10 +207,9 @@ void evolve_flavor(const TestParams* parms)
         //    to the current particles in neutrinos.
     
         neutrinos_rhs.copyParticles(neutrinos, true);
-
         // Step 3: Interpolate Mesh to construct the neutrino RHS in place
         interpolate_rhs_from_mesh(neutrinos_rhs, state, geom, parms);
-    };
+     };
 
     // Create a function to call after every integrator timestep.
     auto post_timestep_fun = [&] () {
@@ -251,9 +256,9 @@ void evolve_flavor(const TestParams* parms)
         const int step = integrator.get_step_number();
         const Real time = integrator.get_time();
 
-    printf("Writing reduced data to file... \n");
+    amrex::Print() << "Writing reduced data to file..." << std::endl;
 	rd.WriteReducedData0D(geom, state, neutrinos, time, step+1);
-    printf("Done. \n");
+    amrex::Print() << "Done." << std::endl;
 
         run_fom += neutrinos.TotalNumberOfParticles();
 
@@ -271,11 +276,8 @@ void evolve_flavor(const TestParams* parms)
         // Note: this won't be the same as the new-time grid data
         // because the last deposit_to_mesh call was at either the old time (forward Euler)
         // or the final RK stage, if using Runge-Kutta.
-        printf("Setting next timestep... \n");
         const Real dt = compute_dt(geom, state, neutrinos, parms);
         integrator.set_timestep(dt);
-        //printf("current_dt = %g, dt = %g \n", current_dt, dt);
-        printf("Done. \n");
     };
 
     // Attach our RHS and post timestep hooks to the integrator

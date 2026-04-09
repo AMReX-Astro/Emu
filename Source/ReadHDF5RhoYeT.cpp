@@ -52,6 +52,9 @@ namespace background_input_rho_T_Ye {
   double *rho_array_input;
   double *T_array_input;
   double *Ye_array_input;
+  double *vupx_array_input;
+  double *vupy_array_input; 
+  double *vupz_array_input;
 
 }
 
@@ -130,7 +133,7 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T){
 
     // Allocate memory for tables
     double *allbackgroundYeTrhos_temp;
-    if (!(allbackgroundYeTrhos_temp = myManagedArena.allocate(ncellx_ * ncelly_ * ncellz_ * 3 ) )) {
+    if (!(allbackgroundYeTrhos_temp = myManagedArena.allocate(ncellx_ * ncelly_ * ncellz_ * 6 ) )) {
         printf("(ReadEosTable.cpp) Cannot allocate memory for EOS table"); 
         assert(0);
     }
@@ -147,25 +150,53 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T){
         printf("(ReadEosTable.cpp) Cannot allocate memory for EOS table"); 
         assert(0);             
     }
+    if (!(vupx_array_input = myManagedArena.allocate(ncellx_ * ncelly_ * ncellz_))) {
+    printf("(ReadHDF5RhoYeT.cpp) Cannot allocate memory for vupx"); 
+    assert(0);             
+    }
+    if (!(vupy_array_input = myManagedArena.allocate(ncellx_ * ncelly_ * ncellz_))) {
+    printf("(ReadHDF5RhoYeT.cpp) Cannot allocate memory for vupy"); 
+    assert(0);             
+    }
+    if (!(vupz_array_input = myManagedArena.allocate(ncellx_ * ncelly_ * ncellz_))) {
+    printf("(ReadHDF5RhoYeT.cpp) Cannot allocate memory for vupz"); 
+    assert(0);             
+  }
+
+    // ADD THESE 4 LINES RIGHT HERE:
+    printf("AFTER ALLOC: vupz_array_input = %p\n", (void*)vupz_array_input);
+    int N = ncellx_ * ncelly_ * ncellz_;
+    printf("N = %d\n", N);
+    if (N > 0) printf("vupz[0] AFTER ALLOC = %e\n", vupz_array_input[0]);
+
+
     
     // Prepare HDF5 to read hyperslabs into alltables_temp
-    hsize_t table_dims[2] = {3, (hsize_t)ncellx_ * ncelly_ * ncellz_};
+    hsize_t table_dims[2] = {6, (hsize_t)ncellx_ * ncelly_ * ncellz_};
     hid_t mem3 =  H5Screate_simple(2, table_dims, NULL);
 
     // Read alltables_temp
     READ_BCAST_EOSTABLE_HDF5("rho_g|ccm",  0, table_dims);
     READ_BCAST_EOSTABLE_HDF5("T_Mev", 1, table_dims);
     READ_BCAST_EOSTABLE_HDF5("Ye",   2, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("vupx",     3, table_dims);  
+    READ_BCAST_EOSTABLE_HDF5("vupy",     4, table_dims);
+    READ_BCAST_EOSTABLE_HDF5("vupz",     5, table_dims);
+
 
     HDF5_ERROR(H5Fclose(file));
+    printf("BEFORE CLOSE: vupz[0] = %e\n", vupz_array_input[0]);
 
     for(int i = 0 ; i < ncellx_ * ncelly_ * ncellz_ ; i++ ) {
       rho_array_input[i] = allbackgroundYeTrhos_temp[ i + 0 * ncellx_ * ncelly_ * ncellz_ ];
       T_array_input  [i] = allbackgroundYeTrhos_temp[ i + 1 * ncellx_ * ncelly_ * ncellz_ ];
       Ye_array_input [i] = allbackgroundYeTrhos_temp[ i + 2 * ncellx_ * ncelly_ * ncellz_ ];
+      vupx_array_input[i] = allbackgroundYeTrhos_temp[ i + 3 * ncellx_ * ncelly_ * ncellz_ ];
+      vupy_array_input[i] = allbackgroundYeTrhos_temp[ i + 4 * ncellx_ * ncelly_ * ncellz_ ];
+      vupz_array_input[i] = allbackgroundYeTrhos_temp[ i + 5 * ncellx_ * ncelly_ * ncellz_ ];
     }
 
     // free memory of temporary array
-    myManagedArena.deallocate(allbackgroundYeTrhos_temp, ncellx_ * ncelly_ * ncellz_ * 3);
+    myManagedArena.deallocate(allbackgroundYeTrhos_temp, ncellx_ * ncelly_ * ncellz_ * 6);
  
 } // ReadEOSTable

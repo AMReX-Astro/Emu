@@ -22,6 +22,9 @@ namespace GIdx
         names.push_back("rho");
         names.push_back("T");
         names.push_back("Ye");
+        names.push_back("vupx");
+        names.push_back("vupy");
+        names.push_back("vupz");
         #include "generated_files/Evolve.cpp_grid_names_fill"
     }
 }
@@ -168,26 +171,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
                                         yes_nulib, helperVarsReal_nulib, helperVarsInt_nulib);
 
     NuLib_energies NuLib_energies_obj(energy_bottom, energy_top);
-
-//The following commented loop can be used to print information about each particle in case debug is needed in future.
-/*    
-    const int lev = 0;
-#ifdef _OPENMP
-#pragma omp parallel
-#endif
-    for (FNParIter pti(neutrinos_rhs, lev); pti.isValid(); ++pti)
-    {
-        const int np  = pti.numParticles();
-        FlavoredNeutrinoContainer::ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
-
-        amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
-            FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
-                //printf("(Inside Evolve.cpp) Partile i = %d,  Vphase = %g \n", i, p.rdata(PIdx::Vphase));
-        });
-    }
-*/
-    
-    
     
     amrex::MeshToParticle(neutrinos_rhs, state, 0,
     [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
@@ -307,7 +290,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         }
 
         // If opacity_method is 1, the code will use the inverse mean free paths in the input parameters to compute the collision term.
-        if(parms->IMFP_method==1){
+        if(parms->IMFP_method==0){
+            // do nothing
+        }
+        else if(parms->IMFP_method==1){
             for (int i=0; i<NUM_FLAVORS; ++i) {
 
                 IMFP_abs[i][i]    = parms->IMFP_abs[0][i]; // 1/cm : Read absorption inverse mean free path from input parameters file.
@@ -333,8 +319,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
 
 //#define DEBUG_INTERPOLATION_TABLES
 #ifdef DEBUG_INTERPOLATION_TABLES
-            printf("(Evolve.cpp) mu_e interpolated = %f\n", mue_out);
-            printf("(Evolve.cpp) muhat interpolated = %f\n", muhat_out);
+            amrex::Print() << "(Evolve.cpp) mu_e interpolated = " << mue_out << std::endl;
+            amrex::Print() << "(Evolve.cpp) muhat interpolated = " << muhat_out << std::endl;
 #endif            
             // munu_val : electron neutrino chemical potential
             const double munu_val = ( mue_out - muhat_out ) * 1e6*CGSUnitsConst::eV ; //munu -> "mu_e" - "muhat"
@@ -362,7 +348,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             }
 
             if(idx_group == -1) AMREX_ASSERT(0); //abort if energy bin cannot be found.
-            //printf("Given neutrino energy = %f, selected bin index = %d\n", neutrino_energy_MeV, idx_group);
+            //amrex::Print() << "Given neutrino energy = %f, selected bin index = %d\n", neutrino_energy_MeV, idx_group);
 
             //idx_species = {0 for electron neutrino, 1 for electron antineutrino and 2 for all other heavier ones}
             //electron neutrino: [0, 0]
@@ -373,8 +359,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES            
-            printf("(Evolve.cpp) absorption_opacity[e] interpolated = %17.6g\n", absorption_opacity);
-            printf("(Evolve.cpp) scattering_opacity[e] interpolated = %17.6g\n", scattering_opacity);
+            amrex::Print() << "(Evolve.cpp) absorption_opacity[e] interpolated = " << absorption_opacity << std::endl;
+            amrex::Print() << "(Evolve.cpp) scattering_opacity[e] interpolated = " << scattering_opacity << std::endl;
 #endif            
             
             IMFP_abs[0][0] = absorption_opacity;
@@ -387,8 +373,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES            
-            printf("(Evolve.cpp) absorption_opacity[a] interpolated = %17.6g\n", absorption_opacity);
-            printf("(Evolve.cpp) scattering_opacity[a] interpolated = %17.6g\n", scattering_opacity);
+            amrex::Print() << "(Evolve.cpp) absorption_opacity[a] interpolated = " << absorption_opacity << std::endl;
+            amrex::Print() << "(Evolve.cpp) scattering_opacity[a] interpolated = " << scattering_opacity << std::endl;
 #endif            
 
             IMFP_absbar[0][0] = absorption_opacity;
@@ -401,8 +387,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES            
-            printf("(Evolve.cpp) absorption_opacity[x] interpolated = %17.6g\n", absorption_opacity);
-            printf("(Evolve.cpp) scattering_opacity[x] interpolated = %17.6g\n", scattering_opacity);
+            amrex::Print() << "(Evolve.cpp) absorption_opacity[x] interpolated = " << absorption_opacity << std::endl;
+            amrex::Print() << "(Evolve.cpp) scattering_opacity[x] interpolated = " << scattering_opacity << std::endl;
 #endif
 
             for (int i=1; i<NUM_FLAVORS; ++i) { //0->neutrino or 1->antineutrino
@@ -450,7 +436,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         p.rdata(PIdx::pupt) = 0;
         // set the dVphase/dt values 
         p.rdata(PIdx::Vphase) = 0;
-
+        
     });
 }
 
