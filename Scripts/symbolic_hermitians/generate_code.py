@@ -417,12 +417,10 @@ if __name__ == "__main__":
                     lorentz_line = lorentz_line + " + "
             lorentz_line = lorentz_line + "));"
             code.append(lorentz_line)
-            vupt_line = "double vupt = (-1) * lorentz_factor;"
-            code.append(vupt_line)
             velocity_line = "double relativistic_correction = (-1/p.rdata(PIdx::pupt)) * lorentz_factor * ("
 
             for i in range(len(direction)):
-                # using (-1)vupt = vdownt for now; will need to implement contraction with the metric once the metric is stored 
+                # using (-1)*vupt = vdownt for now; will need to implement contraction with the metric once the metric is stored 
                 # use sympy to create a matrix for the metric tensor and use symbolic matrix operations built in
                 velocity_line = velocity_line + "p.rdata(PIdx::pup"+direction[i]+") * " + string_interp + "vup"+direction[i]+") + "
             # Again, using (-1)*vup for now; will need to implement contraction with the metric once metric is stored
