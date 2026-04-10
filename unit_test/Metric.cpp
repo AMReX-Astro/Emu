@@ -77,10 +77,12 @@ int main()
     double t= 5;
     int steps= 10000;
     double dt= t/steps;
+    double v;
 
-    Euler(p,dt, steps);
+    //Euler(p,dt, steps);
     
     SphericalMetric metric;
+    v=metric.vol(4,2,3,2,2,1);
     //metric.coord_conv(p);
 
     std::cout << "final values\n";
@@ -92,6 +94,7 @@ int main()
     std::cout << "px   = " << p.pupx1 << "\n";
     std::cout << "py   = " << p.pupx2 << "\n";
     std::cout << "pz   = " << p.pupx3 << "\n";
+    std::cout << "v   = " << v << "\n";
 
     
 

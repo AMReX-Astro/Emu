@@ -134,7 +134,9 @@ public:
 
         return rhs;
     }
-    
+
+
+    virtual amrex::Real vol(amrex::Real x1_max,amrex::Real x1_min,amrex::Real x2_max,amrex::Real x2_min,amrex::Real x3_max,amrex::Real x3_min) const = 0;
                    
 };
 
@@ -226,7 +228,14 @@ public:
 
         return Gamma;
     }
+    
+    amrex::Real vol(amrex::Real x1_max, amrex::Real x1_min, amrex::Real x2_max, amrex::Real x2_min, amrex::Real x3_max, amrex::Real x3_min) const override
+    {
+        const amrex::Real v = (x1_max - x1_min)*(x2_max-x2_min)*(x3_max-x3_min);
 
+        return v;
+        
+    }
 
 };
 
@@ -392,6 +401,14 @@ public:
         Gamma[2][2][1] =  1.0 / p.x1;    // 1/r
 
         return Gamma;
+    }
+
+    amrex::Real vol(amrex::Real x1_max,amrex::Real x1_min,amrex::Real x2_max,amrex::Real x2_min,amrex::Real x3_max,amrex::Real x3_min) const override
+    {
+        const amrex::Real v = (x1_max*x1_max - x1_min*x1_min)*(x2_max-x2_min)*(x3_max-x3_min) / 2.0;
+
+        return v;
+        
     }
 
     
@@ -588,7 +605,14 @@ public:
 
         return Gamma;
     }
+    
+    amrex::Real vol(amrex::Real x1_max,amrex::Real x1_min,amrex::Real x2_max,amrex::Real x2_min,amrex::Real x3_max,amrex::Real x3_min) const override
+    {
+        const amrex::Real v = (std::pow(x1_max,3.0) - std::pow(x1_min,3.0))*(std::cos(x2_min)-std::cos(x2_max))*(x3_max-x3_min) / 3.0;
 
+        return v;
+        
+    }
     
 
 
