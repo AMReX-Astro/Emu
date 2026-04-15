@@ -82,7 +82,7 @@ int main()
     //Euler(p,dt, steps);
     
     SphericalMetric metric;
-    v=metric.vol(4,2,3,2,2,1);
+    v=metric.vol(4,2,3,-1,5,1);
     //metric.coord_conv(p);
 
     std::cout << "final values\n";

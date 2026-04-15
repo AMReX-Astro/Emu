@@ -5,9 +5,7 @@
 #ifndef METRIC_H_
 #define METRIC_H_
 
-//#include "../submodules/amrex/Src/Base/AMReX_REAL.H"
-//#include "../submodules/amrex/Src/Base/AMReX_RealVect.H"
-//#include "../submodules/amrex/Src/Base/AMReX_SPACE.H"
+
 #include <AMReX.H>
 #include <AMReX_REAL.H>
 #include <AMReX_RealVect.H>
