@@ -113,12 +113,13 @@ public:
 
         };
 
-        GeodesicArray rhs{};
+        GeodesicArray rhs{}; //first 4 components will store the postion equations rhs and the last 4 componenets will store momentum geoodesic equation rhs
 
         for (int mu = 0; mu < 4; mu++) {
             rhs[mu] = Y[4+mu]/ Y[4];
         }
-
+        
+        // writing the momentum geodesic equations
         for (int mu = 0; mu < 4; ++mu) {
             rhs[4 + mu] = 0.0;
             for (int alpha = 0; alpha < 4; ++alpha) {
