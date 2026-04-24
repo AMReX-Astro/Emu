@@ -27,7 +27,7 @@ using GeodesicArray = amrex::GpuArray<amrex::Real, 8>; //for 4-position and then
 
 
 
-using Particle = FlavoredNeutrinoContainer::ParticleType;
+using EParticle = FlavoredNeutrinoContainer::ParticleType;
 
 //abstract base class- Metric
 
@@ -40,31 +40,31 @@ public:
     //static amrex::Real detg(const amrex::RealVect& x);
     
     //convert 4-postion and 4-momentum from cartesian to chosen coordinate
-    virtual void coord_conv(Particle& p) const=0;   
+    virtual void coord_conv(EParticle& p) const=0;   
     
     //convert 4-postion and 4-momentum from chosen coordinate to cartesian
-    virtual void coord_conv_inv(Particle& p) const = 0;
+    virtual void coord_conv_inv(EParticle& p) const = 0;
 
     
     //Jacobian needed for the forward conversion
-    virtual Mat4 jacobian(const Particle& p) const=0;
+    virtual Mat4 jacobian(const EParticle& p) const=0;
     
     //Jacobian for the inverse conversion 
-    virtual Mat4 jacobian_inv(const Particle& p) const = 0;
+    virtual Mat4 jacobian_inv(const EParticle& p) const = 0;
 
     
 
 
     //The metric 
-    virtual  Mat4 gmunu(const Particle& p) const=0;
+    virtual  Mat4 gmunu(const EParticle& p) const=0;
 
     //det of the metric
-    virtual  amrex::Real detg(const Particle& p) const=0;
+    virtual  amrex::Real detg(const EParticle& p) const=0;
 
     //dot product of two 4-vectors
     amrex::Real dot(const FourVec& a,
                             const FourVec& b,
-                            const Particle& p) const
+                            const EParticle& p) const
 
     {
         const Mat4 g = gmunu(p);
@@ -78,11 +78,11 @@ public:
     }    
     
     //function to get the Christoffel symbols
-    virtual Christoffel christoffel(const Particle& p) const = 0;
+    virtual Christoffel christoffel(const EParticle& p) const = 0;
     
 
     //rhs of the geodesic equations
-    GeodesicArray geodesic_rhs( Particle& p) const
+    GeodesicArray geodesic_rhs( EParticle& p) const
     {  
         
 
@@ -139,17 +139,17 @@ class CartesianMetric : public Metric
 {
 public:
 
-    void coord_conv(Particle& p) const override
+    void coord_conv(EParticle& p) const override
     {}
 
-    void coord_conv_inv(Particle& p) const override
+    void coord_conv_inv(EParticle& p) const override
     {
         p.pos(0) = p.rdata(PIdx::x);
         p.pos(1) = p.rdata(PIdx::y);
         p.pos(2) = p.rdata(PIdx::z);
     }
 
-    Mat4 jacobian(const Particle& p) const override
+    Mat4 jacobian(const EParticle& p) const override
     {
         Mat4 J{};
 
@@ -169,7 +169,7 @@ public:
     }
     
 
-    Mat4 jacobian_inv(const Particle& p) const override
+    Mat4 jacobian_inv(const EParticle& p) const override
     {
         Mat4 J{};
 
@@ -188,7 +188,7 @@ public:
         return J;
     }
     
-    Mat4 gmunu(const Particle& p) const override
+    Mat4 gmunu(const EParticle& p) const override
     {
         Mat4 g{};
         for (int mu = 0; mu < 4; ++mu) {
@@ -201,12 +201,12 @@ public:
         return g;
     }
 
-    amrex::Real detg(const Particle& p) const override
+    amrex::Real detg(const EParticle& p) const override
     {
         return -1.0;
     }
     
-    Christoffel christoffel(const Particle& p) const override
+    Christoffel christoffel(const EParticle& p) const override
     {
         Christoffel Gamma{};
 
@@ -242,7 +242,7 @@ class CylindricalMetric : public Metric
 {
 public:
 
-    void coord_conv(Particle& p) const override
+    void coord_conv(EParticle& p) const override
     {  
         const amrex::Real x1 = p.rdata(PIdx::x);
         const amrex::Real x2 = p.rdata(PIdx::y);
@@ -273,7 +273,7 @@ public:
         
     }
 
-    void coord_conv_inv(Particle& p) const override
+    void coord_conv_inv(EParticle& p) const override
     {
         
         //momentum coord inverse conversersion
@@ -314,7 +314,7 @@ public:
     }
 
 
-    Mat4 jacobian(const Particle& p) const override
+    Mat4 jacobian(const EParticle& p) const override
     {
         
         const amrex::Real x1 = p.rdata(PIdx::x);
@@ -338,7 +338,7 @@ public:
         return J;
     }
 
-    Mat4 jacobian_inv(const Particle& p) const override
+    Mat4 jacobian_inv(const EParticle& p) const override
     {
         
         const amrex::Real x1 = p.rdata(PIdx::x);
@@ -363,7 +363,7 @@ public:
     }
  
     
-    Mat4 gmunu(const Particle& p) const override
+    Mat4 gmunu(const EParticle& p) const override
     {   
         const amrex::Real x = p.rdata(PIdx::x);
         const amrex::Real y = p.rdata(PIdx::y);
@@ -380,7 +380,7 @@ public:
         return g;
     }
 
-    amrex::Real detg(const Particle& p) const override
+    amrex::Real detg(const EParticle& p) const override
     {
         const amrex::Real x = p.rdata(PIdx::x);
         const amrex::Real y = p.rdata(PIdx::y);
@@ -389,7 +389,7 @@ public:
         return -(r * r);
     }
 
-    Christoffel christoffel(const Particle& p) const override
+    Christoffel christoffel(const EParticle& p) const override
     {
         
         const amrex::Real r = p.rdata(PIdx::x);
@@ -433,7 +433,7 @@ class SphericalMetric : public Metric
 {
 public:
 
-    void coord_conv(Particle& p) const override
+    void coord_conv(EParticle& p) const override
     {  
         const amrex::Real x1 = p.rdata(PIdx::x);
         const amrex::Real x2 = p.rdata(PIdx::y);
@@ -468,7 +468,7 @@ public:
 
     }
 
-    void coord_conv_inv(Particle& p) const override
+    void coord_conv_inv(EParticle& p) const override
     {
         
         //momentum coord inverse conversersion
@@ -511,7 +511,7 @@ public:
     }
 
 
-    Mat4 jacobian(const Particle& p) const override
+    Mat4 jacobian(const EParticle& p) const override
     {
         
         const amrex::Real x1 = p.rdata(PIdx::x);
@@ -539,7 +539,7 @@ public:
         return J;
     }
 
-    Mat4 jacobian_inv(const Particle& p) const override
+    Mat4 jacobian_inv(const EParticle& p) const override
     {
         
         const amrex::Real x1 = p.rdata(PIdx::x);
@@ -568,7 +568,7 @@ public:
     }
  
     
-    Mat4 gmunu(const Particle& p) const override
+    Mat4 gmunu(const EParticle& p) const override
     {   
         const amrex::Real x = p.rdata(PIdx::x);
         const amrex::Real y = p.rdata(PIdx::y);
@@ -587,7 +587,7 @@ public:
         return g;
     }
 
-    amrex::Real detg(const Particle& p) const override
+    amrex::Real detg(const EParticle& p) const override
     {
         const amrex::Real x = p.rdata(PIdx::x);
         const amrex::Real y = p.rdata(PIdx::y);
@@ -598,7 +598,7 @@ public:
         return -std::pow(r,4)*std::sin(theta)*std::sin(theta);
     }
 
-    Christoffel christoffel(const Particle& p) const override
+    Christoffel christoffel(const EParticle& p) const override
     {
         
         const amrex::Real r = p.rdata(PIdx::x);
