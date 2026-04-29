@@ -101,6 +101,12 @@ if __name__ == "__main__":
         for v in vars:
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
+
+    for t in tails:
+        for v in vars:
+            A = HermitianMatrix(args.N, v+"{}{}_{}"+t+"_eq")
+            code += A.header()
+
     code += ["TrHN"]
     code += ["Vphase"]
 
