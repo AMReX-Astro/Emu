@@ -512,6 +512,13 @@ if __name__ == "__main__":
         TrHN = (H*N).trace();
         code.append(["p.rdata(PIdx::TrHN) += ("+sympy.cxxcode(sympy.simplify(TrHN))+");"])
 
+    # Looping over neutrinos(tail: no tail) and antineutrinos(tail: bar)
+    for t in tails:
+
+        N_equilibrium = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+"_eq)") # Neutrino number matrix
+        N_equilibrium.H = N_equilibrium.H * 0.0
+        code.append(N_equilibrium.code())
+
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))
 
