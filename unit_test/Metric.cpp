@@ -1,33 +1,19 @@
 //Forward Euler Geodesic equations solver test
 
-#include "Metric.H"
+#include "../Source/Metric.H"
 #include <iostream>
 #include <cmath>
+#include <string>
+#include <cassert>
 
-/*
-array<double, 8> F( const array<double, 8> Y)  //dY/dt= F(Y)  Y={t, r, phi, z, pupt, pupr, pupphi, pupz}
-{
-    array<double, 8> dydt
-    
 
-    dydt[0] = 1.0;                                  //dt/dt = 1
-    dydt[1] = Y[5]/Y[4];                            //dr/dt = pupr/ pupt
-    dydt[2] = Y[6]/Y[4];                            //dphi/dt = pupphi/ pupt
-    dydt[3] = Y[7]/Y[4];                            //dz/dt = pupz/ pupt 
-    dydt[4] = 0;                                    //dpupt/dt = 0
-    dydt[5] = Y[1]/Y[4] * std::pow(pupphi, 2.0);    //dpupr/dt = r/pupt * pupphi^2
-    dydt[6] = -2/(Y[1] * Y[4]) * Y[5] * Y[6];       //dupphi/dt = -2/(r * pupt) * pupr * pupphi 
-    dydt[7] = 0;                                    //dpupz/dt = 0 
 
-    return dydt;
-}
-*/
-
-void Euler( DummyParticle& p, double dt, int steps)
+void Euler( EParticle& p, Metric &metric, double dt, int steps)
 {   
-   
+    // This function time integrates the geodesic equations using forward Euler method. 
+    //EParticle is passed to this function in cartesian and leaves this function in cartesian.
 
-    SphericalMetric metric;
+
 
 
     for(int i=0; i<steps; i++)
@@ -36,22 +22,29 @@ void Euler( DummyParticle& p, double dt, int steps)
         metric.coord_conv(p);
 
         GeodesicArray Y= 
-    {
-        p.time, p.x1, p.x2, p.x3, p.pupt, p.pupx1, p.pupx2, p.pupx3
-    };
+        {
+        p.rdata(PIdx::time),
+        p.rdata(PIdx::x),
+        p.rdata(PIdx::y),
+        p.rdata(PIdx::z),
+        p.rdata(PIdx::pupt),
+        p.rdata(PIdx::pupx),
+        p.rdata(PIdx::pupy),
+        p.rdata(PIdx::pupz)
+        };
 
         for( int j=0; j<8; j++)
         {
             Y[j] += dt * dydt[j];   // Y_(n+1)= Y_n + dt_n*dY/dt_n
         }
-        p.time= Y[0];
-        p.x1= Y[1];
-        p.x2= Y[2];
-        p.x3= Y[3];
-        p.pupt= Y[4];
-        p.pupx1= Y[5];
-        p.pupx2= Y[6];
-        p.pupx3= Y[7];
+        p.rdata(PIdx::time)= Y[0];
+        p.rdata(PIdx::x)= Y[1];
+        p.rdata(PIdx::y)= Y[2];
+        p.rdata(PIdx::z)= Y[3];
+        p.rdata(PIdx::pupt)= Y[4];
+        p.rdata(PIdx::pupx)= Y[5];
+        p.rdata(PIdx::pupy)= Y[6];
+        p.rdata(PIdx::pupz)= Y[7];
 
         metric.coord_conv_inv(p);
     }
@@ -60,42 +53,109 @@ void Euler( DummyParticle& p, double dt, int steps)
 
 
 int main()
-{
-    DummyParticle p;
+{   
+    //chosing the coordinate system from user input
 
-    p.time= 0.0;
-    p.x1= 1.0;
-    p.x2= 1.0;
-    p.x3= 1.0;
+    std::string coord;
+
+    std::cout << "Enter coordinate system:";
+    std::cin >> coord;
+
+    assert(
+    coord == "cartesian" ||
+    coord == "cylindrical" ||
+    coord == "spherical"
+    );
+
+    CartesianMetric cart_metric;
+    CylindricalMetric cyl_metric;
+    SphericalMetric sph_metric;
+
+    Metric *met = nullptr;
+    
+    if (coord == "cartesian") {
+        met = &cart_metric;
+    }
+    else if (coord == "cylindrical") {
+        met = &cyl_metric;
+    }
+    else if (coord == "spherical") {
+        met = &sph_metric;
+    }
+
+    Metric &metric= *met;
+    
+    //declaring and initializing the particle
+    EParticle p;
+    
+    p.rdata(PIdx::time)= 0.0;
+    p.rdata(PIdx::x)= 1.0;
+    p.rdata(PIdx::y)= 1.0;
+    p.rdata(PIdx::z)= 1.0;
     
     // the folloing is chosen to replicate null particle (p.p=0)
-    p.pupt= 3.0;
-    p.pupx1= 2.0;
-    p.pupx2= 1.0;
-    p.pupx3= 2.0;
-
+    p.rdata(PIdx::pupt)= 3.0;
+    p.rdata(PIdx::pupx)= 2.0;
+    p.rdata(PIdx::pupy)= 1.0;
+    p.rdata(PIdx::pupz)= 2.0;
+    
+    //time step setup
     double t= 5;
     int steps= 10000;
     double dt= t/steps;
     double v;
-
-    //Euler(p,dt, steps);
     
-    SphericalMetric metric;
-    v=metric.vol(4,2,3,-1,5,1);
-    //metric.coord_conv(p);
+    Euler(p, metric, dt, steps); //Euler does the time integration
+    
+    // calculating volume. Syntax: vol(xmax,xmin,ymax,ymin,zmax,zmin). 
+    v=metric.vol(4,2,3,-1,5,1);  
+    
+    // Printing out final state values and volume
+    if( coord=="cartesian" )
+    {
+        std::cout << "final values in cartesian\n";
+        std::cout << "time = " << p.rdata(PIdx::time)  << "\n";
+        std::cout << "x    = " << p.rdata(PIdx::x)    << "\n";
+        std::cout << "y    = " << p.rdata(PIdx::y)    << "\n";
+        std::cout << "z    = " << p.rdata(PIdx::z)    << "\n";
+        std::cout << "pt   = " << p.rdata(PIdx::pupt)  << "\n";
+        std::cout << "px   = " << p.rdata(PIdx::pupx) << "\n";
+        std::cout << "py   = " << p.rdata(PIdx::pupy) << "\n";
+        std::cout << "pz   = " << p.rdata(PIdx::pupz) << "\n";
+        std::cout << "v   = " << v << "\n";
+    }
 
-    std::cout << "final values\n";
-    std::cout << "time = " << p.time  << "\n";
-    std::cout << "x    = " << p.x1    << "\n";
-    std::cout << "y    = " << p.x2    << "\n";
-    std::cout << "z    = " << p.x3    << "\n";
-    std::cout << "pt   = " << p.pupt  << "\n";
-    std::cout << "px   = " << p.pupx1 << "\n";
-    std::cout << "py   = " << p.pupx2 << "\n";
-    std::cout << "pz   = " << p.pupx3 << "\n";
-    std::cout << "v   = " << v << "\n";
+    if( coord=="cylindrical" || coord=="spherical" )
+    {   
+        metric.coord_conv(p);
+        std::cout << "final values in"<<coord<<"\n";
+        std::cout << "time = " << p.rdata(PIdx::time)  << "\n";
+        std::cout << "x    = " << p.rdata(PIdx::x)    << "\n";
+        std::cout << "y    = " << p.rdata(PIdx::y)    << "\n";
+        std::cout << "z    = " << p.rdata(PIdx::z)    << "\n";
+        std::cout << "pt   = " << p.rdata(PIdx::pupt)  << "\n";
+        std::cout << "px   = " << p.rdata(PIdx::pupx) << "\n";
+        std::cout << "py   = " << p.rdata(PIdx::pupy) << "\n";
+        std::cout << "pz   = " << p.rdata(PIdx::pupz) << "\n";
+        std::cout << "v   = " << v << "\n";
+        
+        metric.coord_conv_inv(p);
 
+        std::cout << "final values in cartesian\n";
+        std::cout << "time = " << p.rdata(PIdx::time)  << "\n";
+        std::cout << "x    = " << p.rdata(PIdx::x)    << "\n";
+        std::cout << "y    = " << p.rdata(PIdx::y)    << "\n";
+        std::cout << "z    = " << p.rdata(PIdx::z)    << "\n";
+        std::cout << "pt   = " << p.rdata(PIdx::pupt)  << "\n";
+        std::cout << "px   = " << p.rdata(PIdx::pupx) << "\n";
+        std::cout << "py   = " << p.rdata(PIdx::pupy) << "\n";
+        std::cout << "pz   = " << p.rdata(PIdx::pupz) << "\n";
+        
+
+
+        
+
+    }
     
 
 
