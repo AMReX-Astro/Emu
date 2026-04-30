@@ -110,6 +110,17 @@ int main()
     // calculating volume. Syntax: vol(xmax,xmin,ymax,ymin,zmax,zmin). 
     v=metric.vol(4,2,3,-1,5,1);  
     
+    double tol = coord == "cartesian" ? 1e-12 : 1e-2;
+
+    assert(std::abs(p.rdata(PIdx::time)- 5.0) < tol);
+    assert(std::abs(p.rdata(PIdx::x) - 13.0 / 3.0) < tol);
+    assert(std::abs(p.rdata(PIdx::y) - 8.0 / 3.0) < tol);
+    assert(std::abs(p.rdata(PIdx::z) - 13.0 / 3.0) < tol);
+    assert(std::abs(p.rdata(PIdx::pupt) - 3.0) < tol);
+    assert(std::abs(p.rdata(PIdx::pupx) - 2.0) < tol);
+    assert(std::abs(p.rdata(PIdx::pupy) - 1.0) < tol);
+    assert(std::abs(p.rdata(PIdx::pupz) - 2.0) < tol);
+    
     // Printing out final state values and volume
     if( coord=="cartesian" )
     {
@@ -128,7 +139,7 @@ int main()
     if( coord=="cylindrical" || coord=="spherical" )
     {   
         metric.coord_conv(p);
-        std::cout << "final values in"<<coord<<"\n";
+        std::cout << "final values in "<<" "<<coord<<"\n";
         std::cout << "time = " << p.rdata(PIdx::time)  << "\n";
         std::cout << "x    = " << p.rdata(PIdx::x)    << "\n";
         std::cout << "y    = " << p.rdata(PIdx::y)    << "\n";
