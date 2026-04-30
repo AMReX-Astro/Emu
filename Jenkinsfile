@@ -147,6 +147,15 @@ pipeline {
 			}
 		}
 
+		stage('Metric test'){ steps{
+				dir('unit_test'){
+					sh 'make'
+					sh './main3d.gnu.DEBUG.MPI.ex'
+
+				}
+			}
+		}
+
     } // stages{
 
     post {
