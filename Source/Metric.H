@@ -84,7 +84,6 @@ public:
     //rhs of the geodesic equations
     GeodesicArray geodesic_rhs( EParticle& p) const
     {  
-        
 
         coord_conv(p); 
 
@@ -102,10 +101,20 @@ public:
 
         };
 
+        FourVec pup = {Y[4],Y[5],Y[6],Y[7]};
+
+        FourVec nup = {1,0,0,0};
+
+        coord_conv_inv(p);
+
+        const amrex::Real denom = -dot(pup, nup, p);
+        
+        coord_conv(p);
+
         GeodesicArray rhs{}; //first 4 components will store the postion equations rhs and the last 4 componenets will store momentum geoodesic equation rhs
 
         for (int mu = 0; mu < 4; mu++) {  //looping over the position geodesic equations
-            rhs[mu] = Y[4+mu]/ Y[4];
+            rhs[mu] = Y[4+mu]/ denom;
         }
         
         // writing the momentum geodesic equations 
@@ -113,7 +122,7 @@ public:
             rhs[4 + mu] = 0.0;  // initializing all the momentum rhs to 0.
             for (int alpha = 0; alpha < 4; ++alpha) {
                 for (int beta = 0; beta < 4; ++beta) {
-                    rhs[4 + mu] -= Gamma[mu][alpha][beta] * Y[4+alpha] * Y[4+beta] / Y[4];
+                    rhs[4 + mu] -= Gamma[mu][alpha][beta] * Y[4+alpha] * Y[4+beta] / denom;
                 }
             }
         }
