@@ -101,15 +101,10 @@ public:
 
         };
 
-        FourVec pup = {Y[4],Y[5],Y[6],Y[7]};
+        const amrex::Real lapse = 1.0;
 
-        FourVec nup = {1,0,0,0};
-
-        coord_conv_inv(p);
-
-        const amrex::Real denom = -dot(pup, nup, p);
-        
-        coord_conv(p);
+        const amrex::Real denom = lapse*Y[4];
+    
 
         GeodesicArray rhs{}; //first 4 components will store the postion equations rhs and the last 4 componenets will store momentum geoodesic equation rhs
 
