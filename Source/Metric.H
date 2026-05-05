@@ -103,7 +103,7 @@ public:
 
         const amrex::Real lapse = 1.0;
 
-        const amrex::Real denom = lapse*Y[4];
+        const amrex::Real denom = lapse*Y[4]; // -p.u= lapse*p^t
     
 
         GeodesicArray rhs{}; //first 4 components will store the postion equations rhs and the last 4 componenets will store momentum geoodesic equation rhs
