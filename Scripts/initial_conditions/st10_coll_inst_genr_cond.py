@@ -69,6 +69,12 @@ for i in range(len(energies_center_erg)):
     # Generate particles
     particles[i] = moment_interpolate_particles(nphi_equator, nnu, fnu, energies_center_erg[i], uniform_sphere, minerbo_interpolate) # [particle, variable]
 
+    # Setting the equilibrium number densities equal to the initial number densities
+    for nu_nubar, suffix in zip(range(2), ["","bar"]):
+        for flavor in range(NF):
+            fvarname = "N"+str(flavor)+str(flavor)+"_Re"+suffix
+            particles[i,:,rkey[fvarname+"_eq"]] = particles[i,:,rkey[fvarname]]
+
     # Generate the number of directions
     n_directions = len(particles[i])
 
