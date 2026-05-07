@@ -1,6 +1,7 @@
 import numpy as np
 import argparse
 import glob
+import os
 
 # physical constants
 clight = 2.99792458e10 # cm/s
@@ -12,62 +13,30 @@ GF = 1.1663787e-5 / (1e9*eV)**2 * (hbar*clight)**3 #erg cm^3
 # NF is the number of flavors
 # ignore_pos causes the first three elements to be ignored
 # xp_only returns the position and momentum keys, but not the f keys
+
+hf_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../Source/generated_files/FlavoredNeutrinoContainer.H_fill')
+if not os.path.exists(hf_path):
+    print(
+        f"Required file not found: {hf_path}\n"
+        "Please generate the necessary files --- make generate NUM_FLAVORS=3 in Exec directory --- by running the appropriate script or process to create 'FlavoredNeutrinoContainer.H_fill' in '../../Source/generated_files/'."
+    )
+    exit(1)
+
 def get_particle_keys(NF, ignore_pos=False, xp_only=False):
     assert(NF==2 or NF==3)
-    if(NF==2):
-        real_quantities = ["pos_x",
-                           "pos_y",
-                           "pos_z",
-                           "time",
-                           "x",
-                           "y",
-                           "z",
-                           "pupx",
-                           "pupy",
-                           "pupz",
-                           "pupt",
-                           "N00_Re",
-                           "N01_Re",
-                           "N01_Im",
-                           "N11_Re",
-                           "N00_Rebar",
-                           "N01_Rebar",
-                           "N01_Imbar",
-                           "N11_Rebar",
-                           "TrHN",
-                           "Vphase"]
-    if(NF==3):
-        real_quantities = ["pos_x",
-                           "pos_y",
-                           "pos_z",
-                           "time",
-                           "x",
-                           "y",
-                           "z",
-                           "pupx",
-                           "pupy",
-                           "pupz",
-                           "pupt",
-                           "N00_Re",
-                           "N01_Re",
-                           "N01_Im",
-                           "N02_Re",
-                           "N02_Im",
-                           "N11_Re",
-                           "N12_Re",
-                           "N12_Im",
-                           "N22_Re",
-                           "N00_Rebar",
-                           "N01_Rebar",
-                           "N01_Imbar",
-                           "N02_Rebar",
-                           "N02_Imbar",
-                           "N11_Rebar",
-                           "N12_Rebar",
-                           "N12_Imbar",
-                           "N22_Rebar",
-                           "TrHN",
-                           "Vphase"]
+    real_quantities =   [   "pos_x",
+                            "pos_y",
+                            "pos_z",
+                            "time",
+                            "x",
+                            "y",
+                            "z",
+                            "pupx",
+                            "pupy",
+                            "pupz",
+                            "pupt",
+                            *[line.strip().rstrip(',') for line in open(hf_path) if line.strip() and not line.strip().startswith('#')]
+                        ]
 
     if xp_only: real_quantities = real_quantities[:11]
     if ignore_pos: real_quantities = real_quantities[7:]
