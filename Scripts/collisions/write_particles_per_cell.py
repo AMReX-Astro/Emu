@@ -160,12 +160,29 @@ print(f"Directories to process: {directories}")
 # get NF
 eds = emu.EmuDataset(directories[0])
 NF = eds.get_num_flavors()
-if NF==2:
-    rkey, ikey = amrex.get_particle_keys(NF)
-    labels=['pos_x','pos_y','pos_z', 'time', 'x', 'y', 'z', 'pupx', 'pupy', 'pupz', 'pupt', 'N00_Re', 'N01_Re', 'N01_Im', 'N11_Re', 'N00_Rebar', 'N01_Rebar', 'N01_Imbar', 'N11_Rebar', 'TrHN', 'Vphase']
-if NF==3:
-    rkey, ikey = amrex.get_particle_keys(NF)
-    labels=['pos_x','pos_y','pos_z','time','x', 'y', 'z', 'pupx', 'pupy', 'pupz', 'pupt', 'N00_Re', 'N01_Re', 'N01_Im', 'N02_Re', 'N02_Im', 'N11_Re', 'N12_Re', 'N12_Im' ,'N22_Re', 'N00_Rebar', 'N01_Rebar', 'N01_Imbar', 'N02_Rebar', 'N02_Imbar', 'N11_Rebar', 'N12_Rebar' ,'N12_Imbar', 'N22_Rebar', 'TrHN', 'Vphase']
+
+hf_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../Source/generated_files/FlavoredNeutrinoContainer.H_fill')
+if not os.path.exists(hf_path):
+    print(
+        f"Required file not found: {hf_path}\n"
+        "Please generate the necessary files --- make generate NUM_FLAVORS=3 in Exec directory --- by running the appropriate script or process to create 'FlavoredNeutrinoContainer.H_fill' in '../../Source/generated_files/'."
+    )
+    exit(1)
+
+rkey, ikey = amrex.get_particle_keys(NF)
+labels =   [   "pos_x",
+                        "pos_y",
+                        "pos_z",
+                        "time",
+                        "x",
+                        "y",
+                        "z",
+                        "pupx",
+                        "pupy",
+                        "pupz",
+                        "pupt",
+                        *[line.strip().rstrip(',') for line in open(hf_path) if line.strip() and not line.strip().startswith('#')]
+                    ]
 
 start_time_gpu = time.time()
 nproc = mp.cpu_count()
