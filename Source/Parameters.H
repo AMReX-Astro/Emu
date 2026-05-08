@@ -13,7 +13,8 @@ using namespace amrex;
 // Structure of global parameter variables //
 //=========================================//
 struct TestParams : public amrex::Gpu::Managed
-{
+{   
+    int coord_sys; // 0 = Cartesian, 1 = Cylindrical, 2 = Spherical
     IntVect ncell; // Number of cells in the domain
     IntVect nppc; // Number of points of particle emission per cell in each dimension
     Real Lx, Ly, Lz; // Length of the domain in each dimension
@@ -85,8 +86,10 @@ struct TestParams : public amrex::Gpu::Managed
     int set_equilibrium_distribution; // Flag to set the equilibrium distribution function for neutrinos and antineutrinos
 
     void Initialize(){
-
+        
         ParmParse pp;
+        coord_sys = 0;
+        pp.query("coord_sys", coord_sys);
         pp.get("ncell", ncell);
         pp.get("Lx", Lx);
         pp.get("Ly", Ly);
