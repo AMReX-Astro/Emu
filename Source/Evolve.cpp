@@ -9,6 +9,7 @@
 
 #include "NuLibTableFunctions.H"
 #include "NuLibTable.H"
+#include "Metric.H"
 
 using namespace amrex;
 
@@ -602,19 +603,21 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         // Compute the time derivative of \( N_{ab} \) using the Quantum Kinetic Equations (QKE).
         #include "generated_files/Evolve.cpp_dfdt_fill"
 
-        // set the dx/dt values 
-        p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
-        p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
-        p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
-        // set the dt/dt = 1. Neutrinos move at one second per second
-        p.rdata(PIdx::time) = 1.0;
-        // set the d(pE)/dt values 
-        p.rdata(PIdx::pupx) = 0;
-        p.rdata(PIdx::pupy) = 0;
-        p.rdata(PIdx::pupz) = 0;
-        // set the dE/dt values 
-        p.rdata(PIdx::pupt) = 0;
-        // set the dVphase/dt values 
+        //getting the rhs of the geodesic equations in cartesian metric
+        CartesianMetric metric;
+        const GeodesicArray geodesic_rhs = metric.geodesic_rhs(p);
+        
+        // set the dx/dt values
+        p.rdata(PIdx::time) = geodesic_rhs[0];
+        p.rdata(PIdx::x)    = geodesic_rhs[1] * PhysConst::c;
+        p.rdata(PIdx::y)    = geodesic_rhs[2] * PhysConst::c;
+        p.rdata(PIdx::z)    = geodesic_rhs[3] * PhysConst::c;
+         // set the d(p)/dt values
+        p.rdata(PIdx::pupt) = geodesic_rhs[4];
+        p.rdata(PIdx::pupx) = geodesic_rhs[5];
+        p.rdata(PIdx::pupy) = geodesic_rhs[6];
+        p.rdata(PIdx::pupz) = geodesic_rhs[7];
+
         p.rdata(PIdx::Vphase) = 0;
         
     });
