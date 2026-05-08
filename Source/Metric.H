@@ -40,17 +40,17 @@ public:
     //static amrex::Real detg(const amrex::RealVect& x);
     
     //convert 4-postion and 4-momentum from cartesian to chosen coordinate
-    virtual void coord_conv(EParticle& p) const=0;   
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual void coord_conv(EParticle& p) const=0;
     
     //convert 4-postion and 4-momentum from chosen coordinate to cartesian
-    virtual void coord_conv_inv(EParticle& p) const = 0;
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual void coord_conv_inv(EParticle& p) const = 0;
 
     
     //Jacobian needed for the forward conversion
-    virtual Mat4 jacobian(const EParticle& p) const=0;
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Mat4 jacobian(const EParticle& p) const=0;
     
     //Jacobian for the inverse conversion 
-    virtual Mat4 jacobian_inv(const EParticle& p) const = 0;
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Mat4 jacobian_inv(const EParticle& p) const = 0;
 
     
 
@@ -78,11 +78,11 @@ public:
     }    
     
     //function to get the Christoffel symbols
-    virtual Christoffel christoffel(const EParticle& p) const = 0;
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Christoffel christoffel(const EParticle& p) const = 0;
     
 
     //rhs of the geodesic equations
-    GeodesicArray geodesic_rhs( EParticle& p) const
+    AMREX_GPU_DEVICE AMREX_GPU_HOST GeodesicArray geodesic_rhs( EParticle& p) const
     {  
 
         coord_conv(p); 
@@ -143,17 +143,17 @@ class CartesianMetric : public Metric
 {
 public:
 
-    void coord_conv(EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv(EParticle& p) const override
     {}
 
-    void coord_conv_inv(EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv_inv(EParticle& p) const override
     {
         p.pos(0) = p.rdata(PIdx::x);
         p.pos(1) = p.rdata(PIdx::y);
         p.pos(2) = p.rdata(PIdx::z);
     }
 
-    Mat4 jacobian(const EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4 jacobian(const EParticle& p) const override
     {
         Mat4 J{};
 
@@ -173,7 +173,7 @@ public:
     }
     
 
-    Mat4 jacobian_inv(const EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4 jacobian_inv(const EParticle& p) const override
     {
         Mat4 J{};
 
@@ -210,7 +210,7 @@ public:
         return -1.0;
     }
     
-    Christoffel christoffel(const EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Christoffel christoffel(const EParticle& p) const override
     {
         Christoffel Gamma{};
 
@@ -246,7 +246,7 @@ class CylindricalMetric : public Metric
 {
 public:
 
-    void coord_conv(EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv(EParticle& p) const override
     {  
         const amrex::Real x1 = p.rdata(PIdx::x);
         const amrex::Real x2 = p.rdata(PIdx::y);
@@ -277,7 +277,7 @@ public:
         
     }
 
-    void coord_conv_inv(EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv_inv(EParticle& p) const override
     {
         
         //momentum coord inverse conversersion
@@ -318,7 +318,7 @@ public:
     }
 
 
-    Mat4 jacobian(const EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4 jacobian(const EParticle& p) const override
     {
         
         const amrex::Real x1 = p.rdata(PIdx::x);
@@ -342,7 +342,7 @@ public:
         return J;
     }
 
-    Mat4 jacobian_inv(const EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4 jacobian_inv(const EParticle& p) const override
     {
         
         const amrex::Real x1 = p.rdata(PIdx::x);
@@ -393,7 +393,7 @@ public:
         return -(r * r);
     }
 
-    Christoffel christoffel(const EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Christoffel christoffel(const EParticle& p) const override
     {
         
         const amrex::Real r = p.rdata(PIdx::x);
@@ -437,7 +437,7 @@ class SphericalMetric : public Metric
 {
 public:
 
-    void coord_conv(EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv(EParticle& p) const override
     {  
         const amrex::Real x1 = p.rdata(PIdx::x);
         const amrex::Real x2 = p.rdata(PIdx::y);
@@ -472,7 +472,7 @@ public:
 
     }
 
-    void coord_conv_inv(EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv_inv(EParticle& p) const override
     {
         
         //momentum coord inverse conversersion
@@ -515,7 +515,7 @@ public:
     }
 
 
-    Mat4 jacobian(const EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4 jacobian(const EParticle& p) const override
     {
         
         const amrex::Real x1 = p.rdata(PIdx::x);
@@ -543,7 +543,7 @@ public:
         return J;
     }
 
-    Mat4 jacobian_inv(const EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4 jacobian_inv(const EParticle& p) const override
     {
         
         const amrex::Real x1 = p.rdata(PIdx::x);
@@ -602,7 +602,7 @@ public:
         return -std::pow(r,4)*std::sin(theta)*std::sin(theta);
     }
 
-    Christoffel christoffel(const EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Christoffel christoffel(const EParticle& p) const override
     {
         
         const amrex::Real r = p.rdata(PIdx::x);
