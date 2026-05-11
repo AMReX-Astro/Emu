@@ -189,7 +189,7 @@ void evolve_flavor(const TestParams* parms)
     TimeIntegrator<FlavoredNeutrinoContainer> integrator(neutrinos_old);
 
     // Create a RHS source function we will integrate
-    auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, const FlavoredNeutrinoContainer& neutrinos, Real /* time */) {
+    auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, FlavoredNeutrinoContainer& neutrinos, Real /* time */) {
         /* Evaluate the neutrino distribution matrix RHS */
 
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
@@ -212,11 +212,9 @@ void evolve_flavor(const TestParams* parms)
      };
 
     // Create a function to call after every integrator timestep.
-    auto post_timestep_fun = [&] () {
+    int step = initial_step;
+    auto post_timestep_fun = [&] (FlavoredNeutrinoContainer& neutrinos, amrex::Real time) {
         /* Post-timestep function. The integrator new-time data is the latest data available. */
-
-        // Use the latest-time neutrino data
-        auto& neutrinos = neutrinos_new;
 
         // If do_periodic_empty_bc is one.
         // Do periodic boundary conditions but initialize particles with N=0 and Nbar=0 at the boundary.
@@ -225,7 +223,7 @@ void evolve_flavor(const TestParams* parms)
             empty_particles_at_boundary_cells(neutrinos, parms);
         }
 
-        const Real current_dt = integrator.get_timestep(); //FIXME: FIXME: Pass this to neutrinos.CreateParticlesAtBoundary.
+        const Real current_dt = integrator.get_time_step(); //FIXME: FIXME: Pass this to neutrinos.CreateParticlesAtBoundary.
 
         //FIXME: Think carefully where to call this function.
         //Create particles at outer boundary 
@@ -252,10 +250,6 @@ void evolve_flavor(const TestParams* parms)
         // since Redistribute() applies periodic boundary conditions.
         neutrinos.SyncLocation(Sync::PositionToCoordinate);
 
-        // Get which step the integrator is on
-        const int step = integrator.get_step_number();
-        const Real time = integrator.get_time();
-
     amrex::Print() << "Writing reduced data to file..." << std::endl;
 	rd.WriteReducedData0D(geom, state, neutrinos, time, step+1);
     amrex::Print() << "Done." << std::endl;
@@ -277,12 +271,13 @@ void evolve_flavor(const TestParams* parms)
         // because the last deposit_to_mesh call was at either the old time (forward Euler)
         // or the final RK stage, if using Runge-Kutta.
         const Real dt = compute_dt(geom, state, neutrinos, parms);
-        integrator.set_timestep(dt);
+        integrator.set_time_step(dt);
+        step++;
     };
 
     // Attach our RHS and post timestep hooks to the integrator
     integrator.set_rhs(source_fun);
-    integrator.set_post_timestep(post_timestep_fun);
+    integrator.set_post_step_action(post_timestep_fun);
 
     // Get a starting timestep
     const Real starting_dt = compute_dt(geom, state, neutrinos_old, parms);
