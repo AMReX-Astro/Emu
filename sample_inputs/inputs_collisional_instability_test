@@ -65,7 +65,7 @@ write_plot_particles_every = 10
 do_restart = 0
 restart_dir = ""
 
-set_equilibrium_distribution = 0
+set_equilibrium_distribution = 1
 
 ###############################
 # NEUTRINO PHYSICS PARAMETERS #
@@ -113,10 +113,10 @@ IMFP_abs0bar_cm = 2.29358e-2
 IMFP_abs1bar_cm = 0
 IMFP_abs2bar_cm = 0
 
-munu0_MeV = 20.0
+munu0_MeV = 0
 munu1_MeV = 0
 munu2_MeV = 0
-munu0bar_MeV = 17.644694342915507
+munu0bar_MeV = 0
 munu1bar_MeV = 0
 munu2bar_MeV = 0
 
@@ -127,7 +127,7 @@ IMFP_scat0bar_cm = 0
 IMFP_scat1bar_cm = 0
 IMFP_scat2bar_cm = 0
 
-delta_E = 2.272540842052914 # Mev
+delta_E = 0 # Mev
 
 #################
 # Background Ye, T and rho
