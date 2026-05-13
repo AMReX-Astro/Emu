@@ -4,11 +4,9 @@ perturbation_amplitude = 0.0
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 0
 
-collision_cfl_factor = 1e-1
 cfl_factor = 2
 flavor_cfl_factor = 2
-max_adaptive_speedup = 0
-maxError = 1e-6
+collision_cfl_factor = 1e-1
 
 integration.type = 1
 integration.rk.type = 4

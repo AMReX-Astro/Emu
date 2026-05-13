@@ -1,8 +1,6 @@
-collision_cfl_factor = 1e-3
 cfl_factor = 0.5
 flavor_cfl_factor = 0.1
-max_adaptive_speedup = 0
-maxError = 1e-6
+collision_cfl_factor = 1e-3
 
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 1
