@@ -50,6 +50,10 @@ amrex.fpe_trap_invalid=1
 rho_g_ccm = 0
 T_MeV = 10
 Ye = 1
+# Adding constant background v for now
+vupx = 0.0
+vupy = 0.0
+vupz = 0.0
 
 # Write plotfiles
 write_plot_every = 25

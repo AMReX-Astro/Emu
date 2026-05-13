@@ -3,6 +3,8 @@
 #include <random>
 #include <cmath>
 #include <string>
+#include <assert.h>
+
 
 using namespace amrex;
 

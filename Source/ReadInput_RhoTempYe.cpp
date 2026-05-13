@@ -8,7 +8,7 @@ void set_rho_T_Ye(MultiFab& state, const Geometry& geom, const TestParams* parms
 {
     // Create an alias of the MultiFab so set_rho_T_Ye only sets rho, T and Ye.
     int start_comp = GIdx::rho;
-    int num_comps = 3; //We only want to set GIdx::rho, GIdx::T and GIdx::Ye
+    int num_comps = 6; //We only want to set GIdx::rho, GIdx::T and GIdx::Ye + GIdx::(the three spatial fluid velocity components)
     MultiFab rho_T_ye_state(state, amrex::make_alias, start_comp, num_comps);
 
     amrex::GpuArray<amrex::Real,3> dx = geom.CellSizeArray();
@@ -39,11 +39,14 @@ void set_rho_T_Ye(MultiFab& state, const Geometry& geom, const TestParams* parms
       abort();
     }
     
-    rhoYeT_input_struct rhoYeT_input_obj(rho_array_input, Ye_array_input, T_array_input);
+    rhoYeT_input_struct rhoYeT_input_obj(rho_array_input, Ye_array_input, T_array_input, vupx_array_input, vupy_array_input, vupz_array_input);
 
     for(amrex::MFIter mfi(rho_T_ye_state); mfi.isValid(); ++mfi){
         const amrex::Box& bx = mfi.validbox();
         const amrex::Array4<amrex::Real>& mf_array = rho_T_ye_state.array(mfi);
+        
+        amrex::Print() << "vupz[0] = " << vupz_array_input[0] << std::endl;
+        amrex::Print() << "vupz[1] = " << vupz_array_input[1] << std::endl;
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k){
        
@@ -58,6 +61,9 @@ void set_rho_T_Ye(MultiFab& state, const Geometry& geom, const TestParams* parms
             mf_array(i, j, k, GIdx::rho - start_comp) = rhoYeT_input_obj.rho_input[idx]; // g/ccm
             mf_array(i, j, k, GIdx::T - start_comp)   = rhoYeT_input_obj.T_input[idx]*1e6*CGSUnitsConst::eV; //erg
             mf_array(i, j, k, GIdx::Ye - start_comp)  = rhoYeT_input_obj.Ye_input[idx];
+            mf_array(i, j, k, GIdx::vupx - start_comp) = rhoYeT_input_obj.vupx_input[idx];
+            mf_array(i, j, k, GIdx::vupy - start_comp) = rhoYeT_input_obj.vupy_input[idx];
+            mf_array(i, j, k, GIdx::vupz - start_comp) = rhoYeT_input_obj.vupz_input[idx];
     
         });
     }

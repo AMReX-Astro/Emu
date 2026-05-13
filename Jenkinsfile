@@ -33,6 +33,16 @@ pipeline {
 			}
 		}
 
+		stage('MSW Relativistic'){ steps{
+				dir('Exec'){
+					sh 'python ../Scripts/initial_conditions/st0_msw_test.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_relativistic_msw_test'
+					sh 'python ../Scripts/tests/relativistic_msw_test.py'
+					sh 'rm -rf plt*'
+				}
+			}
+		}
+
 		stage('Bipolar'){ steps{
 				dir('Exec'){
 					sh 'python ../Scripts/initial_conditions/st1_bipolar_test.py'
@@ -134,6 +144,15 @@ pipeline {
 					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
 					sh 'python ../Scripts/tests/fermi_dirac_test.py'
 					sh 'rm -rf plt* *pdf rho_Ye_T.hdf5'
+				}
+			}
+		}
+
+		stage('Metric test'){ steps{
+				dir('unit_test'){
+					sh 'make'
+					sh './main3d.gnu.DEBUG.MPI.ex'
+
 				}
 			}
 		}

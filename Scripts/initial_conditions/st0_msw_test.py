@@ -28,16 +28,25 @@ nelements = len(rkey)
 # generate the grid of direction coordinates
 phat = uniform_sphere(nphi_equator)
 nparticles = len(phat)
+assert(nparticles == 2)
 
 # generate the list of particle info
+# intiliaze two neutrinos, one fully v_e, one fully v_ebar
 particles = np.zeros((nparticles,nelements))
-for ip in range(len(phat)):
-    p = particles[ip]
-    p[rkey["pupt"]] = energy_erg
-    p[rkey["pupx"]] = phat[ip,0] * energy_erg
-    p[rkey["pupy"]] = phat[ip,1] * energy_erg
-    p[rkey["pupz"]] = phat[ip,2] * energy_erg
-    p[rkey["N00_Re"]] = 1
-    p[rkey["N00_Rebar"]] = 1
+ip=0
+p = particles[ip]
+p[rkey["pupt"]] = energy_erg
+p[rkey["pupx"]] = phat[ip,0] * energy_erg
+p[rkey["pupy"]] = phat[ip,1] * energy_erg
+p[rkey["pupz"]] = phat[ip,2] * energy_erg
+p[rkey["N00_Re"]] = 1
+
+ip=1
+p = particles[ip]
+p[rkey["pupt"]] = energy_erg
+p[rkey["pupx"]] = phat[ip,0] * energy_erg
+p[rkey["pupy"]] = phat[ip,1] * energy_erg
+p[rkey["pupz"]] = phat[ip,2] * energy_erg
+p[rkey["N00_Rebar"]] = 1
 
 write_particles(np.array(particles), NF, "particle_input.dat")
