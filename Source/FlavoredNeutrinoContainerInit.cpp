@@ -326,16 +326,20 @@ InitParticles(const TestParams* parms)
 	    p.rdata(PIdx::N11_Re   ) *= scale_fac;
 	    p.rdata(PIdx::N00_Rebar) *= scale_fac;
 	    p.rdata(PIdx::N11_Rebar) *= scale_fac;
-	    p.rdata(PIdx::N00_Re_eq) *= scale_fac;
-	    p.rdata(PIdx::N11_Re_eq) *= scale_fac;
-	    p.rdata(PIdx::N00_Rebar_eq) *= scale_fac;
-	    p.rdata(PIdx::N11_Rebar_eq) *= scale_fac;
-#if NUM_FLAVORS==3
-	    p.rdata(PIdx::N22_Re   ) *= scale_fac;
-	    p.rdata(PIdx::N22_Rebar) *= scale_fac;
-	    p.rdata(PIdx::N22_Re_eq) *= scale_fac;
-	    p.rdata(PIdx::N22_Rebar_eq) *= scale_fac;
-#endif
+		#if SET_EQUILIBRIUM == 1
+            p.rdata(PIdx::N00_Re_eq) *= scale_fac;
+            p.rdata(PIdx::N11_Re_eq) *= scale_fac;
+            p.rdata(PIdx::N00_Rebar_eq) *= scale_fac;
+            p.rdata(PIdx::N11_Rebar_eq) *= scale_fac;
+		#endif
+		#if NUM_FLAVORS==3
+			p.rdata(PIdx::N22_Re   ) *= scale_fac;
+			p.rdata(PIdx::N22_Rebar) *= scale_fac;
+			#if SET_EQUILIBRIUM == 1
+				p.rdata(PIdx::N22_Re_eq) *= scale_fac;
+				p.rdata(PIdx::N22_Rebar_eq) *= scale_fac;
+			#endif
+		#endif
     
         // Set phase space volume Vphase = dx^3 * dOmega * dE^3 / 3
         // From initial conditions, Vphase gets dOmega * dE^3 / 3

@@ -798,16 +798,16 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         if(parms->IMFP_method==1 || parms->IMFP_method==2){
 
             if (parms-> set_equilibrium_distribution == 1){
-
-                f_eq[0][0]    = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N00_Re_eq   ) / p.rdata(PIdx::Vphase);
-                f_eqbar[0][0] = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N00_Rebar_eq) / p.rdata(PIdx::Vphase);
-                f_eq[1][1]    = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N11_Re_eq   ) / p.rdata(PIdx::Vphase);
-                f_eqbar[1][1] = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N11_Rebar_eq) / p.rdata(PIdx::Vphase);
-                #if NUM_FLAVORS == 3
-                f_eq[2][2]    = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N22_Re_eq   ) / p.rdata(PIdx::Vphase);
-                f_eqbar[2][2] = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N22_Rebar_eq) / p.rdata(PIdx::Vphase);
+                #if SET_EQUILIBRIUM == 1
+                    f_eq[0][0]    = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N00_Re_eq   ) / p.rdata(PIdx::Vphase);
+                    f_eqbar[0][0] = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N00_Rebar_eq) / p.rdata(PIdx::Vphase);
+                    f_eq[1][1]    = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N11_Re_eq   ) / p.rdata(PIdx::Vphase);
+                    f_eqbar[1][1] = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N11_Rebar_eq) / p.rdata(PIdx::Vphase);
+                    #if NUM_FLAVORS == 3
+                        f_eq[2][2]    = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N22_Re_eq   ) / p.rdata(PIdx::Vphase);
+                        f_eqbar[2][2] = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N22_Rebar_eq) / p.rdata(PIdx::Vphase);
                 #endif
-
+                #endif
             } else {
                 for (int i=0; i<NUM_FLAVORS; ++i) {
 
