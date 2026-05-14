@@ -146,13 +146,6 @@ void evolve_flavor(const TestParams* parms)
         amrex::Print() << "Reading NuLib table... " << std::endl;
         ReadNuLibTable(parms->nulib_table_name);
     }
-   
-    // Compute the maximum Inverse Mean Free Path (IMFP) in the domain
-    MultiFab max_IMFP_absortion;
-    max_IMFP_absortion.setVal(0.0);
-    if (parms->time_step_method == 0) {
-        max_IMFP_absortion = compute_max_IMFP(geom, state, parms);
-    }
 
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... " << std::endl;
@@ -160,7 +153,6 @@ void evolve_flavor(const TestParams* parms)
     // We store old-time and new-time data
     FlavoredNeutrinoContainer neutrinos_old(geom, dm, ba);
     FlavoredNeutrinoContainer neutrinos_new(geom, dm, ba);
-    FlavoredNeutrinoContainer neutrinos_dt(geom, dm, ba);
 
     // Track the Figure of Merit for the simulation
     // defined as number of particles advanced per microsecond of walltime
@@ -285,7 +277,7 @@ void evolve_flavor(const TestParams* parms)
         // or the final RK stage, if using Runge-Kutta.
 
         // printf("Setting next timestep... \n");
-        const Real dt = compute_dt(geom, state, neutrinos, neutrinos_dt, parms, max_IMFP_absortion);
+        const Real dt = compute_dt(geom, state, neutrinos, parms);
         integrator.set_time_step(dt);
         step++;
 
@@ -296,7 +288,7 @@ void evolve_flavor(const TestParams* parms)
     integrator.set_post_step_action(post_timestep_fun);
 
     // Get a starting timestep
-    const Real starting_dt = compute_dt(geom, state, neutrinos_old, neutrinos_dt, parms, max_IMFP_absortion);
+    const Real starting_dt = compute_dt(geom, state, neutrinos_old, parms);
     
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;

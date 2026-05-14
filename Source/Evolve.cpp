@@ -30,197 +30,6 @@ namespace GIdx
 }
 
 /**
- * @brief Computes the maximum of three values.
- *
- * This function takes three arguments of the same type and returns the maximum value among them.
- * It uses the standard library's `max` function to perform the comparison.
- *
- * @tparam T The type of the input values. Must support comparison via the `max` function.
- * @param a The first value to compare.
- * @param b The second value to compare.
- * @param c The third value to compare.
- * @return The maximum value among the three input values.
- */
-template <typename T> static inline AMREX_GPU_DEVICE T max3(T a, T b, T c) {
-  using std::max;
-  return max(max(a, b), c);
-}
-
-/**
- * @brief Computes the maximum of four values.
- *
- * This function takes four values of the same type and returns the maximum
- * value among them. It uses the standard library's `max` function to compare
- * the values.
- *
- * @tparam T The type of the values to be compared. This type must support
- *           comparison using the `max` function.
- * @param a The first value to compare.
- * @param b The second value to compare.
- * @param c The third value to compare.
- * @param d The fourth value to compare.
- * @return The maximum value among the four input values.
- */
-template <typename T> static inline AMREX_GPU_DEVICE T max4(T a, T b, T c, T d) {
-  using std::max;
-  return max(max(a, b), max(c, d));
-}
-
-/**
- * @brief Computes the maximum value among six given values.
- *
- * This function takes six input values of type T and returns the maximum
- * value among them. It utilizes the `max3` function to find the maximum
- * of three values and then compares the results of two such calls to
- * determine the overall maximum.
- *
- * @tparam T The type of the input values. It should support comparison
- * operations.
- * @param a The first value to compare.
- * @param b The second value to compare.
- * @param c The third value to compare.
- * @param d The fourth value to compare.
- * @param e The fifth value to compare.
- * @param f The sixth value to compare.
- * @return The maximum value among the six input values.
- */
-template <typename T> static inline AMREX_GPU_DEVICE T max6(T a, T b, T c, T d, T e, T f) {
-  using std::max;
-  return max(max3(a, b, c), max3(d, e, f));
-}
-
-/**
- * @brief Computes the maximum Inverse Mean Free Path (IMFP) for absorption and emission processes.
- *
- * This function calculates the maximum IMFP for absorption processes on every cell center based on the specified method in the parameters.
- * It supports two methods:
- * 1. Using IMFP values from the input file.
- * 2. Using a NuLib table to interpolate IMFP values.
- *
- * @param geom The geometry of the computational domain.
- * @param state The MultiFab containing the state variables.
- * @param parms Pointer to the TestParams structure containing the parameters for the computation.
- * @return A MultiFab containing the maximum IMFP values for each cell center.
- */
-MultiFab compute_max_IMFP(const Geometry& geom, const MultiFab& state, const TestParams* parms){
-    
-    const amrex::IntVect ngrow(0, 0, 0); // We do not need ghost cells for IMFP
-    MultiFab mf_IMFP(state.boxarray, state.DistributionMap(), 1, ngrow); //ncomp=1
-    mf_IMFP.setVal(0.0);
-
-    // If IMFP_method is 1, use the IMFPs from the input file and find the maximum absorption IMFP
-    if (parms->IMFP_method == 1) {
-        
-        // Use the IMFPs from the input file and find the maximum absorption IMFP
-        double max_IMFP_abs = std::numeric_limits<double>::lowest();
-        for (int i = 0; i < 2; ++i) {
-            for (int j = 0; j < NUM_FLAVORS; ++j) {
-                max_IMFP_abs = std::max(max_IMFP_abs, parms->IMFP_abs[i][j]);
-            }
-        }
-
-        mf_IMFP.setVal(max_IMFP_abs);
-
-    // If IMFP_method is 2, use the NuLib table to find the maximum absorption IMFP
-    } else if (parms->IMFP_method == 2)
-    {
-        //Create NuLib table object
-        using namespace nulib_private;
-        NuLib_tabulated NuLib_tabulated_obj(alltables_nulib, logrho_nulib, logtemp_nulib, 
-                                            yes_nulib, helperVarsReal_nulib, helperVarsInt_nulib);
-
-        int start_comp = GIdx::rho;
-        int num_comps = 3; //We only want to get GIdx::rho, GIdx::T and GIdx::Ye
-        MultiFab rho_T_ye_state(state, amrex::make_alias, start_comp, num_comps);
-
-        for(amrex::MFIter mfi(rho_T_ye_state); mfi.isValid(); ++mfi){
-            const amrex::Box& bx = mfi.validbox();
-            const amrex::Array4<amrex::Real>& mf_array = rho_T_ye_state.array(mfi);
-            const amrex::Array4<amrex::Real>& mf_IMFP_array = mf_IMFP.array(mfi);
-
-            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k){
-
-                //Get the values from the input arrays
-                const Real rho = mf_array(i, j, k, GIdx::rho - start_comp); // g/ccm
-                const Real T_grid = mf_array(i, j, k, GIdx::T - start_comp); //erg
-                const Real Ye = mf_array(i, j, k, GIdx::Ye - start_comp);
-
-                const Real temperature = T_grid/ (1e6*CGSUnitsConst::eV); //convert temperature from erg to MeV.
-
-                double max_IMFP_abs_local = std::numeric_limits<double>::lowest(); // Initialize to the lowest possible value
-
-                Real IMFP_abs[NUM_FLAVORS][NUM_FLAVORS]; // Neutrino inverse mean free path matrix for nucleon absortion: diag( k_e , k_u , k_t ) 
-                Real IMFP_absbar[NUM_FLAVORS][NUM_FLAVORS]; // Antineutrino inverse mean free path matrix for nucleon absortion: diag( kbar_e , kbar_u , kbar_t )
-
-                //--------------------- Values from NuLib table ---------------------------
-                int keyerr, anyerr;
-                double *helperVarsReal_nulib = NuLib_tabulated_obj.get_helperVarsReal_nulib();
-                int idx_group = NULIBVAR(idx_group);
-                //FIXME: specify neutrino energy using the following:
-                // double neutrino_energy = p.rdata(PIdx::pupt); locate energy bin using this. 
-
-                //idx_species = {0 for electron neutrino, 1 for electron antineutrino and 2 for all other heavier ones}
-                //electron neutrino: [0, 0]
-                int idx_species = 0;  
-                double absorption_opacity, scattering_opacity;
-                NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity, 
-                                                keyerr, anyerr, idx_species, idx_group);
-                if (anyerr) assert(0);
-                            
-                #ifdef DEBUG_INTERPOLATION_TABLES            
-                            printf("(Evolve.cpp) absorption_opacity[e] interpolated = %17.6g\n", absorption_opacity);
-                            printf("(Evolve.cpp) scattering_opacity[e] interpolated = %17.6g\n", scattering_opacity);
-                #endif            
-                
-                IMFP_abs[0][0] = absorption_opacity; 
-
-                //electron antineutrino: [1, 0]
-                idx_species = 1;
-                NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity,
-                                                keyerr, anyerr, idx_species, idx_group);
-                if (anyerr) assert(0);
-
-                #ifdef DEBUG_INTERPOLATION_TABLES
-                            printf("(Evolve.cpp) absorption_opacity[a] interpolated = %17.6g\n", absorption_opacity);
-                            printf("(Evolve.cpp) scattering_opacity[a] interpolated = %17.6g\n", scattering_opacity);
-                #endif
-
-                IMFP_absbar[0][0] = absorption_opacity;
-
-                //heavier ones: muon neutrino[0,1], muon antineutruino[1,1], tau neutrino[0,2], tau antineutrino[1,2]
-                idx_species = 2;
-                NuLib_tabulated_obj.get_opacities(rho, temperature, Ye, absorption_opacity, scattering_opacity,
-                                                keyerr, anyerr, idx_species, idx_group);
-                if (anyerr) assert(0);
-
-                #ifdef DEBUG_INTERPOLATION_TABLES
-                            printf("(Evolve.cpp) absorption_opacity[x] interpolated = %17.6g\n", absorption_opacity);
-                            printf("(Evolve.cpp) scattering_opacity[x] interpolated = %17.6g\n", scattering_opacity);
-                #endif
-
-                for (int i=1; i<NUM_FLAVORS; ++i) { //0->neutrino or 1->antineutrino
-                    IMFP_abs[i][i]     = absorption_opacity ;
-                    IMFP_absbar[i][i]  = absorption_opacity ;
-                }
-
-                //Calculate max of all IMFP_abs and IMFP_absbar.
-                if (NUM_FLAVORS == 2) {
-                    max_IMFP_abs_local = max4(IMFP_abs[0][0], IMFP_abs[1][1],
-                                        IMFP_absbar[0][0], IMFP_absbar[1][1]);
-                } else if (NUM_FLAVORS == 3) {
-                    max_IMFP_abs_local = max6(IMFP_abs[0][0], IMFP_abs[1][1], IMFP_abs[2][2],
-                                        IMFP_absbar[0][0], IMFP_absbar[1][1], IMFP_absbar[2][2]);
-                }
-                //-----------------------------------------------------------------------
-                mf_IMFP_array(i, j, k) = max_IMFP_abs_local;
-            });
-        }
-    }
-    // Return the MultiFab with the maximum IMFP values
-    return mf_IMFP;
-}
-
-/**
  * @brief Computes the time step size for the simulation based on various CFL factors and conditions.
  *
  * This function calculates the time step size considering translation, flavor, and collision CFL factors.
@@ -242,9 +51,7 @@ Real compute_dt(
     const Geometry& geom,
     MultiFab& state,
     FlavoredNeutrinoContainer& neutrinos,
-    FlavoredNeutrinoContainer& neutrinos_dt,
-    const TestParams* parms,
-    const MultiFab& maximum_IMFP_abs)
+    const TestParams* parms)
 {   
     // Initialize the maximum real value
     const Real max_real = std::numeric_limits<Real>::max();
@@ -273,7 +80,6 @@ Real compute_dt(
             for (MFIter mfi(state); mfi.isValid(); ++mfi) {
                 const Box& bx = mfi.validbox();
                 auto const& fab = state.array(mfi);
-                auto const& multifab_IMFP = maximum_IMFP_abs.array(mfi);
                 Real V_vac_max = FlavoredNeutrinoContainer::Vvac_max;
                 reduce_op.eval(bx, reduce_data,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
@@ -329,11 +135,6 @@ Real compute_dt(
                         dt_stupid   = parms->flavor_cfl_factor * ( PhysConst::hbar / std::abs(V_stupid  ) ) ;
                     }
 
-                    // Calculate the absorption time step
-                    if ( multifab_IMFP(i, j, k) > 0.0 ) {
-                        dt_absorption = parms->collision_cfl_factor * ( 1.0 / ( PhysConst::c * multifab_IMFP(i, j, k) ) );
-                    }
-
                     return {dt_adaptive, dt_stupid, dt_absorption};
                 });
             }
@@ -368,116 +169,8 @@ Real compute_dt(
                 dt_flavor = min(dt_flavor_stupid*parms->max_adaptive_speedup, dt_flavor_adaptive, dt_flavor_absorption);
             }
         }
-    } else if ( parms->time_step_method == 1 ){
-
-        AMREX_ASSERT_WITH_MESSAGE(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0,
-                                "Error: At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.");
-
-        deposit_to_mesh(neutrinos, state, geom);
-        state.FillBoundary(geom.periodicity());
-        neutrinos_dt.copyParticles(neutrinos, true);
-        interpolate_rhs_from_mesh(neutrinos_dt, state, geom, parms);
-
-        ReduceOps<ReduceOpMin> reduce_op;
-        ReduceData<Real> reduce_data(reduce_op);
-
-        const int lev = 0;
-        FNParIter pti_time_derivative(neutrinos_dt, lev);
-        for (FNParIter pti(neutrinos, lev); pti.isValid(); ++pti)
-        {
-
-            const int np = pti.numParticles();
-            const int np_dt = pti_time_derivative.numParticles();
-
-            FlavoredNeutrinoContainer::ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
-            FlavoredNeutrinoContainer::ParticleType* pstruct_dt = &(pti_time_derivative.GetArrayOfStructs()[0]);
-
-            reduce_op.eval(np, reduce_data,
-            [=] AMREX_GPU_DEVICE (int i) -> Real
-            {
-
-                FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
-                FlavoredNeutrinoContainer::ParticleType& p_dt = pstruct_dt[i];
-                
-                auto update_dt = [&] (int idx) {
-                    if (std::isnan(p.rdata(idx))) {
-                        amrex::Abort("Error: NaN value detected in N or Nbar.");
-                        p_dt.rdata(idx) = -1.0;
-                        return;
-                    }
-                    if (std::abs(p_dt.rdata(idx)) > 0) {
-                        if ( std::abs(p.rdata(idx)) > 1.0){
-                            p_dt.rdata(idx) = parms->flavor_cfl_factor * std::abs( p.rdata(idx) / p_dt.rdata(idx));
-                        } else{
-                            p_dt.rdata(idx) = parms->flavor_cfl_factor * std::abs( 1.0          / p_dt.rdata(idx));
-                        }
-                    }else{
-                        p_dt.rdata(idx) = max_real;
-                    }
-                };
-
-                update_dt(PIdx::N00_Rebar);
-                update_dt(PIdx::N01_Rebar);
-                update_dt(PIdx::N01_Imbar);
-                update_dt(PIdx::N11_Rebar);
-                update_dt(PIdx::N00_Re);
-                update_dt(PIdx::N01_Re);
-                update_dt(PIdx::N01_Im);
-                update_dt(PIdx::N11_Re);
-
-                #if NUM_FLAVORS == 3 
-                update_dt(PIdx::N02_Rebar);
-                update_dt(PIdx::N02_Imbar);
-                update_dt(PIdx::N12_Rebar);
-                update_dt(PIdx::N12_Imbar);
-                update_dt(PIdx::N22_Rebar);
-                update_dt(PIdx::N02_Re);
-                update_dt(PIdx::N02_Im);
-                update_dt(PIdx::N12_Re);
-                update_dt(PIdx::N12_Im);
-                update_dt(PIdx::N22_Re);
-                #endif
-
-                Real min_dt = std::min({
-                    p_dt.rdata(PIdx::N00_Rebar),
-                    p_dt.rdata(PIdx::N01_Rebar),
-                    p_dt.rdata(PIdx::N01_Imbar),
-                    p_dt.rdata(PIdx::N11_Rebar),
-                    p_dt.rdata(PIdx::N00_Re),
-                    p_dt.rdata(PIdx::N01_Re),
-                    p_dt.rdata(PIdx::N01_Im),
-                    p_dt.rdata(PIdx::N11_Re)
-                });
-
-                #if NUM_FLAVORS == 3 
-                min_dt = std::min({
-                    min_dt,
-                    p_dt.rdata(PIdx::N02_Rebar),
-                    p_dt.rdata(PIdx::N02_Imbar),
-                    p_dt.rdata(PIdx::N12_Rebar),
-                    p_dt.rdata(PIdx::N12_Imbar),
-                    p_dt.rdata(PIdx::N22_Rebar),
-                    p_dt.rdata(PIdx::N02_Re),
-                    p_dt.rdata(PIdx::N02_Im),
-                    p_dt.rdata(PIdx::N12_Re),
-                    p_dt.rdata(PIdx::N12_Im),
-                    p_dt.rdata(PIdx::N22_Re)
-                });
-                #endif
-                return min_dt;
-
-            });
-
-            ++pti_time_derivative;
-        }
-
-        // Extract the reduced value
-        Real qke_dt = amrex::get<0>(reduce_data.value());
-
-        // Reduce across MPI ranks
-        ParallelDescriptor::ReduceRealMin(qke_dt);
-
-        dt_flavor = qke_dt;
+    } else {
+        amrex::Error("Time step method not implemented");
     }
 
     if (dt_flavor < 0.0) {
