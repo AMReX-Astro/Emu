@@ -77,5 +77,9 @@ Vphase = ( 4.0 * np.pi / n_directions ) * ( ( energies_top_erg ** 3 - energies_b
 # Save V_phase in the last column of the particle array
 particles[:,-1] = Vphase
 
+# Add header labels as first row
+header = np.array(list(rkey.keys()), dtype=object)
+particles_with_header = np.vstack([header, particles])
+
 # Write particles initial condition file
-write_particles(np.array(particles), NF, "particle_input.dat")
+write_particles(particles_with_header, "number_of_flavors = "+str(NF), "particle_input.dat")
