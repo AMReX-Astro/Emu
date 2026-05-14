@@ -32,4 +32,12 @@ fnu[:,1:,:] = nnu[:,1:,np.newaxis] * fnux[np.newaxis,np.newaxis,:]
 
 particles = moment_interpolate_particles(nphi_equator, nnu, fnu, energy_erg, uniform_sphere, minerbo_interpolate) # [particle, variable]
 
-write_particles(np.array(particles), NF, "particle_input.dat")
+# Get variable keys
+rkey, ikey = amrex.get_particle_keys(NF, ignore_pos=True)
+
+# Add header labels as first row
+header = np.array(list(rkey.keys()), dtype=object)
+particles_with_header = np.vstack([header, particles])
+
+# Write particles initial condition file
+write_particles(particles_with_header, "number_of_flavors = "+str(NF), "particle_input.dat")

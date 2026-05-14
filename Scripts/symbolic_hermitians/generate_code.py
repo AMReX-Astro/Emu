@@ -14,6 +14,7 @@ parser.add_argument("-eh", "--emu_home", type=str, default=".", help="Path to Em
 parser.add_argument("-c", "--clean", action="store_true", help="Clean up any previously generated files.")
 parser.add_argument("-rn", "--rhs_normalize", action="store_true", help="Normalize F when applying the RHS update F += dt * dFdt (limits to 2nd order in time).")
 parser.add_argument("-nm", "--num_moments", type=int, default=2, help="Number of moments to compute.")
+parser.add_argument("--set_equilibrium", type=int, choices=[0,1], default=0, help="If 1, set equilibrium matrix elements to initial values; if 0, do not.")
 
 args = parser.parse_args()
 
@@ -102,10 +103,11 @@ if __name__ == "__main__":
             A = HermitianMatrix(args.N, v+"{}{}_{}"+t)
             code += A.header()
 
-    for t in tails:
-        for v in vars:
-            A = HermitianMatrix(args.N, v+"{}{}_{}"+t+"_eq")
-            code += A.header()
+    if args.set_equilibrium:
+        for t in tails:
+            for v in vars:
+                A = HermitianMatrix(args.N, v+"{}{}_{}"+t+"_eq")
+                code += A.header()
 
     code += ["TrHN"]
     code += ["Vphase"]
@@ -535,11 +537,11 @@ if __name__ == "__main__":
         code.append(["p.rdata(PIdx::TrHN) += ("+sympy.cxxcode(sympy.simplify(TrHN))+");"])
 
     # Looping over neutrinos(tail: no tail) and antineutrinos(tail: bar)
-    for t in tails:
-
-        N_equilibrium = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+"_eq)") # Neutrino number matrix
-        N_equilibrium.H = N_equilibrium.H * 0.0
-        code.append(N_equilibrium.code())
+    if args.set_equilibrium:
+        for t in tails:
+            N_equilibrium = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+"_eq)") # Neutrino number matrix
+            N_equilibrium.H = N_equilibrium.H * 0.0
+            code.append(N_equilibrium.code())
 
     code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))

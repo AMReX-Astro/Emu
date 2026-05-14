@@ -46,4 +46,9 @@ for ip in range(len(phat)):
     p[rkey["N00_Re"]] = ndens_per_particle * (1. + u[2])
     p[rkey["N00_Rebar"]] = ndens_per_particle * (1. - u[2])
 
-write_particles(np.array(particles), NF, "particle_input.dat")
+# Add header labels as first row
+header = np.array(list(rkey.keys()), dtype=object)
+particles_with_header = np.vstack([header, particles])
+
+# Write particles initial condition file
+write_particles(particles_with_header, "number_of_flavors = "+str(NF), "particle_input.dat")
