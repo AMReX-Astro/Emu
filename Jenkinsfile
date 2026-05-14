@@ -90,8 +90,9 @@ pipeline {
 			}
 		}
 
-		stage('Collisions flavor instability'){ steps{
+		stage('Collisional flavor instability'){ steps{
 				dir('Exec'){
+					sh 'make realclean && make generate NUM_FLAVORS=2 SET_EQUILIBRIUM=1 && make -j NUM_FLAVORS=2'
 					sh 'python ../Scripts/initial_conditions/st8_coll_inst_test.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_collisional_instability_test'
 					sh 'python ../Scripts/data_reduction/reduce_data.py'
@@ -103,6 +104,7 @@ pipeline {
 		}
 		stage('BC periodic empty'){ steps{
 				dir('Exec'){
+					sh 'make realclean && make generate NUM_FLAVORS=2 && make -j NUM_FLAVORS=2'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_bc_periodic_init'
 					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
 					sh 'python ../Scripts/tests/bc_empty_init_test.py'
