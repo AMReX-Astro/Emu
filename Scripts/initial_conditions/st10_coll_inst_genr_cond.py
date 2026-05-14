@@ -87,5 +87,9 @@ for i in range(len(energies_center_erg)):
 # Reshape the particles array
 particles = particles.reshape(len(energies_center_erg) * len(phat), n_variables)
 
+# Add header labels as first row
+header = np.array(list(rkey.keys()), dtype=object)
+particles_with_header = np.vstack([header, particles])
+
 # Write particles initial condition file
-write_particles(np.array(particles), NF, "particle_input.dat")
+write_particles(particles_with_header, "number_of_flavors = "+str(NF), "particle_input.dat")

@@ -49,4 +49,9 @@ p[rkey["pupy"]] = phat[ip,1] * energy_erg
 p[rkey["pupz"]] = phat[ip,2] * energy_erg
 p[rkey["N00_Rebar"]] = 1
 
-write_particles(np.array(particles), NF, "particle_input.dat")
+# Add header labels as first row
+header = np.array(list(rkey.keys()), dtype=object)
+particles_with_header = np.vstack([header, particles])
+
+# Write particles initial condition file
+write_particles(particles_with_header, "number_of_flavors = "+str(NF), "particle_input.dat")
