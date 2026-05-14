@@ -49,8 +49,8 @@ namespace GIdx
  */
 Real compute_dt(
     const Geometry& geom,
-    MultiFab& state,
-    FlavoredNeutrinoContainer& neutrinos,
+    const MultiFab& state,
+    const FlavoredNeutrinoContainer& neutrinos,
     const TestParams* parms)
 {   
     // Initialize the maximum real value
