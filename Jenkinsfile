@@ -105,6 +105,7 @@ pipeline {
 		stage('BC periodic empty'){ steps{
 				dir('Exec'){
 					sh 'make realclean; make generate NUM_FLAVORS=2; make -j NUM_FLAVORS=2'
+					sh 'python ../Scripts/initial_conditions/st11_periodic_empty_bc.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_bc_periodic_init'
 					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
 					sh 'python ../Scripts/tests/bc_empty_init_test.py'
