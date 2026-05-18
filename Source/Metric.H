@@ -55,14 +55,14 @@ public:
     
 
 
-    //The metric 
-    virtual  Mat4 gmunu(const EParticle& p) const=0;
+    //The metric
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Mat4 gmunu(const EParticle& p) const=0;
 
     //det of the metric
-    virtual  amrex::Real detg(const EParticle& p) const=0;
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual amrex::Real detg(const EParticle& p) const=0;
 
     //dot product of two 4-vectors
-    amrex::Real dot(const FourVec& a,
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real dot(const FourVec& a,
                             const FourVec& b,
                             const EParticle& p) const
 
@@ -128,7 +128,7 @@ public:
     }
 
 
-    virtual amrex::Real vol(amrex::Real x1_max,amrex::Real x1_min,amrex::Real x2_max,amrex::Real x2_min,amrex::Real x3_max,amrex::Real x3_min) const = 0;
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual amrex::Real vol(amrex::Real x1_max,amrex::Real x1_min,amrex::Real x2_max,amrex::Real x2_min,amrex::Real x3_max,amrex::Real x3_min) const = 0;
                    
 };
 
@@ -192,7 +192,7 @@ public:
         return J;
     }
     
-    Mat4 gmunu(const EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4 gmunu(const EParticle& p) const override
     {
         Mat4 g{};
         for (int mu = 0; mu < 4; ++mu) {
@@ -205,7 +205,7 @@ public:
         return g;
     }
 
-    amrex::Real detg(const EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(const EParticle& p) const override
     {
         return -1.0;
     }
@@ -225,12 +225,12 @@ public:
         return Gamma;
     }
     
-    amrex::Real vol(amrex::Real x1_max, amrex::Real x1_min, amrex::Real x2_max, amrex::Real x2_min, amrex::Real x3_max, amrex::Real x3_min) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real vol(amrex::Real x1_max, amrex::Real x1_min, amrex::Real x2_max, amrex::Real x2_min, amrex::Real x3_max, amrex::Real x3_min) const override
     {
         const amrex::Real v = (x1_max - x1_min)*(x2_max-x2_min)*(x3_max-x3_min);
 
         return v;
-        
+
     }
 
 };
@@ -367,8 +367,8 @@ public:
     }
  
     
-    Mat4 gmunu(const EParticle& p) const override
-    {   
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4 gmunu(const EParticle& p) const override
+    {
         const amrex::Real x = p.rdata(PIdx::x);
         const amrex::Real y = p.rdata(PIdx::y);
         const amrex::Real r = std::sqrt(x*x + y*y);
@@ -384,12 +384,12 @@ public:
         return g;
     }
 
-    amrex::Real detg(const EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(const EParticle& p) const override
     {
         const amrex::Real x = p.rdata(PIdx::x);
         const amrex::Real y = p.rdata(PIdx::y);
         const amrex::Real r = std::sqrt(x*x + y*y);
-          
+
         return -(r * r);
     }
 
@@ -416,12 +416,12 @@ public:
         return Gamma;
     }
 
-    amrex::Real vol(amrex::Real x1_max,amrex::Real x1_min,amrex::Real x2_max,amrex::Real x2_min,amrex::Real x3_max,amrex::Real x3_min) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real vol(amrex::Real x1_max,amrex::Real x1_min,amrex::Real x2_max,amrex::Real x2_min,amrex::Real x3_max,amrex::Real x3_min) const override
     {
         const amrex::Real v = (x1_max*x1_max - x1_min*x1_min)*(x2_max-x2_min)*(x3_max-x3_min) / 2.0;
 
         return v;
-        
+
     }
 
     
@@ -572,8 +572,8 @@ public:
     }
  
     
-    Mat4 gmunu(const EParticle& p) const override
-    {   
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4 gmunu(const EParticle& p) const override
+    {
         const amrex::Real x = p.rdata(PIdx::x);
         const amrex::Real y = p.rdata(PIdx::y);
         const amrex::Real z = p.rdata(PIdx::z);
@@ -591,14 +591,14 @@ public:
         return g;
     }
 
-    amrex::Real detg(const EParticle& p) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(const EParticle& p) const override
     {
         const amrex::Real x = p.rdata(PIdx::x);
         const amrex::Real y = p.rdata(PIdx::y);
         const amrex::Real z = p.rdata(PIdx::z);
         const amrex::Real r = std::sqrt(x*x + y*y + z*z);
         const amrex::Real theta = std::acos(z/r);
-          
+
         return -std::pow(r,4)*std::sin(theta)*std::sin(theta);
     }
 
@@ -635,12 +635,12 @@ public:
         return Gamma;
     }
     
-    amrex::Real vol(amrex::Real x1_max,amrex::Real x1_min,amrex::Real x2_max,amrex::Real x2_min,amrex::Real x3_max,amrex::Real x3_min) const override
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real vol(amrex::Real x1_max,amrex::Real x1_min,amrex::Real x2_max,amrex::Real x2_min,amrex::Real x3_max,amrex::Real x3_min) const override
     {
         const amrex::Real v = (std::pow(x1_max,3.0) - std::pow(x1_min,3.0))*(std::cos(x2_min)-std::cos(x2_max))*(x3_max-x3_min) / 3.0;
 
         return v;
-        
+
     }
     
 

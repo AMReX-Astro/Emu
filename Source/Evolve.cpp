@@ -297,15 +297,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
                                         yes_nulib, helperVarsReal_nulib, helperVarsInt_nulib);
 
     NuLib_energies NuLib_energies_obj(energy_bottom, energy_top);
-    
-    //getting the rhs of the geodesic equations in selected coordinate system    
-    Metric* metric;
-    if      (parms->coord_sys == 0) *metric = CartesianMetric();
-    else if (parms->coord_sys == 1) *metric = CylindricalMetric();
-    else if (parms->coord_sys == 2) *metric = SphericalMetric();
-    else {
-      amrex::Abort("Invalid coordinate_system. Use 0=Cartesian, 1=Cylindrical, 2=Spherical.");
-    }
 
 
     amrex::MeshToParticle(neutrinos_rhs, state, 0,
@@ -612,8 +603,18 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         }
         // Compute the time derivative of \( N_{ab} \) using the Quantum Kinetic Equations (QKE).
         #include "generated_files/Evolve.cpp_dfdt_fill"
-        
-	GeodesicArray geodesic_rhs = metric->geodesic_rhs(p);
+
+
+    //getting the rhs of the geodesic equations in selected coordinate system    
+    
+    GeodesicArray geodesic_rhs;
+
+    if      (parms->coord_sys == 0)  {CartesianMetric metric; geodesic_rhs= metric.geodesic_rhs(p);}
+    else if (parms->coord_sys == 1)  {CylindricalMetric metric; geodesic_rhs= metric.geodesic_rhs(p);}
+    else if (parms->coord_sys == 2)  {SphericalMetric metric; geodesic_rhs= metric.geodesic_rhs(p);}
+    else {
+      amrex::Abort("Invalid coordinate_system. Use 0=Cartesian, 1=Cylindrical, 2=Spherical.");
+    }    
 
 	// set the dx/dt values
         p.rdata(PIdx::time) = geodesic_rhs[0];
