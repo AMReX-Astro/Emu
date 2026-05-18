@@ -32,6 +32,7 @@ import glob
 mpl.rcParams['font.size'] = 22
 mpl.rcParams['font.family'] = 'serif'
 mpl.rc('text', usetex=False)
+mpl.use('pdf')
 
 # Tick settings
 mpl.rcParams['xtick.major.width'] = 2
@@ -312,17 +313,36 @@ if __name__ == "__main__":
     rel_error_j = np.abs( bj - b_lsa ) / np.abs( ( bj + b_lsa ) / 2 )
     print(f"{rel_error_j} ---> relative erroror in Julien script")
 
+    timefactor = 1e-9
+
     # Plotting Julien, EMU and Lucas LSA data
-    fig, ax = plt.subplots()
-    ax.plot(t, N_avg_mag[:,0,1], label = r'$n_{eu}$ EMU')
-    ax.plot(t[l1:l2], N_avg_mag[:,0,1][l1:l2],  label = f'Im$(\Omega_{{eu}})$ EMU : {b:.2e} s$^{{-1}}$',  linestyle = 'dashed')
-    ax.plot(time, N_eu_julien, label = r'$n_{eu}$ Julien script')
-    ax.plot(time[p1:p2], N_eu_julien[p1:p2], label = f'Im$(\Omega_{{eu}})$ Julien F. : {bj:.2e} s$^{{-1}}$',  linestyle = 'dashed')
-    ax.plot(time[p1:p2], 1e23*np.exp(ImOmega_Lucas_LSA*time[p1:p2]), label = f"Im$(\Omega_{{eu}})$ Luke J. (LSA) : {ImOmega_Lucas_LSA:.2e} s$^{{-1}}$", linestyle = 'dashed')
-    ax.set_xlabel(r'$t \ (\mathrm{s})$')
-    ax.set_ylabel(r'$n_{eu}$ (cm$^{-3}$)')
-    ax.set_title(f"Collisional flavor instability test")
-    leg = ax.legend(framealpha=0.0, ncol=1, fontsize=12)
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(t/timefactor, N_avg_mag[:,0,1], label = r'$n_{eu}$ [EMU code]', lw=3)
+    ax.plot(time/timefactor, N_eu_julien, label = r'$n_{eu}$ [Julien F. code]', lw=3)
+
+    # Format b in scientific notation as x.xx x10^power
+    b_exp = int(np.floor(np.log10(np.abs(b)))) if b != 0 else 0
+    b_base = b / 10**b_exp if b != 0 else 0
+    b_label = rf'Im$(\Omega_{{eu}}) = {b_base:.2f} \times 10^{{{b_exp}}}$ s$^{{-1}}$ [EMU code]'
+    ax.plot(t[l1:l2]/timefactor, N_avg_mag[:,0,1][l1:l2],  label = b_label,  linestyle = 'dashed', color='black', lw=3)
+
+    # Format bj in scientific notation as x.xx x10^power
+    bj_exp = int(np.floor(np.log10(np.abs(bj)))) if bj != 0 else 0
+    bj_base = bj / 10**bj_exp if bj != 0 else 0
+    bj_label = rf'Im$(\Omega_{{eu}}) = {bj_base:.2f} \times 10^{{{bj_exp}}}$ s$^{{-1}}$ [Julien F. code]'
+    ax.plot(time[p1:p2]/timefactor, N_eu_julien[p1:p2], label=bj_label,  linestyle='dashed', lw=3)
+
+    # Format ImOmega_Lucas_LSA in scientific notation as x.xx x10^power
+    ImOmega_Lucas_LSA_exp = int(np.floor(np.log10(np.abs(ImOmega_Lucas_LSA)))) if ImOmega_Lucas_LSA != 0 else 0
+    ImOmega_Lucas_LSA_base = ImOmega_Lucas_LSA / 10**ImOmega_Lucas_LSA_exp if ImOmega_Lucas_LSA != 0 else 0
+    ImOmega_Lucas_LSA_label = rf'Im$(\Omega_{{eu}}) = {ImOmega_Lucas_LSA_base:.2f} \times 10^{{{ImOmega_Lucas_LSA_exp}}}$ s$^{{-1}}$ [PRL 130, 191001]'
+    ax.plot(time[p1:p2]/timefactor, 1e23*np.exp(ImOmega_Lucas_LSA*time[p1:p2]), label = rf"Im$(\Omega_{{eu}}) = {ImOmega_Lucas_LSA:.2e}$ s$^{{-1}}$ [PRL 130, 191001]", linestyle = 'dashed', lw=3)
+
+    ax.set_xlabel(r'$t \ [10^{-9}\,\mathrm{s}]$')
+    ax.set_ylabel(r'$n_{eu}$ [cm$^{-3}$]')
+    ax.set_xlim(0.0, 5.0)
+    # ax.set_title(f"Collisional flavor instability test")
+    leg = ax.legend(framealpha=0.0, ncol=1, fontsize=15)
     apply_custom_settings(ax, leg, log_scale_y=True)
     plt.tight_layout()
     fig.savefig('EMU_Julien_LucasLSA_Neu.pdf', bbox_inches='tight')
