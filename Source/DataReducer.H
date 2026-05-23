@@ -36,7 +36,8 @@ public:
   WriteReducedData0D(const amrex::Geometry& geom,
 		     const MultiFab& state,
 		     const FlavoredNeutrinoContainer& neutrinos,
-		     amrex::Real time, int step, amrex::Real dt);
+		     amrex::Real time, int step, amrex::Real dt,
+		     amrex::Real scaled_error);
 };
 
 #endif

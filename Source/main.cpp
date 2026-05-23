@@ -248,7 +248,7 @@ void evolve_flavor(const TestParams* parms)
         // since Redistribute() applies periodic boundary conditions.
         neutrinos.SyncLocation(Sync::PositionToCoordinate);
 
-	rd.WriteReducedData0D(geom, state, neutrinos, time, step+1, integrator.get_previous_time_step());
+	rd.WriteReducedData0D(geom, state, neutrinos, time, step+1, integrator.get_previous_time_step(), integrator.get_scaled_error());
 
         run_fom += neutrinos.TotalNumberOfParticles();
 
@@ -278,6 +278,104 @@ void evolve_flavor(const TestParams* parms)
     // Attach our RHS and post timestep hooks to the integrator
     integrator.set_rhs(source_fun);
     integrator.set_post_step_action(post_timestep_fun);
+
+    // Custom error norm for adaptive time stepping.
+    //
+    // Each particle attribute is grouped with a physically meaningful
+    // reference scale that normalizes its dimensions. abs_tol and rel_tol
+    // are both dimensionless and serve their standard roles applied to
+    // the rescaled (by reference) error:
+    //
+    //     scale_c = reference_scale_g * abs_tol + rel_tol * max(|old_c|, |new_c|)
+    //
+    // Reference scales by group:
+    //   x, y, z                       --> c * dt (light-crossing of one step)
+    //   pupx, pupy, pupz, pupt        --> particle's own pupt
+    //   density matrix (nu, nubar)    --> trace of that matrix
+    //   time, TrHN, Vphase            --> skipped
+    //
+    // Using c*dt for positions keeps the scale finite, coordinate-system
+    // independent, and adapts naturally with the integrator's chosen dt.
+    integrator.set_error_norm([&integrator](FlavoredNeutrinoContainer& error,
+                                            FlavoredNeutrinoContainer& S_old,
+                                            FlavoredNeutrinoContainer& S_new,
+                                            Real abs_tol, Real rel_tol) -> Real {
+        using TParIter = amrex::ParIter<PIdx::nattribs, 0, 0, 0>;
+        using ParticleType = amrex::Particle<PIdx::nattribs, 0>;
+
+        constexpr int Nflav = NUM_FLAVORS;
+        constexpr int nattribs_per_matrix = Nflav * Nflav;
+        constexpr int nu_start    = static_cast<int>(PIdx::N00_Re);
+        constexpr int nubar_start = static_cast<int>(PIdx::N00_Rebar);
+
+        const Real ref_position = PhysConst::c * integrator.get_previous_time_step();
+
+        Real result = 0.0;
+        int lev = 0;
+        TParIter pt_err(error, lev);
+        TParIter pt_old(S_old, lev);
+        TParIter pt_new(S_new, lev);
+
+        for (; pt_err.isValid(); ++pt_err, ++pt_old, ++pt_new) {
+            const int np = pt_err.numParticles();
+            if (np == 0) continue;
+            const ParticleType* p_err = &(pt_err.GetArrayOfStructs()[0]);
+            const ParticleType* p_old = &(pt_old.GetArrayOfStructs()[0]);
+            const ParticleType* p_new = &(pt_new.GetArrayOfStructs()[0]);
+
+            Real tile_max = amrex::Reduce::Max<Real>(np,
+                [=] AMREX_GPU_DEVICE (int i) -> Real {
+                    // Trace of each density matrix: sum of diagonal Re components.
+                    // The k-th diagonal of an Nflav x Nflav Hermitian matrix packed
+                    // (Re,Im) row-by-row sits at offset k*(2*Nflav - k).
+                    Real TrN_old = 0.0, TrN_new = 0.0;
+                    Real TrNbar_old = 0.0, TrNbar_new = 0.0;
+                    for (int k = 0; k < Nflav; ++k) {
+                        int diag = k * (2*Nflav - k);
+                        TrN_old    += p_old[i].rdata(nu_start    + diag);
+                        TrN_new    += p_new[i].rdata(nu_start    + diag);
+                        TrNbar_old += p_old[i].rdata(nubar_start + diag);
+                        TrNbar_new += p_new[i].rdata(nubar_start + diag);
+                    }
+
+                    const Real ref_nu    = amrex::max(std::abs(TrN_old),    std::abs(TrN_new));
+                    const Real ref_nubar = amrex::max(std::abs(TrNbar_old), std::abs(TrNbar_new));
+                    const Real ref_p     = amrex::max(std::abs(p_old[i].rdata(PIdx::pupt)),
+                                                      std::abs(p_new[i].rdata(PIdx::pupt)));
+
+                    // scale_c = reference_scale * abs_tol + rel_tol * max(|old_c|, |new_c|)
+                    auto scaled_error = [&] (int c, Real reference_scale) {
+                        const Real maxval = amrex::max(std::abs(p_old[i].rdata(c)),
+                                                       std::abs(p_new[i].rdata(c)));
+                        const Real scale = reference_scale * abs_tol + rel_tol * maxval;
+                        return std::abs(p_err[i].rdata(c)) / scale;
+                    };
+
+                    Real val = 0.0;
+                    val = amrex::max(val, scaled_error(PIdx::x,    ref_position));
+                    val = amrex::max(val, scaled_error(PIdx::y,    ref_position));
+                    val = amrex::max(val, scaled_error(PIdx::z,    ref_position));
+                    val = amrex::max(val, scaled_error(PIdx::pupx, ref_p));
+                    val = amrex::max(val, scaled_error(PIdx::pupy, ref_p));
+                    val = amrex::max(val, scaled_error(PIdx::pupz, ref_p));
+                    val = amrex::max(val, scaled_error(PIdx::pupt, ref_p));
+                    for (int c = 0; c < nattribs_per_matrix; ++c) {
+                        val = amrex::max(val, scaled_error(nu_start    + c, ref_nu));
+                        val = amrex::max(val, scaled_error(nubar_start + c, ref_nubar));
+                    }
+                    return val;
+                },
+                Real(0.0));
+            result = amrex::max(result, tile_max);
+        }
+
+        amrex::ParallelDescriptor::ReduceRealMax(result);
+        return result;
+    });
+
+    // Enable adaptive error control before the first step so the error norm
+    // runs on step 1; post_timestep_fun re-enables it after every step.
+    integrator.set_adaptive_step();
 
     // Get a starting timestep
     const Real starting_dt = compute_dt(geom, state, neutrinos_old, parms);
