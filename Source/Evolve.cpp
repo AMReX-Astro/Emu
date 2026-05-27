@@ -52,6 +52,10 @@ Real compute_dt(
     const FlavoredNeutrinoContainer& neutrinos,
     const TestParams* parms)
 {
+    // If the time step method is 1, return the minimum time step
+    if (parms->time_step_method == 1) {
+        return parms->minimum_time_step;
+    }
 
     AMREX_ASSERT_WITH_MESSAGE(parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0 || parms->collision_cfl_factor > 0.0,
         "Error: At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.");
