@@ -202,11 +202,10 @@ Real compute_dt(
     return dt;
 }
 
-void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state, const Geometry& geom)
+void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state, const Geometry& geom, const int coord_sys)
 {
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
-    const Real inv_cell_volume = dxi[0]*dxi[1]*dxi[2];
 
     // Create an alias of the MultiFab so ParticleToMesh only erases the quantities
     // that will be set by the neutrinos.
@@ -256,6 +255,23 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
         for (int k = sz.first(); k <= sz.last(); ++k) {
             for (int j = sy.first(); j <= sy.last(); ++j) {
                 for (int i = sx.first(); i <= sx.last(); ++i) {
+                    
+                    // getting the upper and lower bounds of the cell 
+                    const amrex::Real x1_lo = plo[0] +  i    / dxi[0];
+                    const amrex::Real x1_hi = plo[0] + (i+1) / dxi[0];
+                    const amrex::Real x2_lo = plo[1] +  j    / dxi[1];
+                    const amrex::Real x2_hi = plo[1] + (j+1) / dxi[1];
+                    const amrex::Real x3_lo = plo[2] +  k    / dxi[2];
+                    const amrex::Real x3_hi = plo[2] + (k+1) / dxi[2];
+                    
+                    //calculating cell volume 
+                    amrex::Real V_cell;
+                    if      (coord_sys == 0) { CartesianMetric   m; V_cell = m.vol(x1_hi,x1_lo,x2_hi,x2_lo,x3_hi,x3_lo); }
+                    else if (coord_sys == 1) { CylindricalMetric m; V_cell = m.vol(x1_hi,x1_lo,x2_hi,x2_lo,x3_hi,x3_lo); }
+                    else                     { SphericalMetric   m; V_cell = m.vol(x1_hi,x1_lo,x2_hi,x2_lo,x3_hi,x3_lo); }
+
+                    const amrex::Real inv_cell_volume = 1.0 / V_cell;
+
                     const amrex::Real vol = sx(i) * sy(j) * sz(k) * inv_cell_volume;
                     // Deposit each particle N component into the matching component of
                     // every grid moment block, for neutrinos (nunubar=0) and antineutrinos (nunubar=1).
@@ -271,6 +287,7 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
                             }
                         }
                     }
+
                 }
             }
         }
