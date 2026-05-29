@@ -101,9 +101,6 @@ set_equilibrium_distribution = 0
 #################
 read_rho_T_Ye_from_table = 1
 background_rho_Ye_T_table_name = "./rho_Ye_T.hdf5"
-vupx = 0.0
-vupy = 0.0
-vupz = 0.0
 
 #################
 # Blackhole
