@@ -70,10 +70,25 @@ volume = 1e5**3 # ccm
 for label in rkey:
 
     print(f'Writing {label} to particles')
-    particles[:, rkey[label]] = data[label]
+    if label in data:
+        particles[:, rkey[label]] = data[label]
+    else:
+        print(f'{label} not found in data and setting to 0.0')
+        particles[:, rkey[label]] = 0.0
     
     if (label.startswith('N') | label.startswith('Vphase')):
         particles[:, rkey[label]] /= volume
 
+# Setting the equilibrium number densities equal to the initial number densities
+if "N00_Re_eq" in rkey:
+    for nu_nubar, suffix in zip(range(2), ["","bar"]):
+        for flavor in range(NF):
+            fvarname = "N"+str(flavor)+str(flavor)+"_Re"+suffix
+            particles[:, rkey[fvarname+"_eq"]] = particles[:, rkey[fvarname]]
+
+# Add header labels as first row
+header = np.array(list(rkey.keys()), dtype=object)
+particles_with_header = np.vstack([header, particles])
+
 # Write particles initial condition file
-write_particles(np.array(particles), NF, "particle_input.dat")
+write_particles(particles_with_header, "number_of_flavors = "+str(NF), "particle_input.dat")
