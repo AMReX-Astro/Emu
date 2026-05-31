@@ -86,6 +86,14 @@ if "N00_Re_eq" in rkey:
             fvarname = "N"+str(flavor)+str(flavor)+"_Re"+suffix
             particles[:, rkey[fvarname+"_eq"]] = particles[:, rkey[fvarname]]
 
+# Set initial conditions to vacuum
+set_vacuum_initial_conditions = 0
+if set_vacuum_initial_conditions == 1:
+    for nu_nubar, suffix in zip(range(2), ["","bar"]):
+        for flavor in range(NF):
+            fvarname = "N"+str(flavor)+str(flavor)+"_Re"+suffix
+            particles[:, rkey[fvarname]] = 0.0
+
 # Add header labels as first row
 header = np.array(list(rkey.keys()), dtype=object)
 particles_with_header = np.vstack([header, particles])
