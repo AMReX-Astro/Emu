@@ -338,16 +338,21 @@ void evolve_flavor(const TestParams* parms)
                         TrNbar_new += p_new[i].rdata(nubar_start + diag);
                     }
 
-                    const Real ref_nu    = amrex::max(std::abs(TrN_old),    std::abs(TrN_new));
-                    const Real ref_nubar = amrex::max(std::abs(TrNbar_old), std::abs(TrNbar_new));
-                    const Real ref_p     = amrex::max(std::abs(p_old[i].rdata(PIdx::pupt)),
-                                                      std::abs(p_new[i].rdata(PIdx::pupt)));
+                    // Combined trace reference: a particle that is pure-nu still measures
+                    // its nubar block against the nu trace (and vice versa), so the
+                    // reference scale for the density matrix block stays nonzero.
+                    const Real ref_NN = amrex::max(
+                        amrex::max(std::abs(TrN_old),    std::abs(TrN_new)),
+                        amrex::max(std::abs(TrNbar_old), std::abs(TrNbar_new)));
+                    const Real ref_p  = amrex::max(std::abs(p_old[i].rdata(PIdx::pupt)),
+                                                   std::abs(p_new[i].rdata(PIdx::pupt)));
 
                     // scale_c = reference_scale * abs_tol + rel_tol * max(|old_c|, |new_c|)
                     auto scaled_error = [&] (int c, Real reference_scale) {
                         const Real maxval = amrex::max(std::abs(p_old[i].rdata(c)),
                                                        std::abs(p_new[i].rdata(c)));
                         const Real scale = reference_scale * abs_tol + rel_tol * maxval;
+                        if (scale == Real(0.0)) return Real(0.0);
                         return std::abs(p_err[i].rdata(c)) / scale;
                     };
 
@@ -360,8 +365,8 @@ void evolve_flavor(const TestParams* parms)
                     val = amrex::max(val, scaled_error(PIdx::pupz, ref_p));
                     val = amrex::max(val, scaled_error(PIdx::pupt, ref_p));
                     for (int c = 0; c < nattribs_per_matrix; ++c) {
-                        val = amrex::max(val, scaled_error(nu_start    + c, ref_nu));
-                        val = amrex::max(val, scaled_error(nubar_start + c, ref_nubar));
+                        val = amrex::max(val, scaled_error(nu_start    + c, ref_NN));
+                        val = amrex::max(val, scaled_error(nubar_start + c, ref_NN));
                     }
                     return val;
                 },
