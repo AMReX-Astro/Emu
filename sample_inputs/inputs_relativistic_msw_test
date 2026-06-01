@@ -1,6 +1,6 @@
 cfl_factor = 0.5
-flavor_cfl_factor = 0.1
-collision_cfl_factor = 1e-3
+flavor_cfl_factor = 3
+collision_cfl_factor = 10
 
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 1
@@ -9,7 +9,13 @@ perturbation_type = 0
 perturbation_amplitude = 0
 
 integration.type = 1
-integration.rk.type = 4
+integration.rk.type = 5          # DormandPrince (0=User, 1=ForwardEuler, 2=Trapezoid, 3=SSPRK3, 4=RK4, 5=DormandPrince)
+integration.use_adaptive_time_step = 1
+integration.abs_tol = 0.0
+integration.rel_tol = 1.0e-9
+integration.rk.safety_factor = 0.9
+integration.rk.min_factor = 0.1
+integration.rk.max_factor = 5.0
 
 # Domain size in 3D index space
 ncell = (1, 1, 1)
