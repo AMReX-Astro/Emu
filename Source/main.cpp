@@ -291,7 +291,14 @@ void evolve_flavor(const TestParams* parms)
     // Reference scales by group:
     //   x, y, z                       --> c * dt (light-crossing of one step)
     //   pupx, pupy, pupz, pupt        --> particle's own pupt
-    //   density matrix (nu, nubar)    --> trace of that matrix
+    //   density matrix off-diag (j,k) --> sqrt(N_jj * N_kk), the geometric mean
+    //                                     of the two diagonals it connects, which
+    //                                     also upper-bounds |N_jk| by positivity.
+    //   density matrix diagonal (j,j)  --> Tr(N), the matrix trace, which is the
+    //                                     only quantity bounding an isolated
+    //                                     diagonal and stays nonzero while the
+    //                                     particle carries any neutrinos.
+    //   (both computed separately for nu and nubar.)
     //   time, TrHN, Vphase            --> skipped
     //
     // Using c*dt for positions keeps the scale finite, coordinate-system
@@ -304,7 +311,6 @@ void evolve_flavor(const TestParams* parms)
         using ParticleType = amrex::Particle<PIdx::nattribs, 0>;
 
         constexpr int Nflav = NUM_FLAVORS;
-        constexpr int nattribs_per_matrix = Nflav * Nflav;
         constexpr int nu_start    = static_cast<int>(PIdx::N00_Re);
         constexpr int nubar_start = static_cast<int>(PIdx::N00_Rebar);
 
@@ -325,29 +331,34 @@ void evolve_flavor(const TestParams* parms)
 
             Real tile_max = amrex::Reduce::Max<Real>(np,
                 [=] AMREX_GPU_DEVICE (int i) -> Real {
-                    // Trace of each density matrix: sum of diagonal Re components.
-                    // The k-th diagonal of an Nflav x Nflav Hermitian matrix packed
-                    // (Re,Im) row-by-row sits at offset k*(2*Nflav - k).
-                    Real TrN_old = 0.0, TrN_new = 0.0;
-                    Real TrNbar_old = 0.0, TrNbar_new = 0.0;
+                    // Per-flavor diagonal magnitudes (Re part of each diagonal) and
+                    // the matrix trace. The k-th diagonal of an Nflav x Nflav Hermitian
+                    // matrix packed (Re,Im) row-by-row sits at offset k*(2*Nflav - k).
+                    // Use max(|old|,|new|) so a diagonal that starts at zero but is
+                    // populated over the step still provides a nonzero reference scale
+                    // (and thus an absolute floor) for itself and for the off-diagonals
+                    // it bounds -- otherwise a coherence growing out of a flavor that
+                    // begins empty would be controlled purely relatively and collapse dt.
+                    Real diagN[Nflav], diagNbar[Nflav];
+                    Real TrN = 0.0, TrNbar = 0.0;
                     for (int k = 0; k < Nflav; ++k) {
                         int diag = k * (2*Nflav - k);
-                        TrN_old    += p_old[i].rdata(nu_start    + diag);
-                        TrN_new    += p_new[i].rdata(nu_start    + diag);
-                        TrNbar_old += p_old[i].rdata(nubar_start + diag);
-                        TrNbar_new += p_new[i].rdata(nubar_start + diag);
+                        diagN[k]    = amrex::max(std::abs(p_old[i].rdata(nu_start    + diag)),
+                                                 std::abs(p_new[i].rdata(nu_start    + diag)));
+                        diagNbar[k] = amrex::max(std::abs(p_old[i].rdata(nubar_start + diag)),
+                                                 std::abs(p_new[i].rdata(nubar_start + diag)));
+                        TrN    += diagN[k];
+                        TrNbar += diagNbar[k];
                     }
 
-                    const Real ref_nu    = amrex::max(std::abs(TrN_old),    std::abs(TrN_new));
-                    const Real ref_nubar = amrex::max(std::abs(TrNbar_old), std::abs(TrNbar_new));
-                    const Real ref_p     = amrex::max(std::abs(p_old[i].rdata(PIdx::pupt)),
-                                                      std::abs(p_new[i].rdata(PIdx::pupt)));
+                    const Real ref_p = std::abs(p_old[i].rdata(PIdx::pupt));
 
                     // scale_c = reference_scale * abs_tol + rel_tol * max(|old_c|, |new_c|)
                     auto scaled_error = [&] (int c, Real reference_scale) {
                         const Real maxval = amrex::max(std::abs(p_old[i].rdata(c)),
                                                        std::abs(p_new[i].rdata(c)));
                         const Real scale = reference_scale * abs_tol + rel_tol * maxval;
+			if (scale == Real(0.0)) return Real(0.0);
                         return std::abs(p_err[i].rdata(c)) / scale;
                     };
 
@@ -359,9 +370,24 @@ void evolve_flavor(const TestParams* parms)
                     val = amrex::max(val, scaled_error(PIdx::pupy, ref_p));
                     val = amrex::max(val, scaled_error(PIdx::pupz, ref_p));
                     val = amrex::max(val, scaled_error(PIdx::pupt, ref_p));
-                    for (int c = 0; c < nattribs_per_matrix; ++c) {
-                        val = amrex::max(val, scaled_error(nu_start    + c, ref_nu));
-                        val = amrex::max(val, scaled_error(nubar_start + c, ref_nubar));
+
+                    // Diagonals are referenced to the trace; off-diagonals (j,k) to
+                    // sqrt(N_jj * N_kk), the geometric mean of the two diagonals they
+                    // connect (which also upper-bounds |N_jk| by positivity).
+                    for (int j = 0; j < Nflav; ++j) {
+                        int diag = j * (2*Nflav - j);
+                        val = amrex::max(val, scaled_error(nu_start    + diag, TrN));
+                        val = amrex::max(val, scaled_error(nubar_start + diag, TrNbar));
+                        for (int k = j+1; k < Nflav; ++k) {
+                            const Real ref_nu    = std::sqrt(diagN[j]    * diagN[k]);
+                            const Real ref_nubar = std::sqrt(diagNbar[j] * diagNbar[k]);
+                            const int reoffset = diag + 1 + 2*(k-j-1);
+                            const int imoffset = diag + 2 + 2*(k-j-1);
+                            val = amrex::max(val, scaled_error(nu_start    + reoffset, ref_nu));
+                            val = amrex::max(val, scaled_error(nu_start    + imoffset, ref_nu));
+                            val = amrex::max(val, scaled_error(nubar_start + reoffset, ref_nubar));
+                            val = amrex::max(val, scaled_error(nubar_start + imoffset, ref_nubar));
+                        }
                     }
                     return val;
                 },
