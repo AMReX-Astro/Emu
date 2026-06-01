@@ -43,4 +43,9 @@ Scripts/symbolic_hermitians/__pycache__
 .settings
 .vscode
 Source/generated_files
+metric/outdated/
+.DS_Store
+metric/main3d.gnu.DEBUG.MPI.ex
+amrex/
 *~
+unit_test/main3d.gnu.DEBUG.MPI.ex
