@@ -278,7 +278,6 @@ void evolve_flavor(const TestParams* parms)
         const Real dt = compute_dt(geom, state, neutrinos, parms);
         integrator.set_time_step(dt);
         step++;
-
     };
 
     // Attach our RHS and post timestep hooks to the integrator
