@@ -80,11 +80,13 @@ for label in rkey:
         particles[:, rkey[label]] /= volume
 
 # Setting the equilibrium number densities equal to the initial number densities
-if "N00_Re_eq" in rkey:
-    for nu_nubar, suffix in zip(range(2), ["","bar"]):
-        for flavor in range(NF):
-            fvarname = "N"+str(flavor)+str(flavor)+"_Re"+suffix
-            particles[:, rkey[fvarname+"_eq"]] = particles[:, rkey[fvarname]]
+set_equilibrium_initial_conditions = 0
+if set_equilibrium_initial_conditions == 1:
+    if "N00_Re_eq" in rkey:
+        for nu_nubar, suffix in zip(range(2), ["","bar"]):
+            for flavor in range(NF):
+                fvarname = "N"+str(flavor)+str(flavor)+"_Re"+suffix
+                particles[:, rkey[fvarname+"_eq"]] = particles[:, rkey[fvarname]]
 
 # Set initial conditions to vacuum
 set_vacuum_initial_conditions = 0
