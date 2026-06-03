@@ -175,58 +175,6 @@ if __name__ == "__main__":
                 code.append(string1+deplist[icomp]+string2+flist[icomp]+string3+string4[ivar])
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_deposit_to_mesh_fill"))
 
-    #======================#
-    # DataReducer.cpp_fill #
-    #======================#
-    tails = ["","bar"]
-    code = []
-    for t in tails:
-        # diagonal averages
-        N = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::N{}{}_{}"+t+")")
-        Nlist = N.header_diagonals();
-        Fx = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Fx{}{}_{}"+t+")")
-        Fxlist = Fx.header_diagonals();
-        Fy = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Fy{}{}_{}"+t+")")
-        Fylist = Fy.header_diagonals();
-        Fz = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Fz{}{}_{}"+t+")")
-        Fzlist = Fz.header_diagonals();
-        for i in range(len(Nlist)):
-            code.append("Ndiag"+t+"["+str(i)+"] = "+Nlist[i]+";")
-            code.append("Fxdiag"+t+"["+str(i)+"] = "+Fxlist[i]+";")
-            code.append("Fydiag"+t+"["+str(i)+"] = "+Fylist[i]+";")
-            code.append("Fzdiag"+t+"["+str(i)+"] = "+Fzlist[i]+";")
-
-        if args.num_moments>=3:
-            Pxx = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pxx{}{}_{}"+t+")")
-            Pxxlist = Pxx.header_diagonals();
-            Pxy = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pxy{}{}_{}"+t+")")
-            Pxylist = Pxy.header_diagonals();
-            Pxz = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pxz{}{}_{}"+t+")")
-            Pxzlist = Pxz.header_diagonals();
-            Pyy = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pyy{}{}_{}"+t+")")
-            Pyylist = Pyy.header_diagonals();
-            Pyz = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pyz{}{}_{}"+t+")")
-            Pyzlist = Pyz.header_diagonals();
-            Pzz = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pzz{}{}_{}"+t+")")
-            Pzzlist = Pzz.header_diagonals();
-            for i in range(len(Nlist)):
-                code.append("Pxxdiag"+t+"["+str(i)+"] = "+Pxxlist[i]+";")
-                code.append("Pxydiag"+t+"["+str(i)+"] = "+Pxylist[i]+";")
-                code.append("Pxzdiag"+t+"["+str(i)+"] = "+Pxzlist[i]+";")
-                code.append("Pyydiag"+t+"["+str(i)+"] = "+Pyylist[i]+";")
-                code.append("Pyzdiag"+t+"["+str(i)+"] = "+Pyzlist[i]+";")
-                code.append("Pzzdiag"+t+"["+str(i)+"] = "+Pzzlist[i]+";")
-
-        # off-diagonal magnitude
-        mag2 = 0
-        for i in range(N.size):
-            for j in range(i+1,N.size):
-                re,im = N.H[i,j].as_real_imag()
-                mag2 += re**2 + im**2
-        code.append("N_offdiag_mag2 += "+sympy.cxxcode(sympy.simplify(mag2))+";")
-
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "DataReducer.cpp_fill"))
-
     #==================#
     # Evolve.H_M2_fill #
     #==================#
