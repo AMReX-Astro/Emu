@@ -150,49 +150,36 @@ if __name__ == "__main__":
     #==================#
     # Evolve.H_M2_fill #
     #==================#
-    # PMNS matrix from https://arxiv.org/pdf/1710.00715.pdf
-    # using first index as row, second as column. Have to check convention.
-    U = sympy.zeros(args.N,args.N)
-    P = sympy.zeros(args.N,args.N)
-    for i in range(args.N):
-        P[i,i] = 1
-        U[i,i] = 1
+    # PMNS mixing matrix from https://arxiv.org/pdf/1710.00715.pdf, using the first
+    # index as row and the second as column: U = U23 U13 U12 P, where Uij is a Givens
+    # rotation in the (i,j) plane (U13 carries the CP-violating phase deltaCP) and P
+    # holds the Majorana phases.
+    def rotation(i, j, theta, delta=0):
+        # Givens rotation in the (i,j) plane, with optional CP-violating phase delta.
+        R = sympy.eye(args.N)
+        R[i,i] =  sympy.cos(theta)
+        R[j,j] =  sympy.cos(theta)
+        R[i,j] =  sympy.sin(theta) * sympy.exp(-sympy.I*delta)
+        R[j,i] = -sympy.sin(theta) * sympy.exp( sympy.I*delta)
+        return R
+
+    U = sympy.eye(args.N)
+    P = sympy.eye(args.N)
     if(args.N>=2):
         theta12 = sympy.symbols('parms->theta12',real=True)
-        U12 = sympy.zeros(args.N,args.N)
-        for i in range(args.N):
-            U12[i,i] = 1
-        U12[0,0] =  sympy.cos(theta12)
-        U12[0,1] =  sympy.sin(theta12)
-        U12[1,0] = -sympy.sin(theta12)
-        U12[1,1] =  sympy.cos(theta12)
-        alpha1 = sympy.symbols('parms->alpha1',real=True)
+        alpha1  = sympy.symbols('parms->alpha1', real=True)
         P[0,0] = sympy.exp(sympy.I * alpha1)
+        U12 = rotation(0, 1, theta12)
+        U = U12 * P
     if(args.N>=3):
-        deltaCP = sympy.symbols('parms->deltaCP',real=True)
         theta13 = sympy.symbols('parms->theta13',real=True)
-        U13 = sympy.zeros(args.N,args.N)
-        for i in range(args.N):
-            U13[i,i] = 1
-        U13[0,0] =  sympy.cos(theta13)
-        U13[0,2] =  sympy.sin(theta13) * sympy.exp(-sympy.I*deltaCP)
-        U13[2,0] = -sympy.sin(theta13) * sympy.exp( sympy.I*deltaCP)
-        U13[2,2] =  sympy.cos(theta13)
         theta23 = sympy.symbols('parms->theta23',real=True)
-        U23 = sympy.zeros(args.N,args.N)
-        for i in range(args.N):
-            U23[i,i] = 1
-        U23[0,0] =  sympy.cos(theta13)
-        U23[0,2] =  sympy.sin(theta13)
-        U23[2,0] = -sympy.sin(theta13)
-        U23[2,2] =  sympy.cos(theta13)
-        alpha2 = sympy.symbols('parms->alpha2',real=True)
+        deltaCP = sympy.symbols('parms->deltaCP',real=True)
+        alpha2  = sympy.symbols('parms->alpha2', real=True)
         P[1,1] = sympy.exp(sympy.I * alpha2)
-
-    if(args.N==2):
-        U = U12*P
-    if(args.N==3):
-        U = U23*U13*U12*P
+        U13 = rotation(0, 2, theta13, deltaCP)
+        U23 = rotation(1, 2, theta23)
+        U = U23 * U13 * U12 * P
 
     # create M2 matrix in Evolve.H
     M2_massbasis = sympy.zeros(args.N,args.N)
