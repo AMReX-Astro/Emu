@@ -26,11 +26,17 @@ jobs:
         run: |
           git submodule update --init
 
+      # Exec/GNUmakefile is not committed (it is copied from makefiles/ before every
+      # build), so the linter's `make` has nothing to run until we provide one. The
+      # default `make` target chains code-generation then the build (Make.Emu).
+      - name: Provide a build makefile
+        run: cp makefiles/GNUmakefile_default Exec/GNUmakefile
+
       - name: Run cpp linter
         uses: AMReX-Astro/cpp-linter-action@main
         with:
           build_path: 'Exec'
-          make_options: '-j 2 USE_OMP=FALSE USE_MPI=FALSE USE_CUDA=FALSE DIM=3 DEBUG=TRUE'
+          make_options: '-j 2 USE_OMP=FALSE USE_MPI=FALSE USE_CUDA=FALSE USE_HDF5=FALSE DIM=3 DEBUG=TRUE'
           ignore_files: 'amrex'
           header_filter: 'Emu'
           checks: 'bugprone-*,performance-*,portability-*,modernize-*,clang-analyzer-*,cppcoreguidelines-*,readability-*,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-bounds-constant-array-index,-clang-diagnostic-unknown-warning-option,-clang-diagnostic-unknown-pragmas,-readability-avoid-const-params-in-decls,-cppcoreguidelines-owning-memory'
