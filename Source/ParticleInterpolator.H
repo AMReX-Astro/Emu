@@ -32,10 +32,9 @@
 using namespace amrex;
 
 template <int max_spline_order>
-struct ParticleInterpolator
-{
-    AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-    ParticleInterpolator(Real delta, int order) {
+struct ParticleInterpolator {
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE ParticleInterpolator(Real delta,
+                                                             int order) {
         // although we've set the max order at compile time we can
         // always choose to run with a lower order at runtime.
         if (max_spline_order >= 2 && order > 1)
@@ -46,26 +45,22 @@ struct ParticleInterpolator
             compute_order_0(delta);
     }
 
-    AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-    const Real& operator() (int i) const noexcept {
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE const Real& operator()(
+        int i) const noexcept {
         AMREX_ASSERT(i >= first() && i <= last());
         return shape_functions[i - first()];
     }
 
-    AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-    const int& first() const noexcept {
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE const int& first() const noexcept {
         return first_cell;
     }
 
-    AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-    const int& last() const noexcept {
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE const int& last() const noexcept {
         return last_cell;
     }
 
-private:
-
-    AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-    void compute_order_0(Real delta) {
+   private:
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE void compute_order_0(Real delta) {
         // use order-0 interpolation using the nearest cell center
         first_cell = nearest_cell_center_index(delta);
         last_cell = first_cell;
@@ -74,8 +69,7 @@ private:
         shape_functions[0] = 1.0_rt;
     }
 
-    AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-    void compute_order_1(Real delta) {
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE void compute_order_1(Real delta) {
         // use order-1 spline interpolation
         const int nearest = nearest_cell_center_index(delta);
         const Real offset = nearest_cell_center_offset(delta);
@@ -93,8 +87,7 @@ private:
         last_cell = first_cell + 1;
     }
 
-    AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-    void compute_order_2(Real delta) {
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE void compute_order_2(Real delta) {
         // use order-2 spline interpolation
         first_cell = nearest_cell_center_index(delta) - 1;
         last_cell = first_cell + 2;
@@ -106,8 +99,8 @@ private:
         shape_functions[2] = 0.5_rt * (0.5_rt + offset) * (0.5_rt + offset);
     }
 
-    AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-    int nearest_cell_center_index(Real delta) const noexcept {
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE int nearest_cell_center_index(
+        Real delta) const noexcept {
         // we need to check (delta-0.5) because delta is measured
         // from xlo, the lo edge of the domain. However, the cell
         // center at index 0 is offset from xlo by +0.5.
@@ -115,19 +108,20 @@ private:
         return static_cast<int>(dstar);
     }
 
-    AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-    Real nearest_cell_center_offset(Real delta) const noexcept {
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE Real
+    nearest_cell_center_offset(Real delta) const noexcept {
         // first, convert particle position to fraction of the nearest cell
         const Real fraction = delta - static_cast<int>(delta);
 
         // get the particle offset from the nearest cell center
-        const Real offset = delta <= 0.0_rt ? fraction + 0.5_rt : fraction - 0.5_rt;
+        const Real offset =
+            delta <= 0.0_rt ? fraction + 0.5_rt : fraction - 0.5_rt;
 
         return offset;
     }
 
     int first_cell, last_cell;
-    Real shape_functions[max_spline_order+1];
+    Real shape_functions[max_spline_order + 1];
 };
 
 #endif
