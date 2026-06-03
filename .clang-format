@@ -1,0 +1,17 @@
+# clang-format configuration for hand-written Emu C++ sources (Source/).
+#
+# Scope note: SymPy-generated code in Source/generated_files/ and the bundled
+# submodules/ are NOT meant to be formatted with this style; the CI check excludes
+# them. This config is intentionally conservative so that adopting it produces small
+# diffs: it fixes indentation and spacing but does not reflow long lines
+# (ColumnLimit: 0) and does not reorder #includes.
+---
+Language:        Cpp
+BasedOnStyle:    LLVM
+IndentWidth:     4
+TabWidth:        4
+UseTab:          Never
+ColumnLimit:     0
+AccessModifierOffset: -4
+PointerAlignment: Left
+SortIncludes:    false

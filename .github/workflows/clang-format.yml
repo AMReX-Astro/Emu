@@ -1,0 +1,59 @@
+name: clang-format
+
+# Advisory C++ style check. Runs clang-format over the hand-written C++ sources under
+# Source/ (excluding SymPy-generated code in Source/generated_files/ and the bundled
+# submodules/) and fails if any file is not formatted per the .clang-format config at
+# the repo root.
+#
+# Runs on every push and pull request that touches C++ sources or the config. It does
+# NOT block merging unless added as a required status check in branch protection.
+# Note: this checks the WHOLE tree, so it will report every pre-existing formatting
+# deviation until the sources are reformatted once (e.g. `clang-format -i` over Source/).
+
+on:
+  push:
+    paths: &paths
+      - 'Source/**.cpp'
+      - 'Source/**.H'
+      - 'Source/**.h'
+      - '.clang-format'
+      - '.github/workflows/clang-format.yml'
+  pull_request:
+    paths: *paths
+
+permissions:
+  contents: read
+
+# If new commits arrive on the same ref while a run is in progress, cancel the old one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+          clang-format --version
+
+      - name: Check formatting
+        run: |
+          set -euo pipefail
+          # Hand-written C++ sources only (exclude generated code; submodules/ is untouched).
+          mapfile -t files < <(
+            find Source -type f \( -name '*.cpp' -o -name '*.H' -o -name '*.h' \) \
+              -not -path 'Source/generated_files/*'
+          )
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No C++ sources found to check."
+            exit 0
+          fi
+          echo "Checking ${#files[@]} files with clang-format..."
+          # --dry-run --Werror reports and fails on any file that is not properly formatted.
+          clang-format --dry-run --Werror "${files[@]}"
