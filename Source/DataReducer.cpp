@@ -125,7 +125,8 @@ void
 DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
 				const MultiFab& state,
 				const FlavoredNeutrinoContainer& neutrinos,
-				const amrex::Real time, const int step)
+				const amrex::Real time, const int step, const amrex::Real dt,
+				const amrex::Real scaled_error)
 {
   // get index volume of the domain
   int ncells = geom.Domain().volume();
@@ -141,7 +142,7 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
 	        Real TrN = 0;
           Real Vphase = p.rdata(PIdx::Vphase);
 #include "generated_files/DataReducer.cpp_fill_particles"
-	        return GpuTuple{TrN,TrHN, Vphase};
+	        return {TrN,TrHN, Vphase};
       }, reduce_ops);
   Real TrN  = amrex::get<0>(particleResult);
   Real TrHN = amrex::get<1>(particleResult);
@@ -150,7 +151,7 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   ParallelDescriptor::ReduceRealSum(TrHN);
   ParallelDescriptor::ReduceRealSum(Vphase);
 
-  amrex::Print() << "TrN=" << TrN << ", TrHN=" << TrHN << ", Vphase=" << Vphase << std::endl;
+  amrex::Print() << "step=" << step << ", time=" << time << ", dt=" << dt << ", scaled_err=" << scaled_error << ", TrN=" << TrN << ", TrHN=" << TrHN << ", Vphase=" << Vphase << std::endl;
 
   //=============================//
   // Do reductions over the grid //

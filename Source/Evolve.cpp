@@ -94,9 +94,6 @@ Real compute_dt(const Geometry& geom, const MultiFab& state, const FlavoredNeutr
 
         // pick the appropriate timestep
         dt_flavor = min(dt_flavor_stupid, dt_flavor_adaptive, dt_flavor_absorption);
-        if(parms->max_adaptive_speedup>1) {
-            dt_flavor = min(dt_flavor_stupid*parms->max_adaptive_speedup, dt_flavor_adaptive, dt_flavor_absorption);
-        }
     }
 
     Real dt = 0.0;

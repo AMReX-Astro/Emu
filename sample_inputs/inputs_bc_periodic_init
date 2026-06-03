@@ -5,13 +5,12 @@ perturbation_amplitude = 0.0
 attenuation_hamiltonians = 0
 
 collision_cfl_factor = 1e-1
-cfl_factor = 2
-flavor_cfl_factor = 2
-max_adaptive_speedup = 0
-maxError = 1e-6
+cfl_factor = 1e-2
+flavor_cfl_factor = 1e-1
 
 integration.type = 1
-integration.rk.type = 4
+integration.rk.type = 4          # DormandPrince (0=User, 1=ForwardEuler, 2=Trapezoid, 3=SSPRK3, 4=RK4, 5=DormandPrince)
+integration.use_adaptive_time_step = 0
 
 # Domain size in 3D index space
 ncell = (5, 5, 5)
@@ -24,10 +23,10 @@ nppc  = (1, 1, 1)
 particle_data_filename = "particle_input.dat"
 
 # Maximum size of each grid in the domain
-max_grid_size = 16
+max_grid_size = 5
 
 # Number of steps to run
-nsteps = 30000
+nsteps = 5000
 
 # Simulation end time
 end_time = 5.0e19
@@ -45,10 +44,10 @@ vupy = 0.0
 vupz = 0.0
 
 # Write plotfiles
-write_plot_every = 3000
+write_plot_every = 500
 
 # Write particle data in plotfiles
-write_plot_particles_every = 3000
+write_plot_particles_every = 500
 
 # checkpointing
 do_restart = 0

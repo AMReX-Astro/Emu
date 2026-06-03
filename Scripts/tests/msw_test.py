@@ -23,7 +23,7 @@ mp = 1.6726219e-24 # g
 GF = 1.1663787e-5 / (1e9*eV)**2 * (hbar*clight)**3 #erg cm^3
 NF = 2
 
-tolerance = 1e-7
+tolerance = 1e-3
 
 # E and rho*Ye that induces resonance
 E = dm21c4 * np.sin(2.*theta12)/(8.*np.pi*hbar*clight)

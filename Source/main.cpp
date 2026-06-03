@@ -184,8 +184,6 @@ void evolve_flavor(const TestParams* parms)
 	rd.InitializeFiles();
     }
 
-    amrex::Print() << "Done. " << std::endl;
-
     TimeIntegrator<FlavoredNeutrinoContainer> integrator(neutrinos_old);
 
     // Create a RHS source function we will integrate
@@ -250,9 +248,7 @@ void evolve_flavor(const TestParams* parms)
         // since Redistribute() applies periodic boundary conditions.
         neutrinos.SyncLocation(Sync::PositionToCoordinate);
 
-    amrex::Print() << "Writing reduced data to file..." << std::endl;
-	rd.WriteReducedData0D(geom, state, neutrinos, time, step+1);
-    amrex::Print() << "Done." << std::endl;
+	rd.WriteReducedData0D(geom, state, neutrinos, time, step+1, integrator.get_previous_time_step(), integrator.get_scaled_error());
 
         run_fom += neutrinos.TotalNumberOfParticles();
 
@@ -272,12 +268,142 @@ void evolve_flavor(const TestParams* parms)
         // or the final RK stage, if using Runge-Kutta.
         const Real dt = compute_dt(geom, state, neutrinos, parms);
         integrator.set_time_step(dt);
+
+        // set_time_step clears use_adaptive_time_step; restore it so adaptive error
+        // control remains active. For non-embedded methods, do_adaptive is gated on
+        // extended_weights being non-empty, so this has no effect for e.g. RK4.
+        integrator.set_adaptive_step();
+
         step++;
     };
 
     // Attach our RHS and post timestep hooks to the integrator
     integrator.set_rhs(source_fun);
     integrator.set_post_step_action(post_timestep_fun);
+
+    // Custom error norm for adaptive time stepping.
+    //
+    // Each particle attribute is grouped with a physically meaningful
+    // reference scale that normalizes its dimensions. abs_tol and rel_tol
+    // are both dimensionless and serve their standard roles applied to
+    // the rescaled (by reference) error:
+    //
+    //     scale_c = reference_scale_g * abs_tol + rel_tol * max(|old_c|, |new_c|)
+    //
+    // Reference scales by group:
+    //   x, y, z                       --> c * dt (light-crossing of one step)
+    //   pupx, pupy, pupz, pupt        --> particle's own pupt
+    //   density matrix off-diag (j,k) --> sqrt(N_jj * N_kk), the geometric mean
+    //                                     of the two diagonals it connects, which
+    //                                     also upper-bounds |N_jk| by positivity.
+    //   density matrix diagonal (j,j)  --> Tr(N), the matrix trace, which is the
+    //                                     only quantity bounding an isolated
+    //                                     diagonal and stays nonzero while the
+    //                                     particle carries any neutrinos.
+    //   (both computed separately for nu and nubar.)
+    //   time, TrHN, Vphase            --> skipped
+    //
+    // Using c*dt for positions keeps the scale finite, coordinate-system
+    // independent, and adapts naturally with the integrator's chosen dt.
+    integrator.set_error_norm([&integrator](FlavoredNeutrinoContainer& error,
+                                            FlavoredNeutrinoContainer& S_old,
+                                            FlavoredNeutrinoContainer& S_new,
+                                            Real abs_tol, Real rel_tol) -> Real {
+        using TParIter = amrex::ParIter<PIdx::nattribs, 0, 0, 0>;
+        using ParticleType = amrex::Particle<PIdx::nattribs, 0>;
+
+        constexpr int Nflav = NUM_FLAVORS;
+        constexpr int nu_start    = static_cast<int>(PIdx::N00_Re);
+        constexpr int nubar_start = static_cast<int>(PIdx::N00_Rebar);
+
+        const Real ref_position = PhysConst::c * integrator.get_previous_time_step();
+
+        Real result = 0.0;
+        int lev = 0;
+        TParIter pt_err(error, lev);
+        TParIter pt_old(S_old, lev);
+        TParIter pt_new(S_new, lev);
+
+        for (; pt_err.isValid(); ++pt_err, ++pt_old, ++pt_new) {
+            const int np = pt_err.numParticles();
+            if (np == 0) continue;
+            const ParticleType* p_err = &(pt_err.GetArrayOfStructs()[0]);
+            const ParticleType* p_old = &(pt_old.GetArrayOfStructs()[0]);
+            const ParticleType* p_new = &(pt_new.GetArrayOfStructs()[0]);
+
+            Real tile_max = amrex::Reduce::Max<Real>(np,
+                [=] AMREX_GPU_DEVICE (int i) -> Real {
+                    // Per-flavor diagonal magnitudes (Re part of each diagonal) and
+                    // the matrix trace. The k-th diagonal of an Nflav x Nflav Hermitian
+                    // matrix packed (Re,Im) row-by-row sits at offset k*(2*Nflav - k).
+                    // Use max(|old|,|new|) so a diagonal that starts at zero but is
+                    // populated over the step still provides a nonzero reference scale
+                    // (and thus an absolute floor) for itself and for the off-diagonals
+                    // it bounds -- otherwise a coherence growing out of a flavor that
+                    // begins empty would be controlled purely relatively and collapse dt.
+                    Real diagN[Nflav], diagNbar[Nflav];
+                    Real TrN = 0.0, TrNbar = 0.0;
+                    for (int k = 0; k < Nflav; ++k) {
+                        int diag = k * (2*Nflav - k);
+                        diagN[k]    = amrex::max(std::abs(p_old[i].rdata(nu_start    + diag)),
+                                                 std::abs(p_new[i].rdata(nu_start    + diag)));
+                        diagNbar[k] = amrex::max(std::abs(p_old[i].rdata(nubar_start + diag)),
+                                                 std::abs(p_new[i].rdata(nubar_start + diag)));
+                        TrN    += diagN[k];
+                        TrNbar += diagNbar[k];
+                    }
+
+                    const Real ref_p = std::abs(p_old[i].rdata(PIdx::pupt));
+
+                    // scale_c = reference_scale * abs_tol + rel_tol * max(|old_c|, |new_c|)
+                    auto scaled_error = [&] (int c, Real reference_scale) {
+                        const Real maxval = amrex::max(std::abs(p_old[i].rdata(c)),
+                                                       std::abs(p_new[i].rdata(c)));
+                        const Real scale = reference_scale * abs_tol + rel_tol * maxval;
+			if (scale == Real(0.0)) return Real(0.0);
+                        return std::abs(p_err[i].rdata(c)) / scale;
+                    };
+
+                    Real val = 0.0;
+                    val = amrex::max(val, scaled_error(PIdx::x,    ref_position));
+                    val = amrex::max(val, scaled_error(PIdx::y,    ref_position));
+                    val = amrex::max(val, scaled_error(PIdx::z,    ref_position));
+                    val = amrex::max(val, scaled_error(PIdx::pupx, ref_p));
+                    val = amrex::max(val, scaled_error(PIdx::pupy, ref_p));
+                    val = amrex::max(val, scaled_error(PIdx::pupz, ref_p));
+                    val = amrex::max(val, scaled_error(PIdx::pupt, ref_p));
+
+                    // Diagonals are referenced to the trace; off-diagonals (j,k) to
+                    // sqrt(N_jj * N_kk), the geometric mean of the two diagonals they
+                    // connect (which also upper-bounds |N_jk| by positivity).
+                    for (int j = 0; j < Nflav; ++j) {
+                        int diag = j * (2*Nflav - j);
+                        val = amrex::max(val, scaled_error(nu_start    + diag, TrN));
+                        val = amrex::max(val, scaled_error(nubar_start + diag, TrNbar));
+                        for (int k = j+1; k < Nflav; ++k) {
+                            const Real ref_nu    = std::sqrt(diagN[j]    * diagN[k]);
+                            const Real ref_nubar = std::sqrt(diagNbar[j] * diagNbar[k]);
+                            const int reoffset = diag + 1 + 2*(k-j-1);
+                            const int imoffset = diag + 2 + 2*(k-j-1);
+                            val = amrex::max(val, scaled_error(nu_start    + reoffset, ref_nu));
+                            val = amrex::max(val, scaled_error(nu_start    + imoffset, ref_nu));
+                            val = amrex::max(val, scaled_error(nubar_start + reoffset, ref_nubar));
+                            val = amrex::max(val, scaled_error(nubar_start + imoffset, ref_nubar));
+                        }
+                    }
+                    return val;
+                },
+                Real(0.0));
+            result = amrex::max(result, tile_max);
+        }
+
+        amrex::ParallelDescriptor::ReduceRealMax(result);
+        return result;
+    });
+
+    // Enable adaptive error control before the first step so the error norm
+    // runs on step 1; post_timestep_fun re-enables it after every step.
+    integrator.set_adaptive_step();
 
     // Get a starting timestep
     const Real starting_dt = compute_dt(geom, state, neutrinos_old, parms);
