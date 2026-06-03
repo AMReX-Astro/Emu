@@ -237,8 +237,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
                 // set the dVphase/dt values 
                 p.rdata(PIdx::Vphase) = 0;
 
-                // Set the dN/dt and dNbar/dt values to zero        
-                #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+                // Set the dN/dt and dNbar/dt values to zero
+                for (int comp=PIdx::N00_Re; comp<PIdx::TrHN; ++comp) p.rdata(comp) = 0.0;
 
                 return;
             }
@@ -478,7 +478,7 @@ void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, con
 
                 // Set time derivatives to zero if particles are inside the black hole
                 if ( particle_distance_from_bh_center < parms->bh_radius ) {
-                    #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+                    for (int comp=PIdx::N00_Re; comp<PIdx::TrHN; ++comp) p.rdata(comp) = 0.0;
                     return;
                 }
 
@@ -492,7 +492,7 @@ void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, con
                 p.rdata(PIdx::z) < parms->Lz / parms->ncell[2]             ||
                 p.rdata(PIdx::z) > parms->Lz - parms->Lz / parms->ncell[2]    ) {
 
-                #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+                for (int comp=PIdx::N00_Re; comp<PIdx::TrHN; ++comp) p.rdata(comp) = 0.0;
                 return;
             }
         });
