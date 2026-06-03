@@ -268,10 +268,12 @@ void evolve_flavor(const TestParams* parms)
         // or the final RK stage, if using Runge-Kutta.
         const Real dt = compute_dt(geom, state, neutrinos, parms);
         integrator.set_time_step(dt);
+
         // set_time_step clears use_adaptive_time_step; restore it so adaptive error
         // control remains active. For non-embedded methods, do_adaptive is gated on
         // extended_weights being non-empty, so this has no effect for e.g. RK4.
         integrator.set_adaptive_step();
+
         step++;
     };
 
