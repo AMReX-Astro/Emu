@@ -205,19 +205,16 @@ if __name__ == "__main__":
     #======================#
     # Evolve.cpp_Vvac_fill #
     #======================#
-    # create the flavor-basis mass-squared matrix
-    # masses are assumed given in g
-    M2list = massmatrix.header()
+    # Vacuum Hamiltonian in the flavor basis: V = M2 * c^4 / (2 E), with masses in g.
+    # Antineutrinos see the complex conjugate of the (Hermitian) mass-squared matrix;
+    # the conjugation is applied analytically via massmatrix.H.conjugate().
     code = []
     for t in tails:
-        Vlist = HermitianMatrix(args.N, "V{}{}_{}"+t).header()
-        for icomp in range(len(Vlist)):
-            if t=="bar" and "Im" in Vlist[icomp]:
-                sgn = -1 # complex conjugation for anti-neutrinos
-            else:
-                sgn =  1
-            line = "Real "+Vlist[icomp]+" = "+str(sgn)+"*("+M2list[icomp] + ")*PhysConst::c4/(2.*p.rdata(PIdx::pupt));"
-            code.append(line)
+        Vnames = HermitianMatrix(args.N, "V{}{}_{}"+t).header()
+        M2 = HermitianMatrix(args.N, "M2matrix{}{}_{}")
+        M2.H = massmatrix.H.conjugate() if t=="bar" else massmatrix.H
+        for name, expr in zip(Vnames, M2.header()):
+            code.append("Real "+name+" = ("+expr+")*PhysConst::c4/(2.*p.rdata(PIdx::pupt));")
     write_code(code, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_Vvac_fill"))
 
     #============================#
