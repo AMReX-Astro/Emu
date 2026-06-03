@@ -1,17 +1,32 @@
 name: Clang-format
 
+# Auto-formats hand-written C++ and pushes the result back to the branch. Runs on
+# every push to a branch and on every pull request, so individual development
+# branches are tidied, not just PRs into development.
+
 on:
+  push:
   pull_request:
-    branches: development
+
+# Needed for the bot to push the formatting commit back to the branch.
+permissions:
+  contents: write
+
+# Don't let two runs on the same branch race to push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
-        ref: refs/heads/${{ github.head_ref }}
+        # Check out the real branch (the PR source branch on pull_request, the pushed
+        # branch on push) with attached HEAD so we can commit and push fixes back.
+        ref: ${{ github.head_ref || github.ref_name }}
 
     - name: Run tab exterminator script
       run: |
@@ -29,9 +44,8 @@ jobs:
         git add --all
         git diff-index --quiet HEAD || git commit -m "Clang-format has tidied up the code."
 
+    # Pushes made with the built-in GITHUB_TOKEN do not retrigger workflows, so this
+    # cannot loop. Restricted to the main repo (forks get a read-only token).
     - name: Push changes
-      uses: ad-m/github-push-action@master
-      if: github.repository_owner == 'AMReX-Astro' 
-      with:
-        branch: ${{ github.head_ref }}
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+      if: github.repository_owner == 'AMReX-Astro'
+      run: git push origin HEAD:${{ github.head_ref || github.ref_name }}

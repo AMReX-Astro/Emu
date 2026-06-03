@@ -1,39 +1,48 @@
 name: cpp-linter
 
-on: [pull_request]
+# Static analysis (clang-tidy + cppcheck) via the AMReX cpp-linter action. Builds Emu
+# so clang-tidy has a real compilation database, then uploads the reports as artifacts.
+# Runs on every push to a branch and on every pull request.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+# Cancel an in-progress (compile-heavy) run when newer commits arrive on the same branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   cpp-linter:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-      - name: Get submodules 
+      - name: Get submodules
         run: |
           git submodule update --init
 
       - name: Run cpp linter
         uses: AMReX-Astro/cpp-linter-action@main
-        with: 
+        with:
           build_path: 'Exec'
           make_options: '-j 2 USE_OMP=FALSE USE_MPI=FALSE USE_CUDA=FALSE DIM=3 DEBUG=TRUE'
           ignore_files: 'amrex'
           header_filter: 'Emu'
           checks: 'bugprone-*,performance-*,portability-*,modernize-*,clang-analyzer-*,cppcoreguidelines-*,readability-*,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-bounds-constant-array-index,-clang-diagnostic-unknown-warning-option,-clang-diagnostic-unknown-pragmas,-readability-avoid-const-params-in-decls,-cppcoreguidelines-owning-memory'
-      
+
       - name: Archive clang tidy report
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: clang-tidy-report
           path: clang-tidy-report.txt
-      
-    #   - name: Archive clang format report
-    #     uses: actions/upload-artifact@v1
-    #     with:
-    #       name: clang-format-report
-    #       path: clang-format-report.txt
-      
+
       - name: Archive cppcheck report
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: cppcheck-report
           path: cppcheck-report.txt
