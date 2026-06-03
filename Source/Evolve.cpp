@@ -202,9 +202,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
                 // set the dVphase/dt values 
                 p.rdata(PIdx::Vphase) = 0;
 
-                // Set the dN/dt and dNbar/dt values to zero        
-                #include "generated_files/Evolve.cpp_dfdt_fill_zeros"
-        
+                // Set the dN/dt and dNbar/dt values to zero
+                for (int comp=PIdx::N00_Re; comp<PIdx::TrHN; ++comp) p.rdata(comp) = 0.0;
+
                 return;
             }
         }
