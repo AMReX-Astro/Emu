@@ -141,24 +141,24 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
         const ParticleInterpolator<SHAPE_FACTOR_ORDER> sy(delta_y, shape_factor_order_y);
         const ParticleInterpolator<SHAPE_FACTOR_ORDER> sz(delta_z, shape_factor_order_z);
 
-        // Momentum-direction factors (velocity = p/E) multiplying the deposited N,
+        // Momentum-direction factors (phat = p/E) multiplying the deposited N,
         // one per grid moment block in GIdx block order:
         // N, Fx, Fy, Fz[, Pxx, Pxy, Pxz, Pyy, Pyz, Pzz].
-        const amrex::Real vhat[3] = { p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt),
+        const amrex::Real phat[3] = { p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt),
                                       p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt),
                                       p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt) };
         amrex::Real moment_factor[NUM_MOMENTS==3 ? 10 : 4];
         moment_factor[0] = 1.0;                 // N
-        moment_factor[1] = vhat[0];             // Fx
-        moment_factor[2] = vhat[1];             // Fy
-        moment_factor[3] = vhat[2];             // Fz
+        moment_factor[1] = phat[0];             // Fx
+        moment_factor[2] = phat[1];             // Fy
+        moment_factor[3] = phat[2];             // Fz
         #if NUM_MOMENTS == 3
-        moment_factor[4] = vhat[0]*vhat[0];     // Pxx
-        moment_factor[5] = vhat[0]*vhat[1];     // Pxy
-        moment_factor[6] = vhat[0]*vhat[2];     // Pxz
-        moment_factor[7] = vhat[1]*vhat[1];     // Pyy
-        moment_factor[8] = vhat[1]*vhat[2];     // Pyz
-        moment_factor[9] = vhat[2]*vhat[2];     // Pzz
+        moment_factor[4] = phat[0]*phat[0];     // Pxx
+        moment_factor[5] = phat[0]*phat[1];     // Pxy
+        moment_factor[6] = phat[0]*phat[2];     // Pxz
+        moment_factor[7] = phat[1]*phat[1];     // Pyy
+        moment_factor[8] = phat[1]*phat[2];     // Pyz
+        moment_factor[9] = phat[2]*phat[2];     // Pzz
         #endif
 
         const int nmoments = sizeof(moment_factor)/sizeof(amrex::Real);
@@ -296,10 +296,54 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         Real Ye_pp = 0;
         Real rho_pp = 0; // g/ccm
 
+        // phat = momentum direction (p/E), used for the flux contraction in the SI potential
+        const amrex::Real phat[3] = { p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt),
+                                      p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt),
+                                      p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt) };
+
         for (int k = sz.first(); k <= sz.last(); ++k) {
             for (int j = sy.first(); j <= sy.last(); ++j) {
                 for (int i = sx.first(); i <= sx.last(); ++i) {
+                    const amrex::Real vol = sx(i) * sy(j) * sz(k);
+
+                    // Total self-interaction potential interpolated from the grid for
+                    // one Hermitian component, anchored at that component's neutrino
+                    // N-block index. For each species the flux contraction is
+                    //   N - Fx*phatx - Fy*phaty - Fz*phatz,
+                    // and we take the neutrino value minus the complex conjugate of the
+                    // antineutrino value. Conjugation negates the imaginary part, so
+                    // conj_sign = -1 for real components and +1 for imaginary components.
+                    auto SI = [&](int N_grid_index, amrex::Real conj_sign) {
+                        auto flux = [&](int idx) {
+                            return sarr(i,j,k, idx)
+                                 - sarr(i,j,k, idx + (GIdx::Fx00_Re-GIdx::N00_Re))*phat[0]
+                                 - sarr(i,j,k, idx + (GIdx::Fy00_Re-GIdx::N00_Re))*phat[1]
+                                 - sarr(i,j,k, idx + (GIdx::Fz00_Re-GIdx::N00_Re))*phat[2];
+                        };
+                        return flux(N_grid_index) + conj_sign*flux(N_grid_index + (GIdx::N00_Rebar-GIdx::N00_Re));
+                    };
                     #include "generated_files/Evolve.cpp_interpolate_from_mesh_fill"
+
+                    // Matter potential (charged current) acts on the electron-flavor real
+                    // diagonal only. relativistic_correction is the frame-invariant factor
+                    // -p^a u_a / p^t (using -vupt = vdownt until the metric is stored).
+                    const amrex::Real lorentz_factor = 1.0 / sqrt(1.0 - (std::pow(sarr(i,j,k,GIdx::vupx), 2)
+                                                                       + std::pow(sarr(i,j,k,GIdx::vupy), 2)
+                                                                       + std::pow(sarr(i,j,k,GIdx::vupz), 2)));
+                    const amrex::Real relativistic_correction = (-1.0/p.rdata(PIdx::pupt)) * lorentz_factor *
+                        ( p.rdata(PIdx::pupx) * sarr(i,j,k,GIdx::vupx)
+                        + p.rdata(PIdx::pupy) * sarr(i,j,k,GIdx::vupy)
+                        + p.rdata(PIdx::pupz) * sarr(i,j,k,GIdx::vupz)
+                        + p.rdata(PIdx::pupt) * (-1.0) );
+                    const amrex::Real matter_term = sqrt(2.) * PhysConst::GF * vol
+                        * sarr(i,j,k,GIdx::rho) * sarr(i,j,k,GIdx::Ye) / PhysConst::Mp * relativistic_correction;
+                    V00_Re    += matter_term;
+                    V00_Rebar -= matter_term;
+
+                    // Interpolate the background matter scalars to the particle position.
+                    T_pp   += vol * sarr(i, j, k, GIdx::T);
+                    Ye_pp  += vol * sarr(i, j, k, GIdx::Ye);
+                    rho_pp += vol * sarr(i, j, k, GIdx::rho);
                 }
             }
         }

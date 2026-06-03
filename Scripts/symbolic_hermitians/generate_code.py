@@ -2,6 +2,7 @@
 
 from sympy.physics.quantum.dagger import Dagger
 import argparse
+import copy
 import os
 import sympy
 from HermitianUtils import HermitianMatrix
@@ -273,21 +274,16 @@ if __name__ == "__main__":
     #=======================================#
     # Evolve.cpp_interpolate_from_mesh_fill #
     #=======================================#
-    # matter and SI potentials require interpolating from grid
+    # The flux contraction (N - F.phat) and the neutrino/antineutrino combination
+    # are done by the SI() helper in Evolve.cpp; here we only supply the per-component
+    # conjugation sign and write into the V variables. The matter potential (which
+    # acts on the electron-flavor real diagonal only) is added in Evolve.cpp.
     tails = ["","bar"]
-    string1 = "p.rdata(PIdx::"
-    string2 = ") +=  sqrt(2.) * PhysConst::GF * sx(i) * sy(j) * sz(k) * ("
-    string_interp = "sarr(i, j, k, GIdx::"
-    direction = ["x","y","z"]
-    string3 = ["*p.rdata(PIdx::pupx)"]
-    string4 = "/p.rdata(PIdx::pupt)"
     code = []
 
     Vlist = HermitianMatrix(args.N, "V{}{}_{}").header()
     Nlist = HermitianMatrix(args.N, "N{}{}_{}").header()
-    Flist = [HermitianMatrix(args.N, "F"+d+"{}{}_{}").header() for d in direction]
-    rhoye = string_interp+"rho)*"+string_interp+"Ye)/PhysConst::Mp"
-    code.append("double SI_partial, SI_partialbar, inside_parentheses;")
+    code.append("double inside_parentheses;")
     code.append("")
 
     # term is negative and complex conjugate for antineutrinos
@@ -300,40 +296,11 @@ if __name__ == "__main__":
         return sgn
 
     for icomp in range(len(Vlist)):
-        # self-interaction potential
-        for t in tails:
-            line = "SI_partial"+t+" = "+str(sgn(t,Vlist[icomp]))+"*("
-            line = line + string_interp+Nlist[icomp]+t+")";
-            for i in range(len(direction)):
-                line = line + " - "+string_interp+Flist[i][icomp]+t+")*p.rdata(PIdx::pup"+direction[i]+")/p.rdata(PIdx::pupt)"
-            line = line + ");"
-            code.append(line)
-            code.append("")
-        line = "inside_parentheses = SI_partial + SI_partialbar"
-
-        # matter potential
-        if("V00" in Vlist[icomp]):
-            
-            # We will introduce the relativistic correction in a separate variable, the frame-invariant correction [ -p^a u_a / (p^t) ]
-            lorentz_line = "double lorentz_factor = 1.0 / sqrt(1.0 - ("
-            for i in range(len(direction)):
-                lorentz_line = lorentz_line + "std::pow(" + string_interp + "vup"+direction[i]+"), 2)"
-                if direction[i] != direction[-1]:
-                    lorentz_line = lorentz_line + " + "
-            lorentz_line = lorentz_line + "));"
-            code.append(lorentz_line)
-            velocity_line = "double relativistic_correction = (-1/p.rdata(PIdx::pupt)) * lorentz_factor * ("
-
-            for i in range(len(direction)):
-                # using (-1)*vupt = vdownt for now; will need to implement contraction with the metric once the metric is stored 
-                # use sympy to create a matrix for the metric tensor and use symbolic matrix operations built in
-                velocity_line = velocity_line + "p.rdata(PIdx::pup"+direction[i]+") * " + string_interp + "vup"+direction[i]+") + "
-            # Again, using (-1)*vup for now; will need to implement contraction with the metric once metric is stored
-            velocity_line = velocity_line + " p.rdata(PIdx::pupt) * (-1)"
-            velocity_line = velocity_line + ");"
-            code.append(velocity_line)
-            # We can easily comment out the relativistic correction below, for testing purposes 
-            line = line + " + " +  rhoye  + " * relativistic_correction "
+        # self-interaction potential. SI() combines the neutrino value with the
+        # complex conjugate of the antineutrino value; conjugation negates the
+        # imaginary part, so conj_sign = -1 for Re components and +1 for Im.
+        conj_sign = "+1.0" if "Im" in Vlist[icomp] else "-1.0"
+        line = "inside_parentheses = SI(GIdx::"+Nlist[icomp]+", "+conj_sign+")"
         line = line + ";"
         code.append(line)
         code.append("")
@@ -347,14 +314,9 @@ if __name__ == "__main__":
             else:
                 line += " -= "
 
-            line += "sqrt(2.) * PhysConst::GF * sx(i) * sy(j) * sz(k) * (inside_parentheses);"
+            line += "sqrt(2.) * PhysConst::GF * vol * (inside_parentheses);"
             code.append(line)
             code.append("")
-        
-    code.append("T_pp += sx(i) * sy(j) * sz(k) * sarr(i, j, k, GIdx::T);")
-    code.append("Ye_pp += sx(i) * sy(j) * sz(k) * sarr(i, j, k, GIdx::Ye);")
-    code.append("rho_pp += sx(i) * sy(j) * sz(k) * sarr(i, j, k, GIdx::rho);")
-    code.append("")
 
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_interpolate_from_mesh_fill"))
 
