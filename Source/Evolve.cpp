@@ -176,16 +176,16 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
     [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
                           amrex::Array4<const amrex::Real> const& sarr)
     {
+         // store the particle positions for use later
+        const Real x = p.rdata(PIdx::x);
+        const Real y = p.rdata(PIdx::y);
+        const Real z = p.rdata(PIdx::z);
+ 
 
         // set the dx/dt values 
         p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
         p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
         p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
-
-        // store the particle positions for use later
-        const Real x = p.pos(0);
-        const Real y = p.pos(1);
-        const Real z = p.pos(2);
 
         // If statement to avoid computing quantities of particles inside the black hole.
         if( parms->do_blackhole==1 ){
