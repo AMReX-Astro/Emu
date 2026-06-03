@@ -274,49 +274,35 @@ if __name__ == "__main__":
     #=======================================#
     # Evolve.cpp_interpolate_from_mesh_fill #
     #=======================================#
-    # The flux contraction (N - F.phat) and the neutrino/antineutrino combination
-    # are done by the SI() helper in Evolve.cpp; here we only supply the per-component
-    # conjugation sign and write into the V variables. The matter potential (which
-    # acts on the electron-flavor real diagonal only) is added in Evolve.cpp.
-    tails = ["","bar"]
+    # Self-interaction potential. The flux-contracted number density of each
+    # Hermitian component (N - F.phat) is supplied by the minus_current_dot_phat()
+    # helper in Evolve.cpp; here the neutrino/antineutrino combination is done
+    # analytically:
+    #     V    = sqrt(2) GF (N - conj(Nbar))
+    #     Vbar = sqrt(2) GF (Nbar - conj(N)) = -conj(V)
+    # The elementwise conjugate negates the imaginary parts; since N and Nbar are
+    # Hermitian, conj(Nbar) = transpose(Nbar) and the result stays Hermitian, so the
+    # upper-triangle storage is valid. The matter potential (which acts on the
+    # electron-flavor real diagonal only) is added in Evolve.cpp.
     code = []
 
-    Vlist = HermitianMatrix(args.N, "V{}{}_{}").header()
-    Nlist = HermitianMatrix(args.N, "N{}{}_{}").header()
-    code.append("double inside_parentheses;")
-    code.append("")
+    # Flux-contracted number-density matrices, built from the minus_current_dot_phat() values.
+    N        = HermitianMatrix(args.N, "minus_current_dot_phat(GIdx::N{}{}_{})")
+    Nbarconj = HermitianMatrix(args.N, "minus_current_dot_phat(GIdx::N{}{}_{}bar)").conjugate()
 
-    # term is negative and complex conjugate for antineutrinos
-    def sgn(t,var):
-        sgn = 1
-        if(t=="bar"):
-            sgn *= -1
-            if("Im" in var):
-                sgn *= -1
-        return sgn
+    V    = HermitianMatrix(args.N, "V{}{}_{}")
+    V.H  = N.H - Nbarconj.H
+    Vbar = HermitianMatrix(args.N, "V{}{}_{}")
+    Vbar.H = -(V.H.conjugate())
 
-    for icomp in range(len(Vlist)):
-        # self-interaction potential. SI() combines the neutrino value with the
-        # complex conjugate of the antineutrino value; conjugation negates the
-        # imaginary part, so conj_sign = -1 for Re components and +1 for Im.
-        conj_sign = "+1.0" if "Im" in Vlist[icomp] else "-1.0"
-        line = "inside_parentheses = SI(GIdx::"+Nlist[icomp]+", "+conj_sign+")"
-        line = line + ";"
-        code.append(line)
+    Vnames    = HermitianMatrix(args.N, "V{}{}_{}").header()
+    Vexprs    = V.header()
+    Vbarexprs = Vbar.header()
+
+    for name, vexpr, vbarexpr in zip(Vnames, Vexprs, Vbarexprs):
+        code.append(name       +" += sqrt(2.) * PhysConst::GF * vol * ("+vexpr   +");")
+        code.append(name+"bar" +" += sqrt(2.) * PhysConst::GF * vol * ("+vbarexpr+");")
         code.append("")
-
-        # add/subtract the potential as appropriate
-        for t in tails:
-            line = Vlist[icomp]+t
-
-            if sgn(t,Vlist[icomp])==1:
-                line += " += "
-            else:
-                line += " -= "
-
-            line += "sqrt(2.) * PhysConst::GF * vol * (inside_parentheses);"
-            code.append(line)
-            code.append("")
 
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_interpolate_from_mesh_fill"))
 

@@ -306,21 +306,17 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
                 for (int i = sx.first(); i <= sx.last(); ++i) {
                     const amrex::Real vol = sx(i) * sy(j) * sz(k);
 
-                    // Total self-interaction potential interpolated from the grid for
-                    // one Hermitian component, anchored at that component's neutrino
-                    // N-block index. For each species the flux contraction is
-                    //   N - Fx*phatx - Fy*phaty - Fz*phatz,
-                    // and we take the neutrino value minus the complex conjugate of the
-                    // antineutrino value. Conjugation negates the imaginary part, so
-                    // conj_sign = -1 for real components and +1 for imaginary components.
-                    auto SI = [&](int N_grid_index, amrex::Real conj_sign) {
-                        auto flux = [&](int idx) {
-                            return sarr(i,j,k, idx)
-                                 - sarr(i,j,k, idx + (GIdx::Fx00_Re-GIdx::N00_Re))*phat[0]
-                                 - sarr(i,j,k, idx + (GIdx::Fy00_Re-GIdx::N00_Re))*phat[1]
-                                 - sarr(i,j,k, idx + (GIdx::Fz00_Re-GIdx::N00_Re))*phat[2];
-                        };
-                        return flux(N_grid_index) + conj_sign*flux(N_grid_index + (GIdx::N00_Rebar-GIdx::N00_Re));
+                    // Minus the Minkowski contraction of the number-density four-current
+                    // (N, Fx, Fy, Fz) with the four-momentum direction phat = (1, phatx,
+                    // phaty, phatz). With signature (-+++), current.phat = -N + F.phat,
+                    // so this returns N - Fx*phatx - Fy*phaty - Fz*phatz for one Hermitian
+                    // component. The generated fill below combines the neutrino and
+                    // antineutrino contributions analytically (V = N - conj(Nbar), etc.).
+                    auto minus_current_dot_phat = [&](int idx) {
+                        return sarr(i,j,k, idx)
+                             - sarr(i,j,k, idx + (GIdx::Fx00_Re-GIdx::N00_Re))*phat[0]
+                             - sarr(i,j,k, idx + (GIdx::Fy00_Re-GIdx::N00_Re))*phat[1]
+                             - sarr(i,j,k, idx + (GIdx::Fz00_Re-GIdx::N00_Re))*phat[2];
                     };
                     #include "generated_files/Evolve.cpp_interpolate_from_mesh_fill"
 
