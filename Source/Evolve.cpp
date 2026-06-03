@@ -176,21 +176,27 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
     [=] AMREX_GPU_DEVICE (FlavoredNeutrinoContainer::ParticleType& p,
                           amrex::Array4<const amrex::Real> const& sarr)
     {
+         // store the particle positions for use later
+        const Real x = p.rdata(PIdx::x);
+        const Real y = p.rdata(PIdx::y);
+        const Real z = p.rdata(PIdx::z);
+ 
+
+        // set the dx/dt values 
+        p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
+        p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
+        p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
 
         // If statement to avoid computing quantities of particles inside the black hole.
         if( parms->do_blackhole==1 ){
         
             // Compute particle distance from black hole center
-            double particle_distance_from_bh_center = sqrt(amrex::Math::powi<2>(p.rdata(PIdx::x) - parms->bh_center_x) + 
-                                                                     amrex::Math::powi<2>(p.rdata(PIdx::y) - parms->bh_center_y) + 
-                                                                     amrex::Math::powi<2>(p.rdata(PIdx::z) - parms->bh_center_z)); // cm
+            double particle_distance_from_bh_center = sqrt(amrex::Math::powi<2>(x - parms->bh_center_x) + 
+                                                           amrex::Math::powi<2>(y - parms->bh_center_y) + 
+                                                           amrex::Math::powi<2>(z - parms->bh_center_z)); // cm
             // Set time derivatives to zero if particles is inside the BH
             if ( particle_distance_from_bh_center < parms->bh_radius ) {
 
-                // set the dx/dt values 
-                p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
-                p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
-                p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
                 // set the dt/dt = 1. Neutrinos move at one second per second
                 p.rdata(PIdx::time) = 1.0;
                 // set the d(pE)/dt values 
@@ -215,17 +221,13 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         if (parms->do_periodic_empty_bc == 1) {
 
             // Check if the particle is in the boundary cells
-            if (p.rdata(PIdx::x) < parms->Lx / parms->ncell[0]             ||
-            p.rdata(PIdx::x) > parms->Lx - parms->Lx / parms->ncell[0] ||
-            p.rdata(PIdx::y) < parms->Ly / parms->ncell[1]             ||
-            p.rdata(PIdx::y) > parms->Ly - parms->Ly / parms->ncell[1] ||
-            p.rdata(PIdx::z) < parms->Lz / parms->ncell[2]             ||
-            p.rdata(PIdx::z) > parms->Lz - parms->Lz / parms->ncell[2]    ) {
+            if (x < parms->Lx / parms->ncell[0]             ||
+            x > parms->Lx - parms->Lx / parms->ncell[0] ||
+            y < parms->Ly / parms->ncell[1]             ||
+            y > parms->Ly - parms->Ly / parms->ncell[1] ||
+            z < parms->Lz / parms->ncell[2]             ||
+            z > parms->Lz - parms->Lz / parms->ncell[2]    ) {
 
-                // set the dx/dt values 
-                p.rdata(PIdx::x) = p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
-                p.rdata(PIdx::y) = p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
-                p.rdata(PIdx::z) = p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
                 // set the dt/dt = 1. Neutrinos move at one second per second
                 p.rdata(PIdx::time) = 1.0;
                 // set the d(pE)/dt values 
