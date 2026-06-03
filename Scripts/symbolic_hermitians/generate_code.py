@@ -146,35 +146,6 @@ if __name__ == "__main__":
     code = ["\n".join(["names.push_back(\"{}\");".format(ci) for ci in code])]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_grid_names_fill"))
 
-    #=================================#
-    # Evolve.cpp_deposit_to_mesh_fill #
-    #=================================#
-    tails = ["","bar"]
-    string1 = "amrex::Gpu::Atomic::AddNoRet(&sarr(i, j, k, GIdx::"
-    string2 = "-start_comp), sx(i) * sy(j) * sz(k) * inv_cell_volume * p.rdata(PIdx::"
-    string4 = [");",
-               "*p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt));",
-               "*p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt));",
-               "*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt));"]
-    deposit_vars = ["N","Fx","Fy","Fz"]
-    if args.num_moments >= 3:
-        deposit_vars.extend(["Pxx","Pxy","Pxz","Pyy","Pyz","Pzz"])
-        string4.extend(["*p.rdata(PIdx::pupx)*p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));",
-                        "*p.rdata(PIdx::pupx)*p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));",
-                        "*p.rdata(PIdx::pupx)*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));",
-                        "*p.rdata(PIdx::pupy)*p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));",
-                        "*p.rdata(PIdx::pupy)*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));",
-                        "*p.rdata(PIdx::pupz)*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));"])
-    code = []
-    for t in tails:
-        string3 = ")"
-        flist = HermitianMatrix(args.N, "N{}{}_{}"+t).header()
-        for ivar in range(len(deposit_vars)):
-            deplist = HermitianMatrix(args.N, deposit_vars[ivar]+"{}{}_{}"+t).header()
-            for icomp in range(len(flist)):
-                code.append(string1+deplist[icomp]+string2+flist[icomp]+string3+string4[ivar])
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_deposit_to_mesh_fill"))
-
     #==================#
     # Evolve.H_M2_fill #
     #==================#

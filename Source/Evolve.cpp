@@ -141,10 +141,47 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
         const ParticleInterpolator<SHAPE_FACTOR_ORDER> sy(delta_y, shape_factor_order_y);
         const ParticleInterpolator<SHAPE_FACTOR_ORDER> sz(delta_z, shape_factor_order_z);
 
+        // Momentum-direction factors (velocity = p/E) multiplying the deposited N,
+        // one per grid moment block in GIdx block order:
+        // N, Fx, Fy, Fz[, Pxx, Pxy, Pxz, Pyy, Pyz, Pzz].
+        const amrex::Real vhat[3] = { p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt),
+                                      p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt),
+                                      p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt) };
+        amrex::Real moment_factor[NUM_MOMENTS==3 ? 10 : 4];
+        moment_factor[0] = 1.0;                 // N
+        moment_factor[1] = vhat[0];             // Fx
+        moment_factor[2] = vhat[1];             // Fy
+        moment_factor[3] = vhat[2];             // Fz
+        #if NUM_MOMENTS == 3
+        moment_factor[4] = vhat[0]*vhat[0];     // Pxx
+        moment_factor[5] = vhat[0]*vhat[1];     // Pxy
+        moment_factor[6] = vhat[0]*vhat[2];     // Pxz
+        moment_factor[7] = vhat[1]*vhat[1];     // Pyy
+        moment_factor[8] = vhat[1]*vhat[2];     // Pyz
+        moment_factor[9] = vhat[2]*vhat[2];     // Pzz
+        #endif
+
+        const int nmoments = sizeof(moment_factor)/sizeof(amrex::Real);
+        const int ncomp    = PIdx::N00_Rebar - PIdx::N00_Re; // real/imaginary components per NxN Hermitian block
+
         for (int k = sz.first(); k <= sz.last(); ++k) {
             for (int j = sy.first(); j <= sy.last(); ++j) {
                 for (int i = sx.first(); i <= sx.last(); ++i) {
-                    #include "generated_files/Evolve.cpp_deposit_to_mesh_fill"
+                    const amrex::Real vol = sx(i) * sy(j) * sz(k) * inv_cell_volume;
+                    // Deposit each particle N component into the matching component of
+                    // every grid moment block, for neutrinos (nunubar=0) and antineutrinos (nunubar=1).
+                    for (int nunubar=0; nunubar<2; ++nunubar) {
+                        const int particle_index_base = PIdx::N00_Re + nunubar*ncomp;
+                        for (int m=0; m<nmoments; ++m) {
+                            const int grid_index_base = GIdx::N00_Re + (2*m + nunubar)*ncomp;
+                            for (int comp=0; comp<ncomp; ++comp) {
+                                const int grid_component_index     = grid_index_base - start_comp + comp;
+                                const int particle_component_index = particle_index_base + comp;
+                                amrex::Gpu::Atomic::AddNoRet(&sarr(i, j, k, grid_component_index),
+                                                             vol * p.rdata(particle_component_index) * moment_factor[m]);
+                            }
+                        }
+                    }
                 }
             }
         }
