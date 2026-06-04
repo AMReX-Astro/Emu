@@ -353,19 +353,27 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                         // antineutrino contributions analytically (V = N - conj(Nbar), etc.).
                         auto minus_current_dot_phat = [&](int idx) {
                             return sarr(i, j, k, idx) -
-                                   sarr(i, j, k, idx + (GIdx::Fx00_Re - GIdx::N00_Re)) * phat[0] -
-                                   sarr(i, j, k, idx + (GIdx::Fy00_Re - GIdx::N00_Re)) * phat[1] -
-                                   sarr(i, j, k, idx + (GIdx::Fz00_Re - GIdx::N00_Re)) * phat[2];
+                                   sarr(i, j, k,
+                                        idx + (GIdx::Fx00_Re - GIdx::N00_Re)) *
+                                       phat[0] -
+                                   sarr(i, j, k,
+                                        idx + (GIdx::Fy00_Re - GIdx::N00_Re)) *
+                                       phat[1] -
+                                   sarr(i, j, k,
+                                        idx + (GIdx::Fz00_Re - GIdx::N00_Re)) *
+                                       phat[2];
                         };
 #include "generated_files/Evolve.cpp_interpolate_from_mesh_fill"
 
                         // Matter potential (charged current) acts on the electron-flavor real
                         // diagonal only. relativistic_correction is the frame-invariant factor
                         // -p^a u_a / p^t (using -vupt = vdownt until the metric is stored).
-                        const amrex::Real v2 = std::pow(sarr(i, j, k, GIdx::vupx), 2) +
+                        const amrex::Real v2 =
+                            std::pow(sarr(i, j, k, GIdx::vupx), 2) +
                             std::pow(sarr(i, j, k, GIdx::vupy), 2) +
                             std::pow(sarr(i, j, k, GIdx::vupz), 2)
-                        const amrex::Real lorentz_factor = 1.0 / sqrt(1.0 - v2);
+                                const amrex::Real lorentz_factor =
+                                1.0 / sqrt(1.0 - v2);
                         const amrex::Real relativistic_correction =
                             (-1.0 / p.rdata(PIdx::pupt)) * lorentz_factor *
                             (p.rdata(PIdx::pupx) * sarr(i, j, k, GIdx::vupx) +
@@ -473,13 +481,14 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                     // Assign temperature, electron fraction, and density at the particle's
                     // position to new variables for interpolation of chemical potentials
                     // and inverse mean free paths.
-                    Real rho = rho_pp; // g/cm^3
+                    Real rho = rho_pp;  // g/cm^3
                     Real temperature = T_pp / (1e6 * CGSUnitsConst::eV);  // MeV
                     Real Ye = Ye_pp;
 
                     //-------------------- Values from EoS table ------------------------------
-                    double mue_out; // Electron chemical potential
-                    double muhat_out;  // neutron minus proton chemical potential
+                    double mue_out;  // Electron chemical potential
+                    double
+                        muhat_out;  // neutron minus proton chemical potential
                     int keyerr, anyerr;
                     EOS_tabulated_obj.get_mue_muhat(rho, temperature, Ye,
                                                     mue_out, muhat_out, keyerr,
@@ -499,7 +508,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 #endif
                     // electron neutrino chemical potential (erg)
                     // munu = "mu_e" - "muhat"
-                    munu[0][0] = (mue_out - muhat_out) * 1e6 * CGSUnitsConst::eV;
+                    munu[0][0] =
+                        (mue_out - muhat_out) * 1e6 * CGSUnitsConst::eV;
                     munubar[0][0] = -1.0 * munu_val;
 
                     //--------------------- Values from NuLib table ---------------------------
@@ -514,7 +524,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                         NuLib_energies_obj.get_energy_top_nulib();
 
                     double neutrino_energy_erg = p.rdata(PIdx::pupt);
-                    double neutrino_energy_MeV = neutrino_energy_erg / (1e6 * CGSUnitsConst::eV);
+                    double neutrino_energy_MeV =
+                        neutrino_energy_erg / (1e6 * CGSUnitsConst::eV);
 
                     //Decide which energy bin to use (i.e. determine 'idx_group')
                     int idx_group = -1;
@@ -589,10 +600,11 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 #endif
 
                     // TODO: this block used to have "... fix it ..." comments on each line. Why?
-                    for (int i = 1; i < NUM_FLAVORS; ++i) {  // 0->neutrino or 1->antineutrino
-                        IMFP_abs[i][i]     = absorption_opacity;
-                        IMFP_absbar[i][i]  =  absorption_opacity;
-                        IMFP_scat[i][i]    = scattering_opacity;
+                    for (int i = 1; i < NUM_FLAVORS;
+                         ++i) {  // 0->neutrino or 1->antineutrino
+                        IMFP_abs[i][i] = absorption_opacity;
+                        IMFP_absbar[i][i] = absorption_opacity;
+                        IMFP_scat[i][i] = scattering_opacity;
                         IMFP_scatbar[i][i] = scattering_opacity;
                     }
                     //-----------------------------------------------------------------------
@@ -615,8 +627,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 
                         // Include the Pauli blocking term (1 - feq)
                         if (parms->Do_Pauli_blocking == 1) {
-                            IMFP_abs[i][i] = IMFP_abs[i][i] / (1 - f_eq[i][i]);  
-                            IMFP_absbar[i][i] = IMFP_absbar[i][i] / (1 - f_eqbar[i][i]);
+                            IMFP_abs[i][i] = IMFP_abs[i][i] / (1 - f_eq[i][i]);
+                            IMFP_absbar[i][i] =
+                                IMFP_absbar[i][i] / (1 - f_eqbar[i][i]);
                         }
                     }
                 }
