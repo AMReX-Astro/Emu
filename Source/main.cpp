@@ -275,9 +275,6 @@ void evolve_flavor(const TestParams* parms) {
             (step + 1) % parms->write_plot_particles_every == 0;
         if (write_plotfile || write_plot_particles) {
             // Only include the Particle Data if write_plot_particles_every is satisfied
-            int write_plot_particles =
-                parms->write_plot_particles_every > 0 &&
-                (step + 1) % parms->write_plot_particles_every == 0;
             WritePlotFile(state, neutrinos, geom, time, step + 1,
                           write_plot_particles);
         }
