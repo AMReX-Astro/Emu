@@ -171,7 +171,9 @@ InitParticles(const TestParams* parms)
   // determine the number of directions per location
   int ndirs_per_loc = particle_data.size();
   amrex::Print() << "Using " << ndirs_per_loc << " directions." << std::endl;
-  const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell;
+  //const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell;
+
+  const int coord_sys = parms->coord_sys;
 
 
   // Loop over multifabs //
@@ -271,6 +273,22 @@ InitParticles(const TestParams* parms)
 	unsigned int uiy = amrex::min(ny-1,amrex::max(0,iy));
 	unsigned int uiz = amrex::min(nz-1,amrex::max(0,iz));
 	unsigned int cellid = (uix * ny + uiy) * nz + uiz;
+
+	// getting the upper and lower bounds of the cell 
+	const Real x1_lo = plo[0] +  i    / dxi[0];
+	const Real x1_hi = plo[0] + (i+1) / dxi[0];
+	const Real x2_lo = plo[1] +  j    / dxi[1];
+	const Real x2_hi = plo[1] + (j+1) / dxi[1];
+	const Real x3_lo = plo[2] +  k    / dxi[2];
+	const Real x3_hi = plo[2] + (k+1) / dxi[2];
+
+	//calculating cell volume 
+	amrex::Real V_cell;
+	if      (coord_sys == 0) { CartesianMetric   m; V_cell = m.vol(x1_hi,x1_lo,x2_hi,x2_lo,x3_hi,x3_lo); }
+	else if (coord_sys == 1) { CylindricalMetric m; V_cell = m.vol(x1_hi,x1_lo,x2_hi,x2_lo,x3_hi,x3_lo); }
+	else                     { SphericalMetric   m; V_cell = m.vol(x1_hi,x1_lo,x2_hi,x2_lo,x3_hi,x3_lo); }
+
+	const Real scale_fac = V_cell/ nlocs_per_cell; 
 
 	for (int i_loc=0; i_loc<nlocs_per_cell;i_loc++) {
 	  Real r[3];
@@ -473,7 +491,7 @@ CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
     
   // determine the number of directions per location
   int ndirs_per_loc = particle_data.size();
-  const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell;
+  //const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell;
 
   // Loop over multifabs //
 #ifdef _OPENMP
@@ -626,6 +644,24 @@ CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
     	unsigned int uiz = amrex::min(nz-1,amrex::max(0,iz));
     	unsigned int cellid = (uix * ny + uiy) * nz + uiz;
 
+        // getting the upper and lower bounds of the cell 
+		const Real x1_lo = plo[0] +  i    / dxi[0];
+		const Real x1_hi = plo[0] + (i+1) / dxi[0];
+		const Real x2_lo = plo[1] +  j    / dxi[1];
+		const Real x2_hi = plo[1] + (j+1) / dxi[1];
+		const Real x3_lo = plo[2] +  k    / dxi[2];
+		const Real x3_hi = plo[2] + (k+1) / dxi[2];
+
+		//calculating cell volume 
+		amrex::Real V_cell;
+		if      (coord_sys == 0) { CartesianMetric   m; V_cell = m.vol(x1_hi,x1_lo,x2_hi,x2_lo,x3_hi,x3_lo); }
+		else if (coord_sys == 1) { CylindricalMetric m; V_cell = m.vol(x1_hi,x1_lo,x2_hi,x2_lo,x3_hi,x3_lo); }
+		else                     { SphericalMetric   m; V_cell = m.vol(x1_hi,x1_lo,x2_hi,x2_lo,x3_hi,x3_lo); }
+
+		const Real scale_fac = V_cell/ nlocs_per_cell; 
+
+
+
     	for (int i_loc=0; i_loc<nlocs_per_cell;i_loc++) {
     	  Real r[3];
                     
@@ -742,6 +778,9 @@ CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
 #endif
 
     	    if(parms->IMFP_method == 1){
+
+				  AMREX_ALWAYS_ASSERT_WITH_MESSAGE(coord_sys == 0, "Boundary Vphase not implemented for curvilinear coordinates");
+
 				  const Real V_momentum = 4*MathConst::pi*(pow(p.rdata(PIdx::pupt)+parms->delta_E/2,3)-pow(p.rdata(PIdx::pupt)-parms->delta_E/2,3))/(3*ndirs_per_loc*parms->nppc[0]*parms->nppc[1]*parms->nppc[2]);
     			  
 				  //p.rdata(PIdx::Vphase) = dx[0]*dx[1]*dx[2]*V_momentum;
