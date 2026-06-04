@@ -81,7 +81,6 @@ deltaCP_degrees = 222
 #################
 IMFP_method = 2
 Do_Pauli_blocking = 0 # If 1, it will multiply the inverse mean free path by 1 / (1 - f_eq); if 0, do nothing.
-boundary_condition_type = 0
 
 #################
 # Background Ye, T and rho. Adding constant v for now
@@ -100,7 +99,12 @@ do_blackhole = 0
 #################
 # Boundary conditions
 #################
-boundary_condition_type = 0
+bc_xlo = periodic
+bc_xhi = periodic
+bc_ylo = periodic
+bc_yhi = periodic
+bc_zlo = periodic
+bc_zhi = periodic
 do_periodic_empty_bc = 0
 
 #################

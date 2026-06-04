@@ -110,10 +110,10 @@ do_blackhole = 0
 #################
 # Boundary conditions
 #################
-bc_xlo = periodic
-bc_xhi = periodic
-bc_ylo = periodic
-bc_yhi = periodic
-bc_zlo = periodic
-bc_zhi = periodic
+bc_xlo = reflecting
+bc_xhi = reflecting
+bc_ylo = reflecting
+bc_yhi = reflecting
+bc_zlo = reflecting
+bc_zhi = reflecting
 do_periodic_empty_bc = 0

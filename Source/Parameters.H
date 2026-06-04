@@ -73,7 +73,11 @@ struct TestParams : public amrex::Gpu::Managed
     std::string nuceos_table_name; // EoS table file name 
     std::string nulib_table_name; // NuLib table file name
     std::string background_rho_Ye_T_table_name; // Background matter table file name
-    int boundary_condition_type; // Boundary condition type flag
+
+    // Per-face boundary conditions. Index = 2*dim + side (side: 0=lo, 1=hi),
+    // so order is {xlo, xhi, ylo, yhi, zlo, zhi}.
+    // Values: 0=periodic, 1=reflecting, 2=outflow.
+    int boundary_condition[2*AMREX_SPACEDIM];
 
     void Initialize(){
 
@@ -129,8 +133,22 @@ struct TestParams : public amrex::Gpu::Managed
         // attenuation to hamiltonians
         pp.get("attenuation_hamiltonians", attenuation_hamiltonians);
         
-        // Boundary condition type
-        pp.get("boundary_condition_type", boundary_condition_type);
+        // Per-face boundary conditions: periodic / reflecting / outflow.
+        // Each face defaults to periodic if unspecified.
+        {
+            const char* face_names[2*AMREX_SPACEDIM] =
+                {"bc_xlo", "bc_xhi", "bc_ylo", "bc_yhi", "bc_zlo", "bc_zhi"};
+            for(int f=0; f<2*AMREX_SPACEDIM; ++f){
+                std::string bc_string = "periodic";
+                pp.query(face_names[f], bc_string);
+                if      (bc_string == "periodic"  ) boundary_condition[f] = 0;
+                else if (bc_string == "reflecting") boundary_condition[f] = 1;
+                else if (bc_string == "outflow"   ) boundary_condition[f] = 2;
+                else amrex::Abort("Unknown boundary condition '" + bc_string +
+                                  "' for " + face_names[f] +
+                                  ". Use periodic, reflecting, or outflow.");
+            }
+        }
         pp.get("do_periodic_empty_bc",  do_periodic_empty_bc);
 
         // Background matter flag

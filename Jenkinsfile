@@ -33,6 +33,16 @@ pipeline {
 			}
 		}
 
+		stage('MSW Reflecting'){ steps{
+				dir('Exec'){
+					sh 'python ../Scripts/initial_conditions/st0_msw_test.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_msw_test_reflecting'
+					sh 'python ../Scripts/tests/msw_test.py'
+					sh 'rm -rf plt*'
+				}
+			}
+		}
+
 		stage('MSW Relativistic'){ steps{
 				dir('Exec'){
 					sh 'python ../Scripts/initial_conditions/st0_msw_test.py'
@@ -140,6 +150,18 @@ pipeline {
 					sh 'python ../Scripts/initial_conditions/st9_empty_particles_multi_energy.py'
 					sh 'python ../Scripts/collisions/nsm_constant_background_rho_Ye_T__writer.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fermi_dirac_test'
+					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
+					sh 'python ../Scripts/tests/fermi_dirac_test.py'
+					sh 'rm -rf plt* *pdf rho_Ye_T.hdf5'
+				}
+			}
+		}
+
+		stage('Fermi-Dirac Reflecting'){ steps{
+				dir('Exec'){
+					sh 'python ../Scripts/initial_conditions/st9_empty_particles_multi_energy.py'
+					sh 'python ../Scripts/collisions/nsm_constant_background_rho_Ye_T__writer.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fermi_dirac_test_reflecting'
 					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
 					sh 'python ../Scripts/tests/fermi_dirac_test.py'
 					sh 'rm -rf plt* *pdf rho_Ye_T.hdf5'

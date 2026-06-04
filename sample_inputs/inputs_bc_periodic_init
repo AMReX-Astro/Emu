@@ -132,5 +132,10 @@ bh_center_z = 2.5 # cm
 #################
 # Boundary conditions
 #################
-boundary_condition_type = 0
+bc_xlo = periodic
+bc_xhi = periodic
+bc_ylo = periodic
+bc_yhi = periodic
+bc_zlo = periodic
+bc_zhi = periodic
 do_periodic_empty_bc = 1
