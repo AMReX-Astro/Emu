@@ -31,7 +31,7 @@ struct PIdx {
     };
 
     // Real/imaginary selector for Hermitian-matrix components.
-    enum ReIm { Re=0, Im=1 };
+    enum ReIm { Re = 0, Im = 1 };
 
     // Offset of component (i,j) [Re or Im] within a single Hermitian-matrix block
     // (e.g. the N/Fx/Fy/Fz blocks in PIdx and GIdx, including their bar variants).
@@ -41,14 +41,13 @@ struct PIdx {
     // This MUST match HermitianMatrix.declarations() in
     // Scripts/symbolic_hermitians/HermitianUtils.py.
     // The absolute attribute index is e.g. PIdx::N00_Re + PIdx::offset(i,j,reim).
-    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-    static int offset(int i, int j, ReIm reim=Re)
-    {
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE static int offset(int i, int j,
+                                                               ReIm reim = Re) {
         // Precondition: upper triangle only. The lower triangle H(j,i) = conj(H(i,j))
         // shares the same storage, so callers must pass i <= j.
         AMREX_ASSERT(i <= j);
-        const int row_start = i * (2*NUM_FLAVORS - i);
-        const int col_offset = (j == i) ? 0 : (1 + 2*(j - i - 1) + reim);
+        const int row_start = i * (2 * NUM_FLAVORS - i);
+        const int col_offset = (j == i) ? 0 : (1 + 2 * (j - i - 1) + reim);
         return row_start + col_offset;
     }
 };
