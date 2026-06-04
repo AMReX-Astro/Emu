@@ -1,0 +1,88 @@
+name: cpp-linter
+
+# Runs clang-tidy and cppcheck on Emu's C++ and uploads the reports as artifacts.
+# Findings are advisory. Runs on every push to a branch and on every pull request.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+# Cancel an in-progress run when newer commits arrive on the same branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  cpp-linter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out the AMReX submodule
+        run: git submodule update --init submodules/amrex
+
+      - name: Install build and analysis tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang clang-tidy cppcheck bear g++ gfortran make \
+                                  libhdf5-dev zlib1g-dev
+          # Ubuntu installs HDF5 under a split "serial" layout. AMReX's makefile
+          # expects a single prefix with include/ and lib/ subdirectories, so
+          # assemble one out of symlinks for HDF5_HOME to point at.
+          sudo mkdir -p /opt/hdf5
+          sudo ln -sf /usr/include/hdf5/serial            /opt/hdf5/include
+          sudo ln -sf /usr/lib/x86_64-linux-gnu/hdf5/serial /opt/hdf5/lib
+
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-sympy-${{ runner.os }}
+
+      - name: Install sympy
+        run: pip3 install --user sympy
+
+      - name: Build and capture the compilation database
+        run: |
+          set -euo pipefail
+          cp makefiles/GNUmakefile_default Exec/GNUmakefile
+          cd Exec
+          bear -- make -j2 USE_MPI=FALSE USE_OMP=FALSE USE_CUDA=FALSE USE_HDF5=TRUE HDF5_HOME=/opt/hdf5 DEBUG=TRUE
+
+      - name: Run clang-tidy
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          clang-tidy --version
+          # Checks come from the repo-root .clang-tidy; header-filter limits diagnostics
+          # to Emu's own headers (amrex under submodules/ is excluded).
+          find Source -name '*.cpp' -not -path 'Source/generated_files/*' -print0 \
+            | xargs -0 clang-tidy -p Exec -header-filter='Source/' | tee clang-tidy-report.txt
+
+      - name: Run cppcheck
+        continue-on-error: true
+        run: |
+          cppcheck --enable=warning,performance,portability --std=c++20 --language=c++ \
+                   --project=Exec/compile_commands.json \
+                   --file-filter='*Source*' \
+                   --suppress=missingInclude --suppress=missingIncludeSystem \
+                   2> cppcheck-report.txt
+
+      - name: Archive clang-tidy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clang-tidy-report
+          path: clang-tidy-report.txt
+          if-no-files-found: ignore
+
+      - name: Archive cppcheck report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppcheck-report
+          path: cppcheck-report.txt
+          if-no-files-found: ignore
