@@ -181,8 +181,8 @@ Real compute_dt(
     }
 
     if (dt_flavor < 0.0) {
-        printf("Error: NaN value detected in N or Nbar. Aborting...\n");
-        std::abort();
+        amrex::Print() << "Error: NaN value detected in N or Nbar. Aborting..." << std::endl;
+        AMREX_ASSERT(0);
     }
 
     Real dt = 0.0;
