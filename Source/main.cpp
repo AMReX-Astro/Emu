@@ -256,9 +256,6 @@ void evolve_flavor(const TestParams* parms)
 
         run_fom += neutrinos.TotalNumberOfParticles();
 
-        // Print the current step and time
-        printf("step = %d, t = %g s\n", step+1, time);
-
         // Write the Mesh Data to Plotfile if required
         bool write_plotfile       = parms->write_plot_every           > 0 && (step+1) % parms->write_plot_every           == 0;
         bool write_plot_particles = parms->write_plot_particles_every > 0 && (step+1) % parms->write_plot_particles_every == 0;
