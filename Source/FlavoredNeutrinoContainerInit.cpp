@@ -171,7 +171,7 @@ InitParticles(const TestParams* parms)
   // determine the number of directions per location
   int ndirs_per_loc = particle_data.size();
   amrex::Print() << "Using " << ndirs_per_loc << " directions." << std::endl;
-  //const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell;
+  
 
   const int coord_sys = parms->coord_sys;
 
@@ -491,8 +491,7 @@ CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt)
     
   // determine the number of directions per location
   int ndirs_per_loc = particle_data.size();
-  //const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell;
-
+  
   // Loop over multifabs //
 #ifdef _OPENMP
 #pragma omp parallel
