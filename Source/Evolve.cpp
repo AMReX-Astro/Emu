@@ -622,16 +622,11 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         #include "generated_files/Evolve.cpp_dfdt_fill"
 
 
-    //getting the rhs of the geodesic equations in selected coordinate system    
+    //getting the rhs of the geodesic equations in cartesian coordinate system    
     
-    GeodesicArray geodesic_rhs;
-
-    if      (parms->coord_sys == 0)  {CartesianMetric metric; geodesic_rhs= metric.geodesic_rhs(p);}
-    else if (parms->coord_sys == 1)  {CylindricalMetric metric; geodesic_rhs= metric.geodesic_rhs(p);}
-    else if (parms->coord_sys == 2)  {SphericalMetric metric; geodesic_rhs= metric.geodesic_rhs(p);}
-    else {
-      amrex::Abort("Invalid coordinate_system. Use 0=Cartesian, 1=Cylindrical, 2=Spherical.");
-    }    
+    CartesianMetric metric;
+    
+    GeodesicArray geodesic_rhs = metric.geodesic_rhs(p);
 
 	// set the dx/dt values
         p.rdata(PIdx::time) = geodesic_rhs[0];
