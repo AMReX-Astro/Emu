@@ -216,29 +216,28 @@ void DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
     // get index volume of the domain
     int ncells = geom.Domain().volume();
 
-    //==================================//
-    // Do reductions over the particles //
-    //==================================//
-    using PType = typename FlavoredNeutrinoContainer::ParticleType;
-    amrex::ReduceOps<ReduceOpSum, ReduceOpSum, ReduceOpSum> reduce_ops;
-    auto particleResult = amrex::ParticleReduce<
-        ReduceData<amrex::Real, amrex::Real, amrex::Real> >(
-        neutrinos,
-        [=] AMREX_GPU_DEVICE(const PType& p) noexcept
-        -> amrex::GpuTuple<amrex::Real, amrex::Real, amrex::Real> {
-            Real TrHN = p.rdata(PIdx::TrHN);
-            Real TrN = 0;
-            Real Vphase = p.rdata(PIdx::Vphase);
-#include "generated_files/DataReducer.cpp_fill_particles"
-            return {TrN, TrHN, Vphase};
-        },
-        reduce_ops);
-    Real TrN = amrex::get<0>(particleResult);
-    Real TrHN = amrex::get<1>(particleResult);
-    Real Vphase = amrex::get<2>(particleResult);
-    ParallelDescriptor::ReduceRealSum(TrN);
-    ParallelDescriptor::ReduceRealSum(TrHN);
-    ParallelDescriptor::ReduceRealSum(Vphase);
+  //==================================//
+  // Do reductions over the particles //
+  //==================================//
+  using PType = typename FlavoredNeutrinoContainer::ParticleType;
+  amrex::ReduceOps<ReduceOpSum,ReduceOpSum,ReduceOpSum> reduce_ops;
+  auto particleResult = amrex::ParticleReduce< ReduceData<amrex::Real, amrex::Real, amrex::Real> >(neutrinos,
+      [=] AMREX_GPU_DEVICE(const PType& p) noexcept -> amrex::GpuTuple<amrex::Real, amrex::Real, amrex::Real> {
+          Real TrHN = p.rdata(PIdx::TrHN);
+          Real Vphase = p.rdata(PIdx::Vphase);
+	  Real TrN = 0;
+          for (int f=0; f<NUM_FLAVORS; ++f) {
+              TrN += p.rdata(PIdx::N00_Re    + PIdx::offset(f,f));
+              TrN += p.rdata(PIdx::N00_Rebar + PIdx::offset(f,f));
+          }
+	  return {TrN,TrHN, Vphase};
+      }, reduce_ops);
+  Real TrN  = amrex::get<0>(particleResult);
+  Real TrHN = amrex::get<1>(particleResult);
+  Real Vphase = amrex::get<2>(particleResult);
+  ParallelDescriptor::ReduceRealSum(TrN);
+  ParallelDescriptor::ReduceRealSum(TrHN);
+  ParallelDescriptor::ReduceRealSum(Vphase);
 
     amrex::Print() << "step=" << step << ", time=" << time << ", dt=" << dt
                    << ", scaled_err=" << scaled_error << ", TrN=" << TrN

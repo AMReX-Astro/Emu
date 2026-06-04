@@ -158,10 +158,46 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
             const ParticleInterpolator<SHAPE_FACTOR_ORDER> sz(
                 delta_z, shape_factor_order_z);
 
-            for (int k = sz.first(); k <= sz.last(); ++k) {
-                for (int j = sy.first(); j <= sy.last(); ++j) {
-                    for (int i = sx.first(); i <= sx.last(); ++i) {
-#include "generated_files/Evolve.cpp_deposit_to_mesh_fill"
+        // Momentum-direction factors (phat = p/E) multiplying the deposited N,
+        // one per grid moment block in GIdx block order:
+        // N, Fx, Fy, Fz[, Pxx, Pxy, Pxz, Pyy, Pyz, Pzz].
+        const amrex::Real phat[3] = { p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt),
+                                      p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt),
+                                      p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt) };
+        amrex::Real moment_factor[NUM_MOMENTS==3 ? 10 : 4];
+        moment_factor[0] = 1.0;                 // N
+        moment_factor[1] = phat[0];             // Fx
+        moment_factor[2] = phat[1];             // Fy
+        moment_factor[3] = phat[2];             // Fz
+        #if NUM_MOMENTS == 3
+        moment_factor[4] = phat[0]*phat[0];     // Pxx
+        moment_factor[5] = phat[0]*phat[1];     // Pxy
+        moment_factor[6] = phat[0]*phat[2];     // Pxz
+        moment_factor[7] = phat[1]*phat[1];     // Pyy
+        moment_factor[8] = phat[1]*phat[2];     // Pyz
+        moment_factor[9] = phat[2]*phat[2];     // Pzz
+        #endif
+
+        const int nmoments = sizeof(moment_factor)/sizeof(amrex::Real);
+        const int ncomp    = PIdx::N00_Rebar - PIdx::N00_Re; // real/imaginary components per NxN Hermitian block
+
+        for (int k = sz.first(); k <= sz.last(); ++k) {
+            for (int j = sy.first(); j <= sy.last(); ++j) {
+                for (int i = sx.first(); i <= sx.last(); ++i) {
+                    const amrex::Real vol = sx(i) * sy(j) * sz(k) * inv_cell_volume;
+                    // Deposit each particle N component into the matching component of
+                    // every grid moment block, for neutrinos (nunubar=0) and antineutrinos (nunubar=1).
+                    for (int nunubar=0; nunubar<2; ++nunubar) {
+                        const int particle_index_base = PIdx::N00_Re + nunubar*ncomp;
+                        for (int m=0; m<nmoments; ++m) {
+                            const int grid_index_base = GIdx::N00_Re + (2*m + nunubar)*ncomp;
+                            for (int comp=0; comp<ncomp; ++comp) {
+                                const int grid_component_index     = grid_index_base - start_comp + comp;
+                                const int particle_component_index = particle_index_base + comp;
+                                amrex::Gpu::Atomic::AddNoRet(&sarr(i, j, k, grid_component_index),
+                                                             vol * p.rdata(particle_component_index) * moment_factor[m]);
+                            }
+                        }
                     }
                 }
             }
@@ -231,43 +267,105 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                     // set the dVphase/dt values
                     p.rdata(PIdx::Vphase) = 0;
 
-// Set the dN/dt and dNbar/dt values to zero
-#include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+                // Set the dN/dt and dNbar/dt values to zero
+                for (int comp=PIdx::N00_Re; comp<PIdx::TrHN; ++comp) p.rdata(comp) = 0.0;
 
-                    return;
+                return;
+            }
+        }
+
+        // Periodic empty boundary conditions.
+        // Set time derivatives to zero if particles are in the boundary cells
+        // Check if periodic empty boundary conditions are enabled
+        if (parms->do_periodic_empty_bc == 1) {
+
+            // Check if the particle is in the boundary cells
+            if (x < parms->Lx / parms->ncell[0]             ||
+            x > parms->Lx - parms->Lx / parms->ncell[0] ||
+            y < parms->Ly / parms->ncell[1]             ||
+            y > parms->Ly - parms->Ly / parms->ncell[1] ||
+            z < parms->Lz / parms->ncell[2]             ||
+            z > parms->Lz - parms->Lz / parms->ncell[2]    ) {
+
+                // set the dt/dt = 1. Neutrinos move at one second per second
+                p.rdata(PIdx::time) = 1.0;
+                // set the d(pE)/dt values 
+                p.rdata(PIdx::pupx) = 0;
+                p.rdata(PIdx::pupy) = 0;
+                p.rdata(PIdx::pupz) = 0;
+                // set the dE/dt values 
+                p.rdata(PIdx::pupt) = 0;
+                // set the dVphase/dt values 
+                p.rdata(PIdx::Vphase) = 0;
+
+                // Set the dN/dt and dNbar/dt values to zero
+                for (int comp=PIdx::N00_Re; comp<PIdx::TrHN; ++comp) p.rdata(comp) = 0.0;
+
+                return;
+            }
+        }
+
+        #include "generated_files/Evolve.cpp_Vvac_fill"
+
+        const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
+        const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
+        const amrex::Real delta_z = (p.pos(2) - plo[2]) * dxi[2];
+
+        const ParticleInterpolator<SHAPE_FACTOR_ORDER> sx(delta_x, shape_factor_order_x);
+        const ParticleInterpolator<SHAPE_FACTOR_ORDER> sy(delta_y, shape_factor_order_y);
+        const ParticleInterpolator<SHAPE_FACTOR_ORDER> sz(delta_z, shape_factor_order_z);
+
+        // The following variables contains temperature, electron fraction, and density interpolated from grid quantities to particle positions
+        Real T_pp = 0; // erg
+        Real Ye_pp = 0;
+        Real rho_pp = 0; // g/ccm
+
+        // phat = momentum direction (p/E), used for the flux contraction in the SI potential
+        const amrex::Real phat[3] = { p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt),
+                                      p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt),
+                                      p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt) };
+
+        for (int k = sz.first(); k <= sz.last(); ++k) {
+            for (int j = sy.first(); j <= sy.last(); ++j) {
+                for (int i = sx.first(); i <= sx.last(); ++i) {
+                    const amrex::Real vol = sx(i) * sy(j) * sz(k);
+
+                    // Minus the Minkowski contraction of the number-density four-current
+                    // (N, Fx, Fy, Fz) with the four-momentum direction phat = (1, phatx,
+                    // phaty, phatz). With signature (-+++), current.phat = -N + F.phat,
+                    // so this returns N - Fx*phatx - Fy*phaty - Fz*phatz for one Hermitian
+                    // component. The generated fill below combines the neutrino and
+                    // antineutrino contributions analytically (V = N - conj(Nbar), etc.).
+                    auto minus_current_dot_phat = [&](int idx) {
+                        return sarr(i,j,k, idx)
+                             - sarr(i,j,k, idx + (GIdx::Fx00_Re-GIdx::N00_Re))*phat[0]
+                             - sarr(i,j,k, idx + (GIdx::Fy00_Re-GIdx::N00_Re))*phat[1]
+                             - sarr(i,j,k, idx + (GIdx::Fz00_Re-GIdx::N00_Re))*phat[2];
+                    };
+                    #include "generated_files/Evolve.cpp_interpolate_from_mesh_fill"
+
+                    // Matter potential (charged current) acts on the electron-flavor real
+                    // diagonal only. relativistic_correction is the frame-invariant factor
+                    // -p^a u_a / p^t (using -vupt = vdownt until the metric is stored).
+                    const amrex::Real lorentz_factor = 1.0 / sqrt(1.0 - (std::pow(sarr(i,j,k,GIdx::vupx), 2)
+                                                                       + std::pow(sarr(i,j,k,GIdx::vupy), 2)
+                                                                       + std::pow(sarr(i,j,k,GIdx::vupz), 2)));
+                    const amrex::Real relativistic_correction = (-1.0/p.rdata(PIdx::pupt)) * lorentz_factor *
+                        ( p.rdata(PIdx::pupx) * sarr(i,j,k,GIdx::vupx)
+                        + p.rdata(PIdx::pupy) * sarr(i,j,k,GIdx::vupy)
+                        + p.rdata(PIdx::pupz) * sarr(i,j,k,GIdx::vupz)
+                        + p.rdata(PIdx::pupt) * (-1.0) );
+                    const amrex::Real matter_term = sqrt(2.) * PhysConst::GF * vol
+                        * sarr(i,j,k,GIdx::rho) * sarr(i,j,k,GIdx::Ye) / PhysConst::Mp * relativistic_correction;
+                    V00_Re    += matter_term;
+                    V00_Rebar -= matter_term;
+
+                    // Interpolate the background matter scalars to the particle position.
+                    T_pp   += vol * sarr(i, j, k, GIdx::T);
+                    Ye_pp  += vol * sarr(i, j, k, GIdx::Ye);
+                    rho_pp += vol * sarr(i, j, k, GIdx::rho);
                 }
             }
-
-            // Periodic empty boundary conditions.
-            // Set time derivatives to zero if particles are in the boundary cells
-            // Check if periodic empty boundary conditions are enabled
-            if (parms->do_periodic_empty_bc == 1) {
-                // Check if the particle is in the boundary cells
-                if (x < parms->Lx / parms->ncell[0] ||
-                    x > parms->Lx - parms->Lx / parms->ncell[0] ||
-                    y < parms->Ly / parms->ncell[1] ||
-                    y > parms->Ly - parms->Ly / parms->ncell[1] ||
-                    z < parms->Lz / parms->ncell[2] ||
-                    z > parms->Lz - parms->Lz / parms->ncell[2]) {
-                    // set the dt/dt = 1. Neutrinos move at one second per second
-                    p.rdata(PIdx::time) = 1.0;
-                    // set the d(pE)/dt values
-                    p.rdata(PIdx::pupx) = 0;
-                    p.rdata(PIdx::pupy) = 0;
-                    p.rdata(PIdx::pupz) = 0;
-                    // set the dE/dt values
-                    p.rdata(PIdx::pupt) = 0;
-                    // set the dVphase/dt values
-                    p.rdata(PIdx::Vphase) = 0;
-
-// Set the dN/dt and dNbar/dt values to zero
-#include "generated_files/Evolve.cpp_dfdt_fill_zeros"
-
-                    return;
-                }
-            }
-
-#include "generated_files/Evolve.cpp_Vvac_fill"
 
             const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
             const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
@@ -583,8 +681,8 @@ void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos,
                                               parms->bh_center_z));  // cm
 
                 // Set time derivatives to zero if particles are inside the black hole
-                if (particle_distance_from_bh_center < parms->bh_radius) {
-#include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+                if ( particle_distance_from_bh_center < parms->bh_radius ) {
+                    for (int comp=PIdx::N00_Re; comp<PIdx::TrHN; ++comp) p.rdata(comp) = 0.0;
                     return;
                 }
             }
@@ -597,7 +695,7 @@ void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos,
                 p.rdata(PIdx::z) < parms->Lz / parms->ncell[2] ||
                 p.rdata(PIdx::z) > parms->Lz - parms->Lz / parms->ncell[2]) {
 
-#include "generated_files/Evolve.cpp_dfdt_fill_zeros"
+                for (int comp=PIdx::N00_Re; comp<PIdx::TrHN; ++comp) p.rdata(comp) = 0.0;
                 return;
             }
         });

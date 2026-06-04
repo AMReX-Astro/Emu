@@ -2,6 +2,7 @@
 
 from sympy.physics.quantum.dagger import Dagger
 import argparse
+import copy
 import os
 import sympy
 from HermitianUtils import HermitianMatrix
@@ -146,147 +147,39 @@ if __name__ == "__main__":
     code = ["\n".join(["names.push_back(\"{}\");".format(ci) for ci in code])]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_grid_names_fill"))
 
-    #=================================#
-    # Evolve.cpp_deposit_to_mesh_fill #
-    #=================================#
-    tails = ["","bar"]
-    string1 = "amrex::Gpu::Atomic::AddNoRet(&sarr(i, j, k, GIdx::"
-    string2 = "-start_comp), sx(i) * sy(j) * sz(k) * inv_cell_volume * p.rdata(PIdx::"
-    string4 = [");",
-               "*p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt));",
-               "*p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt));",
-               "*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt));"]
-    deposit_vars = ["N","Fx","Fy","Fz"]
-    if args.num_moments >= 3:
-        deposit_vars.extend(["Pxx","Pxy","Pxz","Pyy","Pyz","Pzz"])
-        string4.extend(["*p.rdata(PIdx::pupx)*p.rdata(PIdx::pupx)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));",
-                        "*p.rdata(PIdx::pupx)*p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));",
-                        "*p.rdata(PIdx::pupx)*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));",
-                        "*p.rdata(PIdx::pupy)*p.rdata(PIdx::pupy)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));",
-                        "*p.rdata(PIdx::pupy)*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));",
-                        "*p.rdata(PIdx::pupz)*p.rdata(PIdx::pupz)/p.rdata(PIdx::pupt)/p.rdata(PIdx::pupt));"])
-    code = []
-    for t in tails:
-        string3 = ")"
-        flist = HermitianMatrix(args.N, "N{}{}_{}"+t).header()
-        for ivar in range(len(deposit_vars)):
-            deplist = HermitianMatrix(args.N, deposit_vars[ivar]+"{}{}_{}"+t).header()
-            for icomp in range(len(flist)):
-                code.append(string1+deplist[icomp]+string2+flist[icomp]+string3+string4[ivar])
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_deposit_to_mesh_fill"))
-
-    #================================#
-    # DataReducer.cpp_fill_particles #
-    #================================#
-    tails = ["","bar"]
-    code = []
-    for t in tails:
-        # diagonal averages
-        N = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
-        Nlist = N.header_diagonals();
-        for i in range(len(Nlist)):
-            code.append("TrN += "+Nlist[i]+";")
-
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "DataReducer.cpp_fill_particles"))
-
-    #======================#
-    # DataReducer.cpp_fill #
-    #======================#
-    tails = ["","bar"]
-    code = []
-    for t in tails:
-        # diagonal averages
-        N = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::N{}{}_{}"+t+")")
-        Nlist = N.header_diagonals();
-        Fx = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Fx{}{}_{}"+t+")")
-        Fxlist = Fx.header_diagonals();
-        Fy = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Fy{}{}_{}"+t+")")
-        Fylist = Fy.header_diagonals();
-        Fz = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Fz{}{}_{}"+t+")")
-        Fzlist = Fz.header_diagonals();
-        for i in range(len(Nlist)):
-            code.append("Ndiag"+t+"["+str(i)+"] = "+Nlist[i]+";")
-            code.append("Fxdiag"+t+"["+str(i)+"] = "+Fxlist[i]+";")
-            code.append("Fydiag"+t+"["+str(i)+"] = "+Fylist[i]+";")
-            code.append("Fzdiag"+t+"["+str(i)+"] = "+Fzlist[i]+";")
-
-        if args.num_moments>=3:
-            Pxx = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pxx{}{}_{}"+t+")")
-            Pxxlist = Pxx.header_diagonals();
-            Pxy = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pxy{}{}_{}"+t+")")
-            Pxylist = Pxy.header_diagonals();
-            Pxz = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pxz{}{}_{}"+t+")")
-            Pxzlist = Pxz.header_diagonals();
-            Pyy = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pyy{}{}_{}"+t+")")
-            Pyylist = Pyy.header_diagonals();
-            Pyz = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pyz{}{}_{}"+t+")")
-            Pyzlist = Pyz.header_diagonals();
-            Pzz = HermitianMatrix(args.N, "a(i\,j\,k\,GIdx::Pzz{}{}_{}"+t+")")
-            Pzzlist = Pzz.header_diagonals();
-            for i in range(len(Nlist)):
-                code.append("Pxxdiag"+t+"["+str(i)+"] = "+Pxxlist[i]+";")
-                code.append("Pxydiag"+t+"["+str(i)+"] = "+Pxylist[i]+";")
-                code.append("Pxzdiag"+t+"["+str(i)+"] = "+Pxzlist[i]+";")
-                code.append("Pyydiag"+t+"["+str(i)+"] = "+Pyylist[i]+";")
-                code.append("Pyzdiag"+t+"["+str(i)+"] = "+Pyzlist[i]+";")
-                code.append("Pzzdiag"+t+"["+str(i)+"] = "+Pzzlist[i]+";")
-
-        # off-diagonal magnitude
-        mag2 = 0
-        for i in range(N.size):
-            for j in range(i+1,N.size):
-                re,im = N.H[i,j].as_real_imag()
-                mag2 += re**2 + im**2
-        code.append("N_offdiag_mag2 += "+sympy.cxxcode(sympy.simplify(mag2))+";")
-
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "DataReducer.cpp_fill"))
-
     #==================#
     # Evolve.H_M2_fill #
     #==================#
-    # PMNS matrix from https://arxiv.org/pdf/1710.00715.pdf
-    # using first index as row, second as column. Have to check convention.
-    U = sympy.zeros(args.N,args.N)
-    P = sympy.zeros(args.N,args.N)
-    for i in range(args.N):
-        P[i,i] = 1
-        U[i,i] = 1
+    # PMNS mixing matrix from https://arxiv.org/pdf/1710.00715.pdf, using the first
+    # index as row and the second as column: U = U23 U13 U12 P, where Uij is a Givens
+    # rotation in the (i,j) plane (U13 carries the CP-violating phase deltaCP) and P
+    # holds the Majorana phases.
+    def rotation(i, j, theta, delta=0):
+        # Givens rotation in the (i,j) plane, with optional CP-violating phase delta.
+        R = sympy.eye(args.N)
+        R[i,i] =  sympy.cos(theta)
+        R[j,j] =  sympy.cos(theta)
+        R[i,j] =  sympy.sin(theta) * sympy.exp(-sympy.I*delta)
+        R[j,i] = -sympy.sin(theta) * sympy.exp( sympy.I*delta)
+        return R
+
+    U = sympy.eye(args.N)
+    P = sympy.eye(args.N)
     if(args.N>=2):
         theta12 = sympy.symbols('parms->theta12',real=True)
-        U12 = sympy.zeros(args.N,args.N)
-        for i in range(args.N):
-            U12[i,i] = 1
-        U12[0,0] =  sympy.cos(theta12)
-        U12[0,1] =  sympy.sin(theta12)
-        U12[1,0] = -sympy.sin(theta12)
-        U12[1,1] =  sympy.cos(theta12)
-        alpha1 = sympy.symbols('parms->alpha1',real=True)
+        alpha1  = sympy.symbols('parms->alpha1', real=True)
         P[0,0] = sympy.exp(sympy.I * alpha1)
+        U12 = rotation(0, 1, theta12)
+        U = U12 * P
     if(args.N>=3):
-        deltaCP = sympy.symbols('parms->deltaCP',real=True)
         theta13 = sympy.symbols('parms->theta13',real=True)
-        U13 = sympy.zeros(args.N,args.N)
-        for i in range(args.N):
-            U13[i,i] = 1
-        U13[0,0] =  sympy.cos(theta13)
-        U13[0,2] =  sympy.sin(theta13) * sympy.exp(-sympy.I*deltaCP)
-        U13[2,0] = -sympy.sin(theta13) * sympy.exp( sympy.I*deltaCP)
-        U13[2,2] =  sympy.cos(theta13)
         theta23 = sympy.symbols('parms->theta23',real=True)
-        U23 = sympy.zeros(args.N,args.N)
-        for i in range(args.N):
-            U23[i,i] = 1
-        U23[0,0] =  sympy.cos(theta13)
-        U23[0,2] =  sympy.sin(theta13)
-        U23[2,0] = -sympy.sin(theta13)
-        U23[2,2] =  sympy.cos(theta13)
-        alpha2 = sympy.symbols('parms->alpha2',real=True)
+        deltaCP = sympy.symbols('parms->deltaCP',real=True)
+        alpha2  = sympy.symbols('parms->alpha2', real=True)
         P[1,1] = sympy.exp(sympy.I * alpha2)
-
-    if(args.N==2):
-        U = U12*P
-    if(args.N==3):
-        U = U23*U13*U12*P
+        U13 = rotation(0, 2, theta13, deltaCP)
+        U23 = rotation(1, 2, theta23)
+        U = U23 * U13 * U12 * P
 
     # create M2 matrix in Evolve.H
     M2_massbasis = sympy.zeros(args.N,args.N)
@@ -312,19 +205,16 @@ if __name__ == "__main__":
     #======================#
     # Evolve.cpp_Vvac_fill #
     #======================#
-    # create the flavor-basis mass-squared matrix
-    # masses are assumed given in g
-    M2list = massmatrix.header()
+    # Vacuum Hamiltonian in the flavor basis: V = M2 * c^4 / (2 E), with masses in g.
+    # Antineutrinos see the complex conjugate of the (Hermitian) mass-squared matrix;
+    # the conjugation is applied analytically via massmatrix.H.conjugate().
     code = []
     for t in tails:
-        Vlist = HermitianMatrix(args.N, "V{}{}_{}"+t).header()
-        for icomp in range(len(Vlist)):
-            if t=="bar" and "Im" in Vlist[icomp]:
-                sgn = -1 # complex conjugation for anti-neutrinos
-            else:
-                sgn =  1
-            line = "Real "+Vlist[icomp]+" = "+str(sgn)+"*("+M2list[icomp] + ")*PhysConst::c4/(2.*p.rdata(PIdx::pupt));"
-            code.append(line)
+        Vnames = HermitianMatrix(args.N, "V{}{}_{}"+t).header()
+        M2 = HermitianMatrix(args.N, "M2matrix{}{}_{}")
+        M2.H = massmatrix.H.conjugate() if t=="bar" else massmatrix.H
+        for name, expr in zip(Vnames, M2.header()):
+            code.append("Real "+name+" = ("+expr+")*PhysConst::c4/(2.*p.rdata(PIdx::pupt));")
     write_code(code, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_Vvac_fill"))
 
     #============================#
@@ -368,181 +258,103 @@ if __name__ == "__main__":
     #=======================================#
     # Evolve.cpp_interpolate_from_mesh_fill #
     #=======================================#
-    # matter and SI potentials require interpolating from grid
-    tails = ["","bar"]
-    string1 = "p.rdata(PIdx::"
-    string2 = ") +=  sqrt(2.) * PhysConst::GF * sx(i) * sy(j) * sz(k) * ("
-    string_interp = "sarr(i, j, k, GIdx::"
-    direction = ["x","y","z"]
-    string3 = ["*p.rdata(PIdx::pupx)"]
-    string4 = "/p.rdata(PIdx::pupt)"
+    # Self-interaction potential. The flux-contracted number density of each
+    # Hermitian component (N - F.phat) is supplied by the minus_current_dot_phat()
+    # helper in Evolve.cpp; here the neutrino/antineutrino combination is done
+    # analytically:
+    #     V    = sqrt(2) GF (N - conj(Nbar))
+    #     Vbar = sqrt(2) GF (Nbar - conj(N)) = -conj(V)
+    # The elementwise conjugate negates the imaginary parts; since N and Nbar are
+    # Hermitian, conj(Nbar) = transpose(Nbar) and the result stays Hermitian, so the
+    # upper-triangle storage is valid. The matter potential (which acts on the
+    # electron-flavor real diagonal only) is added in Evolve.cpp.
     code = []
 
-    Vlist = HermitianMatrix(args.N, "V{}{}_{}").header()
-    Nlist = HermitianMatrix(args.N, "N{}{}_{}").header()
-    Flist = [HermitianMatrix(args.N, "F"+d+"{}{}_{}").header() for d in direction]
-    rhoye = string_interp+"rho)*"+string_interp+"Ye)/PhysConst::Mp"
-    code.append("double SI_partial, SI_partialbar, inside_parentheses;")
-    code.append("")
+    # Flux-contracted number-density matrices, built from the minus_current_dot_phat() values.
+    N        = HermitianMatrix(args.N, "minus_current_dot_phat(GIdx::N{}{}_{})")
+    Nbarconj = HermitianMatrix(args.N, "minus_current_dot_phat(GIdx::N{}{}_{}bar)").conjugate()
 
-    # term is negative and complex conjugate for antineutrinos
-    def sgn(t,var):
-        sgn = 1
-        if(t=="bar"):
-            sgn *= -1
-            if("Im" in var):
-                sgn *= -1
-        return sgn
+    V    = HermitianMatrix(args.N, "V{}{}_{}")
+    V.H  = N.H - Nbarconj.H
+    Vbar = HermitianMatrix(args.N, "V{}{}_{}")
+    Vbar.H = -(V.H.conjugate())
 
-    for icomp in range(len(Vlist)):
-        # self-interaction potential
-        for t in tails:
-            line = "SI_partial"+t+" = "+str(sgn(t,Vlist[icomp]))+"*("
-            line = line + string_interp+Nlist[icomp]+t+")";
-            for i in range(len(direction)):
-                line = line + " - "+string_interp+Flist[i][icomp]+t+")*p.rdata(PIdx::pup"+direction[i]+")/p.rdata(PIdx::pupt)"
-            line = line + ");"
-            code.append(line)
-            code.append("")
-        line = "inside_parentheses = SI_partial + SI_partialbar"
+    Vnames    = HermitianMatrix(args.N, "V{}{}_{}").header()
+    Vexprs    = V.header()
+    Vbarexprs = Vbar.header()
 
-        # matter potential
-        if("V00" in Vlist[icomp]):
-            
-            # We will introduce the relativistic correction in a separate variable, the frame-invariant correction [ -p^a u_a / (p^t) ]
-            lorentz_line = "double lorentz_factor = 1.0 / sqrt(1.0 - ("
-            for i in range(len(direction)):
-                lorentz_line = lorentz_line + "std::pow(" + string_interp + "vup"+direction[i]+"), 2)"
-                if direction[i] != direction[-1]:
-                    lorentz_line = lorentz_line + " + "
-            lorentz_line = lorentz_line + "));"
-            code.append(lorentz_line)
-            velocity_line = "double relativistic_correction = (-1/p.rdata(PIdx::pupt)) * lorentz_factor * ("
-
-            for i in range(len(direction)):
-                # using (-1)*vupt = vdownt for now; will need to implement contraction with the metric once the metric is stored 
-                # use sympy to create a matrix for the metric tensor and use symbolic matrix operations built in
-                velocity_line = velocity_line + "p.rdata(PIdx::pup"+direction[i]+") * " + string_interp + "vup"+direction[i]+") + "
-            # Again, using (-1)*vup for now; will need to implement contraction with the metric once metric is stored
-            velocity_line = velocity_line + " p.rdata(PIdx::pupt) * (-1)"
-            velocity_line = velocity_line + ");"
-            code.append(velocity_line)
-            # We can easily comment out the relativistic correction below, for testing purposes 
-            line = line + " + " +  rhoye  + " * relativistic_correction "
-        line = line + ";"
-        code.append(line)
+    for name, vexpr, vbarexpr in zip(Vnames, Vexprs, Vbarexprs):
+        code.append(name       +" += sqrt(2.) * PhysConst::GF * vol * ("+vexpr   +");")
+        code.append(name+"bar" +" += sqrt(2.) * PhysConst::GF * vol * ("+vbarexpr+");")
         code.append("")
-
-        # add/subtract the potential as appropriate
-        for t in tails:
-            line = Vlist[icomp]+t
-
-            if sgn(t,Vlist[icomp])==1:
-                line += " += "
-            else:
-                line += " -= "
-
-            line += "sqrt(2.) * PhysConst::GF * sx(i) * sy(j) * sz(k) * (inside_parentheses);"
-            code.append(line)
-            code.append("")
-        
-    code.append("T_pp += sx(i) * sy(j) * sz(k) * sarr(i, j, k, GIdx::T);")
-    code.append("Ye_pp += sx(i) * sy(j) * sz(k) * sarr(i, j, k, GIdx::Ye);")
-    code.append("rho_pp += sx(i) * sy(j) * sz(k) * sarr(i, j, k, GIdx::rho);")
-    code.append("")
 
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_interpolate_from_mesh_fill"))
 
     #========================#
     # Evolve.cpp_dfdt_fill #
     #========================#
+    # Quantum kinetic equation for the neutrino number matrix N:
+    #     dN/dt = c * C  -  (i/hbar) * attenuation * [H, N]
+    # with the collision term C = {Gamma, N_eq - N} (anticommutator), where
+    #     Gamma = (absorption inverse mean free path) / 2,
+    #     N_eq  = f_eq * Vphase / (2 pi hbar c)^3   (equilibrium number matrix),
+    #     H     = V                                 (Hamiltonian assembled above).
+    # Each stage declares C++ scalars for one Hermitian matrix; later stages rebuild
+    # the matrix from its name template so they reference those scalars by name
+    # rather than re-inlining the full expression (keeping the generated code small).
 
-    # Generate quantum kinetic equations
-
-    # Define useful constants
-    hbar = sympy.symbols("PhysConst\:\:hbar",real=True)
-    attenuation_to_hamiltonian = sympy.symbols("parms->attenuation_hamiltonians", real=True)
+    # Physical constants and per-particle scalars, referenced by their C++ names.
+    hbar    = sympy.symbols("PhysConst\:\:hbar", real=True)
+    c       = sympy.symbols("PhysConst\:\:c", real=True)
+    pi      = sympy.symbols("MathConst\:\:pi", real=True)
     V_phase = sympy.symbols("p.rdata(PIdx\:\:Vphase)", real=True)
-    pi = sympy.symbols("MathConst\:\:pi", real=True)
-    c = sympy.symbols("PhysConst\:\:c", real=True)
+    attenuation_to_hamiltonian = sympy.symbols("parms->attenuation_hamiltonians", real=True)
 
-    # List that will store the QKE code.
+    # Emit an "amrex::Real lhs = rhs;" declaration for each independent component.
+    def declare(matrix):
+        return ["amrex::Real {}".format(line) for line in matrix.code()]
+
     code = []
+    for t in tails:  # "" -> neutrinos, "bar" -> antineutrinos
 
-    # Looping over neutrinos(tail: no tail) and antineutrinos(tail: bar)
-    for t in tails:
+        # Equilibrium occupation f_eq, copied from the input array into named scalars.
+        f_eq = HermitianMatrix(args.N, "f_eq_{}{}_{}"+t)
+        f_eq.H = HermitianMatrix(args.N, "f_eq"+t+"[{}][{}]").H
+        code += declare(f_eq)
 
-        # Define Fermi-Dirac distribution matrix f_eq = diag( f_e , f_x ) from input parameters
-        f_eq = HermitianMatrix(args.N, "f_eq_{}{}_{}"+t)        # Fermi-dirac distribution matrix ----> To be used in calculation of QKE in sympy format
-        f_eq_cpp = HermitianMatrix(args.N, "f_eq"+t+"[{}][{}]") # Fermi-dirac distribution matrix ----> Using the systaxis of line 183 of the Evolve.cpp file
-        f_eq.H = f_eq_cpp.H # Assigning input mean free paths to SymPy matrix
-        f_eq_temp_declare = ["amrex::Real {}".format(line) for line in f_eq.code()] # 
-        code.append(f_eq_temp_declare)
+        # Gamma = (absorption inverse mean free path) / 2.
+        Gamma = HermitianMatrix(args.N, "Gamma_{}{}_{}"+t)
+        Gamma.H = HermitianMatrix(args.N, "IMFP_abs"+t+"[{}][{}]").H / 2
+        code += declare(Gamma)
 
-        # Define Gamma matrix from input parameters : Gamma = diag( k*_e , k*_x ) / 2 . ka is the inverse mean free path for flavor a, including Pauli blocking term. * means that Pauli blocking term is already in the inverse mean free path values.
-        Gamma = HermitianMatrix(args.N, "Gamma_{}{}_{}"+t) # Inverse mean free path matrix. Gamma = diag( k*e , k*x ) / 2.       ----> To be used in calculation of QKE in sympy format
-        IMFP_abs = HermitianMatrix(args.N, "IMFP_abs"+t+"[{}][{}]") # Inverse mean free path matrix IMFP_abs = diag( k*e , k*x ) ----> Using the systaxis of line 181 of the Evolve.cpp file       
-        Gamma.H = IMFP_abs.H / 2 # Compute Gamma
-        Gamma_temp_declare = ["amrex::Real {}".format(line) for line in Gamma.code()]
-        code.append(Gamma_temp_declare)
+        # Equilibrium number matrix N_eq = f_eq * Vphase / (2 pi hbar c)^3.
+        N_eq = HermitianMatrix(args.N, "N_eq_{}{}_{}"+t)
+        N_eq.H = HermitianMatrix(args.N, "f_eq_{}{}_{}"+t).H * V_phase / (2*pi*hbar*c)**3
+        code += declare(N_eq)
 
-        # Define N_eq matrix
-        f_eq = HermitianMatrix(args.N, "f_eq_{}{}_{}"+t) # Fermi-dirac distribution matrix f_eq = diag( fe , fx ) 
-        N_eq = HermitianMatrix(args.N, "N_eq_{}{}_{}"+t) # Equilibrium neutrino number matrix N_eq equals the integral of f_eq, where the integral is over the phase space that the particle represents.
-        N_eq.H = f_eq.H * V_phase / ( 2 * pi * hbar * c )**3
-        N_eq_temp_declare = ["amrex::Real {}".format(line) for line in N_eq.code()]
-        code.append(N_eq_temp_declare)
-        
-        # Define collision term
-        Gamma = HermitianMatrix(args.N, "Gamma_{}{}_{}"+t) # Inverse mean free path matrix. Gamma = diag( k*e , k*x ) / 2. ka is the inverse mean free path for flavor a, including Pauli blocking term.
-        N = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")") # Neutrino number matrix
-        N_eq = HermitianMatrix(args.N, "N_eq_{}{}_{}"+t) # Equilibrium neutrino number matrix N_eq equals the integral of f_eq, where the integral is over the phase space that the particle represents.
-        C = HermitianMatrix(args.N, "C_{}{}_{}"+t) # Collision term C = { gamma , N_eq - N }, {} means anticonmutator
-        C.H = Gamma.H * ( N_eq.H - N.H ) + ( N_eq.H - N.H ) * Gamma.H # Compute collision term
-        C_temp_declare = ["amrex::Real {}".format(line) for line in C.code()]
-        code.append(C_temp_declare)
+        # Collision term C = {Gamma, N_eq - N}.
+        Gamma = HermitianMatrix(args.N, "Gamma_{}{}_{}"+t)
+        N     = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
+        N_eq  = HermitianMatrix(args.N, "N_eq_{}{}_{}"+t)
+        C = HermitianMatrix(args.N, "C_{}{}_{}"+t)
+        C.H = Gamma.H * (N_eq.H - N.H) + (N_eq.H - N.H) * Gamma.H
+        code += declare(C)
 
-        # Writing QKE
-        C = HermitianMatrix(args.N, "C_{}{}_{}"+t) # Collision term C = { gamma , N_eq - N }, {} means anticonmutator
-        H = HermitianMatrix(args.N, "V{}{}_{}"+t) # Hamiltonian
-        N = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")") # Neutrino number matrix
-        dNdt_temp = HermitianMatrix(args.N, "dNdt{}{}_{}"+t) # Temporary matrix for dNdt
-        dNdt_temp.H = C.H * c + ((H*N - N*H).times(-sympy.I/hbar)).H * attenuation_to_hamiltonian # Compute quantum kinetic equation
-        dNdt_temp_declare = ["amrex::Real {}".format(line) for line in dNdt_temp.code()]
-        code.append(dNdt_temp_declare)
+        # QKE right-hand side: dN/dt = c*C - (i/hbar)*attenuation*[H, N].
+        C = HermitianMatrix(args.N, "C_{}{}_{}"+t)
+        H = HermitianMatrix(args.N, "V{}{}_{}"+t)
+        N = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
+        dNdt = HermitianMatrix(args.N, "dNdt{}{}_{}"+t)
+        dNdt.H = C.H * c + ((H*N - N*H).times(-sympy.I/hbar)).H * attenuation_to_hamiltonian
+        code += declare(dNdt)
 
-        # Store dFdt back into the particle data for F
-        dNdt = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
-        dNdt_empty = HermitianMatrix(args.N, "dNdt{}{}_{}"+t)
-        dNdt.H = dNdt_empty.H
+        # Store the result back into the particle number matrix.
+        N_out = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
+        N_out.H = HermitianMatrix(args.N, "dNdt{}{}_{}"+t).H
+        code += N_out.code()
 
-        # Write out dNdt->N
-        code.append(dNdt.code())
+        # Accumulate Tr(H N) (H and N from the QKE step) for monitoring numerical error.
+        TrHN = (H*N).trace()
+        code.append("p.rdata(PIdx::TrHN) += ("+sympy.cxxcode(sympy.simplify(TrHN))+");")
 
-        # store Tr(H*F) for estimating numerical errors
-        TrHN = (H*N).trace();
-        code.append(["p.rdata(PIdx::TrHN) += ("+sympy.cxxcode(sympy.simplify(TrHN))+");"])
-
-    code = [line for sublist in code for line in sublist]
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))
-
-    #========================#
-    # Evolve.cpp_dfdt_fill_zeros #
-    #========================#
-
-    # List that will store the code for setting the derivative of the matrices N and Nbar to zero.
-    code = []
-
-    # Looping over neutrinos(tail: no tail) and antineutrinos(tail: bar)
-    for t in tails:
-
-        # Store dN/dt and dNbar/dt set to zero
-        dNdt = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")") # Derivative of the neutrino number matrix
-        zero_matrix = HermitianMatrix(args.N, "0.0") # Zero matrix
-        dNdt.H = zero_matrix.H # Set the derivative of the neutrino number matrix to zero
-
-        # Write out dN/dt = 0
-        code.append(dNdt.code())
-
-    code = [line for sublist in code for line in sublist]
-    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill_zeros"))
