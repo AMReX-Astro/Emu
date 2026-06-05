@@ -65,7 +65,9 @@ void evolve_flavor(const TestParams* parms)
     BoxArray ba(domain);
 
     // Break up boxarray "ba" into chunks no larger than "max_grid_size" along a direction
-    ba.maxSize(parms->max_grid_size);
+    const IntVect mgs(parms->max_grid_size_x, parms->max_grid_size_y, parms->max_grid_size_z);
+    ba.maxSize(mgs);
+    amrex::Print() << "Number of boxes created: " << ba.size() << std::endl;
 
     // This defines the physical box, [0,1] in each dimension
     RealBox real_box({AMREX_D_DECL(     0.0,      0.0,      0.0)},
@@ -97,9 +99,7 @@ void evolve_flavor(const TestParams* parms)
     //Else set rho, T and Ye to constant value throughout the grid using values from parameter file.
     if (parms->read_rho_T_Ye_from_table){
         set_rho_T_Ye(state, geom, parms);
-	    state.setVal(parms->vupx_in, GIdx::vupx,1); // cm/s 
-	    state.setVal(parms->vupy_in, GIdx::vupy,1); // cm/s
-	    state.setVal(parms->vupz_in, GIdx::vupz,1); // cm/s
+
     } else {      
         state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
         state.setVal(parms->Ye_in,GIdx::Ye,1); 
@@ -257,8 +257,8 @@ void evolve_flavor(const TestParams* parms)
         run_fom += neutrinos.TotalNumberOfParticles();
 
         // Write the Mesh Data to Plotfile if required
-	bool write_plotfile       = parms->write_plot_every           > 0 && (step+1) % parms->write_plot_every           == 0;
-	bool write_plot_particles = parms->write_plot_particles_every > 0 && (step+1) % parms->write_plot_particles_every == 0;
+        bool write_plotfile       = parms->write_plot_every           > 0 && (step+1) % parms->write_plot_every           == 0;
+        bool write_plot_particles = parms->write_plot_particles_every > 0 && (step+1) % parms->write_plot_particles_every == 0;
         if (write_plotfile || write_plot_particles) {
             // Only include the Particle Data if write_plot_particles_every is satisfied
             int write_plot_particles = parms->write_plot_particles_every > 0 &&
@@ -270,6 +270,8 @@ void evolve_flavor(const TestParams* parms)
         // Note: this won't be the same as the new-time grid data
         // because the last deposit_to_mesh call was at either the old time (forward Euler)
         // or the final RK stage, if using Runge-Kutta.
+
+        // printf("Setting next timestep... \n");
         const Real dt = compute_dt(geom, state, neutrinos, parms);
         integrator.set_time_step(dt);
 
@@ -411,7 +413,7 @@ void evolve_flavor(const TestParams* parms)
 
     // Get a starting timestep
     const Real starting_dt = compute_dt(geom, state, neutrinos_old, parms);
-
+    
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
 

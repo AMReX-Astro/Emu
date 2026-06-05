@@ -52,10 +52,33 @@ Gpu::ManagedVector<GpuArray<Real,PIdx::nattribs>> read_particle_data(std::string
   // read the number of flavors from the first line
   std::getline(file, line);
   ss = std::stringstream(line);
-  int NF_in;
-  ss >> NF_in;
+  std::string token;
+  int NF_in = -1;
+  // Look for the first integer in the line, eg. in "number_of_flavors = 2"
+  while (ss >> token) {
+    try {
+      NF_in = std::stoi(token);
+      break;
+    } catch (...) {
+      // Not an int, keep scanning
+    }
+  }
   if(NF_in != NUM_FLAVORS) amrex::Print() << "Error: number of flavors in particle data file does not match the number of flavors Emu was compiled for." << std::endl;
   AMREX_ASSERT(NF_in == NUM_FLAVORS);
+
+  // Skip the second row if it contains the header (assume it's only present if the first line after flavors is not numeric)
+  // Peek at the next line without advancing the stream position
+  std::streampos pos = file.tellg();
+  if (std::getline(file, line)) {
+    ss = std::stringstream(line);
+    Real test_value;
+    if (!(ss >> test_value)) {
+      // This line is not numeric, assume it's the header row, do nothing since we're not reading it as a particle.
+    } else {
+      // Otherwise, process this line as the first particle (rewind to read this line again in the main loop)
+      file.seekg(pos);
+    }
+  }
   
   // Loop over every line in the initial condition file.
   // This is equivalent to looping over every particle.
@@ -303,10 +326,20 @@ InitParticles(const TestParams* parms)
 	    p.rdata(PIdx::N11_Re   ) *= scale_fac;
 	    p.rdata(PIdx::N00_Rebar) *= scale_fac;
 	    p.rdata(PIdx::N11_Rebar) *= scale_fac;
-#if NUM_FLAVORS==3
-	    p.rdata(PIdx::N22_Re   ) *= scale_fac;
-	    p.rdata(PIdx::N22_Rebar) *= scale_fac;
-#endif
+		#if SET_EQUILIBRIUM == 1
+            p.rdata(PIdx::N00_Re_eq) *= scale_fac;
+            p.rdata(PIdx::N11_Re_eq) *= scale_fac;
+            p.rdata(PIdx::N00_Rebar_eq) *= scale_fac;
+            p.rdata(PIdx::N11_Rebar_eq) *= scale_fac;
+		#endif
+		#if NUM_FLAVORS==3
+			p.rdata(PIdx::N22_Re   ) *= scale_fac;
+			p.rdata(PIdx::N22_Rebar) *= scale_fac;
+			#if SET_EQUILIBRIUM == 1
+				p.rdata(PIdx::N22_Re_eq) *= scale_fac;
+				p.rdata(PIdx::N22_Rebar_eq) *= scale_fac;
+			#endif
+		#endif
     
         // Set phase space volume Vphase = dx^3 * dOmega * dE^3 / 3
         // From initial conditions, Vphase gets dOmega * dE^3 / 3
@@ -371,6 +404,36 @@ InitParticles(const TestParams* parms)
 			p.rdata(PIdx::N22_Rebar) *= 1. + parms->perturbation_amplitude*rand;
 #endif
 		}
+	    if(parms->perturbation_type == 3){
+	      // random perturbations to the off-diagonals
+	      Real rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N01_Re)    = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N01_Im)    = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N01_Rebar) = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N01_Imbar) = parms->perturbation_amplitude*rand;
+#if NUM_FLAVORS==3
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N02_Re)    = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N02_Im)    = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N12_Re)    = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N12_Im)    = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N02_Rebar) = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N02_Imbar) = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N12_Rebar) = parms->perturbation_amplitude*rand;
+	      symmetric_uniform(&rand, engine);
+	      p.rdata(PIdx::N12_Imbar) = parms->perturbation_amplitude*rand;
+#endif
+	    }
 
 	  } // loop over direction
 	} // loop over location

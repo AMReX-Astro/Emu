@@ -62,11 +62,11 @@ fnu[:,1:,:] = nnu[:,1:,np.newaxis] * fnux[np.newaxis,np.newaxis,:]
 # Generate particles
 particles = moment_interpolate_particles(nphi_equator, nnu, fnu, energies_center_erg, uniform_sphere, minerbo_interpolate) # [particle, variable]
 
-# Setting the equilibrium number densities equal to the initial number densities
-for nu_nubar, suffix in zip(range(2), ["","bar"]):
-    for flavor in range(NF):
-        fvarname = "N"+str(flavor)+str(flavor)+"_Re"+suffix
-        particles[:,rkey[fvarname+"_eq"]] = particles[:,rkey[fvarname]]
+# # Setting the equilibrium number densities equal to the initial number densities
+# for nu_nubar, suffix in zip(range(2), ["","bar"]):
+#     for flavor in range(NF):
+#         fvarname = "N"+str(flavor)+str(flavor)+"_Re"+suffix
+#         particles[:,rkey[fvarname+"_eq"]] = particles[:,rkey[fvarname]]
 
 # Generate the number of directions
 n_directions = len(particles)

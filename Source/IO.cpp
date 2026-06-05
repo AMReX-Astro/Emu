@@ -38,13 +38,18 @@ WritePlotFile (const amrex::MultiFab& state,
     amrex::WriteSingleLevelPlotfile(plotfilename, state, GIdx::names, geom, time, step);
 #endif
 
+FlavoredNeutrinoContainer neutrinos_for_IO(geom, state.DistributionMap(), state.boxArray());
+neutrinos_for_IO.copyParticles(neutrinos, true);
+
     if (write_plot_particles == 1)
     {
         auto neutrino_varnames = neutrinos.get_attribute_names();
 #ifdef AMREX_USE_HDF5
         neutrinos.CheckpointHDF5(plotfilename, "neutrinos", true, neutrino_varnames);
+        // neutrinos_for_IO.WritePlotFile(plotfilename, "neutrinos", neutrino_varnames); // This is the way to write the particles to the plt file that work for parawview visualization
 #else
         neutrinos.Checkpoint(plotfilename, "neutrinos", true, neutrino_varnames);
+        // neutrinos_for_IO.WritePlotFile(plotfilename, "neutrinos", neutrino_varnames); // This is the way to write the particles to the plt file that work for parawview visualization
 #endif
     }
 

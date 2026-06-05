@@ -4,6 +4,9 @@ perturbation_wavelength_cm = 1
 
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 1
+attenuation_vacuum = 1.0
+attenuation_matter = 1.0
+attenuation_self_interaction = 1.0
 
 cfl_factor = 10
 flavor_cfl_factor = 10
@@ -29,10 +32,18 @@ nppc  = (1, 1, 1)
 particle_data_filename = "particle_input.dat"
 
 # Maximum size of each grid in the domain
-max_grid_size = 10
+max_grid_size_x = 1
+max_grid_size_y = 1
+max_grid_size_z = 50
 
 # Number of steps to run
 nsteps = 5000
+
+# Minimum timestep (s)
+minimum_time_step = 1e-15
+
+# Time step method
+time_step_method = 0
 
 # Simulation end time
 end_time = 1.0e-10
