@@ -33,6 +33,8 @@ struct TestParams : public amrex::Gpu::Managed
     Real cfl_factor, flavor_cfl_factor, collision_cfl_factor;
     bool do_restart; // Flag to restart from a previous simulation
     std::string restart_dir; // Directory path to restart from in case do_restart is true
+    Real minimum_time_step; // Minimum time step allowed in the simulation
+    int time_step_method; // Time step method flag
 
     // File name with particles' initial conditions
     // This includes energy, momentum, N, Nbar, phase space volume, and others. 
