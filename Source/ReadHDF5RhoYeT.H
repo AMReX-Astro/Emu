@@ -7,8 +7,8 @@ struct rhoYeT_input_struct {
     
     //constructor for Tabulated EOS
     AMREX_GPU_DEVICE AMREX_GPU_HOST rhoYeT_input_struct() = default;//Need to keep it
-    AMREX_GPU_DEVICE AMREX_GPU_HOST rhoYeT_input_struct(double *rho_input, double *Ye_input, double *T_input, double *vupx_input, double *vupy_input, double *vupz_input): 
-    rho_input(rho_input), Ye_input(Ye_input), T_input(T_input), vupx_input(vupx_input), vupy_input(vupy_input), vupz_input(vupz_input) {}
+    AMREX_GPU_DEVICE AMREX_GPU_HOST rhoYeT_input_struct(double *rho_in, double *Ye_in, double *T_in, double *vupx_in, double *vupy_in, double *vupz_in):
+    rho_input(rho_in), Ye_input(Ye_in), T_input(T_in), vupx_input(vupx_in), vupy_input(vupy_in), vupz_input(vupz_in) {}
 
 }; //struct EOS_tabulated
 
@@ -36,3 +36,4 @@ namespace background_input_rho_T_Ye {
 }
 
 #endif // READ_HDF5_RHO_YE_T_H
+\r

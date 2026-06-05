@@ -10,10 +10,10 @@ struct EOS_tabulated {
     
     //constructor for Tabulated EOS
     AMREX_GPU_DEVICE AMREX_GPU_HOST EOS_tabulated() = default;//Need to keep it
-    AMREX_GPU_DEVICE AMREX_GPU_HOST EOS_tabulated(double *alltables, double *epstable, double *logrho, 
-    double *logtemp, double *yes, double *helperVarsReal, int *helperVarsInt): 
-    alltables(alltables), epstable(epstable), logrho(logrho), logtemp(logtemp), 
-    yes(yes), helperVarsReal(helperVarsReal), helperVarsInt(helperVarsInt) {}
+    AMREX_GPU_DEVICE AMREX_GPU_HOST EOS_tabulated(double *alltables_in, double *epstable_in, double *logrho_in,
+    double *logtemp_in, double *yes_in, double *helperVarsReal_in, int *helperVarsInt_in):
+    alltables(alltables_in), epstable(epstable_in), logrho(logrho_in), logtemp(logtemp_in),
+    yes(yes_in), helperVarsReal(helperVarsReal_in), helperVarsInt(helperVarsInt_in) {}
 
     //--------------- get helperVarsReal pointer ---------------------------------------------
     AMREX_GPU_DEVICE AMREX_GPU_HOST double *get_helperVarsReal() const {

@@ -86,15 +86,8 @@ Real compute_dt(
             reduce_op.eval(bx, reduce_data,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
             {
-                // Check if the cell is at the boundary or inside the black hole
-                if (parms->do_periodic_empty_bc == 1) {
-                    // Check if the cell is at the boundary
-                    if (i == 0 || i == parms->ncell[0] - 1 ||
-                        j == 0 || j == parms->ncell[1] - 1 ||
-                        k == 0 || k == parms->ncell[2] - 1) {
-                        return {max_real,max_real,max_real};
-                    }
-                }else if (parms->do_blackhole == 1) {
+                // Skip cells inside the black hole
+                if (parms->do_blackhole == 1) {
                     // Check if the cell is inside the black hole
 
                     // Calculate the cell size
