@@ -123,7 +123,11 @@ read_rho_T_Ye_from_table = 0
 #################
 # Blackhole
 #################
-do_blackhole = 0
+do_blackhole = 1
+bh_radius = 0.5 # cm
+bh_center_x = 2.5 # cm
+bh_center_y = 2.5 # cm
+bh_center_z = 2.5 # cm
 
 #################
 # Boundary conditions
