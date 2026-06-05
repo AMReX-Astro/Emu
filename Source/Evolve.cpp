@@ -37,19 +37,17 @@ namespace GIdx
  *
  * @param geom The geometry of the simulation domain.
  * @param state The state MultiFab containing the simulation data.
- * @param neutrinos The container for flavored neutrinos.
  * @param parms Pointer to the structure containing simulation parameters.
  *
  * @return The computed time step size.
  *
  * @note At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.
- * @note The function handles periodic boundary conditions and black hole regions if specified in the parameters.
+ * @note The function skips black hole regions if specified in the parameters.
  * @note The function performs a reduction operation to find the minimum time step across all cells and MPI ranks.
  */
 Real compute_dt(
     const Geometry& geom,
     const MultiFab& state,
-    const FlavoredNeutrinoContainer& neutrinos,
     const TestParams* parms)
 {
     // If the time step method is 1, return the minimum time step
@@ -405,7 +403,11 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         Real f_eqbar[NUM_FLAVORS][NUM_FLAVORS]; // Antineutrino equilibrium Fermi-dirac distribution matrix: f_eq = diag( fbar_e , fbar_u , fbar_t ) 
         Real munu[NUM_FLAVORS][NUM_FLAVORS]; // Neutrino chemical potential matrix: munu = diag ( munu_e , munu_x)
         Real munubar[NUM_FLAVORS][NUM_FLAVORS]; // Antineutrino chemical potential matrix: munu = diag ( munubar_e , munubar_x)
-        
+
+        // The scattering opacities are interpolated/stored but not yet wired into the
+        // collision term (see the "... fix it ..." notes below); mark them reserved.
+        amrex::ignore_unused(IMFP_scat, IMFP_scatbar);
+
         // Initialize matrices with zeros
         for (int i=0; i<NUM_FLAVORS; ++i) {
             for (int j=0; j<NUM_FLAVORS; ++j) {
@@ -458,9 +460,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             munubar[0][0] = -1.0 * munu_val; // erg : Save antineutrino chemical potential from EOS table in chemical potential matrix
 
             //--------------------- Values from NuLib table ---------------------------
-            double *helperVarsReal_nulib = NuLib_tabulated_obj.get_helperVarsReal_nulib();
-            int *helperVarsInt_nulib = NuLib_tabulated_obj.get_helperVarsInt_nulib();
-
+            int *helperVarsInt_nulib = NuLib_tabulated_obj.get_helperVarsInt_nulib(); // used via NULIBVAR_INT
             double *energy_bottom = NuLib_energies_obj.get_energy_bottom_nulib();
             double *energy_top = NuLib_energies_obj.get_energy_top_nulib();
 

@@ -261,8 +261,6 @@ void evolve_flavor(const TestParams* parms)
         bool write_plot_particles = parms->write_plot_particles_every > 0 && (step+1) % parms->write_plot_particles_every == 0;
         if (write_plotfile || write_plot_particles) {
             // Only include the Particle Data if write_plot_particles_every is satisfied
-            int write_plot_particles = parms->write_plot_particles_every > 0 &&
-                                       (step+1) % parms->write_plot_particles_every == 0;
             WritePlotFile(state, neutrinos, geom, time, step+1, write_plot_particles);
         }
 
@@ -272,7 +270,7 @@ void evolve_flavor(const TestParams* parms)
         // or the final RK stage, if using Runge-Kutta.
 
         // printf("Setting next timestep... \n");
-        const Real dt = compute_dt(geom, state, neutrinos, parms);
+        const Real dt = compute_dt(geom, state, parms);
         integrator.set_time_step(dt);
 
         // set_time_step clears use_adaptive_time_step; restore it so adaptive error
@@ -412,7 +410,7 @@ void evolve_flavor(const TestParams* parms)
     integrator.set_adaptive_step();
 
     // Get a starting timestep
-    const Real starting_dt = compute_dt(geom, state, neutrinos_old, parms);
+    const Real starting_dt = compute_dt(geom, state, parms);
     
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
