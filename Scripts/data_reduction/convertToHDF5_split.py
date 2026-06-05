@@ -59,41 +59,36 @@ def convert_to_HDF5(sim_directory, DELETE_ALL_BUT_LAST_RESTART=False):
         ad = eds.ds.all_data()
         datatype = ad['boxlib',"N00_Re"].d.dtype
         
-        if d==fluid_directories[0]:
-            NF = eds.get_num_flavors()
-            allData = h5py.File(sim_directory+"/allData.h5","w")
-            allData["dx(cm)"] = eds.dx
-            allData["dy(cm)"] = eds.dy
-            allData["dz(cm)"] = eds.dz
-            allData["Nx"] = eds.Nx
-            allData["Ny"] = eds.Ny
-            allData["Nz"] = eds.Nz
-            allData.create_dataset("t(s)", data=np.zeros(0), maxshape=(None,), dtype=datatype)
-            allData.create_dataset("it", data=np.zeros(0), maxshape=(None,), dtype=int)
+        out_file = sim_directory + "/mesh_" + d.split('/')[-1] + ".h5"
+        if os.path.exists(out_file):
+            print(f"Skipping existing file: {out_file}")
+            continue
+        
+        NF = eds.get_num_flavors()
+        allData = h5py.File(out_file,"w")
+        allData["dx(cm)"] = eds.dx
+        allData["dy(cm)"] = eds.dy
+        allData["dz(cm)"] = eds.dz
+        allData["Nx"] = eds.Nx
+        allData["Ny"] = eds.Ny
+        allData["Nz"] = eds.Nz
+        allData["t(s)"] = eds.ds.current_time
+        allData["it"] = int(d.split('plt')[-1])
 
-            # create fluid data sets
-            maxshape = (None,eds.Nx,eds.Ny,eds.Nz)
-            chunkshape = (1,eds.Nx,eds.Ny,eds.Nz)
-            zeros = np.zeros((0,eds.Nx,eds.Ny,eds.Nz))
-            varlist = []
-            for v in fluid_vars:
-                for f1 in range(NF):
-                    for f2 in range(f1,NF):
-                        for b in nunubar:
-                            varlist.append(v+str(f1)+str(f2)+"_Re"+b+"(1|ccm)")
-                            if f2!=f1:
-                                varlist.append(v+str(f1)+str(f2)+"_Im"+b+"(1|ccm)")
-            for v in varlist:
-                allData.create_dataset(v, data=zeros, maxshape=maxshape, chunks=chunkshape, dtype=datatype)
+        varlist = []
+        for v in fluid_vars:
+            for f1 in range(NF):
+                for f2 in range(f1,NF):
+                    for b in nunubar:
+                        varlist.append(v+str(f1)+str(f2)+"_Re"+b+"(1|ccm)")
+                        if f2!=f1:
+                            varlist.append(v+str(f1)+str(f2)+"_Im"+b+"(1|ccm)")
 
-        # resize the datasets
-        allData["t(s)"].resize((len(allData["t(s)"]) + 1, ))
-        allData["t(s)"][-1] = eds.ds.current_time
-        allData["it"].resize((len(allData["it"]) + 1, ))
-        allData["it"][-1] = int(d[-5:])
         for v in varlist:
-            allData[v].resize(np.shape(allData[v])[0] + 1, axis=0)
-            allData[v][-1,:] = eds.cg[v[:-7]].d
+            data = eds.cg[v[:-7]]
+            allData[v] = data
+
+        allData.close()
 
     if DELETE_ALL_BUT_LAST_RESTART:
         particle_directories = [d[:-10] for d in sorted(glob.glob(sim_directory+"/plt*/neutrinos"))]

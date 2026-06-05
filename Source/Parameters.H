@@ -17,7 +17,9 @@ struct TestParams : public amrex::Gpu::Managed
     IntVect ncell; // Number of cells in the domain
     IntVect nppc; // Number of points of particle emission per cell in each dimension
     Real Lx, Ly, Lz; // Length of the domain in each dimension
-    int max_grid_size; // Maximum grid size subdivisions of the domain for parallelization 
+    int max_grid_size_x; // Maximum grid size subdivisions in x of the domain for parallelization 
+    int max_grid_size_y; // Maximum grid size subdivisions in y of the domain for parallelization
+    int max_grid_size_z; // Maximum grid size subdivisions in z of the domain for parallelization
     int nsteps; // Number of time steps
     Real end_time; // End time of the simulation
     int write_plot_every; // Write plot files every n steps
@@ -31,6 +33,8 @@ struct TestParams : public amrex::Gpu::Managed
     Real cfl_factor, flavor_cfl_factor, collision_cfl_factor;
     bool do_restart; // Flag to restart from a previous simulation
     std::string restart_dir; // Directory path to restart from in case do_restart is true
+    Real minimum_time_step; // Minimum time step allowed in the simulation
+    int time_step_method; // Time step method flag
 
     // File name with particles' initial conditions
     // This includes energy, momentum, N, Nbar, phase space volume, and others. 
@@ -57,6 +61,9 @@ struct TestParams : public amrex::Gpu::Managed
 
     // Attenuation to Hamiltonians
     Real attenuation_hamiltonians; // Multiplication factor to [N,H]
+    Real attenuation_vacuum;
+    Real attenuation_matter;
+    Real attenuation_self_interaction;
 
     // Black hole properties
     int do_blackhole; // Flag to include a black hole in the simulation 
@@ -75,6 +82,8 @@ struct TestParams : public amrex::Gpu::Managed
     std::string background_rho_Ye_T_table_name; // Background matter table file name
     int boundary_condition_type; // Boundary condition type flag
 
+    int set_equilibrium_distribution; // Flag to set the equilibrium distribution function for neutrinos and antineutrinos
+
     void Initialize(){
 
         ParmParse pp;
@@ -83,7 +92,9 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("Ly", Ly);
         pp.get("Lz", Lz);
         pp.get("nppc",  nppc);
-        pp.get("max_grid_size", max_grid_size);
+        pp.get("max_grid_size_x", max_grid_size_x);
+        pp.get("max_grid_size_y", max_grid_size_y);
+        pp.get("max_grid_size_z", max_grid_size_z);
         pp.get("nsteps", nsteps);
         pp.get("end_time", end_time);
         pp.get("cfl_factor", cfl_factor);
@@ -93,6 +104,8 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("write_plot_particles_every", write_plot_particles_every);
         pp.get("do_restart", do_restart);
         pp.get("restart_dir", restart_dir);
+        pp.get("minimum_time_step", minimum_time_step);
+        pp.get("time_step_method", time_step_method);
 
         // File name with particles' initial conditions
         // This includes energy, momentum, N, Nbar, phase space volume, and others. 
@@ -128,7 +141,10 @@ struct TestParams : public amrex::Gpu::Managed
 
         // attenuation to hamiltonians
         pp.get("attenuation_hamiltonians", attenuation_hamiltonians);
-        
+        pp.get("attenuation_vacuum", attenuation_vacuum);
+        pp.get("attenuation_matter", attenuation_matter);
+        pp.get("attenuation_self_interaction", attenuation_self_interaction);
+
         // Boundary condition type
         pp.get("boundary_condition_type", boundary_condition_type);
         pp.get("do_periodic_empty_bc",  do_periodic_empty_bc);
@@ -163,6 +179,11 @@ struct TestParams : public amrex::Gpu::Managed
 
         // Flag for collision term treatment
         pp.get("IMFP_method", IMFP_method);
+
+        if(IMFP_method>0){
+            // Set equilibrium distribution function for neutrinos and antineutrinos
+            pp.get("set_equilibrium_distribution", set_equilibrium_distribution);
+        }
 
         if(IMFP_method==0) {
             // Do nothing

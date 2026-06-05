@@ -45,3 +45,6 @@ with h5py.File('rho_Ye_T.hdf5', 'w') as hdf:
     hdf.create_dataset("rho_g|ccm", data=rho)
     hdf.create_dataset("T_Mev", data=T)
     hdf.create_dataset("Ye", data=Ye)
+    hdf.create_dataset("vupx", data=np.full_like(rho, 0.0))
+    hdf.create_dataset("vupy", data=np.full_like(rho, 0.0))
+    hdf.create_dataset("vupz", data=np.full_like(rho, 0.0))

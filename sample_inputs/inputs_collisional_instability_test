@@ -3,13 +3,16 @@ perturbation_amplitude = 0.0
 
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 1.0
+attenuation_vacuum = 1.0
+attenuation_matter = 1.0
+attenuation_self_interaction = 1.0
 
 cfl_factor = 0.5
 flavor_cfl_factor = 0.5
 collision_cfl_factor = 1e-3
 
 integration.type = 1
-integration.rk.type = 5          # DormandPrince (0=User, 1=ForwardEuler, 2=Trapezoid, 3=SSPRK3, 4=RK4, 5=DormandPrince)
+integration.rk.type = 4          # DormandPrince (0=User, 1=ForwardEuler, 2=Trapezoid, 3=SSPRK3, 4=RK4, 5=DormandPrince)
 integration.use_adaptive_time_step = 1
 integration.abs_tol = 0.0
 integration.rel_tol = 1.0e-9
@@ -19,22 +22,30 @@ integration.rk.max_factor = 5.0
 
 # Domain size in 3D index space
 ncell = (1, 1, 1)
-Lx = 1 # cm
-Ly = 1 # cm
-Lz = 1 # cm
+Lx = 1e4 # cm
+Ly = 1e4 # cm
+Lz = 1e4 # cm
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
 particle_data_filename = "particle_input.dat"
 
 # Maximum size of each grid in the domain
-max_grid_size = 16
+max_grid_size_x = 1
+max_grid_size_y = 1
+max_grid_size_z = 1
 
 # Number of steps to run
-nsteps = 40000
+nsteps = 3000
+
+# Minimum timestep (s)
+minimum_time_step = 2e-12
+
+# Time step method
+time_step_method = 1 # 0 for adaptive time step, 1 for fixed time step with value minimum_time_step but RK4 has to be used.
 
 # Simulation end time
-end_time = 5.0e19
+end_time = 6.0e-09
 
 # Make FPE signal errors so we get a Backtrace
 amrex.fpe_trap_invalid=1
@@ -49,14 +60,16 @@ vupy = 0.0
 vupz = 0.0
 
 # Write plotfiles
-write_plot_every = 500
+write_plot_every = 10
 
 # Write particle data in plotfiles
-write_plot_particles_every = 500
+write_plot_particles_every = 10
 
 # checkpointing
 do_restart = 0
 restart_dir = ""
+
+set_equilibrium_distribution = 1
 
 ###############################
 # NEUTRINO PHYSICS PARAMETERS #
@@ -104,10 +117,10 @@ IMFP_abs0bar_cm = 2.29358e-2
 IMFP_abs1bar_cm = 0
 IMFP_abs2bar_cm = 0
 
-munu0_MeV = 20.0
+munu0_MeV = 0
 munu1_MeV = 0
 munu2_MeV = 0
-munu0bar_MeV = 17.644694342915507
+munu0bar_MeV = 0
 munu1bar_MeV = 0
 munu2bar_MeV = 0
 
@@ -118,7 +131,7 @@ IMFP_scat0bar_cm = 0
 IMFP_scat1bar_cm = 0
 IMFP_scat2bar_cm = 0
 
-delta_E = 2.272540842052914 # Mev
+delta_E = 0 # Mev
 
 #################
 # Background Ye, T and rho
