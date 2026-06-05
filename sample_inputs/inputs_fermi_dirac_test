@@ -93,7 +93,6 @@ deltaCP_degrees = 222
 IMFP_method = 2
 Do_Pauli_blocking = 0 # If 1, it will multiply the inverse mean free path by 1 / (1 - f_eq); if 0, do nothing.
 boundary_condition_type = 0
-set_equilibrium_distribution = 0
 
 #################
 # Background Ye, T and rho. Adding constant v for now

@@ -69,8 +69,6 @@ write_plot_particles_every = 10
 do_restart = 0
 restart_dir = ""
 
-set_equilibrium_distribution = 1
-
 ###############################
 # NEUTRINO PHYSICS PARAMETERS #
 ###############################
@@ -114,6 +112,7 @@ IMFP_abs0_cm = 2.398082e-1
 IMFP_abs1_cm = 0
 IMFP_abs2_cm = 0
 IMFP_abs0bar_cm = 2.29358e-2
+IMFP_abs1bar_cm = 0
 IMFP_abs1bar_cm = 0
 IMFP_abs2bar_cm = 0
 
