@@ -104,7 +104,7 @@ public:
     template<BoundaryParticleCreationDirection DIRECTION>
     void CreateParticlesAtBoundary(const TestParams* parms, const Real current_dt);
 
-    void SyncLocation(int type);
+    void SyncLocation(int type, int coord_sys);
 
     void UpdateLocationFrom(FlavoredNeutrinoContainer& Other);
 

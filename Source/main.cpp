@@ -239,14 +239,14 @@ void evolve_flavor(const TestParams* parms)
 
         // Update the new time particle locations in the domain with their
         // integrated coordinates.
-        neutrinos.SyncLocation(Sync::CoordinateToPosition);
+        neutrinos.SyncLocation(Sync::CoordinateToPosition, parms->coord_sys);
 
         // Now Redistribute the new time particles to their new grids.
         neutrinos.RedistributeLocal();
 
         // Update the integrated coordinates with the new particle locations
         // since Redistribute() applies periodic boundary conditions.
-        neutrinos.SyncLocation(Sync::PositionToCoordinate);
+        neutrinos.SyncLocation(Sync::PositionToCoordinate, parms->coord_sys);
 
 	rd.WriteReducedData0D(geom, state, neutrinos, time, step+1, integrator.get_previous_time_step(), integrator.get_scaled_error());
 

@@ -1,11 +1,12 @@
 #include "FlavoredNeutrinoContainer.H"
 #include "Constants.H"
+#include "Metric.H"
 
 
 using namespace amrex;
 
 void FlavoredNeutrinoContainer::
-SyncLocation(int type)
+SyncLocation(int type, int coord_sys)
 {
     BL_PROFILE("FlavoredNeutrinoContainer::SyncLocation");
 
@@ -24,16 +25,29 @@ SyncLocation(int type)
         amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
             ParticleType& p = pstruct[i];
 
+            if      ( coord_sys==0 ) { CartesianMetric metric; }
+            else if ( coord_sys==1 ) { CylindricalMetric metric;}
+            else                     { SphericalMetric metric;}
+
             if (type == Sync::CoordinateToPosition) {
                 // Copy integrated position to the particle position.
+
+                metric.coord_conv(p); //matching integrated particle coordinate system to mesh coordinate system
+
                 p.pos(0) = p.rdata(PIdx::x);
                 p.pos(1) = p.rdata(PIdx::y);
                 p.pos(2) = p.rdata(PIdx::z);
+
+                metric.coord_conv_inv(p); //turning integrated particle coordinate system back to cartesian
+
             } else if (type == Sync::PositionToCoordinate) {
-                // Copy the reset particle position back to the integrated position.
+                // Copy the reset particle position back to the integrated position (in mesh coordinate system)
                 p.rdata(PIdx::x) = p.pos(0);
                 p.rdata(PIdx::y) = p.pos(1);
                 p.rdata(PIdx::z) = p.pos(2);
+                
+                metric.coord_conv_inv(p); //turning integrated particle coordinate system back to cartesian
+
             }
         });
     }
