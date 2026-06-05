@@ -125,7 +125,8 @@ void
 DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
 				const MultiFab& state,
 				const FlavoredNeutrinoContainer& neutrinos,
-				const amrex::Real time, const int step)
+				const amrex::Real time, const int step, const amrex::Real dt,
+				const amrex::Real scaled_error)
 {
   // get index volume of the domain
   int ncells = geom.Domain().volume();
@@ -138,10 +139,13 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   auto particleResult = amrex::ParticleReduce< ReduceData<amrex::Real, amrex::Real, amrex::Real> >(neutrinos,
       [=] AMREX_GPU_DEVICE(const PType& p) noexcept -> amrex::GpuTuple<amrex::Real, amrex::Real, amrex::Real> {
           Real TrHN = p.rdata(PIdx::TrHN);
-	        Real TrN = 0;
           Real Vphase = p.rdata(PIdx::Vphase);
-#include "generated_files/DataReducer.cpp_fill_particles"
-          return amrex::GpuTuple<amrex::Real, amrex::Real, amrex::Real>{TrN, TrHN, Vphase};
+	  Real TrN = 0;
+          for (int f=0; f<NUM_FLAVORS; ++f) {
+              TrN += p.rdata(PIdx::N00_Re    + PIdx::offset(f,f));
+              TrN += p.rdata(PIdx::N00_Rebar + PIdx::offset(f,f));
+          }
+	  return {TrN,TrHN, Vphase};
       }, reduce_ops);
   Real TrN  = amrex::get<0>(particleResult);
   Real TrHN = amrex::get<1>(particleResult);
@@ -150,7 +154,7 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
   ParallelDescriptor::ReduceRealSum(TrHN);
   ParallelDescriptor::ReduceRealSum(Vphase);
 
-  amrex::Print() << "TrN=" << TrN << ", TrHN=" << TrHN << ", Vphase=" << Vphase << std::endl;
+  amrex::Print() << "step=" << step << ", time=" << time << ", dt=" << dt << ", scaled_err=" << scaled_error << ", TrN=" << TrN << ", TrHN=" << TrHN << ", Vphase=" << Vphase << std::endl;
 
   //=============================//
   // Do reductions over the grid //
@@ -195,7 +199,42 @@ DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
 
       Real N_offdiag_mag2 = 0;
 
-      #include "generated_files/DataReducer.cpp_fill"
+      for (int fi=0; fi<NUM_FLAVORS; ++fi) {
+          // diagonal moments
+          const int d = PIdx::offset(fi,fi);
+          Ndiag    [fi] = a(i,j,k, GIdx::N00_Re     + d);
+          Fxdiag   [fi] = a(i,j,k, GIdx::Fx00_Re    + d);
+          Fydiag   [fi] = a(i,j,k, GIdx::Fy00_Re    + d);
+          Fzdiag   [fi] = a(i,j,k, GIdx::Fz00_Re    + d);
+          Ndiagbar [fi] = a(i,j,k, GIdx::N00_Rebar  + d);
+          Fxdiagbar[fi] = a(i,j,k, GIdx::Fx00_Rebar + d);
+          Fydiagbar[fi] = a(i,j,k, GIdx::Fy00_Rebar + d);
+          Fzdiagbar[fi] = a(i,j,k, GIdx::Fz00_Rebar + d);
+          #if NUM_MOMENTS == 3
+          Pxxdiag   [fi] = a(i,j,k, GIdx::Pxx00_Re    + d);
+          Pxydiag   [fi] = a(i,j,k, GIdx::Pxy00_Re    + d);
+          Pxzdiag   [fi] = a(i,j,k, GIdx::Pxz00_Re    + d);
+          Pyydiag   [fi] = a(i,j,k, GIdx::Pyy00_Re    + d);
+          Pyzdiag   [fi] = a(i,j,k, GIdx::Pyz00_Re    + d);
+          Pzzdiag   [fi] = a(i,j,k, GIdx::Pzz00_Re    + d);
+          Pxxdiagbar[fi] = a(i,j,k, GIdx::Pxx00_Rebar + d);
+          Pxydiagbar[fi] = a(i,j,k, GIdx::Pxy00_Rebar + d);
+          Pxzdiagbar[fi] = a(i,j,k, GIdx::Pxz00_Rebar + d);
+          Pyydiagbar[fi] = a(i,j,k, GIdx::Pyy00_Rebar + d);
+          Pyzdiagbar[fi] = a(i,j,k, GIdx::Pyz00_Rebar + d);
+          Pzzdiagbar[fi] = a(i,j,k, GIdx::Pzz00_Rebar + d);
+          #endif
+
+          // off-diagonal magnitude: L2 norm of the off-diagonal N components
+          for (int fj=fi+1; fj<NUM_FLAVORS; ++fj) {
+              const Real re    = a(i,j,k, GIdx::N00_Re    + PIdx::offset(fi,fj,PIdx::Re));
+              const Real im    = a(i,j,k, GIdx::N00_Re    + PIdx::offset(fi,fj,PIdx::Im));
+              const Real rebar = a(i,j,k, GIdx::N00_Rebar + PIdx::offset(fi,fj,PIdx::Re));
+              const Real imbar = a(i,j,k, GIdx::N00_Rebar + PIdx::offset(fi,fj,PIdx::Im));
+              N_offdiag_mag2 += re*re + im*im + rebar*rebar + imbar*imbar;
+          }
+      }
+
       #if NUM_MOMENTS == 2
       return {Ndiag, Ndiagbar, N_offdiag_mag2, Fxdiag, Fydiag, Fzdiag, Fxdiagbar,Fydiagbar,Fzdiagbar};
       #elif NUM_MOMENTS == 3

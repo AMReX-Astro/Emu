@@ -1,0 +1,6 @@
+# clang-tidy configuration for Emu's C++ static analysis (used by the cpp-linter CI).
+# clang-tidy auto-discovers this file from each source file's parent directories, so
+# it applies to everything under Source/. These checks were previously passed via the
+# cpp-linter-action 'checks:' input, which the action no longer supports.
+---
+Checks: 'bugprone-*,performance-*,portability-*,modernize-*,clang-analyzer-*,cppcoreguidelines-*,readability-*,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-bounds-constant-array-index,-clang-diagnostic-unknown-warning-option,-clang-diagnostic-unknown-pragmas,-readability-avoid-const-params-in-decls,-cppcoreguidelines-owning-memory'

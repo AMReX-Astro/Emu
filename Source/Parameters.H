@@ -31,12 +31,8 @@ struct TestParams : public amrex::Gpu::Managed
     Real vupy_in; // Y-component, cm/s
     Real vupz_in; // Z-component, cm/s
     Real cfl_factor, flavor_cfl_factor, collision_cfl_factor;
-    Real max_adaptive_speedup; 
     bool do_restart; // Flag to restart from a previous simulation
     std::string restart_dir; // Directory path to restart from in case do_restart is true
-    Real maxError;
-    Real minimum_time_step; // Minimum time step allowed in the simulation
-    int time_step_method; // Time step method flag
 
     // File name with particles' initial conditions
     // This includes energy, momentum, N, Nbar, phase space volume, and others. 
@@ -102,14 +98,10 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("cfl_factor", cfl_factor);
         pp.get("flavor_cfl_factor", flavor_cfl_factor);
         pp.get("collision_cfl_factor", collision_cfl_factor);
-        pp.get("max_adaptive_speedup", max_adaptive_speedup);
         pp.get("write_plot_every", write_plot_every);
         pp.get("write_plot_particles_every", write_plot_particles_every);
         pp.get("do_restart", do_restart);
         pp.get("restart_dir", restart_dir);
-        pp.get("maxError", maxError);
-        pp.get("minimum_time_step", minimum_time_step);
-        pp.get("time_step_method", time_step_method);
 
         // File name with particles' initial conditions
         // This includes energy, momentum, N, Nbar, phase space volume, and others. 

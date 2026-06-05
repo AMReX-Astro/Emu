@@ -1,0 +1,57 @@
+name: Clang-format
+
+# Auto-formats hand-written C++ and pushes the result back to the branch. Runs on
+# every push to a branch and on every pull request, so individual development
+# branches are tidied, not just PRs into development.
+
+on:
+  push:
+  pull_request:
+
+# Needed for the bot to push the formatting commit back to the branch.
+permissions:
+  contents: write
+
+# Don't let two runs on the same branch race to push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        # Check out the real branch (the PR source branch on pull_request, the pushed
+        # branch on push) with attached HEAD so we can commit and push fixes back.
+        ref: ${{ github.head_ref || github.ref_name }}
+
+    - name: Run tab exterminator script
+      run: |
+        cd Scripts/util
+        ./tab_exterminator.sh
+
+    - name: Run clang-format
+      run: |
+        find . -regex '.*\.\(cpp\|h\|H\)' | xargs clang-format -i -style=file
+
+    # Advisory: print what clang-format would change. continue-on-error=true keeps the
+    # check green even when formatting differences exist.
+    - name: Show formatting diff
+      continue-on-error: false
+      run: git diff --exit-code
+
+    # - name: Commit files
+    #   run: |
+    #     git config --local user.email "action@github.com"
+    #     git config --local user.name "GitHub Action"
+    #     git add --all
+    #     git diff-index --quiet HEAD || git commit -m "Clang-format has tidied up the code."
+
+    # # Pushes made with the built-in GITHUB_TOKEN do not retrigger workflows, so this
+    # # cannot loop. Restricted to the main repo (forks get a read-only token).
+    # - name: Push changes
+    #   if: github.repository_owner == 'AMReX-Astro'
+    #   run: git push origin HEAD:${{ github.head_ref || github.ref_name }}

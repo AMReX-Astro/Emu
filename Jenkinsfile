@@ -114,7 +114,6 @@ pipeline {
 				}
 			}
 		}
-
 		stage('Fiducial 3F CPU HDF5'){ steps{
 				dir('Exec'){
 					sh 'cp ../makefiles/GNUmakefile_jenkins_HDF5 GNUmakefile'

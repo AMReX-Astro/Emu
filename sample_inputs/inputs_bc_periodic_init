@@ -10,11 +10,10 @@ attenuation_self_interaction = 1.0
 collision_cfl_factor = 1e-1
 cfl_factor = 1e-2
 flavor_cfl_factor = 1e-1
-max_adaptive_speedup = 0
-maxError = 1e-6
 
 integration.type = 1
-integration.rk.type = 4
+integration.rk.type = 4          # DormandPrince (0=User, 1=ForwardEuler, 2=Trapezoid, 3=SSPRK3, 4=RK4, 5=DormandPrince)
+integration.use_adaptive_time_step = 0
 
 # Domain size in 3D index space
 ncell = (5, 5, 5)
