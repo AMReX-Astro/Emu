@@ -573,29 +573,16 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
         // Compute equilibrium distribution functions and include Pauli blocking term if requested
         if(parms->IMFP_method==1 || parms->IMFP_method==2){
 
-            if (parms-> set_equilibrium_distribution == 1){
-                #if SET_EQUILIBRIUM == 1
-                    f_eq[0][0]    = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N00_Re_eq   ) / p.rdata(PIdx::Vphase);
-                    f_eqbar[0][0] = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N00_Rebar_eq) / p.rdata(PIdx::Vphase);
-                    f_eq[1][1]    = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N11_Re_eq   ) / p.rdata(PIdx::Vphase);
-                    f_eqbar[1][1] = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N11_Rebar_eq) / p.rdata(PIdx::Vphase);
-                    #if NUM_FLAVORS == 3
-                        f_eq[2][2]    = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N22_Re_eq   ) / p.rdata(PIdx::Vphase);
-                        f_eqbar[2][2] = 8.0 * (std::pow(MathConst::pi, 3)*std::pow(PhysConst::c, 3)*std::pow(PhysConst::hbar, 3)) * p.rdata(PIdx::N22_Rebar_eq) / p.rdata(PIdx::Vphase);
-                #endif
-                #endif
-            } else {
-                for (int i=0; i<NUM_FLAVORS; ++i) {
+            for (int i=0; i<NUM_FLAVORS; ++i) {
 
-                    // Calculate the Fermi-Dirac distribution for neutrinos and antineutrinos.
-                    f_eq[i][i]    = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munu[i][i]    ) / T_pp ) );
-                    f_eqbar[i][i] = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munubar[i][i] ) / T_pp ) );
+                // Calculate the Fermi-Dirac distribution for neutrinos and antineutrinos.
+                f_eq[i][i]    = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munu[i][i]    ) / T_pp ) );
+                f_eqbar[i][i] = 1. / ( 1. + exp( ( p.rdata( PIdx::pupt ) - munubar[i][i] ) / T_pp ) );
 
-                    // Include the Pauli blocking term
-                    if (parms->Do_Pauli_blocking == 1){
-                        IMFP_abs[i][i]    = IMFP_abs[i][i]    / ( 1 - f_eq[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
-                        IMFP_absbar[i][i] = IMFP_absbar[i][i] / ( 1 - f_eqbar[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
-                    }
+                // Include the Pauli blocking term
+                if (parms->Do_Pauli_blocking == 1){
+                    IMFP_abs[i][i]    = IMFP_abs[i][i]    / ( 1 - f_eq[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
+                    IMFP_absbar[i][i] = IMFP_absbar[i][i] / ( 1 - f_eqbar[i][i] ) ; // Multiply the absortion inverse mean free path by the Pauli blocking term 1 / (1 - f_eq).
                 }
             }
         }
