@@ -29,16 +29,13 @@ Ppack             += $(foreach dir, $(Pdirs), $(AMREX_HOME)/Src/$(dir)/Make.pack
 
 include $(Ppack)
 
-# If unset, $(SET_EQUILIBRIUM) is empty and -DSET_EQUILIBRIUM= breaks #if SET_EQUILIBRIUM == 1
-SET_EQUILIBRIUM ?= 0
-
-DEFINES += -DNUM_FLAVORS=$(NUM_FLAVORS) -DSHAPE_FACTOR_ORDER=$(SHAPE_FACTOR_ORDER) -DNUM_MOMENTS=$(NUM_MOMENTS) -DSET_EQUILIBRIUM=$(SET_EQUILIBRIUM)
+DEFINES += -DNUM_FLAVORS=$(NUM_FLAVORS) -DSHAPE_FACTOR_ORDER=$(SHAPE_FACTOR_ORDER) -DNUM_MOMENTS=$(NUM_MOMENTS)
 
 all: generate $(objEXETempDir)/AMReX_buildInfo.o $(executable)
 	@echo SUCCESS
 
 generate:
-	python3 $(EMU_HOME)/Scripts/symbolic_hermitians/generate_code.py $(NUM_FLAVORS) --emu_home $(EMU_HOME) --num_moments $(NUM_MOMENTS) --set_equilibrium $${SET_EQUILIBRIUM:=0}
+	python3 $(EMU_HOME)/Scripts/symbolic_hermitians/generate_code.py $(NUM_FLAVORS) --emu_home $(EMU_HOME) --num_moments $(NUM_MOMENTS)
 
 #------------------------------------------------------------------------------
 # build info (from Castro/Exec/Make.auto_source)
