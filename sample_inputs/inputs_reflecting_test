@@ -123,19 +123,14 @@ read_rho_T_Ye_from_table = 0
 #################
 # Blackhole
 #################
-do_blackhole = 1
-bh_radius = 0.5 # cm
-bh_center_x = 2.5 # cm
-bh_center_y = 2.5 # cm
-bh_center_z = 2.5 # cm
+do_blackhole = 0
 
 #################
 # Boundary conditions
 #################
-bc_xlo = periodic
-bc_xhi = periodic
-bc_ylo = periodic
-bc_yhi = periodic
-bc_zlo = periodic
-bc_zhi = periodic
-do_periodic_empty_bc = 1
+bc_xlo = reflecting
+bc_xhi = reflecting
+bc_ylo = reflecting
+bc_yhi = reflecting
+bc_zlo = reflecting
+bc_zhi = reflecting

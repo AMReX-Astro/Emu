@@ -229,11 +229,10 @@ void evolve_flavor(const TestParams* parms)
     auto post_timestep_fun = [&] (FlavoredNeutrinoContainer& neutrinos, amrex::Real time) {
         /* Post-timestep function. The integrator new-time data is the latest data available. */
 
-        // If do_periodic_empty_bc is one.
-        // Do periodic boundary conditions but initialize particles with N=0 and Nbar=0 at the boundary.
-        // If a black hole is present in the simulation it will set N=0 and Nbar=0 for all particles inside the black hole.
-        if ( parms->do_periodic_empty_bc == 1 ){
-            empty_particles_at_boundary_cells(neutrinos, parms);
+        // If a black hole is present, set N=0 and Nbar=0 for all particles inside
+        // the black hole so it absorbs the neutrinos that fall into it.
+        if ( parms->do_blackhole == 1 ){
+            empty_particles_inside_blackhole(neutrinos, parms);
         }
 
         // Update the new time particle locations in the domain with their

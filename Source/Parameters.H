@@ -59,8 +59,7 @@ struct TestParams : public amrex::Gpu::Managed
     Real attenuation_hamiltonians; // Multiplication factor to [N,H]
 
     // Black hole properties
-    int do_blackhole; // Flag to include a black hole in the simulation 
-    int do_periodic_empty_bc; // Flag to include a periodic empty boundary condition
+    int do_blackhole; // Flag to include a black hole in the simulation
     double bh_radius; // Black hole radius (cm)
     double bh_center_x; // Black hole x coordinate (cm)
     double bh_center_y; // Black hole y coordinate (cm)
@@ -149,7 +148,6 @@ struct TestParams : public amrex::Gpu::Managed
                                   ". Use periodic, reflecting, or outflow.");
             }
         }
-        pp.get("do_periodic_empty_bc",  do_periodic_empty_bc);
 
         // Background matter flag
         pp.get("read_rho_T_Ye_from_table", read_rho_T_Ye_from_table);

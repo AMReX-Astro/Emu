@@ -116,4 +116,3 @@ bc_ylo = reflecting
 bc_yhi = reflecting
 bc_zlo = reflecting
 bc_zhi = reflecting
-do_periodic_empty_bc = 0

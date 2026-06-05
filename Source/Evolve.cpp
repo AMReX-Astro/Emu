@@ -249,37 +249,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
             }
         }
 
-        // Periodic empty boundary conditions.
-        // Set time derivatives to zero if particles are in the boundary cells
-        // Check if periodic empty boundary conditions are enabled
-        if (parms->do_periodic_empty_bc == 1) {
-
-            // Check if the particle is in the boundary cells
-            if (x < parms->Lx / parms->ncell[0]             ||
-            x > parms->Lx - parms->Lx / parms->ncell[0] ||
-            y < parms->Ly / parms->ncell[1]             ||
-            y > parms->Ly - parms->Ly / parms->ncell[1] ||
-            z < parms->Lz / parms->ncell[2]             ||
-            z > parms->Lz - parms->Lz / parms->ncell[2]    ) {
-
-                // set the dt/dt = 1. Neutrinos move at one second per second
-                p.rdata(PIdx::time) = 1.0;
-                // set the d(pE)/dt values 
-                p.rdata(PIdx::pupx) = 0;
-                p.rdata(PIdx::pupy) = 0;
-                p.rdata(PIdx::pupz) = 0;
-                // set the dE/dt values 
-                p.rdata(PIdx::pupt) = 0;
-                // set the dVphase/dt values 
-                p.rdata(PIdx::Vphase) = 0;
-
-                // Set the dN/dt and dNbar/dt values to zero
-                for (int comp=PIdx::N00_Re; comp<PIdx::TrHN; ++comp) p.rdata(comp) = 0.0;
-
-                return;
-            }
-        }
-
         #include "generated_files/Evolve.cpp_Vvac_fill"
 
         const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
@@ -518,21 +487,20 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs, const M
 
 
 /**
- * @brief Sets the N and Nbar to zero for particles inside the black hole or boundary cells.
+ * @brief Sets the N and Nbar to zero for particles inside the black hole.
  *
- * This function iterates over all particles in the `FlavoredNeutrinoContainer` and sets N and Nbar to zero if pariticles are inside the black hole or within the boundary cells of the simulation domain.
+ * This function iterates over all particles in the `FlavoredNeutrinoContainer` and sets N and Nbar to zero if particles are inside the black hole radius, so the black hole absorbs the neutrinos that fall into it.
  *
  * @param neutrinos Reference to the container holding the flavored neutrinos.
- * @param parms Pointer to the structure containing test parameters, including black hole properties and domain dimensions.
+ * @param parms Pointer to the structure containing test parameters, including black hole properties.
  *
  * The function performs the following steps:
  * - Iterates over all particles in the container.
  * - Computes the distance of each particle from the black hole center.
  * - Sets N and Nbar to zero if the particle is inside the black hole radius.
- * - Sets N and Nbar to zero if the particle is within the boundary cells of the simulation domain.
  *
  */
-void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms)
+void empty_particles_inside_blackhole(FlavoredNeutrinoContainer& neutrinos, const TestParams* parms)
 {
 
     const int lev = 0;
@@ -544,32 +512,14 @@ void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos, con
         amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
             FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
 
-            // Check if the simulation involves a black hole somewhere in the domain
-            if(parms->do_blackhole==1 ){
+            // Compute particle distance from black hole center
+            double particle_distance_from_bh_center = sqrt(amrex::Math::powi<2>(p.rdata(PIdx::x) - parms->bh_center_x) +
+                                                                 amrex::Math::powi<2>(p.rdata(PIdx::y) - parms->bh_center_y) +
+                                                                 amrex::Math::powi<2>(p.rdata(PIdx::z) - parms->bh_center_z)); // cm
 
-                // Compute particle distance from black hole center
-                double particle_distance_from_bh_center = sqrt(amrex::Math::powi<2>(p.rdata(PIdx::x) - parms->bh_center_x) + 
-                                                                     amrex::Math::powi<2>(p.rdata(PIdx::y) - parms->bh_center_y) + 
-                                                                     amrex::Math::powi<2>(p.rdata(PIdx::z) - parms->bh_center_z)); // cm
-
-                // Set time derivatives to zero if particles are inside the black hole
-                if ( particle_distance_from_bh_center < parms->bh_radius ) {
-                    for (int comp=PIdx::N00_Re; comp<PIdx::TrHN; ++comp) p.rdata(comp) = 0.0;
-                    return;
-                }
-
-            }
-
-            // Set time derivatives to zero if particles are within the boundary cells
-            if (p.rdata(PIdx::x) < parms->Lx / parms->ncell[0]             ||
-                p.rdata(PIdx::x) > parms->Lx - parms->Lx / parms->ncell[0] ||
-                p.rdata(PIdx::y) < parms->Ly / parms->ncell[1]             ||
-                p.rdata(PIdx::y) > parms->Ly - parms->Ly / parms->ncell[1] ||
-                p.rdata(PIdx::z) < parms->Lz / parms->ncell[2]             ||
-                p.rdata(PIdx::z) > parms->Lz - parms->Lz / parms->ncell[2]    ) {
-
+            // Set N and Nbar to zero if the particle is inside the black hole
+            if ( particle_distance_from_bh_center < parms->bh_radius ) {
                 for (int comp=PIdx::N00_Re; comp<PIdx::TrHN; ++comp) p.rdata(comp) = 0.0;
-                return;
             }
         });
     }

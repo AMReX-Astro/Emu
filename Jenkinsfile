@@ -111,12 +111,12 @@ pipeline {
 				}
 			}
 		}
-		stage('BC periodic empty'){ steps{
+		stage('Reflecting conservation'){ steps{
 				dir('Exec'){
 					sh 'python ../Scripts/initial_conditions/st8_coll_inst_test.py'
-					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_bc_periodic_init'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_reflecting_test'
 					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
-					sh 'python ../Scripts/tests/bc_empty_init_test.py'
+					sh 'python ../Scripts/tests/reflecting_test.py'
 					sh 'rm -rf plt* *pdf'
 				}
 			}
