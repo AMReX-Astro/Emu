@@ -132,9 +132,9 @@ bh_center_z = 2.5 # cm
 #################
 # Boundary conditions
 #################
-bc_xlo = reflecting
-bc_xhi = reflecting
-bc_ylo = reflecting
-bc_yhi = reflecting
-bc_zlo = reflecting
-bc_zhi = reflecting
+bc_xlo = outflow
+bc_xhi = outflow
+bc_ylo = outflow
+bc_yhi = outflow
+bc_zlo = outflow
+bc_zhi = outflow
