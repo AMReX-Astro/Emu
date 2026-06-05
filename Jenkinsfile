@@ -116,7 +116,7 @@ pipeline {
 					sh 'python ../Scripts/initial_conditions/st8_coll_inst_test.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_outflow_bh_test
 					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
-					sh 'python ../Scripts/tests/reflecting_test.py'
+					sh 'python ../Scripts/tests/bc_empty_init_test.py'
 					sh 'rm -rf plt* *pdf'
 				}
 			}
