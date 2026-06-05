@@ -25,20 +25,22 @@ SyncLocation(int type, int coord_sys)
         amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
             ParticleType& p = pstruct[i];
 
-            if      ( coord_sys==0 ) { CartesianMetric metric; }
-            else if ( coord_sys==1 ) { CylindricalMetric metric;}
-            else                     { SphericalMetric metric;}
-
             if (type == Sync::CoordinateToPosition) {
+                
+                //matching integrated particle coordinate system to mesh coordinate system
+                if      ( coord_sys==0 ) {}
+                else if ( coord_sys==1 ) { CylindricalMetric metric; metric.coord_conv(p);}
+                else                     { SphericalMetric metric; metric.coord_conv(p);}
+
                 // Copy integrated position to the particle position.
-
-                metric.coord_conv(p); //matching integrated particle coordinate system to mesh coordinate system
-
                 p.pos(0) = p.rdata(PIdx::x);
                 p.pos(1) = p.rdata(PIdx::y);
                 p.pos(2) = p.rdata(PIdx::z);
-
-                metric.coord_conv_inv(p); //turning integrated particle coordinate system back to cartesian
+                
+                //turning integrated particle coordinate system back to cartesian
+                if      ( coord_sys==0 ) {}
+                else if ( coord_sys==1 ) { CylindricalMetric metric; metric.coord_conv_inv(p);}
+                else                     { SphericalMetric metric; metric.coord_conv_inv(p);}
 
             } else if (type == Sync::PositionToCoordinate) {
                 // Copy the reset particle position back to the integrated position (in mesh coordinate system)
@@ -46,7 +48,25 @@ SyncLocation(int type, int coord_sys)
                 p.rdata(PIdx::y) = p.pos(1);
                 p.rdata(PIdx::z) = p.pos(2);
                 
-                metric.coord_conv_inv(p); //turning integrated particle coordinate system back to cartesian
+                //turning integrated particle coordinate system back to cartesian
+
+                if      ( coord_sys==0 ) {}
+
+                else if ( coord_sys==1 ) { 
+                    Real x1          = p.rdata(PIdx::x);
+                    Real x2          = p.rdata(PIdx::y);
+                    p.rdata(PIdx::x) = x1*std::cos(x2);
+                    p.rdata(PIdx::y) = x1*std::sin(x2);
+                    }
+
+                else  {
+                    Real x1          = p.rdata(PIdx::x);
+                    Real x2          = p.rdata(PIdx::y);
+                    Real x3          = p.rdata(PIdx::z);
+                    p.rdata(PIdx::x) = x1*std::sin(x2)*std::cos(x3);
+                    p.rdata(PIdx::y) = x1*std::sin(x2)*std::sin(x3);
+                    p.rdata(PIdx::z) = x1*std::cos(x2);
+                    }
 
             }
         });
