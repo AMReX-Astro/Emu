@@ -12,7 +12,7 @@ flavor_cfl_factor = 0.5
 collision_cfl_factor = 1e-3
 
 integration.type = 1
-integration.rk.type = 5          # DormandPrince (0=User, 1=ForwardEuler, 2=Trapezoid, 3=SSPRK3, 4=RK4, 5=DormandPrince)
+integration.rk.type = 4          # DormandPrince (0=User, 1=ForwardEuler, 2=Trapezoid, 3=SSPRK3, 4=RK4, 5=DormandPrince)
 integration.use_adaptive_time_step = 1
 integration.abs_tol = 0.0
 integration.rel_tol = 1.0e-9
@@ -42,7 +42,7 @@ nsteps = 3000
 minimum_time_step = 2e-12
 
 # Time step method
-time_step_method = 1 # 0 for adaptive time step, 1 for fixed time step with value minimum_time_step
+time_step_method = 1 # 0 for adaptive time step, 1 for fixed time step with value minimum_time_step but RK4 has to be used.
 
 # Simulation end time
 end_time = 6.0e-09

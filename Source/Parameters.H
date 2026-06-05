@@ -104,6 +104,8 @@ struct TestParams : public amrex::Gpu::Managed
         pp.get("write_plot_particles_every", write_plot_particles_every);
         pp.get("do_restart", do_restart);
         pp.get("restart_dir", restart_dir);
+        pp.get("minimum_time_step", minimum_time_step);
+        pp.get("time_step_method", time_step_method);
 
         // File name with particles' initial conditions
         // This includes energy, momentum, N, Nbar, phase space volume, and others. 
