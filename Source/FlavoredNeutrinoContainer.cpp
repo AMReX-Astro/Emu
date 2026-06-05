@@ -59,11 +59,10 @@ ApplyBoundaryConditions(const TestParams* parms)
 
             // Domain length per dimension; per-face modes are in
             // parms->boundary_condition, indexed 2*dim+side (0=lo at 0, 1=hi at L).
-            // Modes: 0=periodic, 1=reflecting, 2=outflow.
             const amrex::Real L[AMREX_SPACEDIM] = {parms->Lx, parms->Ly, parms->Lz};
 
             for (int d=0; d<AMREX_SPACEDIM; ++d) {
-                int mode = 0; // 0=periodic/no-op
+                int mode = BoundaryCondition::periodic; // no-op
                 amrex::Real reflected_pos = 0.0;
                 if (p.pos(d) < 0.0) {
                     mode = parms->boundary_condition[2*d + 0]; // crossed the lo face
@@ -73,17 +72,16 @@ ApplyBoundaryConditions(const TestParams* parms)
                     reflected_pos = 2.0*L[d] - p.pos(d);
                 }
 
-                // Reflecting (1) and outflow (2): fold the position back into the
-                // domain and flip the momentum component normal to the face (the
-                // spatial momentum components are contiguous from PIdx::pupx).
-                // Periodic (0) is handled later by RedistributeLocal.
-                if (mode == 1 || mode == 2) {
+                // Reflecting and outflow: fold the position back into the domain and
+                // flip the momentum component normal to the face. Periodic is handled
+                // later by RedistributeLocal.
+                if (mode == BoundaryCondition::reflecting || mode == BoundaryCondition::outflow) {
                     p.pos(d) = reflected_pos;
                     p.rdata(PIdx::pupx + d) = -p.rdata(PIdx::pupx + d);
 
                     // Outflow: zero the density matrix so the particle carries
                     // nothing back into the domain (no incoming flux).
-                    if (mode == 2) {
+                    if (mode == BoundaryCondition::outflow) {
                         for (int comp = PIdx::N00_Re; comp < PIdx::TrHN; ++comp)
                             p.rdata(comp) = 0.0;
                     }

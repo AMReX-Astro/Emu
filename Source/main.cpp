@@ -42,14 +42,14 @@ void evolve_flavor(const TestParams* parms)
 {
     
     // Per-face boundary conditions are read into parms->boundary_condition,
-    // indexed as 2*dim+side (side 0=lo, 1=hi): 0=periodic, 1=reflecting, 2=outflow.
+    // indexed as 2*dim+side (side 0=lo, 1=hi).
     // AMReX periodicity is a per-axis property, so an axis is periodic only when
     // BOTH of its faces are periodic; mixing a periodic face with a non-periodic
     // face on the same axis is not allowed.
     Vector<int> is_periodic(AMREX_SPACEDIM, 0);
     for(int d=0; d<AMREX_SPACEDIM; ++d){
-        const bool lo_periodic = (parms->boundary_condition[2*d + 0] == 0);
-        const bool hi_periodic = (parms->boundary_condition[2*d + 1] == 0);
+        const bool lo_periodic = (parms->boundary_condition[2*d + 0] == BoundaryCondition::periodic);
+        const bool hi_periodic = (parms->boundary_condition[2*d + 1] == BoundaryCondition::periodic);
         if (lo_periodic != hi_periodic)
             amrex::Abort("Periodic boundary conditions must be applied to both faces of an axis.");
         is_periodic[d] = lo_periodic ? 1 : 0;
@@ -130,9 +130,9 @@ void evolve_flavor(const TestParams* parms)
                 for(int side=0; side<2; ++side){
                     int bc_type;
                     switch(parms->boundary_condition[2*d + side]){
-                        case 0:  bc_type = BCType::int_dir; break;                                    // periodic
-                        case 1:  bc_type = normal ? BCType::reflect_odd : BCType::reflect_even; break; // reflecting
-                        case 2:  bc_type = BCType::foextrap; break;                                   // outflow
+                        case BoundaryCondition::periodic:   bc_type = BCType::int_dir; break;
+                        case BoundaryCondition::reflecting: bc_type = normal ? BCType::reflect_odd : BCType::reflect_even; break;
+                        case BoundaryCondition::outflow:    bc_type = BCType::foextrap; break;
                         default: bc_type = BCType::int_dir; break;
                     }
                     if(side==0) grid_bcs[n].setLo(d, bc_type);

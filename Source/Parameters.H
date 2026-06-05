@@ -9,6 +9,12 @@
 using namespace amrex;
 
 
+// Boundary condition applied to a single domain face.
+namespace BoundaryCondition {
+    enum { periodic = 0, reflecting = 1, outflow = 2 };
+}
+
+
 //=========================================//
 // Structure of global parameter variables //
 //=========================================//
@@ -75,7 +81,6 @@ struct TestParams : public amrex::Gpu::Managed
 
     // Per-face boundary conditions. Index = 2*dim + side (side: 0=lo, 1=hi),
     // so order is {xlo, xhi, ylo, yhi, zlo, zhi}.
-    // Values: 0=periodic, 1=reflecting, 2=outflow.
     int boundary_condition[2*AMREX_SPACEDIM];
 
     void Initialize(){
@@ -140,9 +145,9 @@ struct TestParams : public amrex::Gpu::Managed
             for(int f=0; f<2*AMREX_SPACEDIM; ++f){
                 std::string bc_string = "periodic";
                 pp.query(face_names[f], bc_string);
-                if      (bc_string == "periodic"  ) boundary_condition[f] = 0;
-                else if (bc_string == "reflecting") boundary_condition[f] = 1;
-                else if (bc_string == "outflow"   ) boundary_condition[f] = 2;
+                if      (bc_string == "periodic"  ) boundary_condition[f] = BoundaryCondition::periodic;
+                else if (bc_string == "reflecting") boundary_condition[f] = BoundaryCondition::reflecting;
+                else if (bc_string == "outflow"   ) boundary_condition[f] = BoundaryCondition::outflow;
                 else amrex::Abort("Unknown boundary condition '" + bc_string +
                                   "' for " + face_names[f] +
                                   ". Use periodic, reflecting, or outflow.");
