@@ -147,11 +147,7 @@ public:
     {}
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv_inv(EParticle& p) const override
-    {
-        p.pos(0) = p.rdata(PIdx::x);
-        p.pos(1) = p.rdata(PIdx::y);
-        p.pos(2) = p.rdata(PIdx::z);
-    }
+    {}
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4 jacobian(const EParticle& p) const override
     {
@@ -309,11 +305,6 @@ public:
         
         p.rdata(PIdx::x) = x;     
         p.rdata(PIdx::y) = y;
-
-        p.pos(0) = p.rdata(PIdx::x);
-        p.pos(1) = p.rdata(PIdx::y);
-        p.pos(2) = p.rdata(PIdx::z);
-       
 
     }
 
@@ -506,11 +497,6 @@ public:
         p.rdata(PIdx::x) = x;     
         p.rdata(PIdx::y) = y;
         p.rdata(PIdx::z) = z;
-
-        p.pos(0) = p.rdata(PIdx::x);
-        p.pos(1) = p.rdata(PIdx::y);
-        p.pos(2) = p.rdata(PIdx::z);
-       
 
     }
 
