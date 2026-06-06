@@ -1,27 +1,24 @@
 #include "FlavoredNeutrinoContainer.H"
 #include "Constants.H"
 
-
 using namespace amrex;
 
-void FlavoredNeutrinoContainer::
-SyncLocation(int type)
-{
+void FlavoredNeutrinoContainer::SyncLocation(int type) {
     BL_PROFILE("FlavoredNeutrinoContainer::SyncLocation");
 
-    AMREX_ASSERT(type==Sync::CoordinateToPosition || type==Sync::PositionToCoordinate);
+    AMREX_ASSERT(type == Sync::CoordinateToPosition ||
+                 type == Sync::PositionToCoordinate);
 
     const int lev = 0;
 
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (FNParIter pti(*this, lev); pti.isValid(); ++pti)
-    {
-        const int np  = pti.numParticles();
+    for (FNParIter pti(*this, lev); pti.isValid(); ++pti) {
+        const int np = pti.numParticles();
         ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
 
-        amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
+        amrex::ParallelFor(np, [=] AMREX_GPU_DEVICE(int i) {
             ParticleType& p = pstruct[i];
 
             if (type == Sync::CoordinateToPosition) {
@@ -39,9 +36,8 @@ SyncLocation(int type)
     }
 }
 
-void FlavoredNeutrinoContainer::
-UpdateLocationFrom(FlavoredNeutrinoContainer& Ploc)
-{
+void FlavoredNeutrinoContainer::UpdateLocationFrom(
+    FlavoredNeutrinoContainer& Ploc) {
     // This function updates particle locations in the current particle container
     // using the particle locations in particle container Ploc.
     //
@@ -54,12 +50,13 @@ UpdateLocationFrom(FlavoredNeutrinoContainer& Ploc)
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (FNParIter pti(*this, lev); pti.isValid(); ++pti)
-    {
+    for (FNParIter pti(*this, lev); pti.isValid(); ++pti) {
         auto grid_tile = pti.GetPairIndex();
 
-        auto& this_tile = this->ParticlesAt(lev, grid_tile.first, grid_tile.second);
-        auto& ploc_tile = Ploc.ParticlesAt(lev, grid_tile.first, grid_tile.second);
+        auto& this_tile =
+            this->ParticlesAt(lev, grid_tile.first, grid_tile.second);
+        auto& ploc_tile =
+            Ploc.ParticlesAt(lev, grid_tile.first, grid_tile.second);
 
         AMREX_ASSERT(this_tile.numParticles() == ploc_tile.numParticles());
         int np = this_tile.numParticles();
@@ -67,11 +64,12 @@ UpdateLocationFrom(FlavoredNeutrinoContainer& Ploc)
         ParticleType* ps_this = &(this_tile.GetArrayOfStructs()[0]);
         ParticleType* ps_ploc = &(ploc_tile.GetArrayOfStructs()[0]);
 
-        amrex::ParallelFor (np, [=] AMREX_GPU_DEVICE (int i) {
+        amrex::ParallelFor(np, [=] AMREX_GPU_DEVICE(int i) {
             ParticleType& p_this = ps_this[i];
             ParticleType& p_ploc = ps_ploc[i];
 
-            AMREX_ASSERT(p_this.id() == p_ploc.id() || p_this.id() == -p_ploc.id());
+            AMREX_ASSERT(p_this.id() == p_ploc.id() ||
+                         p_this.id() == -p_ploc.id());
 
             p_this.pos(0) = p_ploc.pos(0);
             p_this.pos(1) = p_ploc.pos(1);
