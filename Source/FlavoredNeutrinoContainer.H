@@ -3,14 +3,13 @@
 
 #include <cmath>
 
-#include <AMReX_Particles.H>
 #include <AMReX_GpuContainers.H>
+#include <AMReX_Particles.H>
 
-#include "Parameters.H"
 #include "Constants.H"
+#include "Parameters.H"
 
-struct PIdx
-{
+struct PIdx {
     // pup = four-momentum (up index), units of ergs (implied multiply by c)
     // f = distribution function (Real/Imaginary, neutrino/antineutrino)
     //     the flavor vector constructed from f must have a magnitude of 0.5
@@ -19,13 +18,20 @@ struct PIdx
         // NOTE: If the non-scripted variables are changed, the following section
         // of the code generation script should be changed as well:
         // - FlavoredNeutrinoContainerInit.H_particle_varnames_fill
-        time=0, x, y, z, pupx, pupy, pupz, pupt,
-        #include "generated_files/FlavoredNeutrinoContainer.H_fill"
+        time = 0,
+        x,
+        y,
+        z,
+        pupx,
+        pupy,
+        pupz,
+        pupt,
+#include "generated_files/FlavoredNeutrinoContainer.H_fill"
         nattribs
     };
 
     // Real/imaginary selector for Hermitian-matrix components.
-    enum ReIm { Re=0, Im=1 };
+    enum ReIm { Re = 0, Im = 1 };
 
     // Offset of component (i,j) [Re or Im] within a single Hermitian-matrix block
     // (e.g. the N/Fx/Fy/Fz blocks in PIdx and GIdx, including their bar variants).
@@ -35,66 +41,58 @@ struct PIdx
     // This MUST match HermitianMatrix.declarations() in
     // Scripts/symbolic_hermitians/HermitianUtils.py.
     // The absolute attribute index is e.g. PIdx::N00_Re + PIdx::offset(i,j,reim).
-    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-    static int offset(int i, int j, ReIm reim=Re)
-    {
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE static int offset(int i, int j,
+                                                               ReIm reim = Re) {
         // Precondition: upper triangle only. The lower triangle H(j,i) = conj(H(i,j))
         // shares the same storage, so callers must pass i <= j.
         AMREX_ASSERT(i <= j);
-        const int row_start = i * (2*NUM_FLAVORS - i);
-        const int col_offset = (j == i) ? 0 : (1 + 2*(j - i - 1) + reim);
+        const int row_start = i * (2 * NUM_FLAVORS - i);
+        const int col_offset = (j == i) ? 0 : (1 + 2 * (j - i - 1) + reim);
         return row_start + col_offset;
     }
 };
 
-struct Sync
-{
-    enum {CoordinateToPosition=0, PositionToCoordinate};
+struct Sync {
+    enum { CoordinateToPosition = 0, PositionToCoordinate };
 };
 
-template<typename P>
-struct ApplyFlavoredNeutrinoRHS
-{
+template <typename P>
+struct ApplyFlavoredNeutrinoRHS {
     ApplyFlavoredNeutrinoRHS() {}
 
     AMREX_GPU_HOST_DEVICE
-    void operator() (P& p, amrex::Real dt, const P& p_dFdt) const noexcept
-    {
+    void operator()(P& p, amrex::Real dt, const P& p_dFdt) const noexcept {
         // evolve the flavor by applying RHS update of the saxpy form F += dt * dFdt
         // for a general time integration scheme, dt is a timestep-like weight
-    	for(int pidx=0; pidx<PIdx::nattribs; pidx++){
-    		p.rdata(pidx) = dt*p_dFdt.rdata(pidx) + p.rdata(pidx);
-    	}
+        for (int pidx = 0; pidx < PIdx::nattribs; pidx++) {
+            p.rdata(pidx) = dt * p_dFdt.rdata(pidx) + p.rdata(pidx);
+        }
     }
 };
 
-class FNParIter
-    : public amrex::ParIter<PIdx::nattribs,0,0,0>
-{
-public:
-    using amrex::ParIter<PIdx::nattribs,0,0,0>::ParIter;
+class FNParIter : public amrex::ParIter<PIdx::nattribs, 0, 0, 0> {
+   public:
+    using amrex::ParIter<PIdx::nattribs, 0, 0, 0>::ParIter;
 
-    const RealVector& GetAttribs (int comp) const {
+    const RealVector& GetAttribs(int comp) const {
         return GetStructOfArrays().GetRealData(comp);
     }
 
-    RealVector& GetAttribs (int comp) {
+    RealVector& GetAttribs(int comp) {
         return GetStructOfArrays().GetRealData(comp);
     }
 };
 
 class FlavoredNeutrinoContainer
-    : public amrex::ParticleContainer<PIdx::nattribs, 0, 0, 0>
-{
+    : public amrex::ParticleContainer<PIdx::nattribs, 0, 0, 0> {
     amrex::Vector<std::string> attribute_names;
 
-public:
-
+   public:
     inline static Real Vvac_max;
 
-    FlavoredNeutrinoContainer(const amrex::Geometry            & a_geom,
-                              const amrex::DistributionMapping & a_dmap,
-                              const amrex::BoxArray            & a_ba);
+    FlavoredNeutrinoContainer(const amrex::Geometry& a_geom,
+                              const amrex::DistributionMapping& a_dmap,
+                              const amrex::BoxArray& a_ba);
 
     void InitParticles(const TestParams* parms);
 
@@ -104,8 +102,7 @@ public:
 
     void UpdateLocationFrom(FlavoredNeutrinoContainer& Other);
 
-    void RedistributeLocal()
-    {
+    void RedistributeLocal() {
         const int lev_min = 0;
         const int lev_max = 0;
         const int nGrow = 0;
@@ -113,14 +110,12 @@ public:
         Redistribute(lev_min, lev_max, nGrow, local);
     }
 
-    amrex::Vector<std::string> get_attribute_names() const
-    {
+    amrex::Vector<std::string> get_attribute_names() const {
         return attribute_names;
     }
 
     /* Public data members */
     static ApplyFlavoredNeutrinoRHS<ParticleType> particle_apply_rhs;
 };
-
 
 #endif

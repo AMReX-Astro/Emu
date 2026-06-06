@@ -16,67 +16,70 @@
     works, and perform publicly and display publicly, and to permit others to do so.
 */
 
-#include <iostream>
 #include <ctime>
+#include <iostream>
 
 #include <AMReX.H>
-#include <AMReX_ParmParse.H>
-#include <AMReX_MultiFab.H>
-#include <AMReX_BC_TYPES.H>
 #include <AMReX_BCRec.H>
 #include <AMReX_BCUtil.H>
+#include <AMReX_BC_TYPES.H>
+#include <AMReX_MultiFab.H>
+#include <AMReX_ParmParse.H>
 #include <AMReX_TimeIntegrator.H>
 
-#include "FlavoredNeutrinoContainer.H"
-#include "Evolve.H"
 #include "Constants.H"
-#include "IO.H"
 #include "DataReducer.H"
 #include "EosTable.H"
+#include "Evolve.H"
+#include "FlavoredNeutrinoContainer.H"
+#include "IO.H"
 #include "NuLibTable.H"
 #include "ReadInput_RhoTempYe.H"
 
 using namespace amrex;
 
-void evolve_flavor(const TestParams* parms)
-{
-    
+void evolve_flavor(const TestParams* parms) {
     // Per-face boundary conditions are read into parms->boundary_condition,
     // indexed as 2*dim+side (side 0=lo, 1=hi).
     // AMReX periodicity is a per-axis property, so an axis is periodic only when
     // BOTH of its faces are periodic; mixing a periodic face with a non-periodic
     // face on the same axis is not allowed.
     Vector<int> is_periodic(AMREX_SPACEDIM, 0);
-    for(int d=0; d<AMREX_SPACEDIM; ++d){
-        const bool lo_periodic = (parms->boundary_condition[2*d + 0] == BoundaryCondition::periodic);
-        const bool hi_periodic = (parms->boundary_condition[2*d + 1] == BoundaryCondition::periodic);
+    for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+        const bool lo_periodic = (parms->boundary_condition[2 * d + 0] ==
+                                  BoundaryCondition::periodic);
+        const bool hi_periodic = (parms->boundary_condition[2 * d + 1] ==
+                                  BoundaryCondition::periodic);
         if (lo_periodic != hi_periodic)
-            amrex::Abort("Periodic boundary conditions must be applied to both faces of an axis.");
+            amrex::Abort(
+                "Periodic boundary conditions must be applied to both faces of "
+                "an axis.");
         is_periodic[d] = lo_periodic ? 1 : 0;
     }
 
     // Require the translation step to cross at most one cell so a particle moves at
     // most one domain length per step (needed for the single-reflection boundary fold
     // to land it back inside, and for the deposit/interpolate ghost stencil to stay valid).
-    if (!(parms->cfl_factor <= 1.0))
-        amrex::Abort("cfl_factor must be <= 1.");
+    if (!(parms->cfl_factor <= 1.0)) amrex::Abort("cfl_factor must be <= 1.");
 
     // Define the index space of the domain
 
     const IntVect domain_lo(AMREX_D_DECL(0, 0, 0));
-    const IntVect domain_hi(AMREX_D_DECL(parms->ncell[0]-1,parms->ncell[1]-1,parms->ncell[2]-1));
+    const IntVect domain_hi(AMREX_D_DECL(
+        parms->ncell[0] - 1, parms->ncell[1] - 1, parms->ncell[2] - 1));
     const Box domain(domain_lo, domain_hi);
 
     // Initialize the boxarray "ba" from the single box "domain"
     BoxArray ba(domain);
 
     // Break up boxarray "ba" into chunks no larger than "max_grid_size" along a direction
-    const IntVect mgs(parms->max_grid_size_x, parms->max_grid_size_y, parms->max_grid_size_z);
+    const IntVect mgs(parms->max_grid_size_x, parms->max_grid_size_y,
+                      parms->max_grid_size_z);
     ba.maxSize(mgs);
     amrex::Print() << "Number of boxes created: " << ba.size() << std::endl;
 
     // This defines the physical box, [0,1] in each dimension
-    RealBox real_box({AMREX_D_DECL(     0.0,      0.0,      0.0)},
+    RealBox real_box({AMREX_D_DECL(0.0, 0.0, 0.0)},
                      {AMREX_D_DECL(parms->Lx, parms->Ly, parms->Lz)});
 
     // This defines the domain Geometry
@@ -86,11 +89,13 @@ void evolve_flavor(const TestParams* parms)
     DistributionMapping dm(ba);
 
     // We want ghost cells according to size of particle shape stencil (grids are "grown" by ngrow ghost cells in each direction)
-    const IntVect shape_factor_order_vec(AMREX_D_DECL(parms->ncell[0]==1 ? 0 : SHAPE_FACTOR_ORDER,
-                                                      parms->ncell[1]==1 ? 0 : SHAPE_FACTOR_ORDER,
-                                                      parms->ncell[2]==1 ? 0 : SHAPE_FACTOR_ORDER));
-    const IntVect ngrow(1 + (1+shape_factor_order_vec)/2);
-    for(int i=0; i<AMREX_SPACEDIM; i++) AMREX_ASSERT(parms->ncell[i] >= ngrow[i]);
+    const IntVect shape_factor_order_vec(
+        AMREX_D_DECL(parms->ncell[0] == 1 ? 0 : SHAPE_FACTOR_ORDER,
+                     parms->ncell[1] == 1 ? 0 : SHAPE_FACTOR_ORDER,
+                     parms->ncell[2] == 1 ? 0 : SHAPE_FACTOR_ORDER));
+    const IntVect ngrow(1 + (1 + shape_factor_order_vec) / 2);
+    for (int i = 0; i < AMREX_SPACEDIM; i++)
+        AMREX_ASSERT(parms->ncell[i] >= ngrow[i]);
 
     // We want 1 component (this is one real scalar field on the domain)
     const int ncomp = GIdx::ncomp;
@@ -101,18 +106,18 @@ void evolve_flavor(const TestParams* parms)
     // initialize with NaNs ...
     state.setVal(0.0);
 
-    //If reading from table, call function "set_rho_T_Ye". 
+    //If reading from table, call function "set_rho_T_Ye".
     //Else set rho, T and Ye to constant value throughout the grid using values from parameter file.
-    if (parms->read_rho_T_Ye_from_table){
+    if (parms->read_rho_T_Ye_from_table) {
         set_rho_T_Ye(state, geom, parms);
 
-    } else {      
-        state.setVal(parms->rho_in,GIdx::rho,1); // g/ccm
-        state.setVal(parms->Ye_in,GIdx::Ye,1); 
-        state.setVal(parms->kT_in,GIdx::T,1); // erg/s
-	    state.setVal(parms->vupx_in,GIdx::vupx,1); // cm/s
-	    state.setVal(parms->vupy_in,GIdx::vupy,1); // cm/s
-	    state.setVal(parms->vupz_in,GIdx::vupz,1); // cm/s
+    } else {
+        state.setVal(parms->rho_in, GIdx::rho, 1);  // g/ccm
+        state.setVal(parms->Ye_in, GIdx::Ye, 1);
+        state.setVal(parms->kT_in, GIdx::T, 1);       // erg/s
+        state.setVal(parms->vupx_in, GIdx::vupx, 1);  // cm/s
+        state.setVal(parms->vupy_in, GIdx::vupy, 1);  // cm/s
+        state.setVal(parms->vupz_in, GIdx::vupz, 1);  // cm/s
     }
 
     // Build per-component boundary conditions for the grid MultiFab.
@@ -130,33 +135,47 @@ void evolve_flavor(const TestParams* parms)
         // the diagonal pressures Pxx/Pyy/Pzz) reflects even. Each moment block is one
         // flavor-vector wide with stride (Fx00_Re - N00_Re), which is robust to NUM_FLAVORS.
         const int flavor_block_size = GIdx::Fx00_Re - GIdx::N00_Re;
-        const int flux_start[AMREX_SPACEDIM] = {GIdx::Fx00_Re, GIdx::Fy00_Re, GIdx::Fz00_Re};
-        const int vup[AMREX_SPACEDIM]        = {GIdx::vupx,    GIdx::vupy,    GIdx::vupz};
+        const int flux_start[AMREX_SPACEDIM] = {GIdx::Fx00_Re, GIdx::Fy00_Re,
+                                                GIdx::Fz00_Re};
+        const int vup[AMREX_SPACEDIM] = {GIdx::vupx, GIdx::vupy, GIdx::vupz};
 #if NUM_MOMENTS == 3
         const int press_odd_start[AMREX_SPACEDIM][2] = {
             {GIdx::Pxy00_Re, GIdx::Pxz00_Re},   // odd in x
             {GIdx::Pxy00_Re, GIdx::Pyz00_Re},   // odd in y
             {GIdx::Pxz00_Re, GIdx::Pyz00_Re}};  // odd in z
 #endif
-        for(int n=0; n<GIdx::ncomp; ++n){
-            for(int d=0; d<AMREX_SPACEDIM; ++d){
-                bool odd_parity = (n == vup[d]) ||
-                                  (n >= flux_start[d] && n < flux_start[d] + flavor_block_size);
+        for (int n = 0; n < GIdx::ncomp; ++n) {
+            for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+                bool odd_parity =
+                    (n == vup[d]) || (n >= flux_start[d] &&
+                                      n < flux_start[d] + flavor_block_size);
 #if NUM_MOMENTS == 3
-                for(int e=0; e<2; ++e)
-                    odd_parity = odd_parity ||
-                                 (n >= press_odd_start[d][e] && n < press_odd_start[d][e] + flavor_block_size);
+                for (int e = 0; e < 2; ++e)
+                    odd_parity = odd_parity || (n >= press_odd_start[d][e] &&
+                                                n < press_odd_start[d][e] +
+                                                        flavor_block_size);
 #endif
-                for(int side=0; side<2; ++side){
+                for (int side = 0; side < 2; ++side) {
                     int bc_type;
-                    switch(parms->boundary_condition[2*d + side]){
-                        case BoundaryCondition::periodic:   bc_type = BCType::int_dir; break;
-                        case BoundaryCondition::reflecting: bc_type = odd_parity ? BCType::reflect_odd : BCType::reflect_even; break;
-                        case BoundaryCondition::outflow:    bc_type = BCType::foextrap; break;
-                        default: bc_type = BCType::int_dir; break;
+                    switch (parms->boundary_condition[2 * d + side]) {
+                        case BoundaryCondition::periodic:
+                            bc_type = BCType::int_dir;
+                            break;
+                        case BoundaryCondition::reflecting:
+                            bc_type = odd_parity ? BCType::reflect_odd
+                                                 : BCType::reflect_even;
+                            break;
+                        case BoundaryCondition::outflow:
+                            bc_type = BCType::foextrap;
+                            break;
+                        default:
+                            bc_type = BCType::int_dir;
+                            break;
                     }
-                    if(side==0) grid_bcs[n].setLo(d, bc_type);
-                    else        grid_bcs[n].setHi(d, bc_type);
+                    if (side == 0)
+                        grid_bcs[n].setLo(d, bc_type);
+                    else
+                        grid_bcs[n].setHi(d, bc_type);
                 }
             }
         }
@@ -168,8 +187,8 @@ void evolve_flavor(const TestParams* parms)
     // initialize the grid variable names
     GIdx::Initialize();
 
-    //We only need HDF5 tables if IMFP_method is 2. 
-    if(parms->IMFP_method==2){
+    //We only need HDF5 tables if IMFP_method is 2.
+    if (parms->IMFP_method == 2) {
         // read the EoS table
         amrex::Print() << "Reading EoS table... " << std::endl;
         ReadEosTable(parms->nuceos_table_name);
@@ -192,13 +211,13 @@ void evolve_flavor(const TestParams* parms)
 
     Real initial_time = 0.0;
     int initial_step = 0;
-    if(parms->do_restart){
+    if (parms->do_restart) {
         // get particle data from file
-        RecoverParticles(parms->restart_dir, neutrinos_old, initial_time, initial_step);
-    }
-    else{
-    	// Initialize old particles
-    	neutrinos_old.InitParticles(parms);
+        RecoverParticles(parms->restart_dir, neutrinos_old, initial_time,
+                         initial_step);
+    } else {
+        // Initialize old particles
+        neutrinos_old.InitParticles(parms);
     }
 
     // Copy particles from old data to new data
@@ -208,20 +227,24 @@ void evolve_flavor(const TestParams* parms)
 
     // Deposit particles to grid
     deposit_to_mesh(neutrinos_old, state, geom, parms);
-        
+
     // Write plotfile after initialization
     DataReducer rd;
     if (not parms->do_restart) {
         // If we have just initialized, then always save the particle data for reference
-        const int write_particles_after_init = (parms->write_plot_particles_every>0);
-        WritePlotFile(state, neutrinos_old, geom, initial_time, initial_step, write_particles_after_init);
-	rd.InitializeFiles();
+        const int write_particles_after_init =
+            (parms->write_plot_particles_every > 0);
+        WritePlotFile(state, neutrinos_old, geom, initial_time, initial_step,
+                      write_particles_after_init);
+        rd.InitializeFiles();
     }
 
     TimeIntegrator<FlavoredNeutrinoContainer> integrator(neutrinos_old);
 
     // Create a RHS source function we will integrate
-    auto source_fun = [&] (FlavoredNeutrinoContainer& neutrinos_rhs, FlavoredNeutrinoContainer& neutrinos, Real /* time */) {
+    auto source_fun = [&](FlavoredNeutrinoContainer& neutrinos_rhs,
+                          FlavoredNeutrinoContainer& neutrinos,
+                          Real /* time */) {
         /* Evaluate the neutrino distribution matrix RHS */
 
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
@@ -238,20 +261,21 @@ void evolve_flavor(const TestParams* parms)
         // B) We only Redistribute the integrator new data at the end of the timestep, not all the RHS data.
         //    Thus, this copy clears the old RHS particles and creates particles in the RHS container corresponding
         //    to the current particles in neutrinos.
-    
+
         neutrinos_rhs.copyParticles(neutrinos, true);
         // Step 3: Interpolate Mesh to construct the neutrino RHS in place
         interpolate_rhs_from_mesh(neutrinos_rhs, state, geom, parms);
-     };
+    };
 
     // Create a function to call after every integrator timestep.
     int step = initial_step;
-    auto post_timestep_fun = [&] (FlavoredNeutrinoContainer& neutrinos, amrex::Real time) {
+    auto post_timestep_fun = [&](FlavoredNeutrinoContainer& neutrinos,
+                                 amrex::Real time) {
         /* Post-timestep function. The integrator new-time data is the latest data available. */
 
         // If a black hole is present, set N=0 and Nbar=0 for all particles inside
         // the black hole so it absorbs the neutrinos that fall into it.
-        if ( parms->do_blackhole == 1 ){
+        if (parms->do_blackhole == 1) {
             empty_particles_inside_blackhole(neutrinos, parms);
         }
 
@@ -272,16 +296,22 @@ void evolve_flavor(const TestParams* parms)
         // since Redistribute() applies periodic boundary conditions.
         neutrinos.SyncLocation(Sync::PositionToCoordinate);
 
-	rd.WriteReducedData0D(geom, state, neutrinos, time, step+1, integrator.get_previous_time_step(), integrator.get_scaled_error());
+        rd.WriteReducedData0D(geom, state, neutrinos, time, step + 1,
+                              integrator.get_previous_time_step(),
+                              integrator.get_scaled_error());
 
         run_fom += neutrinos.TotalNumberOfParticles();
 
         // Write the Mesh Data to Plotfile if required
-        bool write_plotfile       = parms->write_plot_every           > 0 && (step+1) % parms->write_plot_every           == 0;
-        bool write_plot_particles = parms->write_plot_particles_every > 0 && (step+1) % parms->write_plot_particles_every == 0;
+        bool write_plotfile = parms->write_plot_every > 0 &&
+                              (step + 1) % parms->write_plot_every == 0;
+        bool write_plot_particles =
+            parms->write_plot_particles_every > 0 &&
+            (step + 1) % parms->write_plot_particles_every == 0;
         if (write_plotfile || write_plot_particles) {
             // Only include the Particle Data if write_plot_particles_every is satisfied
-            WritePlotFile(state, neutrinos, geom, time, step+1, write_plot_particles);
+            WritePlotFile(state, neutrinos, geom, time, step + 1,
+                          write_plot_particles);
         }
 
         // Set the next timestep from the last deposited grid data
@@ -332,15 +362,17 @@ void evolve_flavor(const TestParams* parms)
     integrator.set_error_norm([&integrator](FlavoredNeutrinoContainer& error,
                                             FlavoredNeutrinoContainer& S_old,
                                             FlavoredNeutrinoContainer& S_new,
-                                            Real abs_tol, Real rel_tol) -> Real {
+                                            Real abs_tol,
+                                            Real rel_tol) -> Real {
         using TParIter = amrex::ParIter<PIdx::nattribs, 0, 0, 0>;
         using ParticleType = amrex::Particle<PIdx::nattribs, 0>;
 
         constexpr int Nflav = NUM_FLAVORS;
-        constexpr int nu_start    = static_cast<int>(PIdx::N00_Re);
+        constexpr int nu_start = static_cast<int>(PIdx::N00_Re);
         constexpr int nubar_start = static_cast<int>(PIdx::N00_Rebar);
 
-        const Real ref_position = PhysConst::c * integrator.get_previous_time_step();
+        const Real ref_position =
+            PhysConst::c * integrator.get_previous_time_step();
 
         Real result = 0.0;
         int lev = 0;
@@ -355,8 +387,9 @@ void evolve_flavor(const TestParams* parms)
             const ParticleType* p_old = &(pt_old.GetArrayOfStructs()[0]);
             const ParticleType* p_new = &(pt_new.GetArrayOfStructs()[0]);
 
-            Real tile_max = amrex::Reduce::Max<Real>(np,
-                [=] AMREX_GPU_DEVICE (int i) -> Real {
+            Real tile_max = amrex::Reduce::Max<Real>(
+                np,
+                [=] AMREX_GPU_DEVICE(int i) -> Real {
                     // Per-flavor diagonal magnitudes (Re part of each diagonal) and
                     // the matrix trace. The k-th diagonal of an Nflav x Nflav Hermitian
                     // matrix packed (Re,Im) row-by-row sits at offset k*(2*Nflav - k).
@@ -368,30 +401,34 @@ void evolve_flavor(const TestParams* parms)
                     Real diagN[Nflav], diagNbar[Nflav];
                     Real TrN = 0.0, TrNbar = 0.0;
                     for (int k = 0; k < Nflav; ++k) {
-                        int diag = k * (2*Nflav - k);
-                        diagN[k]    = amrex::max(std::abs(p_old[i].rdata(nu_start    + diag)),
-                                                 std::abs(p_new[i].rdata(nu_start    + diag)));
-                        diagNbar[k] = amrex::max(std::abs(p_old[i].rdata(nubar_start + diag)),
-                                                 std::abs(p_new[i].rdata(nubar_start + diag)));
-                        TrN    += diagN[k];
+                        int diag = k * (2 * Nflav - k);
+                        diagN[k] = amrex::max(
+                            std::abs(p_old[i].rdata(nu_start + diag)),
+                            std::abs(p_new[i].rdata(nu_start + diag)));
+                        diagNbar[k] = amrex::max(
+                            std::abs(p_old[i].rdata(nubar_start + diag)),
+                            std::abs(p_new[i].rdata(nubar_start + diag)));
+                        TrN += diagN[k];
                         TrNbar += diagNbar[k];
                     }
 
                     const Real ref_p = std::abs(p_old[i].rdata(PIdx::pupt));
 
                     // scale_c = reference_scale * abs_tol + rel_tol * max(|old_c|, |new_c|)
-                    auto scaled_error = [&] (int c, Real reference_scale) {
-                        const Real maxval = amrex::max(std::abs(p_old[i].rdata(c)),
-                                                       std::abs(p_new[i].rdata(c)));
-                        const Real scale = reference_scale * abs_tol + rel_tol * maxval;
-			if (scale == Real(0.0)) return Real(0.0);
+                    auto scaled_error = [&](int c, Real reference_scale) {
+                        const Real maxval =
+                            amrex::max(std::abs(p_old[i].rdata(c)),
+                                       std::abs(p_new[i].rdata(c)));
+                        const Real scale =
+                            reference_scale * abs_tol + rel_tol * maxval;
+                        if (scale == Real(0.0)) return Real(0.0);
                         return std::abs(p_err[i].rdata(c)) / scale;
                     };
 
                     Real val = 0.0;
-                    val = amrex::max(val, scaled_error(PIdx::x,    ref_position));
-                    val = amrex::max(val, scaled_error(PIdx::y,    ref_position));
-                    val = amrex::max(val, scaled_error(PIdx::z,    ref_position));
+                    val = amrex::max(val, scaled_error(PIdx::x, ref_position));
+                    val = amrex::max(val, scaled_error(PIdx::y, ref_position));
+                    val = amrex::max(val, scaled_error(PIdx::z, ref_position));
                     val = amrex::max(val, scaled_error(PIdx::pupx, ref_p));
                     val = amrex::max(val, scaled_error(PIdx::pupy, ref_p));
                     val = amrex::max(val, scaled_error(PIdx::pupz, ref_p));
@@ -401,18 +438,27 @@ void evolve_flavor(const TestParams* parms)
                     // sqrt(N_jj * N_kk), the geometric mean of the two diagonals they
                     // connect (which also upper-bounds |N_jk| by positivity).
                     for (int j = 0; j < Nflav; ++j) {
-                        int diag = j * (2*Nflav - j);
-                        val = amrex::max(val, scaled_error(nu_start    + diag, TrN));
-                        val = amrex::max(val, scaled_error(nubar_start + diag, TrNbar));
-                        for (int k = j+1; k < Nflav; ++k) {
-                            const Real ref_nu    = std::sqrt(diagN[j]    * diagN[k]);
-                            const Real ref_nubar = std::sqrt(diagNbar[j] * diagNbar[k]);
-                            const int reoffset = diag + 1 + 2*(k-j-1);
-                            const int imoffset = diag + 2 + 2*(k-j-1);
-                            val = amrex::max(val, scaled_error(nu_start    + reoffset, ref_nu));
-                            val = amrex::max(val, scaled_error(nu_start    + imoffset, ref_nu));
-                            val = amrex::max(val, scaled_error(nubar_start + reoffset, ref_nubar));
-                            val = amrex::max(val, scaled_error(nubar_start + imoffset, ref_nubar));
+                        int diag = j * (2 * Nflav - j);
+                        val =
+                            amrex::max(val, scaled_error(nu_start + diag, TrN));
+                        val = amrex::max(
+                            val, scaled_error(nubar_start + diag, TrNbar));
+                        for (int k = j + 1; k < Nflav; ++k) {
+                            const Real ref_nu = std::sqrt(diagN[j] * diagN[k]);
+                            const Real ref_nubar =
+                                std::sqrt(diagNbar[j] * diagNbar[k]);
+                            const int reoffset = diag + 1 + 2 * (k - j - 1);
+                            const int imoffset = diag + 2 + 2 * (k - j - 1);
+                            val = amrex::max(
+                                val, scaled_error(nu_start + reoffset, ref_nu));
+                            val = amrex::max(
+                                val, scaled_error(nu_start + imoffset, ref_nu));
+                            val = amrex::max(
+                                val, scaled_error(nubar_start + reoffset,
+                                                  ref_nubar));
+                            val = amrex::max(
+                                val, scaled_error(nubar_start + imoffset,
+                                                  ref_nubar));
                         }
                     }
                     return val;
@@ -431,13 +477,15 @@ void evolve_flavor(const TestParams* parms)
 
     // Get a starting timestep
     const Real starting_dt = compute_dt(geom, state, parms);
-    
+
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;
 
     Real start_time = amrex::second();
 
-    integrator.integrate(neutrinos_old, neutrinos_new, initial_time, starting_dt, parms->end_time, initial_step, parms->nsteps);
+    integrator.integrate(neutrinos_old, neutrinos_new, initial_time,
+                         starting_dt, parms->end_time, initial_step,
+                         parms->nsteps);
 
     Real stop_time = amrex::second();
     Real advance_time = stop_time - start_time;
@@ -447,24 +495,25 @@ void evolve_flavor(const TestParams* parms)
 
     amrex::Print() << "Done. " << std::endl;
 
-    amrex::Print() << "Run time w/o initialization (seconds) = " << std::fixed << std::setprecision(3) << advance_time << std::endl;
+    amrex::Print() << "Run time w/o initialization (seconds) = " << std::fixed
+                   << std::setprecision(3) << advance_time << std::endl;
 
-    amrex::Print() << "Average number of particles advanced per microsecond = " << std::fixed << std::setprecision(3) << run_fom << std::endl;
-
+    amrex::Print() << "Average number of particles advanced per microsecond = "
+                   << std::fixed << std::setprecision(3) << run_fom
+                   << std::endl;
 }
 
-int main(int argc, char* argv[])
-{
-    //In amrex::Initialize, a large amount of GPU device memory is allocated and is kept in The_Arena(). 
-    //The default is 3/4 of the total device memory. 
-    //It can be changed with a ParmParse parameter, amrex.the_arena_init_size, in the unit of bytes. 
+int main(int argc, char* argv[]) {
+    //In amrex::Initialize, a large amount of GPU device memory is allocated and is kept in The_Arena().
+    //The default is 3/4 of the total device memory.
+    //It can be changed with a ParmParse parameter, amrex.the_arena_init_size, in the unit of bytes.
     //The default initial size for other arenas is 8388608 (i.e., 8 MB).
     ParmParse pp;
     pp.add("amrex.the_arena_init_size", 8388608);
     pp.add("amrex.the_managed_arena_init_size", 8388608);
     pp.add("amrex.the_device_arena_init_size", 8388608);
-    
-    amrex::Initialize(argc,argv);
+
+    amrex::Initialize(argc, argv);
 
     MFIter::allowMultipleMFIters(true);
 
@@ -475,19 +524,18 @@ int main(int argc, char* argv[])
 
     // by default amrex initializes rng deterministically
     // this uses the time for a different run each time
-    amrex::InitRandom(ParallelDescriptor::MyProc()+time(NULL), ParallelDescriptor::NProcs());
+    amrex::InitRandom(ParallelDescriptor::MyProc() + time(NULL),
+                      ParallelDescriptor::NProcs());
 
     {
+        // get the run parameters
+        std::unique_ptr<TestParams> parms_unique_ptr;
+        parms_unique_ptr = std::make_unique<TestParams>();
+        parms_unique_ptr->Initialize();
+        const TestParams* parms = parms_unique_ptr.get();
 
-    // get the run parameters
-    std::unique_ptr<TestParams> parms_unique_ptr;
-    parms_unique_ptr = std::make_unique<TestParams>();
-    parms_unique_ptr->Initialize();
-    const TestParams* parms = parms_unique_ptr.get();
-
-    // do all the work!
-    evolve_flavor(parms);
-
+        // do all the work!
+        evolve_flavor(parms);
     }
 
     amrex::Finalize();
