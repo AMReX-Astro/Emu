@@ -55,11 +55,11 @@ void evolve_flavor(const TestParams* parms)
         is_periodic[d] = lo_periodic ? 1 : 0;
     }
 
-    // Require a sub-cell translation step so a particle crosses at most one domain
-    // length per step (needed for the single-reflection boundary fold to land it
-    // back inside, and for the deposit/interpolate ghost stencil to stay valid).
-    if (!(parms->cfl_factor < 1.0))
-        amrex::Abort("cfl_factor must be < 1.");
+    // Require the translation step to cross at most one cell so a particle moves at
+    // most one domain length per step (needed for the single-reflection boundary fold
+    // to land it back inside, and for the deposit/interpolate ghost stencil to stay valid).
+    if (!(parms->cfl_factor <= 1.0))
+        amrex::Abort("cfl_factor must be <= 1.");
 
     // Define the index space of the domain
 
