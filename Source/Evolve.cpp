@@ -244,7 +244,6 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
         neutrinos, deposit_state, 0,
         [=] AMREX_GPU_DEVICE(const FlavoredNeutrinoContainer::ParticleType& p,
                              amrex::Array4<amrex::Real> const& sarr) {
-
             const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
             const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
             const amrex::Real delta_z = (p.pos(2) - plo[2]) * dxi[2];
