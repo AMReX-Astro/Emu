@@ -55,6 +55,12 @@ void evolve_flavor(const TestParams* parms)
         is_periodic[d] = lo_periodic ? 1 : 0;
     }
 
+    // Require a sub-cell translation step so a particle crosses at most one domain
+    // length per step (needed for the single-reflection boundary fold to land it
+    // back inside, and for the deposit/interpolate ghost stencil to stay valid).
+    if (!(parms->cfl_factor < 1.0))
+        amrex::Abort("cfl_factor must be < 1.");
+
     // Define the index space of the domain
 
     const IntVect domain_lo(AMREX_D_DECL(0, 0, 0));
@@ -117,21 +123,35 @@ void evolve_flavor(const TestParams* parms)
     // FillBoundary(geom.periodicity()) and left as int_dir here.
     Vector<BCRec> grid_bcs(GIdx::ncomp);
     {
-        // Components normal to dimension d: the matter velocity vup[d] and the
-        // length-of-flavor-vector flux block F[d]. The flux blocks are contiguous
-        // with stride (Fx00_Re - N00_Re), which is robust to NUM_FLAVORS.
-        const int flux_block = GIdx::Fx00_Re - GIdx::N00_Re;
+        // A component flips sign (reflect_odd) under a reflection across a face normal
+        // to dimension d iff it carries an odd number of d-momentum factors: the matter
+        // velocity vup[d], the flux block F[d], and (for NUM_MOMENTS==3) the off-diagonal
+        // pressure blocks P[d][e!=d]. Everything else (scalars, tangential fluxes, and
+        // the diagonal pressures Pxx/Pyy/Pzz) reflects even. Each moment block is one
+        // flavor-vector wide with stride (Fx00_Re - N00_Re), which is robust to NUM_FLAVORS.
+        const int flavor_block_size = GIdx::Fx00_Re - GIdx::N00_Re;
         const int flux_start[AMREX_SPACEDIM] = {GIdx::Fx00_Re, GIdx::Fy00_Re, GIdx::Fz00_Re};
         const int vup[AMREX_SPACEDIM]        = {GIdx::vupx,    GIdx::vupy,    GIdx::vupz};
+#if NUM_MOMENTS == 3
+        const int press_odd_start[AMREX_SPACEDIM][2] = {
+            {GIdx::Pxy00_Re, GIdx::Pxz00_Re},   // odd in x
+            {GIdx::Pxy00_Re, GIdx::Pyz00_Re},   // odd in y
+            {GIdx::Pxz00_Re, GIdx::Pyz00_Re}};  // odd in z
+#endif
         for(int n=0; n<GIdx::ncomp; ++n){
             for(int d=0; d<AMREX_SPACEDIM; ++d){
-                const bool normal = (n == vup[d]) ||
-                                    (n >= flux_start[d] && n < flux_start[d] + flux_block);
+                bool odd_parity = (n == vup[d]) ||
+                                  (n >= flux_start[d] && n < flux_start[d] + flavor_block_size);
+#if NUM_MOMENTS == 3
+                for(int e=0; e<2; ++e)
+                    odd_parity = odd_parity ||
+                                 (n >= press_odd_start[d][e] && n < press_odd_start[d][e] + flavor_block_size);
+#endif
                 for(int side=0; side<2; ++side){
                     int bc_type;
                     switch(parms->boundary_condition[2*d + side]){
                         case BoundaryCondition::periodic:   bc_type = BCType::int_dir; break;
-                        case BoundaryCondition::reflecting: bc_type = normal ? BCType::reflect_odd : BCType::reflect_even; break;
+                        case BoundaryCondition::reflecting: bc_type = odd_parity ? BCType::reflect_odd : BCType::reflect_even; break;
                         case BoundaryCondition::outflow:    bc_type = BCType::foextrap; break;
                         default: bc_type = BCType::int_dir; break;
                     }
@@ -187,7 +207,7 @@ void evolve_flavor(const TestParams* parms)
     neutrinos_new.copyParticles(neutrinos_old, true);
 
     // Deposit particles to grid
-    deposit_to_mesh(neutrinos_old, state, geom);
+    deposit_to_mesh(neutrinos_old, state, geom, parms);
         
     // Write plotfile after initialization
     DataReducer rd;
@@ -205,7 +225,7 @@ void evolve_flavor(const TestParams* parms)
         /* Evaluate the neutrino distribution matrix RHS */
 
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
-        deposit_to_mesh(neutrinos, state, geom);
+        deposit_to_mesh(neutrinos, state, geom, parms);
         state.FillBoundary(geom.periodicity());
         FillDomainBoundary(state, geom, grid_bcs);
 

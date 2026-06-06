@@ -192,7 +192,7 @@ Real compute_dt(
     return dt;
 }
 
-void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state, const Geometry& geom)
+void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state, const Geometry& geom, const TestParams* parms)
 {
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
@@ -207,6 +207,24 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
     const int shape_factor_order_x = geom.Domain().length(0) > 1 ? SHAPE_FACTOR_ORDER : 0;
     const int shape_factor_order_y = geom.Domain().length(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
     const int shape_factor_order_z = geom.Domain().length(2) > 1 ? SHAPE_FACTOR_ORDER : 0;
+
+    // For reflecting faces, the part of a particle's deposition stencil that lands
+    // in the ghost region outside the wall must be folded back into the mirror-image
+    // interior cell (ParticleToMesh only sums ghost deposits across grid/periodic
+    // boundaries, so without this fold the near-wall stencil mass would be lost).
+    // This is the deposit-side counterpart of the reflect_even/reflect_odd handling
+    // that FillDomainBoundary applies on the interpolate side.
+    const Box& domain = geom.Domain();
+    const amrex::GpuArray<int,3> domain_lo{domain.smallEnd(0), domain.smallEnd(1), domain.smallEnd(2)};
+    const amrex::GpuArray<int,3> domain_hi{domain.bigEnd(0),   domain.bigEnd(1),   domain.bigEnd(2)};
+    const amrex::GpuArray<int,3> reflect_lo{
+        parms->boundary_condition[0]==BoundaryCondition::reflecting,
+        parms->boundary_condition[2]==BoundaryCondition::reflecting,
+        parms->boundary_condition[4]==BoundaryCondition::reflecting};
+    const amrex::GpuArray<int,3> reflect_hi{
+        parms->boundary_condition[1]==BoundaryCondition::reflecting,
+        parms->boundary_condition[3]==BoundaryCondition::reflecting,
+        parms->boundary_condition[5]==BoundaryCondition::reflecting};
 
     amrex::ParticleToMesh(neutrinos, deposit_state, 0,
     [=] AMREX_GPU_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p,
@@ -243,21 +261,49 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, MultiFab& state
         const int nmoments = sizeof(moment_factor)/sizeof(amrex::Real);
         const int ncomp    = PIdx::N00_Rebar - PIdx::N00_Re; // real/imaginary components per NxN Hermitian block
 
+        // Sign each moment block acquires under a reflection across a face normal to
+        // direction d (+1 even, -1 odd: -1 iff the block carries an odd number of
+        // phat_d factors), in GIdx block order
+        // N, Fx, Fy, Fz[, Pxx, Pxy, Pxz, Pyy, Pyz, Pzz].
+        const int moment_parity[3][10] = {
+            {1, -1,  1,  1,  1, -1, -1,  1,  1,  1},   // x
+            {1,  1, -1,  1,  1, -1,  1,  1, -1,  1},   // y
+            {1,  1,  1, -1,  1,  1, -1,  1, -1,  1}};  // z
+
         for (int k = sz.first(); k <= sz.last(); ++k) {
             for (int j = sy.first(); j <= sy.last(); ++j) {
                 for (int i = sx.first(); i <= sx.last(); ++i) {
                     const amrex::Real vol = sx(i) * sy(j) * sz(k) * inv_cell_volume;
+
+                    // Fold stencil cells that land outside a reflecting face back into
+                    // the mirror-image interior cell, recording which directions were
+                    // reflected so the per-moment parity sign can be applied below.
+                    int idx[3] = {i, j, k};
+                    bool refl[3] = {false, false, false};
+                    for (int d=0; d<3; ++d) {
+                        if (reflect_lo[d] && idx[d] < domain_lo[d]) {
+                            idx[d] = 2*domain_lo[d] - 1 - idx[d];
+                            refl[d] = true;
+                        } else if (reflect_hi[d] && idx[d] > domain_hi[d]) {
+                            idx[d] = 2*domain_hi[d] + 1 - idx[d];
+                            refl[d] = true;
+                        }
+                    }
+
                     // Deposit each particle N component into the matching component of
                     // every grid moment block, for neutrinos (nunubar=0) and antineutrinos (nunubar=1).
                     for (int nunubar=0; nunubar<2; ++nunubar) {
                         const int particle_index_base = PIdx::N00_Re + nunubar*ncomp;
                         for (int m=0; m<nmoments; ++m) {
+                            amrex::Real sign = 1.0;
+                            for (int d=0; d<3; ++d)
+                                if (refl[d]) sign *= moment_parity[d][m];
                             const int grid_index_base = GIdx::N00_Re + (2*m + nunubar)*ncomp;
                             for (int comp=0; comp<ncomp; ++comp) {
                                 const int grid_component_index     = grid_index_base - start_comp + comp;
                                 const int particle_component_index = particle_index_base + comp;
-                                amrex::Gpu::Atomic::AddNoRet(&sarr(i, j, k, grid_component_index),
-                                                             vol * p.rdata(particle_component_index) * moment_factor[m]);
+                                amrex::Gpu::Atomic::AddNoRet(&sarr(idx[0], idx[1], idx[2], grid_component_index),
+                                                             sign * vol * p.rdata(particle_component_index) * moment_factor[m]);
                             }
                         }
                     }

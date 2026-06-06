@@ -8,7 +8,7 @@ attenuation_matter = 1.0
 attenuation_self_interaction = 1.0
 
 collision_cfl_factor = 55
-cfl_factor = 55
+cfl_factor = 0.5
 flavor_cfl_factor = 0
 
 integration.type = 1
@@ -17,9 +17,9 @@ integration.use_adaptive_time_step = 0
 
 # Domain size in 3D index space
 ncell = (2,2,2)
-Lx = 2.0e4 # cm
-Ly = 2.0e4 # cm
-Lz = 2.0e4 # cm
+Lx = 2.2e6 # cm
+Ly = 2.2e6 # cm
+Lz = 2.2e6 # cm
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
