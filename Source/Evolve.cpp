@@ -66,11 +66,39 @@ Real compute_dt(
 
 	// Get the cell size array
     const auto dxi = geom.CellSizeArray();
+    // Getting the lower bounds of the domain
+    const auto plo = geom.ProbLoArray();
+    // Getting the upper bounds of the domain
+    const auto p_hi = geom.ProbHiArray();
+
     Real dt_translation = 0.0;
+
     if (parms->cfl_factor > 0.0) {
+        
+        Real min_length;
+
+        if (parms->coord_sys==0) {
+            // Cartesian: (dx1,dx2,dx3) = (dx,dy,dz)
+            min_length = std::min({dxi[0], dxi[1], dxi[2]});
+        }
+
+        else if (parms->coord_sys==1) {
+            //Cylindrical: (dx1,dx2,dx3) = (dr, r*dphi, dz)
+            Real r_min = plo[0] + dxi[0]/4; // r_min = lowest_r + r_width/4 (ad hoc) . To safe guard against lowest_r = 0
+            min_length = std::min({dxi[0], r_min*dxi[1], dxi[2]});
+        }
+
+        else {
+            //Spherical: (dx1,dx2,dx3) = (dr, r*dtheta, r*sin(theta)*dphi )
+            //The spehrical part might require rethinking
+            Real sin_theta_min =  std::min({std::sin(plo[1]), std::sin(p_hi[1])});
+            Real r_min = plo[0] + dxi[0]/4;
+            min_length = std::min({dxi[0], r_min*dxi[1], r_min*sin_theta_min*dxi[2]});
+        }
+        
         // Calculate the time step size based on the translation CFL factor
-        // dt = (min(dx,dy,dz)/c) * cfl_factor
-        dt_translation = std::min({dxi[0], dxi[1], dxi[2]}) / PhysConst::c * parms->cfl_factor;
+        // dt = (min(dx1,dx2,dx3)/c) * cfl_factor
+        dt_translation = min_length / PhysConst::c * parms->cfl_factor;
     }
 
     Real dt_flavor = 0.0;
