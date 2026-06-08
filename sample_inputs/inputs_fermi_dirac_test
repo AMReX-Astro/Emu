@@ -8,7 +8,7 @@ attenuation_matter = 1.0
 attenuation_self_interaction = 1.0
 
 collision_cfl_factor = 55
-cfl_factor = 55
+cfl_factor = 0.5
 flavor_cfl_factor = 0
 
 integration.type = 1
@@ -17,9 +17,9 @@ integration.use_adaptive_time_step = 0
 
 # Domain size in 3D index space
 ncell = (2,2,2)
-Lx = 2.0e4 # cm
-Ly = 2.0e4 # cm
-Lz = 2.0e4 # cm
+Lx = 2.2e6 # cm
+Ly = 2.2e6 # cm
+Lz = 2.2e6 # cm
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
@@ -92,7 +92,6 @@ deltaCP_degrees = 222
 #################
 IMFP_method = 2
 Do_Pauli_blocking = 0 # If 1, it will multiply the inverse mean free path by 1 / (1 - f_eq); if 0, do nothing.
-boundary_condition_type = 0
 set_equilibrium_distribution = 0
 
 #################
@@ -109,8 +108,12 @@ do_blackhole = 0
 #################
 # Boundary conditions
 #################
-boundary_condition_type = 0
-do_periodic_empty_bc = 0
+bc_xlo = periodic
+bc_xhi = periodic
+bc_ylo = periodic
+bc_yhi = periodic
+bc_zlo = periodic
+bc_zhi = periodic
 
 #################
 # Tables

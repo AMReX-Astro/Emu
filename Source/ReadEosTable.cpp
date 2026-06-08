@@ -60,6 +60,8 @@ void ReadEosTable(const std::string nuceos_table_name) {
 
     //TODO:
     int my_reader_process = 0;  //reader_process;
+    amrex::ignore_unused(
+        my_reader_process);  // only used by BCAST in MPI builds
 
     const int read_table_on_single_process = 1;
     //const int doIO = !read_table_on_single_process || CCTK_MyProc(cctkGH) == my_reader_process; //TODO:
@@ -128,7 +130,6 @@ void ReadEosTable(const std::string nuceos_table_name) {
 
     // Prepare HDF5 to read hyperslabs into alltables_temp
     hsize_t table_dims[2] = {NTABLES, (hsize_t)nrho_ * ntemp_ * nye_};
-    hsize_t var3[2] = {1, (hsize_t)nrho_ * ntemp_ * nye_};
     hid_t mem3 = H5Screate_simple(2, table_dims, NULL);
 
     // Read alltables_temp

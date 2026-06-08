@@ -36,6 +36,60 @@ void FlavoredNeutrinoContainer::SyncLocation(int type) {
     }
 }
 
+void FlavoredNeutrinoContainer::ApplyBoundaryConditions(
+    const TestParams* parms) {
+    BL_PROFILE("FlavoredNeutrinoContainer::ApplyBoundaryConditions");
+
+    const int lev = 0;
+
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+    for (FNParIter pti(*this, lev); pti.isValid(); ++pti) {
+        const int np = pti.numParticles();
+        ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
+
+        amrex::ParallelFor(np, [=] AMREX_GPU_DEVICE(int i) {
+            ParticleType& p = pstruct[i];
+
+            // Domain length per dimension; per-face modes are in
+            // parms->boundary_condition, indexed 2*dim+side (0=lo at 0, 1=hi at L).
+            const amrex::Real L[AMREX_SPACEDIM] = {parms->Lx, parms->Ly,
+                                                   parms->Lz};
+
+            for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+                int mode = BoundaryCondition::periodic;  // no-op
+                amrex::Real reflected_pos = 0.0;
+                if (p.pos(d) < 0.0) {
+                    mode = parms->boundary_condition[2 * d +
+                                                     0];  // crossed the lo face
+                    reflected_pos = -p.pos(d);
+                } else if (p.pos(d) > L[d]) {
+                    mode = parms->boundary_condition[2 * d +
+                                                     1];  // crossed the hi face
+                    reflected_pos = 2.0 * L[d] - p.pos(d);
+                }
+
+                // Reflecting and outflow: fold the position back into the domain and
+                // flip the momentum component normal to the face. Periodic is handled
+                // later by RedistributeLocal.
+                if (mode == BoundaryCondition::reflecting ||
+                    mode == BoundaryCondition::outflow) {
+                    p.pos(d) = reflected_pos;
+                    p.rdata(PIdx::pupx + d) = -p.rdata(PIdx::pupx + d);
+
+                    // Outflow: zero the density matrix so the particle carries
+                    // nothing back into the domain (no incoming flux).
+                    if (mode == BoundaryCondition::outflow) {
+                        for (int comp = PIdx::N00_Re; comp < PIdx::TrHN; ++comp)
+                            p.rdata(comp) = 0.0;
+                    }
+                }
+            }
+        });
+    }
+}
+
 void FlavoredNeutrinoContainer::UpdateLocationFrom(
     FlavoredNeutrinoContainer& Ploc) {
     // This function updates particle locations in the current particle container

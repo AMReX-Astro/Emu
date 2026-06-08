@@ -11,16 +11,16 @@ struct NuLib_tabulated {
     //constructor for NuLib_tabulated
     AMREX_GPU_DEVICE AMREX_GPU_HOST NuLib_tabulated() =
         default;  //Need to keep it
-    AMREX_GPU_DEVICE AMREX_GPU_HOST
-    NuLib_tabulated(double *alltables_nulib, double *logrho_nulib,
-                    double *logtemp_nulib, double *yes_nulib,
-                    double *helperVarsReal_nulib, int *helperVarsInt_nulib)
-        : alltables_nulib(alltables_nulib),
-          logrho_nulib(logrho_nulib),
-          logtemp_nulib(logtemp_nulib),
-          yes_nulib(yes_nulib),
-          helperVarsReal_nulib(helperVarsReal_nulib),
-          helperVarsInt_nulib(helperVarsInt_nulib) {}
+    AMREX_GPU_DEVICE AMREX_GPU_HOST NuLib_tabulated(
+        double *alltables_nulib_in, double *logrho_nulib_in,
+        double *logtemp_nulib_in, double *yes_nulib_in,
+        double *helperVarsReal_nulib_in, int *helperVarsInt_nulib_in)
+        : alltables_nulib(alltables_nulib_in),
+          logrho_nulib(logrho_nulib_in),
+          logtemp_nulib(logtemp_nulib_in),
+          yes_nulib(yes_nulib_in),
+          helperVarsReal_nulib(helperVarsReal_nulib_in),
+          helperVarsInt_nulib(helperVarsInt_nulib_in) {}
 
     //--------------- get helperVarsReal pointer ---------------------------------------------
     AMREX_GPU_DEVICE AMREX_GPU_HOST double *get_helperVarsReal_nulib() const {
@@ -59,9 +59,9 @@ struct NuLib_energies {
     //constructor for NuLib_energies
     AMREX_GPU_DEVICE AMREX_GPU_HOST NuLib_energies() =
         default;  //Need to keep it
-    AMREX_GPU_DEVICE AMREX_GPU_HOST NuLib_energies(double *energy_bottom,
-                                                   double *energy_top)
-        : energy_bottom(energy_bottom), energy_top(energy_top) {}
+    AMREX_GPU_DEVICE AMREX_GPU_HOST NuLib_energies(double *energy_bottom_in,
+                                                   double *energy_top_in)
+        : energy_bottom(energy_bottom_in), energy_top(energy_top_in) {}
 
     //--------------- get energy_bottom pointer ---------------------------------------------
     AMREX_GPU_DEVICE AMREX_GPU_HOST double *get_energy_bottom_nulib() const {

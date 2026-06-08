@@ -39,38 +39,28 @@
 using namespace amrex;
 
 void evolve_flavor(const TestParams* parms) {
-    //The BC will be set using parameter file.
-    //Option 0: use periodic BC
-    //Option 1: create particles at boundary.
-
-    const int BC_type = parms->boundary_condition_type;  //0=periodic, 1=outer.
-
-    int BC_type_val;
-    enum BC_type_enum { PERIODIC, OUTER };
-
-    if (BC_type == 0) {
-        BC_type_val = BC_type_enum::PERIODIC;  //use periodic BC
-    } else if (BC_type == 1) {
-        BC_type_val = BC_type_enum::OUTER;  //use outer BC
-    } else {
-        amrex::Abort("BC_type is incorrect.");
+    // Per-face boundary conditions are read into parms->boundary_condition,
+    // indexed as 2*dim+side (side 0=lo, 1=hi).
+    // AMReX periodicity is a per-axis property, so an axis is periodic only when
+    // BOTH of its faces are periodic; mixing a periodic face with a non-periodic
+    // face on the same axis is not allowed.
+    Vector<int> is_periodic(AMREX_SPACEDIM, 0);
+    for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+        const bool lo_periodic = (parms->boundary_condition[2 * d + 0] ==
+                                  BoundaryCondition::periodic);
+        const bool hi_periodic = (parms->boundary_condition[2 * d + 1] ==
+                                  BoundaryCondition::periodic);
+        if (lo_periodic != hi_periodic)
+            amrex::Abort(
+                "Periodic boundary conditions must be applied to both faces of "
+                "an axis.");
+        is_periodic[d] = lo_periodic ? 1 : 0;
     }
 
-    int periodic_flag;
-    if (BC_type_val == BC_type_enum::PERIODIC) {
-        //1=yes, use periodic
-        periodic_flag = 1;
-    } else if (BC_type_val == BC_type_enum::OUTER) {
-        //2=no, do not use periodic.
-        periodic_flag = 0;
-    } else {
-        amrex::Abort("BC_type is incorrect.");
-    }
-
-    Vector<int> is_periodic(AMREX_SPACEDIM, periodic_flag);
-
-    Vector<int> domain_lo_bc_types(AMREX_SPACEDIM, BCType::int_dir);
-    Vector<int> domain_hi_bc_types(AMREX_SPACEDIM, BCType::int_dir);
+    // Require the translation step to cross at most one cell so a particle moves at
+    // most one domain length per step (needed for the single-reflection boundary fold
+    // to land it back inside, and for the deposit/interpolate ghost stencil to stay valid).
+    if (!(parms->cfl_factor <= 1.0)) amrex::Abort("cfl_factor must be <= 1.");
 
     // Define the index space of the domain
 
@@ -130,7 +120,69 @@ void evolve_flavor(const TestParams* parms) {
         state.setVal(parms->vupz_in, GIdx::vupz, 1);  // cm/s
     }
 
+    // Build per-component boundary conditions for the grid MultiFab.
+    // Scalars and tangential vector components reflect even; the vector component
+    // normal to a reflecting face reflects odd, so the normal flux vanishes at the
+    // wall (e.g. the radial flux at an r=0 boundary). Outflow faces extrapolate
+    // (zero-gradient) from the interior. Periodic faces are handled by
+    // FillBoundary(geom.periodicity()) and left as int_dir here.
+    Vector<BCRec> grid_bcs(GIdx::ncomp);
+    {
+        // A component flips sign (reflect_odd) under a reflection across a face normal
+        // to dimension d iff it carries an odd number of d-momentum factors: the matter
+        // velocity vup[d], the flux block F[d], and (for NUM_MOMENTS==3) the off-diagonal
+        // pressure blocks P[d][e!=d]. Everything else (scalars, tangential fluxes, and
+        // the diagonal pressures Pxx/Pyy/Pzz) reflects even. Each moment block is one
+        // flavor-vector wide with stride (Fx00_Re - N00_Re), which is robust to NUM_FLAVORS.
+        const int flavor_block_size = GIdx::Fx00_Re - GIdx::N00_Re;
+        const int flux_start[AMREX_SPACEDIM] = {GIdx::Fx00_Re, GIdx::Fy00_Re,
+                                                GIdx::Fz00_Re};
+        const int vup[AMREX_SPACEDIM] = {GIdx::vupx, GIdx::vupy, GIdx::vupz};
+#if NUM_MOMENTS == 3
+        const int press_odd_start[AMREX_SPACEDIM][2] = {
+            {GIdx::Pxy00_Re, GIdx::Pxz00_Re},   // odd in x
+            {GIdx::Pxy00_Re, GIdx::Pyz00_Re},   // odd in y
+            {GIdx::Pxz00_Re, GIdx::Pyz00_Re}};  // odd in z
+#endif
+        for (int n = 0; n < GIdx::ncomp; ++n) {
+            for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+                bool odd_parity =
+                    (n == vup[d]) || (n >= flux_start[d] &&
+                                      n < flux_start[d] + flavor_block_size);
+#if NUM_MOMENTS == 3
+                for (int e = 0; e < 2; ++e)
+                    odd_parity = odd_parity || (n >= press_odd_start[d][e] &&
+                                                n < press_odd_start[d][e] +
+                                                        flavor_block_size);
+#endif
+                for (int side = 0; side < 2; ++side) {
+                    int bc_type;
+                    switch (parms->boundary_condition[2 * d + side]) {
+                        case BoundaryCondition::periodic:
+                            bc_type = BCType::int_dir;
+                            break;
+                        case BoundaryCondition::reflecting:
+                            bc_type = odd_parity ? BCType::reflect_odd
+                                                 : BCType::reflect_even;
+                            break;
+                        case BoundaryCondition::outflow:
+                            bc_type = BCType::foextrap;
+                            break;
+                        default:
+                            bc_type = BCType::int_dir;
+                            break;
+                    }
+                    if (side == 0)
+                        grid_bcs[n].setLo(d, bc_type);
+                    else
+                        grid_bcs[n].setHi(d, bc_type);
+                }
+            }
+        }
+    }
+
     state.FillBoundary(geom.periodicity());
+    FillDomainBoundary(state, geom, grid_bcs);
 
     // initialize the grid variable names
     GIdx::Initialize();
@@ -174,7 +226,7 @@ void evolve_flavor(const TestParams* parms) {
     neutrinos_new.copyParticles(neutrinos_old, true);
 
     // Deposit particles to grid
-    deposit_to_mesh(neutrinos_old, state, geom);
+    deposit_to_mesh(neutrinos_old, state, geom, parms);
 
     // Write plotfile after initialization
     DataReducer rd;
@@ -196,8 +248,9 @@ void evolve_flavor(const TestParams* parms) {
         /* Evaluate the neutrino distribution matrix RHS */
 
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
-        deposit_to_mesh(neutrinos, state, geom);
+        deposit_to_mesh(neutrinos, state, geom, parms);
         state.FillBoundary(geom.periodicity());
+        FillDomainBoundary(state, geom, grid_bcs);
 
         // Step 2: Copy Particles and their F from neutrino state to neutrino RHS ParticleContainer
         //
@@ -220,40 +273,21 @@ void evolve_flavor(const TestParams* parms) {
                                  amrex::Real time) {
         /* Post-timestep function. The integrator new-time data is the latest data available. */
 
-        // If do_periodic_empty_bc is one.
-        // Do periodic boundary conditions but initialize particles with N=0 and Nbar=0 at the boundary.
-        // If a black hole is present in the simulation it will set N=0 and Nbar=0 for all particles inside the black hole.
-        if (parms->do_periodic_empty_bc == 1) {
-            empty_particles_at_boundary_cells(neutrinos, parms);
+        // If a black hole is present, set N=0 and Nbar=0 for all particles inside
+        // the black hole so it absorbs the neutrinos that fall into it.
+        if (parms->do_blackhole == 1) {
+            empty_particles_inside_blackhole(neutrinos, parms);
         }
-
-        const Real current_dt =
-            integrator
-                .get_time_step();  //FIXME: FIXME: Pass this to neutrinos.CreateParticlesAtBoundary.
-
-        //FIXME: Think carefully where to call this function.
-        //Create particles at outer boundary
-        if (BC_type_val == BC_type_enum::OUTER) {
-            neutrinos.CreateParticlesAtBoundary<
-                BoundaryParticleCreationDirection::I_PLUS>(parms, current_dt);
-            neutrinos.CreateParticlesAtBoundary<
-                BoundaryParticleCreationDirection::I_MINUS>(parms, current_dt);
-            neutrinos.CreateParticlesAtBoundary<
-                BoundaryParticleCreationDirection::J_PLUS>(parms, current_dt);
-            neutrinos.CreateParticlesAtBoundary<
-                BoundaryParticleCreationDirection::J_MINUS>(parms, current_dt);
-            neutrinos.CreateParticlesAtBoundary<
-                BoundaryParticleCreationDirection::K_PLUS>(parms, current_dt);
-            neutrinos.CreateParticlesAtBoundary<
-                BoundaryParticleCreationDirection::K_MINUS>(parms, current_dt);
-        }
-
-        //Create particles at inner boundary
-        //TODO: This needs to be implemented.
 
         // Update the new time particle locations in the domain with their
         // integrated coordinates.
         neutrinos.SyncLocation(Sync::CoordinateToPosition);
+
+        // Apply reflecting/outflow boundary conditions to particles that crossed
+        // a non-periodic face: fold the position back into the domain and flip the
+        // normal momentum component. Outflow additionally zeroes the density matrix.
+        // This must run before RedistributeLocal so the particles stay in the domain.
+        neutrinos.ApplyBoundaryConditions(parms);
 
         // Now Redistribute the new time particles to their new grids.
         neutrinos.RedistributeLocal();
@@ -276,9 +310,6 @@ void evolve_flavor(const TestParams* parms) {
             (step + 1) % parms->write_plot_particles_every == 0;
         if (write_plotfile || write_plot_particles) {
             // Only include the Particle Data if write_plot_particles_every is satisfied
-            int write_plot_particles =
-                parms->write_plot_particles_every > 0 &&
-                (step + 1) % parms->write_plot_particles_every == 0;
             WritePlotFile(state, neutrinos, geom, time, step + 1,
                           write_plot_particles);
         }
@@ -289,7 +320,7 @@ void evolve_flavor(const TestParams* parms) {
         // or the final RK stage, if using Runge-Kutta.
 
         // printf("Setting next timestep... \n");
-        const Real dt = compute_dt(geom, state, neutrinos, parms);
+        const Real dt = compute_dt(geom, state, parms);
         integrator.set_time_step(dt);
 
         // set_time_step clears use_adaptive_time_step; restore it so adaptive error
@@ -445,7 +476,7 @@ void evolve_flavor(const TestParams* parms) {
     integrator.set_adaptive_step();
 
     // Get a starting timestep
-    const Real starting_dt = compute_dt(geom, state, neutrinos_old, parms);
+    const Real starting_dt = compute_dt(geom, state, parms);
 
     // Do all the science!
     amrex::Print() << "Starting timestepping loop... " << std::endl;

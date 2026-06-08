@@ -8,6 +8,11 @@
 
 using namespace amrex;
 
+// Boundary condition applied to a single domain face.
+namespace BoundaryCondition {
+enum { periodic = 0, reflecting = 1, outflow = 2 };
+}
+
 //=========================================//
 // Structure of global parameter variables //
 //=========================================//
@@ -68,12 +73,11 @@ struct TestParams : public amrex::Gpu::Managed {
     Real attenuation_self_interaction;
 
     // Black hole properties
-    int do_blackhole;          // Flag to include a black hole in the simulation
-    int do_periodic_empty_bc;  // Flag to include a periodic empty boundary condition
-    double bh_radius;          // Black hole radius (cm)
-    double bh_center_x;        // Black hole x coordinate (cm)
-    double bh_center_y;        // Black hole y coordinate (cm)
-    double bh_center_z;        // Black hole z coordinate (cm)
+    int do_blackhole;    // Flag to include a black hole in the simulation
+    double bh_radius;    // Black hole radius (cm)
+    double bh_center_x;  // Black hole x coordinate (cm)
+    double bh_center_y;  // Black hole y coordinate (cm)
+    double bh_center_z;  // Black hole z coordinate (cm)
 
     // Background matter rho, Ye, T flag
     int read_rho_T_Ye_from_table;  // Flag to read rho, Ye, T from a table
@@ -83,7 +87,10 @@ struct TestParams : public amrex::Gpu::Managed {
     std::string nulib_table_name;   // NuLib table file name
     std::string
         background_rho_Ye_T_table_name;  // Background matter table file name
-    int boundary_condition_type;         // Boundary condition type flag
+
+    // Per-face boundary conditions. Index = 2*dim + side (side: 0=lo, 1=hi),
+    // so order is {xlo, xhi, ylo, yhi, zlo, zhi}.
+    int boundary_condition[2 * AMREX_SPACEDIM];
 
     int set_equilibrium_distribution;  // Flag to set the equilibrium distribution function for neutrinos and antineutrinos
 
@@ -143,13 +150,30 @@ struct TestParams : public amrex::Gpu::Managed {
 
         // attenuation to hamiltonians
         pp.get("attenuation_hamiltonians", attenuation_hamiltonians);
+
+        // Per-face boundary conditions: periodic / reflecting / outflow.
+        // Each face defaults to periodic if unspecified.
+        {
+            const char* face_names[2 * AMREX_SPACEDIM] = {
+                "bc_xlo", "bc_xhi", "bc_ylo", "bc_yhi", "bc_zlo", "bc_zhi"};
+            for (int f = 0; f < 2 * AMREX_SPACEDIM; ++f) {
+                std::string bc_string = "periodic";
+                pp.query(face_names[f], bc_string);
+                if (bc_string == "periodic")
+                    boundary_condition[f] = BoundaryCondition::periodic;
+                else if (bc_string == "reflecting")
+                    boundary_condition[f] = BoundaryCondition::reflecting;
+                else if (bc_string == "outflow")
+                    boundary_condition[f] = BoundaryCondition::outflow;
+                else
+                    amrex::Abort("Unknown boundary condition '" + bc_string +
+                                 "' for " + face_names[f] +
+                                 ". Use periodic, reflecting, or outflow.");
+            }
+        }
         pp.get("attenuation_vacuum", attenuation_vacuum);
         pp.get("attenuation_matter", attenuation_matter);
         pp.get("attenuation_self_interaction", attenuation_self_interaction);
-
-        // Boundary condition type
-        pp.get("boundary_condition_type", boundary_condition_type);
-        pp.get("do_periodic_empty_bc", do_periodic_empty_bc);
 
         // Background matter flag
         pp.get("read_rho_T_Ye_from_table", read_rho_T_Ye_from_table);

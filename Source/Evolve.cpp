@@ -35,17 +35,15 @@ void Initialize() {
  *
  * @param geom The geometry of the simulation domain.
  * @param state The state MultiFab containing the simulation data.
- * @param neutrinos The container for flavored neutrinos.
  * @param parms Pointer to the structure containing simulation parameters.
  *
  * @return The computed time step size.
  *
  * @note At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.
- * @note The function handles periodic boundary conditions and black hole regions if specified in the parameters.
+ * @note The function skips black hole regions if specified in the parameters.
  * @note The function performs a reduction operation to find the minimum time step across all cells and MPI ranks.
  */
 Real compute_dt(const Geometry& geom, const MultiFab& state,
-                const FlavoredNeutrinoContainer& neutrinos,
                 const TestParams* parms) {
     // If the time step method is 1, return the minimum time step
     if (parms->time_step_method == 1) {
@@ -84,17 +82,8 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
             reduce_op.eval(
                 bx, reduce_data,
                 [=] AMREX_GPU_DEVICE(int i, int j, int k) -> ReduceTuple {
-                    // Check if the cell is at the boundary or inside the black hole
-                    if (parms->do_periodic_empty_bc == 1) {
-                        // Check if the cell is at the boundary
-                        if (i == 0 || i == parms->ncell[0] - 1 || j == 0 ||
-                            j == parms->ncell[1] - 1 || k == 0 ||
-                            k == parms->ncell[2] - 1) {
-                            return {max_real, max_real, max_real};
-                        }
-                    } else if (parms->do_blackhole == 1) {
-                        // Check if the cell is inside the black hole
-
+                    // Skip cells inside the black hole
+                    if (parms->do_blackhole == 1) {
                         // Calculate the cell size
                         double cell_size_x = parms->Lx / parms->ncell[0];
                         double cell_size_y = parms->Ly / parms->ncell[1];
@@ -212,7 +201,8 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
 }
 
 void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
-                     MultiFab& state, const Geometry& geom) {
+                     MultiFab& state, const Geometry& geom,
+                     const TestParams* parms) {
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
     const Real inv_cell_volume = dxi[0] * dxi[1] * dxi[2];
@@ -229,6 +219,26 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
         geom.Domain().length(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
     const int shape_factor_order_z =
         geom.Domain().length(2) > 1 ? SHAPE_FACTOR_ORDER : 0;
+
+    // For reflecting faces, the part of a particle's deposition stencil that lands
+    // in the ghost region outside the wall must be folded back into the mirror-image
+    // interior cell (ParticleToMesh only sums ghost deposits across grid/periodic
+    // boundaries, so without this fold the near-wall stencil mass would be lost).
+    // This is the deposit-side counterpart of the reflect_even/reflect_odd handling
+    // that FillDomainBoundary applies on the interpolate side.
+    const Box& domain = geom.Domain();
+    const amrex::GpuArray<int, 3> domain_lo{
+        domain.smallEnd(0), domain.smallEnd(1), domain.smallEnd(2)};
+    const amrex::GpuArray<int, 3> domain_hi{domain.bigEnd(0), domain.bigEnd(1),
+                                            domain.bigEnd(2)};
+    const amrex::GpuArray<int, 3> reflect_lo{
+        parms->boundary_condition[0] == BoundaryCondition::reflecting,
+        parms->boundary_condition[2] == BoundaryCondition::reflecting,
+        parms->boundary_condition[4] == BoundaryCondition::reflecting};
+    const amrex::GpuArray<int, 3> reflect_hi{
+        parms->boundary_condition[1] == BoundaryCondition::reflecting,
+        parms->boundary_condition[3] == BoundaryCondition::reflecting,
+        parms->boundary_condition[5] == BoundaryCondition::reflecting};
 
     amrex::ParticleToMesh(
         neutrinos, deposit_state, 0,
@@ -272,17 +282,45 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                 PIdx::
                     N00_Re;  // real/imaginary components per NxN Hermitian block
 
+            // Sign each moment block acquires under a reflection across a face normal to
+            // direction d (+1 even, -1 odd: -1 iff the block carries an odd number of
+            // phat_d factors), in GIdx block order
+            // N, Fx, Fy, Fz[, Pxx, Pxy, Pxz, Pyy, Pyz, Pzz].
+            const int moment_parity[3][10] = {
+                {1, -1, 1, 1, 1, -1, -1, 1, 1, 1},   // x
+                {1, 1, -1, 1, 1, -1, 1, 1, -1, 1},   // y
+                {1, 1, 1, -1, 1, 1, -1, 1, -1, 1}};  // z
+
             for (int k = sz.first(); k <= sz.last(); ++k) {
                 for (int j = sy.first(); j <= sy.last(); ++j) {
                     for (int i = sx.first(); i <= sx.last(); ++i) {
                         const amrex::Real vol =
                             sx(i) * sy(j) * sz(k) * inv_cell_volume;
+
+                        // Fold stencil cells that land outside a reflecting face back into
+                        // the mirror-image interior cell, recording which directions were
+                        // reflected so the per-moment parity sign can be applied below.
+                        int idx[3] = {i, j, k};
+                        bool refl[3] = {false, false, false};
+                        for (int d = 0; d < 3; ++d) {
+                            if (reflect_lo[d] && idx[d] < domain_lo[d]) {
+                                idx[d] = 2 * domain_lo[d] - 1 - idx[d];
+                                refl[d] = true;
+                            } else if (reflect_hi[d] && idx[d] > domain_hi[d]) {
+                                idx[d] = 2 * domain_hi[d] + 1 - idx[d];
+                                refl[d] = true;
+                            }
+                        }
+
                         // Deposit each particle N component into the matching component of
                         // every grid moment block, for neutrinos (nunubar=0) and antineutrinos (nunubar=1).
                         for (int nunubar = 0; nunubar < 2; ++nunubar) {
                             const int particle_index_base =
                                 PIdx::N00_Re + nunubar * ncomp;
                             for (int m = 0; m < nmoments; ++m) {
+                                amrex::Real sign = 1.0;
+                                for (int d = 0; d < 3; ++d)
+                                    if (refl[d]) sign *= moment_parity[d][m];
                                 const int grid_index_base =
                                     GIdx::N00_Re + (2 * m + nunubar) * ncomp;
                                 for (int comp = 0; comp < ncomp; ++comp) {
@@ -291,8 +329,9 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                                     const int particle_component_index =
                                         particle_index_base + comp;
                                     amrex::Gpu::Atomic::AddNoRet(
-                                        &sarr(i, j, k, grid_component_index),
-                                        vol *
+                                        &sarr(idx[0], idx[1], idx[2],
+                                              grid_component_index),
+                                        sign * vol *
                                             p.rdata(particle_component_index) *
                                             moment_factor[m]);
                                 }
@@ -356,36 +395,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                          amrex::Math::powi<2>(z - parms->bh_center_z));  // cm
                 // Set time derivatives to zero if particles is inside the BH
                 if (particle_distance_from_bh_center < parms->bh_radius) {
-                    // set the dt/dt = 1. Neutrinos move at one second per second
-                    p.rdata(PIdx::time) = 1.0;
-                    // set the d(pE)/dt values
-                    p.rdata(PIdx::pupx) = 0;
-                    p.rdata(PIdx::pupy) = 0;
-                    p.rdata(PIdx::pupz) = 0;
-                    // set the dE/dt values
-                    p.rdata(PIdx::pupt) = 0;
-                    // set the dVphase/dt values
-                    p.rdata(PIdx::Vphase) = 0;
-
-                    // Set the dN/dt and dNbar/dt values to zero
-                    for (int comp = PIdx::N00_Re; comp < PIdx::TrHN; ++comp)
-                        p.rdata(comp) = 0.0;
-
-                    return;
-                }
-            }
-
-            // Periodic empty boundary conditions.
-            // Set time derivatives to zero if particles are in the boundary cells
-            // Check if periodic empty boundary conditions are enabled
-            if (parms->do_periodic_empty_bc == 1) {
-                // Check if the particle is in the boundary cells
-                if (x < parms->Lx / parms->ncell[0] ||
-                    x > parms->Lx - parms->Lx / parms->ncell[0] ||
-                    y < parms->Ly / parms->ncell[1] ||
-                    y > parms->Ly - parms->Ly / parms->ncell[1] ||
-                    z < parms->Lz / parms->ncell[2] ||
-                    z > parms->Lz - parms->Lz / parms->ncell[2]) {
                     // set the dt/dt = 1. Neutrinos move at one second per second
                     p.rdata(PIdx::time) = 1.0;
                     // set the d(pE)/dt values
@@ -510,6 +519,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Antineutrino chemical potential matrix: munu = diag ( munubar_e , munubar_x)
 
+            // The scattering opacities are interpolated/stored but not yet wired into the
+            // collision term (see the "... fix it ..." notes below); mark them reserved.
+            amrex::ignore_unused(IMFP_scat, IMFP_scatbar);
+
             // Initialize matrices with zeros
             for (int i = 0; i < NUM_FLAVORS; ++i) {
                 for (int j = 0; j < NUM_FLAVORS; ++j) {
@@ -588,11 +601,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                     munu_val;  // erg : Save antineutrino chemical potential from EOS table in chemical potential matrix
 
                 //--------------------- Values from NuLib table ---------------------------
-                double* helperVarsReal_nulib =
-                    NuLib_tabulated_obj.get_helperVarsReal_nulib();
                 int* helperVarsInt_nulib =
-                    NuLib_tabulated_obj.get_helperVarsInt_nulib();
-
+                    NuLib_tabulated_obj
+                        .get_helperVarsInt_nulib();  // used via NULIBVAR_INT
                 double* energy_bottom =
                     NuLib_energies_obj.get_energy_bottom_nulib();
                 double* energy_top = NuLib_energies_obj.get_energy_top_nulib();
@@ -781,22 +792,21 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 }
 
 /**
- * @brief Sets the N and Nbar to zero for particles inside the black hole or boundary cells.
+ * @brief Sets the N and Nbar to zero for particles inside the black hole.
  *
- * This function iterates over all particles in the `FlavoredNeutrinoContainer` and sets N and Nbar to zero if pariticles are inside the black hole or within the boundary cells of the simulation domain.
+ * This function iterates over all particles in the `FlavoredNeutrinoContainer` and sets N and Nbar to zero if particles are inside the black hole radius, so the black hole absorbs the neutrinos that fall into it.
  *
  * @param neutrinos Reference to the container holding the flavored neutrinos.
- * @param parms Pointer to the structure containing test parameters, including black hole properties and domain dimensions.
+ * @param parms Pointer to the structure containing test parameters, including black hole properties.
  *
  * The function performs the following steps:
  * - Iterates over all particles in the container.
  * - Computes the distance of each particle from the black hole center.
  * - Sets N and Nbar to zero if the particle is inside the black hole radius.
- * - Sets N and Nbar to zero if the particle is within the boundary cells of the simulation domain.
  *
  */
-void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos,
-                                       const TestParams* parms) {
+void empty_particles_inside_blackhole(FlavoredNeutrinoContainer& neutrinos,
+                                      const TestParams* parms) {
     const int lev = 0;
     for (FNParIter pti(neutrinos, lev); pti.isValid(); ++pti) {
         const int np = pti.numParticles();
@@ -806,35 +816,17 @@ void empty_particles_at_boundary_cells(FlavoredNeutrinoContainer& neutrinos,
         amrex::ParallelFor(np, [=] AMREX_GPU_DEVICE(int i) {
             FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
 
-            // Check if the simulation involves a black hole somewhere in the domain
-            if (parms->do_blackhole == 1) {
-                // Compute particle distance from black hole center
-                double particle_distance_from_bh_center =
-                    sqrt(amrex::Math::powi<2>(p.rdata(PIdx::x) -
-                                              parms->bh_center_x) +
-                         amrex::Math::powi<2>(p.rdata(PIdx::y) -
-                                              parms->bh_center_y) +
-                         amrex::Math::powi<2>(p.rdata(PIdx::z) -
-                                              parms->bh_center_z));  // cm
+            // Compute particle distance from black hole center
+            double particle_distance_from_bh_center = sqrt(
+                amrex::Math::powi<2>(p.rdata(PIdx::x) - parms->bh_center_x) +
+                amrex::Math::powi<2>(p.rdata(PIdx::y) - parms->bh_center_y) +
+                amrex::Math::powi<2>(p.rdata(PIdx::z) -
+                                     parms->bh_center_z));  // cm
 
-                // Set time derivatives to zero if particles are inside the black hole
-                if (particle_distance_from_bh_center < parms->bh_radius) {
-                    for (int comp = PIdx::N00_Re; comp < PIdx::TrHN; ++comp)
-                        p.rdata(comp) = 0.0;
-                    return;
-                }
-            }
-
-            // Set time derivatives to zero if particles are within the boundary cells
-            if (p.rdata(PIdx::x) < parms->Lx / parms->ncell[0] ||
-                p.rdata(PIdx::x) > parms->Lx - parms->Lx / parms->ncell[0] ||
-                p.rdata(PIdx::y) < parms->Ly / parms->ncell[1] ||
-                p.rdata(PIdx::y) > parms->Ly - parms->Ly / parms->ncell[1] ||
-                p.rdata(PIdx::z) < parms->Lz / parms->ncell[2] ||
-                p.rdata(PIdx::z) > parms->Lz - parms->Lz / parms->ncell[2]) {
+            // Set N and Nbar to zero if the particle is inside the black hole
+            if (particle_distance_from_bh_center < parms->bh_radius) {
                 for (int comp = PIdx::N00_Re; comp < PIdx::TrHN; ++comp)
                     p.rdata(comp) = 0.0;
-                return;
             }
         });
     }

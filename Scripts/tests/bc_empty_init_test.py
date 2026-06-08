@@ -1,7 +1,5 @@
 '''
-This test script is used to check if the periodic empty boundary conditions are correctly implemented in the EMU code.
-The periodic empty boundary conditions are implemented in the following way:
-The particles in the boundary cells should be autamatically set to zero.
+This test script is used to check if the outflow boundary conditions are correctly implemented in the EMU code.
 Created by Erick Urquilla. University of Tennessee Knoxville, USA.
 '''
 
@@ -261,20 +259,6 @@ for i in range(ncell[0]):
                     # Assert that the relative errors are less than the maximum relative error
                     myassert(rel_error_ee < rel_error_max)
                     myassert(rel_error_eebar < rel_error_max)
-
-            else:
-
-                # Calculate the relative errors for the boundary cells
-                rel_error_ee    = np.abs(all_files_ee_ocupation_in_each_cell[-1, i, j, k])
-                rel_error_eebar = np.abs(all_files_eebar_ocupation_in_each_cell[-1, i, j, k])
-
-                # Print the relative errors for the boundary cells
-                print(f"1BoundaryLayer: Cell ({i},{j},{k}) : relative error in ee = {rel_error_ee}")
-                print(f"1BoundaryLayer: Cell ({i},{j},{k}) : relative error in eebar = {rel_error_eebar}")
-
-                # Assert that the relative errors are less than the maximum relative error
-                myassert(rel_error_ee < rel_error_max)
-                myassert(rel_error_eebar < rel_error_max)
 
 ##########################################################################################
 # PLOTTING
