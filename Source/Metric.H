@@ -41,15 +41,18 @@ public:
     
     //convert 4-postion and 4-momentum from cartesian to chosen coordinate
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual void coord_conv(EParticle& p) const=0;
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual FourVec pos_conv(EParticle& p) const=0;
     
     //convert 4-postion and 4-momentum from chosen coordinate to cartesian
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual void coord_conv_inv(EParticle& p) const = 0;
 
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual FourVec pos_conv_inv(EParticle& p) const=0;
+
+    //Jacobian needed for the forward conversion. Called with converted p.
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Mat4 jacobian(const EParticle& p) const=0; 
     
-    //Jacobian needed for the forward conversion
-    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Mat4 jacobian(const EParticle& p) const=0;
-    
-    //Jacobian for the inverse conversion 
+    //Jacobian for the inverse conversion. called with converted p. 
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Mat4 jacobian_inv(const EParticle& p) const = 0;
 
     
@@ -145,9 +148,25 @@ public:
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv(EParticle& p) const override
     {}
+    
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec pos_conv(EParticle& p) const override
+    {
+        FourVec pos_new = {p.rdata(PIdx::time), p.rdata(PIdx::x), 
+            p.rdata(PIdx::y), p.rdata(PIdx::z)};
+
+        return pos_new;    
+    }
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv_inv(EParticle& p) const override
     {}
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec pos_conv_inv(EParticle& p) const override
+    {
+        FourVec pos_new = {p.rdata(PIdx::time), p.rdata(PIdx::x), 
+            p.rdata(PIdx::y), p.rdata(PIdx::z)};
+
+        return pos_new;    
+    }
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4 jacobian(const EParticle& p) const override
     {
@@ -273,6 +292,20 @@ public:
         
     }
 
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec pos_conv(EParticle& p) const override
+    {
+        const amrex::Real x1 = p.rdata(PIdx::x);
+        const amrex::Real x2 = p.rdata(PIdx::y);
+        //position coord conversion
+        const amrex::Real r = std::sqrt(x1*x1 + x2*x2);  // r= sqrt(x^2 + y^2)
+        const amrex::Real phi = std::atan2(x2,x1);       // phi= arctan(y/x)
+        
+        FourVec pos_new = {p.rdata(PIdx::time), r, 
+            phi, p.rdata(PIdx::z)};
+
+        return pos_new;    
+    }
+
     AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv_inv(EParticle& p) const override
     {
         
@@ -306,6 +339,22 @@ public:
         p.rdata(PIdx::x) = x;     
         p.rdata(PIdx::y) = y;
 
+    }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec pos_conv_inv(EParticle& p) const override
+    {
+        
+        const amrex::Real x1 = p.rdata(PIdx::x);
+        const amrex::Real x2 = p.rdata(PIdx::y);
+
+        //position coord inverse conversion
+        const amrex::Real x = x1*std::cos(x2);    //x=r*cos(phi)
+        const amrex::Real y = x1*std::sin(x2);    //y=r*sin(phi)
+        
+        FourVec pos_old = {p.rdata(PIdx::time), x, 
+            y, p.rdata(PIdx::z)};
+
+        return pos_old;    
     }
 
 
@@ -463,6 +512,22 @@ public:
 
     }
 
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec pos_conv(EParticle& p) const override
+    {
+        const amrex::Real x1 = p.rdata(PIdx::x);
+        const amrex::Real x2 = p.rdata(PIdx::y);
+        const amrex::Real x3 = p.rdata(PIdx::z);
+       
+        const amrex::Real r = std::sqrt(x1*x1 + x2*x2 + x3*x3);  // r= sqrt(x^2 + y^2 + z^2)
+        const amrex::Real theta = std::acos(x3/r);                         //theta= arccos(z/r)
+        const amrex::Real phi = std::atan2(x2,x1);                       // phi= arctan(y/x)
+        
+        FourVec pos_new = {p.rdata(PIdx::time), r, 
+            theta, phi};
+
+        return pos_new;    
+    }
+
     AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv_inv(EParticle& p) const override
     {
         
@@ -498,6 +563,24 @@ public:
         p.rdata(PIdx::y) = y;
         p.rdata(PIdx::z) = z;
 
+    }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec pos_conv_inv(EParticle& p) const override
+    {
+        
+        const amrex::Real x1 = p.rdata(PIdx::x);
+        const amrex::Real x2 = p.rdata(PIdx::y);
+        const amrex::Real x3 = p.rdata(PIdx::z);
+
+        //position coord inverse conversion
+        const amrex::Real x = x1*std::sin(x2)*std::cos(x3);    //x=r*sin(theta)*cos(phi)
+        const amrex::Real y = x1*std::sin(x2)*std::sin(x3);    //y=r*sin(theta)*sin(phi)
+        const amrex::Real z = x1*std::cos(x2);                   //z=r*cos(theta)
+        
+        FourVec pos_old = {p.rdata(PIdx::time), x, 
+            y, z};
+
+        return pos_old;    
     }
 
 
