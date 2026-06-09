@@ -13,11 +13,11 @@ ncellsx = 2 # scalar, number of cells in x-direction
 ncellsy = 2 # scalar, number of cells in y-direction
 ncellsz = 2 # scalar, number of cells in z-direction
 xmin =  0.0 #cm
-xmax =  2.0e4 #cm
+xmax =  2.2e6 #cm
 ymin = 0.0 #cm
-ymax = 2.0e4 #cm
+ymax = 2.2e6 #cm
 zmin = 0.0 #cm
-zmax = 2.0e4 #cm
+zmax = 2.2e6 #cm
 
 # Create EMU mesh
 centers, mesh = nsm_grid_generator.create_grid([ncellsx, ncellsy, ncellsz], [[xmin, xmax], [ymin, ymax], [zmin, zmax]]) # cm

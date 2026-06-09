@@ -35,7 +35,7 @@ jobs:
 
     - name: Run clang-format
       run: |
-        find . -regex '.*\.\(cpp\|h\|H\)' | xargs clang-format -i -style=file
+        find Source unit_test -regex '.*\.\(cpp\|h\|H\)' | xargs clang-format -i -style=file
 
     # Advisory: print what clang-format would change. continue-on-error=true keeps the
     # check green even when formatting differences exist.

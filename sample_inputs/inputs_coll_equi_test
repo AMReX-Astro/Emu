@@ -7,7 +7,7 @@ attenuation_vacuum = 1.0
 attenuation_matter = 1.0
 attenuation_self_interaction = 1.0
 
-cfl_factor = 1e10
+cfl_factor = 1
 flavor_cfl_factor = 0.5
 collision_cfl_factor = 0.04
 
@@ -145,5 +145,9 @@ do_blackhole = 0
 #################
 # Boundary conditions
 #################
-boundary_condition_type = 0
-do_periodic_empty_bc = 0
+bc_xlo = periodic
+bc_xhi = periodic
+bc_ylo = periodic
+bc_yhi = periodic
+bc_zlo = periodic
+bc_zhi = periodic

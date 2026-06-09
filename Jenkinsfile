@@ -33,6 +33,16 @@ pipeline {
 			}
 		}
 
+		stage('MSW Reflecting'){ steps{
+				dir('Exec'){
+					sh 'python ../Scripts/initial_conditions/st0_msw_test.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_msw_test_reflecting'
+					sh 'python ../Scripts/tests/msw_test.py'
+					sh 'rm -rf plt*'
+				}
+			}
+		}
+
 		stage('MSW Relativistic'){ steps{
 				dir('Exec'){
 					sh 'python ../Scripts/initial_conditions/st0_msw_test.py'
@@ -102,11 +112,11 @@ pipeline {
 				}
 			}
 		}
-		stage('BC periodic empty'){ steps{
+		stage('Outflow Vphase Conservation'){ steps{
 				dir('Exec'){
 					sh 'make realclean; make generate NUM_FLAVORS=2; make -j NUM_FLAVORS=2'
 					sh 'python ../Scripts/initial_conditions/st11_periodic_empty_bc.py'
-					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_bc_periodic_init'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_outflow_bh_test'
 					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
 					sh 'python ../Scripts/tests/bc_empty_init_test.py'
 					archiveArtifacts artifacts: '*.pdf'
@@ -143,6 +153,18 @@ pipeline {
 					sh 'python ../Scripts/initial_conditions/st9_empty_particles_multi_energy.py'
 					sh 'python ../Scripts/collisions/nsm_constant_background_rho_Ye_T_writer.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fermi_dirac_test'
+					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
+					sh 'python ../Scripts/tests/fermi_dirac_test.py'
+					sh 'rm -rf plt* *pdf rho_Ye_T.hdf5'
+				}
+			}
+		}
+
+		stage('Fermi-Dirac Reflecting'){ steps{
+				dir('Exec'){
+					sh 'python ../Scripts/initial_conditions/st9_empty_particles_multi_energy.py'
+					sh 'python ../Scripts/collisions/nsm_constant_background_rho_Ye_T_writer.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fermi_dirac_test_reflecting'
 					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
 					sh 'python ../Scripts/tests/fermi_dirac_test.py'
 					sh 'rm -rf plt* *pdf rho_Ye_T.hdf5'
