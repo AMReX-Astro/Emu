@@ -255,275 +255,272 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
         //===============================================//
         // Initialize particle data in the particle tile //
         //===============================================//
-        amrex::ParallelForRNG(
-            tile_box,
-            [=] AMREX_GPU_DEVICE(int i, int j, int k,
-                                 amrex::RandomEngine const& engine) noexcept {
-                int ix = i - lo.x;
-                int iy = j - lo.y;
-                int iz = k - lo.z;
-                int nx = hi.x - lo.x + 1;
-                int ny = hi.y - lo.y + 1;
-                int nz = hi.z - lo.z + 1;
-                unsigned int uix = amrex::min(nx - 1, amrex::max(0, ix));
-                unsigned int uiy = amrex::min(ny - 1, amrex::max(0, iy));
-                unsigned int uiz = amrex::min(nz - 1, amrex::max(0, iz));
-                unsigned int cellid = (uix * ny + uiy) * nz + uiz;
+        amrex::ParallelForRNG(tile_box, [=] AMREX_GPU_DEVICE(
+                                            int i, int j, int k,
+                                            amrex::RandomEngine const&
+                                                engine) noexcept {
+            int ix = i - lo.x;
+            int iy = j - lo.y;
+            int iz = k - lo.z;
+            int nx = hi.x - lo.x + 1;
+            int ny = hi.y - lo.y + 1;
+            int nz = hi.z - lo.z + 1;
+            unsigned int uix = amrex::min(nx - 1, amrex::max(0, ix));
+            unsigned int uiy = amrex::min(ny - 1, amrex::max(0, iy));
+            unsigned int uiz = amrex::min(nz - 1, amrex::max(0, iz));
+            unsigned int cellid = (uix * ny + uiy) * nz + uiz;
 
-                for (int i_loc = 0; i_loc < nlocs_per_cell; i_loc++) {
-                    Real r[3];
+            for (int i_loc = 0; i_loc < nlocs_per_cell; i_loc++) {
+                Real r[3];
 
-                    // getting the upper and lower bounds of the cell
-                    const Real x1_lo = plo[0] + i * dx[0];
-                    const Real x1_hi = plo[0] + (i + 1) * dx[0];
-                    const Real x2_lo = plo[1] + j * dx[1];
-                    const Real x2_hi = plo[1] + (j + 1) * dx[1];
-                    const Real x3_lo = plo[2] + k * dx[2];
-                    const Real x3_hi = plo[2] + (k + 1) * dx[2];
+                // getting the upper and lower bounds of the cell
+                const Real x1_lo = plo[0] + i * dx[0];
+                const Real x1_hi = plo[0] + (i + 1) * dx[0];
+                const Real x2_lo = plo[1] + j * dx[1];
+                const Real x2_hi = plo[1] + (j + 1) * dx[1];
+                const Real x3_lo = plo[2] + k * dx[2];
+                const Real x3_hi = plo[2] + (k + 1) * dx[2];
 
-                    //calculating cell volume
-                    amrex::Real V_cell;
-                    if (coord_sys == 0) {
-                        CartesianMetric m;
-                        V_cell =
-                            m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
-                    } else if (coord_sys == 1) {
-                        CylindricalMetric m;
-                        V_cell =
-                            m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
-                    } else {
-                        SphericalMetric m;
-                        V_cell =
-                            m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
+                //calculating cell volume
+                amrex::Real V_cell;
+                if (coord_sys == 0) {
+                    CartesianMetric m;
+                    V_cell = m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
+                } else if (coord_sys == 1) {
+                    CylindricalMetric m;
+                    V_cell = m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
+                } else {
+                    SphericalMetric m;
+                    V_cell = m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
+                }
+
+                const Real scale_fac = V_cell / nlocs_per_cell;
+
+                get_position_unit_cell(r, parms->nppc, i_loc);
+
+                Real x = plo[0] + (i + r[0]) * dx[0];
+                Real y = plo[1] + (j + r[1]) * dx[1];
+                Real z = plo[2] + (k + r[2]) * dx[2];
+
+                if (x >= a_bounds.hi(0) || x < a_bounds.lo(0) ||
+                    y >= a_bounds.hi(1) || y < a_bounds.lo(1) ||
+                    z >= a_bounds.hi(2) || z < a_bounds.lo(2))
+                    continue;
+
+                for (int i_direction = 0; i_direction < ndirs_per_loc;
+                     i_direction++) {
+                    // Get the Particle data corresponding to our particle index in pidx
+                    const int pidx = poffset[cellid] - poffset[0] +
+                                     i_loc * ndirs_per_loc + i_direction;
+                    ParticleType& p = pstruct[pidx];
+
+                    // Set particle ID using the ID for the first of the new particles in this tile
+                    // plus our zero-based particle index
+                    p.id() = new_pid + pidx;
+
+                    // Set CPU ID
+                    p.cpu() = procID;
+
+                    // copy over all particle data from the angular distribution
+                    for (int i_attrib = 0; i_attrib < PIdx::nattribs;
+                         i_attrib++)
+                        p.rdata(i_attrib) =
+                            particle_data_p[i_direction][i_attrib];
+
+                    // basic checks
+                    AMREX_ASSERT(p.rdata(PIdx::N00_Re) >= 0);
+                    AMREX_ASSERT(p.rdata(PIdx::N11_Re) >= 0);
+                    AMREX_ASSERT(p.rdata(PIdx::N00_Rebar) >= 0);
+                    AMREX_ASSERT(p.rdata(PIdx::N11_Rebar) >= 0);
+#if NUM_FLAVORS == 3
+                    AMREX_ASSERT(p.rdata(PIdx::N22_Re) >= 0);
+                    AMREX_ASSERT(p.rdata(PIdx::N22_Rebar) >= 0);
+#endif
+
+                    // Set particle position
+                    p.pos(0) = x;
+                    p.pos(1) = y;
+                    p.pos(2) = z;
+
+                    // Set particle integrated position
+                    p.rdata(PIdx::x) = x;
+                    p.rdata(PIdx::y) = y;
+                    p.rdata(PIdx::z) = z;
+                    p.rdata(PIdx::time) = 0;
+
+                    // scale particle numbers based on number of points per cell and the cell volume
+                    p.rdata(PIdx::N00_Re) *= scale_fac;
+                    p.rdata(PIdx::N11_Re) *= scale_fac;
+                    p.rdata(PIdx::N00_Rebar) *= scale_fac;
+                    p.rdata(PIdx::N11_Rebar) *= scale_fac;
+#if SET_EQUILIBRIUM == 1
+                    p.rdata(PIdx::N00_Re_eq) *= scale_fac;
+                    p.rdata(PIdx::N11_Re_eq) *= scale_fac;
+                    p.rdata(PIdx::N00_Rebar_eq) *= scale_fac;
+                    p.rdata(PIdx::N11_Rebar_eq) *= scale_fac;
+#endif
+#if NUM_FLAVORS == 3
+                    p.rdata(PIdx::N22_Re) *= scale_fac;
+                    p.rdata(PIdx::N22_Rebar) *= scale_fac;
+#if SET_EQUILIBRIUM == 1
+                    p.rdata(PIdx::N22_Re_eq) *= scale_fac;
+                    p.rdata(PIdx::N22_Rebar_eq) *= scale_fac;
+#endif
+#endif
+
+                    // Set phase space volume Vphase = dx^3 * dOmega * dE^3 / 3
+                    // From initial conditions, Vphase gets dOmega * dE^3 / 3
+                    // Here we multiply this value by the cell volume dx[0] * dx[1] * dx[2]
+                    // Divide by the number of particle emission points inside the cell
+                    p.rdata(PIdx::Vphase) *= scale_fac;
+
+                    //=====================//
+                    // Apply Perturbations //
+                    //=====================//
+                    if (parms->perturbation_type == 0) {
+                        // random perturbations to the off-diagonals
+                        Real rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N01_Re) =
+                            parms->perturbation_amplitude * rand *
+                            (p.rdata(PIdx::N00_Re) - p.rdata(PIdx::N11_Re));
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N01_Im) =
+                            parms->perturbation_amplitude * rand *
+                            (p.rdata(PIdx::N00_Re) - p.rdata(PIdx::N11_Re));
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N01_Rebar) =
+                            parms->perturbation_amplitude * rand *
+                            (p.rdata(PIdx::N00_Rebar) -
+                             p.rdata(PIdx::N11_Rebar));
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N01_Imbar) =
+                            parms->perturbation_amplitude * rand *
+                            (p.rdata(PIdx::N00_Rebar) -
+                             p.rdata(PIdx::N11_Rebar));
+#if NUM_FLAVORS == 3
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N02_Re) =
+                            parms->perturbation_amplitude * rand *
+                            (p.rdata(PIdx::N00_Re) - p.rdata(PIdx::N22_Re));
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N02_Im) =
+                            parms->perturbation_amplitude * rand *
+                            (p.rdata(PIdx::N00_Re) - p.rdata(PIdx::N22_Re));
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N12_Re) =
+                            parms->perturbation_amplitude * rand *
+                            (p.rdata(PIdx::N11_Re) - p.rdata(PIdx::N22_Re));
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N12_Im) =
+                            parms->perturbation_amplitude * rand *
+                            (p.rdata(PIdx::N11_Re) - p.rdata(PIdx::N22_Re));
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N02_Rebar) =
+                            parms->perturbation_amplitude * rand *
+                            (p.rdata(PIdx::N00_Rebar) -
+                             p.rdata(PIdx::N22_Rebar));
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N02_Imbar) =
+                            parms->perturbation_amplitude * rand *
+                            (p.rdata(PIdx::N00_Rebar) -
+                             p.rdata(PIdx::N22_Rebar));
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N12_Rebar) =
+                            parms->perturbation_amplitude * rand *
+                            (p.rdata(PIdx::N11_Rebar) -
+                             p.rdata(PIdx::N22_Rebar));
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N12_Imbar) =
+                            parms->perturbation_amplitude * rand *
+                            (p.rdata(PIdx::N11_Rebar) -
+                             p.rdata(PIdx::N22_Rebar));
+#endif
+                    }
+                    if (parms->perturbation_type == 1) {
+                        // Perturb real part of e-mu component only sinusoidally in z
+                        Real nu_k =
+                            (2. * M_PI) / parms->perturbation_wavelength_cm;
+                        p.rdata(PIdx::N01_Re) =
+                            parms->perturbation_amplitude *
+                            sin(nu_k * p.pos(2)) *
+                            (p.rdata(PIdx::N00_Re) - p.rdata(PIdx::N11_Re));
+                        p.rdata(PIdx::N01_Rebar) =
+                            parms->perturbation_amplitude *
+                            sin(nu_k * p.pos(2)) *
+                            (p.rdata(PIdx::N00_Rebar) -
+                             p.rdata(PIdx::N11_Rebar));
+                    }
+                    if (parms->perturbation_type == 2) {
+                        // random perturbations of the diagonals
+                        Real rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N00_Re) *=
+                            1. + parms->perturbation_amplitude * rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N00_Rebar) *=
+                            1. + parms->perturbation_amplitude * rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N11_Re) *=
+                            1. + parms->perturbation_amplitude * rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N11_Rebar) *=
+                            1. + parms->perturbation_amplitude * rand;
+#if NUM_FLAVORS == 3
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N22_Re) *=
+                            1. + parms->perturbation_amplitude * rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N22_Rebar) *=
+                            1. + parms->perturbation_amplitude * rand;
+#endif
+                    }
+                    if (parms->perturbation_type == 3) {
+                        // random perturbations to the off-diagonals
+                        Real rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N01_Re) =
+                            parms->perturbation_amplitude * rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N01_Im) =
+                            parms->perturbation_amplitude * rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N01_Rebar) =
+                            parms->perturbation_amplitude * rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N01_Imbar) =
+                            parms->perturbation_amplitude * rand;
+#if NUM_FLAVORS == 3
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N02_Re) =
+                            parms->perturbation_amplitude * rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N02_Im) =
+                            parms->perturbation_amplitude * rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N12_Re) =
+                            parms->perturbation_amplitude * rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N12_Im) =
+                            parms->perturbation_amplitude * rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N02_Rebar) =
+                            parms->perturbation_amplitude * rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N02_Imbar) =
+                            parms->perturbation_amplitude * rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N12_Rebar) =
+                            parms->perturbation_amplitude * rand;
+                        symmetric_uniform(&rand, engine);
+                        p.rdata(PIdx::N12_Imbar) =
+                            parms->perturbation_amplitude * rand;
+#endif
                     }
 
-                    const Real scale_fac = V_cell / nlocs_per_cell;
-
-                    get_position_unit_cell(r, parms->nppc, i_loc);
-
-                    Real x = plo[0] + (i + r[0]) * dx[0];
-                    Real y = plo[1] + (j + r[1]) * dx[1];
-                    Real z = plo[2] + (k + r[2]) * dx[2];
-
-                    if (x >= a_bounds.hi(0) || x < a_bounds.lo(0) ||
-                        y >= a_bounds.hi(1) || y < a_bounds.lo(1) ||
-                        z >= a_bounds.hi(2) || z < a_bounds.lo(2))
-                        continue;
-
-                    for (int i_direction = 0; i_direction < ndirs_per_loc;
-                         i_direction++) {
-                        // Get the Particle data corresponding to our particle index in pidx
-                        const int pidx = poffset[cellid] - poffset[0] +
-                                         i_loc * ndirs_per_loc + i_direction;
-                        ParticleType& p = pstruct[pidx];
-
-                        // Set particle ID using the ID for the first of the new particles in this tile
-                        // plus our zero-based particle index
-                        p.id() = new_pid + pidx;
-
-                        // Set CPU ID
-                        p.cpu() = procID;
-
-                        // copy over all particle data from the angular distribution
-                        for (int i_attrib = 0; i_attrib < PIdx::nattribs;
-                             i_attrib++)
-                            p.rdata(i_attrib) =
-                                particle_data_p[i_direction][i_attrib];
-
-                        // basic checks
-                        AMREX_ASSERT(p.rdata(PIdx::N00_Re) >= 0);
-                        AMREX_ASSERT(p.rdata(PIdx::N11_Re) >= 0);
-                        AMREX_ASSERT(p.rdata(PIdx::N00_Rebar) >= 0);
-                        AMREX_ASSERT(p.rdata(PIdx::N11_Rebar) >= 0);
-#if NUM_FLAVORS == 3
-                        AMREX_ASSERT(p.rdata(PIdx::N22_Re) >= 0);
-                        AMREX_ASSERT(p.rdata(PIdx::N22_Rebar) >= 0);
-#endif
-
-                        // Set particle position
-                        p.pos(0) = x;
-                        p.pos(1) = y;
-                        p.pos(2) = z;
-
-                        // Set particle integrated position
-                        p.rdata(PIdx::x) = x;
-                        p.rdata(PIdx::y) = y;
-                        p.rdata(PIdx::z) = z;
-                        p.rdata(PIdx::time) = 0;
-
-                        // scale particle numbers based on number of points per cell and the cell volume
-                        p.rdata(PIdx::N00_Re) *= scale_fac;
-                        p.rdata(PIdx::N11_Re) *= scale_fac;
-                        p.rdata(PIdx::N00_Rebar) *= scale_fac;
-                        p.rdata(PIdx::N11_Rebar) *= scale_fac;
-#if SET_EQUILIBRIUM == 1
-                        p.rdata(PIdx::N00_Re_eq) *= scale_fac;
-                        p.rdata(PIdx::N11_Re_eq) *= scale_fac;
-                        p.rdata(PIdx::N00_Rebar_eq) *= scale_fac;
-                        p.rdata(PIdx::N11_Rebar_eq) *= scale_fac;
-#endif
-#if NUM_FLAVORS == 3
-                        p.rdata(PIdx::N22_Re) *= scale_fac;
-                        p.rdata(PIdx::N22_Rebar) *= scale_fac;
-#if SET_EQUILIBRIUM == 1
-                        p.rdata(PIdx::N22_Re_eq) *= scale_fac;
-                        p.rdata(PIdx::N22_Rebar_eq) *= scale_fac;
-#endif
-#endif
-
-                        // Set phase space volume Vphase = dx^3 * dOmega * dE^3 / 3
-                        // From initial conditions, Vphase gets dOmega * dE^3 / 3
-                        // Here we multiply this value by the cell volume dx[0] * dx[1] * dx[2]
-                        // Divide by the number of particle emission points inside the cell
-                        p.rdata(PIdx::Vphase) *= scale_fac;
-
-                        //=====================//
-                        // Apply Perturbations //
-                        //=====================//
-                        if (parms->perturbation_type == 0) {
-                            // random perturbations to the off-diagonals
-                            Real rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N01_Re) =
-                                parms->perturbation_amplitude * rand *
-                                (p.rdata(PIdx::N00_Re) - p.rdata(PIdx::N11_Re));
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N01_Im) =
-                                parms->perturbation_amplitude * rand *
-                                (p.rdata(PIdx::N00_Re) - p.rdata(PIdx::N11_Re));
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N01_Rebar) =
-                                parms->perturbation_amplitude * rand *
-                                (p.rdata(PIdx::N00_Rebar) -
-                                 p.rdata(PIdx::N11_Rebar));
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N01_Imbar) =
-                                parms->perturbation_amplitude * rand *
-                                (p.rdata(PIdx::N00_Rebar) -
-                                 p.rdata(PIdx::N11_Rebar));
-#if NUM_FLAVORS == 3
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N02_Re) =
-                                parms->perturbation_amplitude * rand *
-                                (p.rdata(PIdx::N00_Re) - p.rdata(PIdx::N22_Re));
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N02_Im) =
-                                parms->perturbation_amplitude * rand *
-                                (p.rdata(PIdx::N00_Re) - p.rdata(PIdx::N22_Re));
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N12_Re) =
-                                parms->perturbation_amplitude * rand *
-                                (p.rdata(PIdx::N11_Re) - p.rdata(PIdx::N22_Re));
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N12_Im) =
-                                parms->perturbation_amplitude * rand *
-                                (p.rdata(PIdx::N11_Re) - p.rdata(PIdx::N22_Re));
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N02_Rebar) =
-                                parms->perturbation_amplitude * rand *
-                                (p.rdata(PIdx::N00_Rebar) -
-                                 p.rdata(PIdx::N22_Rebar));
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N02_Imbar) =
-                                parms->perturbation_amplitude * rand *
-                                (p.rdata(PIdx::N00_Rebar) -
-                                 p.rdata(PIdx::N22_Rebar));
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N12_Rebar) =
-                                parms->perturbation_amplitude * rand *
-                                (p.rdata(PIdx::N11_Rebar) -
-                                 p.rdata(PIdx::N22_Rebar));
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N12_Imbar) =
-                                parms->perturbation_amplitude * rand *
-                                (p.rdata(PIdx::N11_Rebar) -
-                                 p.rdata(PIdx::N22_Rebar));
-#endif
-                        }
-                        if (parms->perturbation_type == 1) {
-                            // Perturb real part of e-mu component only sinusoidally in z
-                            Real nu_k =
-                                (2. * M_PI) / parms->perturbation_wavelength_cm;
-                            p.rdata(PIdx::N01_Re) =
-                                parms->perturbation_amplitude *
-                                sin(nu_k * p.pos(2)) *
-                                (p.rdata(PIdx::N00_Re) - p.rdata(PIdx::N11_Re));
-                            p.rdata(PIdx::N01_Rebar) =
-                                parms->perturbation_amplitude *
-                                sin(nu_k * p.pos(2)) *
-                                (p.rdata(PIdx::N00_Rebar) -
-                                 p.rdata(PIdx::N11_Rebar));
-                        }
-                        if (parms->perturbation_type == 2) {
-                            // random perturbations of the diagonals
-                            Real rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N00_Re) *=
-                                1. + parms->perturbation_amplitude * rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N00_Rebar) *=
-                                1. + parms->perturbation_amplitude * rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N11_Re) *=
-                                1. + parms->perturbation_amplitude * rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N11_Rebar) *=
-                                1. + parms->perturbation_amplitude * rand;
-#if NUM_FLAVORS == 3
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N22_Re) *=
-                                1. + parms->perturbation_amplitude * rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N22_Rebar) *=
-                                1. + parms->perturbation_amplitude * rand;
-#endif
-                        }
-                        if (parms->perturbation_type == 3) {
-                            // random perturbations to the off-diagonals
-                            Real rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N01_Re) =
-                                parms->perturbation_amplitude * rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N01_Im) =
-                                parms->perturbation_amplitude * rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N01_Rebar) =
-                                parms->perturbation_amplitude * rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N01_Imbar) =
-                                parms->perturbation_amplitude * rand;
-#if NUM_FLAVORS == 3
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N02_Re) =
-                                parms->perturbation_amplitude * rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N02_Im) =
-                                parms->perturbation_amplitude * rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N12_Re) =
-                                parms->perturbation_amplitude * rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N12_Im) =
-                                parms->perturbation_amplitude * rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N02_Rebar) =
-                                parms->perturbation_amplitude * rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N02_Imbar) =
-                                parms->perturbation_amplitude * rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N12_Rebar) =
-                                parms->perturbation_amplitude * rand;
-                            symmetric_uniform(&rand, engine);
-                            p.rdata(PIdx::N12_Imbar) =
-                                parms->perturbation_amplitude * rand;
-#endif
-                        }
-
-                    }  // loop over direction
-                }  // loop over location
-            });  // loop over grid cells
+                }  // loop over direction
+            }  // loop over location
+        });  // loop over grid cells
     }  // loop over multifabs
 
     // get the minimum neutrino energy for calculating the timestep

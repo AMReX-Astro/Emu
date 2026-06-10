@@ -81,10 +81,8 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
 
         else if (parms->coord_sys == 1) {
             //Cylindrical: (dx1,dx2,dx3) = (dr, r*dphi, dz)
-            Real r_min =
-                plo[0] +
-                dxi[0] /
-                    4;  // r_min = lowest_r + r_width/4 (ad hoc) . To safe guard against lowest_r = 0
+            // r_min = lowest_r + r_width/4 (ad hoc) . To safe guard against lowest_r = 0
+            Real r_min = plo[0] + dxi[0] / 2;
             min_length = std::min({dxi[0], r_min * dxi[1], dxi[2]});
         }
 
