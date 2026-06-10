@@ -33,9 +33,9 @@ void Initialize();
 amrex::Real compute_dt(const amrex::Geometry& geom, const MultiFab& state,
                        const TestParams* parms);
 
-
-void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos, amrex::MultiFab& state, const amrex::Geometry& geom, const TestParams* parms);
-
+void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
+                     amrex::MultiFab& state, const amrex::Geometry& geom,
+                     const TestParams* parms);
 
 void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                                const amrex::MultiFab& state,

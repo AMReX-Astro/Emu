@@ -17,8 +17,8 @@ enum { periodic = 0, reflecting = 1, outflow = 2 };
 // Structure of global parameter variables //
 //=========================================//
 
-struct TestParams : public amrex::Gpu::Managed {   
-    int coord_sys; // 0 = Cartesian, 1 = Cylindrical, 2 = Spherical
+struct TestParams : public amrex::Gpu::Managed {
+    int coord_sys;  // 0 = Cartesian, 1 = Cylindrical, 2 = Spherical
     IntVect ncell;  // Number of cells in the domain
     IntVect
         nppc;  // Number of points of particle emission per cell in each dimension

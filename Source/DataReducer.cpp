@@ -225,7 +225,7 @@ void DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
         ReduceData<amrex::Real, amrex::Real, amrex::Real> >(
         neutrinos,
         [=] AMREX_GPU_DEVICE(const PType& p) noexcept
-        -> amrex::GpuTuple<amrex::Real, amrex::Real, amrex::Real> {
+            -> amrex::GpuTuple<amrex::Real, amrex::Real, amrex::Real> {
             Real TrHN = p.rdata(PIdx::TrHN);
             Real Vphase = p.rdata(PIdx::Vphase);
             Real TrN = 0;
@@ -276,14 +276,14 @@ void DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
                      ArithmeticArray<Real, NUM_FLAVORS> >{},
             state, nghost,
             [=] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) noexcept
-            -> GpuTuple<ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>, Real,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS> > {
+                -> GpuTuple<ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>, Real,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS> > {
 #elif NUM_MOMENTS == 3
     GpuTuple<
         ArithmeticArray<Real, NUM_FLAVORS>, ArithmeticArray<Real, NUM_FLAVORS>,
@@ -326,26 +326,26 @@ void DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
                      ArithmeticArray<Real, NUM_FLAVORS> >{},
             state, nghost,
             [=] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) noexcept
-            -> GpuTuple<ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>, Real,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS>,
-                        ArithmeticArray<Real, NUM_FLAVORS> > {
+                -> GpuTuple<ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>, Real,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS>,
+                            ArithmeticArray<Real, NUM_FLAVORS> > {
 #else
 #error "NUM_MOMENTS must be 2 or 3"
 #endif
