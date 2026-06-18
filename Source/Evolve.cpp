@@ -63,7 +63,7 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
     const Real max_real = std::numeric_limits<Real>::max();
 
     // Get the cell size array
-    const auto dxi = geom.CellSizeArray();
+    const auto dx = geom.CellSizeArray();
     // Getting the lower bounds of the domain
     const auto plo = geom.ProbLoArray();
     // Getting the upper bounds of the domain
@@ -76,24 +76,33 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
 
         if (parms->coord_sys == 0) {
             // Cartesian: (dx1,dx2,dx3) = (dx,dy,dz)
-            min_length = std::min({dxi[0], dxi[1], dxi[2]});
+            min_length = std::min({dx[0], dx[1], dx[2]});
         }
 
         else if (parms->coord_sys == 1) {
             //Cylindrical: (dx1,dx2,dx3) = (dr, r*dphi, dz)
-            // r_min = lowest_r + r_width/4 (ad hoc) . To safe guard against lowest_r = 0
-            Real r_min = plo[0] + dxi[0] / 2;
-            min_length = std::min({dxi[0], r_min * dxi[1], dxi[2]});
+            // r_min = lowest_r + r_width/2 (ad hoc) . To safe guard against lowest_r = 0
+            Real r_min = plo[0] + dx[0] / 2;
+            min_length = std::min({dx[0], r_min * dx[1], dx[2]});
         }
 
         else {
             //Spherical: (dx1,dx2,dx3) = (dr, r*dtheta, r*sin(theta)*dphi )
             //The spehrical part might require rethinking
-            Real sin_theta_min =
-                std::min({std::sin(plo[1]), std::sin(p_hi[1])});
-            Real r_min = plo[0] + dxi[0] / 4;
-            min_length = std::min(
-                {dxi[0], r_min * dxi[1], r_min * sin_theta_min * dxi[2]});
+            Real theta_center = (plo[1] + p_hi[1]) / 2.0;
+            Real sin_theta_center = std::sin(theta_center);
+
+            Real r_min = plo[0] + dx[0] / 2;
+
+            //We start with the radial component
+            min_length = dx[0];
+
+            //If the theta and phi dimensions are more than 1 cell thick, then we use the following min_lengths
+            if (geom.Domain().length(1) > 1)
+                min_length = std::min(min_length, r_min * dx[1]);
+            if (geom.Domain().length(2) > 1)
+                min_length =
+                    std::min(min_length, r_min * sin_theta_center * dx[2]);
         }
 
         // Calculate the time step size based on the translation CFL factor
