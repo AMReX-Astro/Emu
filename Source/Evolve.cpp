@@ -26,9 +26,13 @@ void Initialize(int IMFP_method) {
 #include "generated_files/Evolve.cpp_grid_names_fill"
     if (IMFP_method == 1) {
         const char* bases[] = {"C_out_scat_iso_monocromatic",
-                               "C_out_scat_dip_monocromatic",
+                               "C_out_scat_dipx_monocromatic",
+                               "C_out_scat_dipy_monocromatic",
+                               "C_out_scat_dipz_monocromatic",
                                "C_in_scat_iso_monocromatic",
-                               "C_in_scat_dip_monocromatic"};
+                               "C_in_scat_dipx_monocromatic",
+                               "C_in_scat_dipy_monocromatic",
+                               "C_in_scat_dipz_monocromatic"};
         const char* flavor_idx[] = {
             "00", "01", "11",
 #if NUM_FLAVORS == 3
@@ -227,11 +231,12 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
     const Real inv_cell_volume = dxi[0] * dxi[1] * dxi[2];
 
     // Create an alias of the MultiFab so ParticleToMesh only erases the quantities
-    // that will be set by the neutrinos.
+    // that will be set by the neutrinos. When IMFP_method==1, also include the
+    // monochromatic scattering-coefficient block at the end of GIdx.
+    const int imfp_method = parms->IMFP_method;
     int start_comp = GIdx::N00_Re;
-    // Deposit only into always-present moment components (exclude optional
-    // IMFP_method==1 scattering coefficients that live at the end of GIdx).
-    int num_comps = GIdx::ncomp_base - start_comp;
+    int num_comps = ((imfp_method == 1) ? GIdx::ncomp_max : GIdx::ncomp_base) -
+                    start_comp;
     MultiFab deposit_state(state, amrex::make_alias, start_comp, num_comps);
 
     const int shape_factor_order_x =
@@ -333,6 +338,10 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                             }
                         }
 
+                        // When IMFP_method==1, also deposit the same contribution into the
+                        // flavor-indexed C_out/C_in scat iso (m==0) and dip x/y/z (m==1,2,3) mesh fields.
+                        constexpr int n_scat_flav = (NUM_FLAVORS * (NUM_FLAVORS + 1)) / 2;
+
                         // Deposit each particle N component into the matching component of
                         // every grid moment block, for neutrinos (nunubar=0) and antineutrinos (nunubar=1).
                         for (int nunubar = 0; nunubar < 2; ++nunubar) {
@@ -355,6 +364,42 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                                         sign * vol *
                                             p.rdata(particle_component_index) *
                                             moment_factor[m]);
+
+                                    if (imfp_method != 1) continue;
+
+                                    // Map Hermitian Re component -> C_* flavor
+                                    // index (_00,_01,_11[,_02,_12,_22]); skip Im.
+                                    int scat_f = -1;
+                                    int s = 0;
+                                    for (int a = 0; a < NUM_FLAVORS; ++a) {
+                                        for (int b = a; b < NUM_FLAVORS; ++b, ++s) {
+                                            if (comp == PIdx::offset(a, b, PIdx::Re)) {
+                                                scat_f = s;
+                                                break;
+                                            }
+                                        }
+                                        if (scat_f >= 0) break;
+                                    }
+                                    if (scat_f < 0) continue;
+
+                                    // --------------------------------------------------------------------
+                                    // --------------------------------------------------------------------
+                                    // TEMPORARY CODE: edit this with the correct equations.
+                                    const int scat_off = nunubar * n_scat_flav + scat_f;
+                                    const amrex::Real contrib = sign * vol * p.rdata(particle_component_index) * moment_factor[m];
+                                    if (m == 0) {
+                                        amrex::Gpu::Atomic::AddNoRet(&sarr(idx[0], idx[1], idx[2], GIdx::C_out_scat_iso_monocromatic_00 - start_comp + scat_off), contrib);
+                                        amrex::Gpu::Atomic::AddNoRet(&sarr(idx[0], idx[1], idx[2], GIdx::C_in_scat_iso_monocromatic_00 - start_comp + scat_off), contrib);
+                                    } else if (m >= 1 && m <= 3) {
+                                        // m = 1,2,3 -> dip x,y,z
+                                        const int out_dip0[3] = {GIdx::C_out_scat_dipx_monocromatic_00, GIdx::C_out_scat_dipy_monocromatic_00, GIdx::C_out_scat_dipz_monocromatic_00};
+                                        const int in_dip0[3] = {GIdx::C_in_scat_dipx_monocromatic_00, GIdx::C_in_scat_dipy_monocromatic_00, GIdx::C_in_scat_dipz_monocromatic_00};
+                                        amrex::Gpu::Atomic::AddNoRet(&sarr(idx[0], idx[1], idx[2], out_dip0[m-1] - start_comp + scat_off), contrib);
+                                        amrex::Gpu::Atomic::AddNoRet(&sarr(idx[0], idx[1], idx[2], in_dip0[m-1]  - start_comp + scat_off), contrib);
+                                    }
+                                    // --------------------------------------------------------------------
+                                    // --------------------------------------------------------------------
+
                                 }
                             }
                         }

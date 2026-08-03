@@ -40,9 +40,13 @@ enum {
 #endif
     C_out_scat_iso_monocromatic_00 = ncomp_base,
     GIDX_SCAT_FLAVOR_TAIL(C_out_scat_iso_monocromatic),
-    GIDX_SCAT_FLAVOR_BLOCK(C_out_scat_dip_monocromatic),
+    GIDX_SCAT_FLAVOR_BLOCK(C_out_scat_dipx_monocromatic),
+    GIDX_SCAT_FLAVOR_BLOCK(C_out_scat_dipy_monocromatic),
+    GIDX_SCAT_FLAVOR_BLOCK(C_out_scat_dipz_monocromatic),
     GIDX_SCAT_FLAVOR_BLOCK(C_in_scat_iso_monocromatic),
-    GIDX_SCAT_FLAVOR_BLOCK(C_in_scat_dip_monocromatic),
+    GIDX_SCAT_FLAVOR_BLOCK(C_in_scat_dipx_monocromatic),
+    GIDX_SCAT_FLAVOR_BLOCK(C_in_scat_dipy_monocromatic),
+    GIDX_SCAT_FLAVOR_BLOCK(C_in_scat_dipz_monocromatic),
 #undef GIDX_SCAT_FLAVOR_BLOCK
 #undef GIDX_SCAT_FLAVOR_TAIL
     ncomp_max
