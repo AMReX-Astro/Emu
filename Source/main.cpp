@@ -97,8 +97,8 @@ void evolve_flavor(const TestParams* parms) {
     for (int i = 0; i < AMREX_SPACEDIM; i++)
         AMREX_ASSERT(parms->ncell[i] >= ngrow[i]);
 
-    // We want 1 component (this is one real scalar field on the domain)
-    const int ncomp = GIdx::ncomp;
+    // Mesh component count; monochromatic scattering coeffs only if IMFP_method==1
+    const int ncomp = GIdx::ncomp(parms->IMFP_method);
 
     // Create a MultiFab to hold our grid state data and initialize to 0.0
     MultiFab state(ba, dm, ncomp, ngrow);
@@ -126,7 +126,7 @@ void evolve_flavor(const TestParams* parms) {
     // wall (e.g. the radial flux at an r=0 boundary). Outflow faces extrapolate
     // (zero-gradient) from the interior. Periodic faces are handled by
     // FillBoundary(geom.periodicity()) and left as int_dir here.
-    Vector<BCRec> grid_bcs(GIdx::ncomp);
+    Vector<BCRec> grid_bcs(ncomp);
     {
         // A component flips sign (reflect_odd) under a reflection across a face normal
         // to dimension d iff it carries an odd number of d-momentum factors: the matter
@@ -144,7 +144,7 @@ void evolve_flavor(const TestParams* parms) {
             {GIdx::Pxy00_Re, GIdx::Pyz00_Re},   // odd in y
             {GIdx::Pxz00_Re, GIdx::Pyz00_Re}};  // odd in z
 #endif
-        for (int n = 0; n < GIdx::ncomp; ++n) {
+        for (int n = 0; n < ncomp; ++n) {
             for (int d = 0; d < AMREX_SPACEDIM; ++d) {
                 bool odd_parity =
                     (n == vup[d]) || (n >= flux_start[d] &&
@@ -185,7 +185,7 @@ void evolve_flavor(const TestParams* parms) {
     FillDomainBoundary(state, geom, grid_bcs);
 
     // initialize the grid variable names
-    GIdx::Initialize();
+    GIdx::Initialize(parms->IMFP_method);
 
     //We only need HDF5 tables if IMFP_method is 2.
     if (parms->IMFP_method == 2) {

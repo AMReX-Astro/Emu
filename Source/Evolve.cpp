@@ -15,7 +15,7 @@ using namespace amrex;
 namespace GIdx {
 amrex::Vector<std::string> names;
 
-void Initialize() {
+void Initialize(int IMFP_method) {
     names.resize(0);
     names.push_back("rho");
     names.push_back("T");
@@ -24,6 +24,12 @@ void Initialize() {
     names.push_back("vupy");
     names.push_back("vupz");
 #include "generated_files/Evolve.cpp_grid_names_fill"
+    if (IMFP_method == 1) {
+        names.push_back("C_out_scat_iso_monocromatic");
+        names.push_back("C_out_scat_dip_monocromatic");
+        names.push_back("C_in_scat_iso_monocromatic");
+        names.push_back("C_in_scat_dip_monocromatic");
+    }
 }
 }  // namespace GIdx
 
@@ -210,7 +216,9 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
     // Create an alias of the MultiFab so ParticleToMesh only erases the quantities
     // that will be set by the neutrinos.
     int start_comp = GIdx::N00_Re;
-    int num_comps = GIdx::ncomp - start_comp;
+    // Deposit only into always-present moment components (exclude optional
+    // IMFP_method==1 scattering coefficients that live at the end of GIdx).
+    int num_comps = GIdx::ncomp_base - start_comp;
     MultiFab deposit_state(state, amrex::make_alias, start_comp, num_comps);
 
     const int shape_factor_order_x =

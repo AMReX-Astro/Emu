@@ -22,12 +22,24 @@ enum {
     vupy,
     vupz,  // g/ccm, MeV, unitless, unitless (x3)
 #include "generated_files/Evolve.H_fill"
-    ncomp
+    ncomp_base,  // components always present on the mesh
+    // Present only when IMFP_method == 1 (see GIdx::ncomp / Initialize)
+    C_out_scat_iso_monocromatic = ncomp_base,
+    C_out_scat_dip_monocromatic,
+    C_in_scat_iso_monocromatic,
+    C_in_scat_dip_monocromatic,
+    ncomp_max
 };
+
+// Runtime mesh component count: includes monochromatic scattering
+// coefficients only for IMFP_method == 1.
+inline int ncomp(int IMFP_method) {
+    return (IMFP_method == 1) ? ncomp_max : ncomp_base;
+}
 
 extern amrex::Vector<std::string> names;
 
-void Initialize();
+void Initialize(int IMFP_method);
 }  // namespace GIdx
 
 amrex::Real compute_dt(const amrex::Geometry& geom, const MultiFab& state,
