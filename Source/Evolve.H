@@ -23,11 +23,28 @@ enum {
     vupz,  // g/ccm, MeV, unitless, unitless (x3)
 #include "generated_files/Evolve.H_fill"
     ncomp_base,  // components always present on the mesh
-    // Present only when IMFP_method == 1 (see GIdx::ncomp / Initialize)
-    C_out_scat_iso_monocromatic = ncomp_base,
-    C_out_scat_dip_monocromatic,
-    C_in_scat_iso_monocromatic,
-    C_in_scat_dip_monocromatic,
+// Present only when IMFP_method == 1 (see GIdx::ncomp / Initialize).
+// Upper-triangle flavor indices: _00,_01,_11 (and _02,_12,_22 if NUM_FLAVORS==3),
+// plus matching bar (antineutrino) quantities.
+#if NUM_FLAVORS == 2
+#define GIDX_SCAT_FLAVOR_TAIL(name)                                            \
+    name##_01, name##_11, name##_00bar, name##_01bar, name##_11bar
+#define GIDX_SCAT_FLAVOR_BLOCK(name) name##_00, GIDX_SCAT_FLAVOR_TAIL(name)
+#elif NUM_FLAVORS == 3
+#define GIDX_SCAT_FLAVOR_TAIL(name)                                            \
+    name##_01, name##_11, name##_02, name##_12, name##_22, name##_00bar,      \
+        name##_01bar, name##_11bar, name##_02bar, name##_12bar, name##_22bar
+#define GIDX_SCAT_FLAVOR_BLOCK(name) name##_00, GIDX_SCAT_FLAVOR_TAIL(name)
+#else
+#error "NUM_FLAVORS must be 2 or 3 for monochromatic scattering mesh coeffs"
+#endif
+    C_out_scat_iso_monocromatic_00 = ncomp_base,
+    GIDX_SCAT_FLAVOR_TAIL(C_out_scat_iso_monocromatic),
+    GIDX_SCAT_FLAVOR_BLOCK(C_out_scat_dip_monocromatic),
+    GIDX_SCAT_FLAVOR_BLOCK(C_in_scat_iso_monocromatic),
+    GIDX_SCAT_FLAVOR_BLOCK(C_in_scat_dip_monocromatic),
+#undef GIDX_SCAT_FLAVOR_BLOCK
+#undef GIDX_SCAT_FLAVOR_TAIL
     ncomp_max
 };
 

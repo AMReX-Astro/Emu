@@ -25,10 +25,23 @@ void Initialize(int IMFP_method) {
     names.push_back("vupz");
 #include "generated_files/Evolve.cpp_grid_names_fill"
     if (IMFP_method == 1) {
-        names.push_back("C_out_scat_iso_monocromatic");
-        names.push_back("C_out_scat_dip_monocromatic");
-        names.push_back("C_in_scat_iso_monocromatic");
-        names.push_back("C_in_scat_dip_monocromatic");
+        const char* bases[] = {"C_out_scat_iso_monocromatic",
+                               "C_out_scat_dip_monocromatic",
+                               "C_in_scat_iso_monocromatic",
+                               "C_in_scat_dip_monocromatic"};
+        const char* flavor_idx[] = {
+            "00", "01", "11",
+#if NUM_FLAVORS == 3
+            "02", "12", "22",
+#endif
+        };
+        for (const char* base : bases) {
+            for (const char* bar : {"", "bar"}) {
+                for (const char* idx : flavor_idx) {
+                    names.push_back(std::string(base) + "_" + idx + bar);
+                }
+            }
+        }
     }
 }
 }  // namespace GIdx
