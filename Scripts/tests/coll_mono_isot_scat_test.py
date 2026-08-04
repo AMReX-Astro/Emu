@@ -50,12 +50,12 @@ nu_ebar = 4e32 # 1/ccm
 nu_mubar = 5e32 # 1/ccm
 nu_taubar = 6e32 # 1/ccm
 
-IMFP_scat0_cm = 1e-4 # inv cm
-IMFP_scat1_cm = 2e-4 # inv cm
-IMFP_scat2_cm = 3e-4 # inv cm
-IMFP_scat0bar_cm = 4e-4 # inv cm
-IMFP_scat1bar_cm = 5e-4 # inv cm
-IMFP_scat2bar_cm = 6e-4 # inv cm
+IMFP_scat0_cm = 5e-4 # inv cm
+IMFP_scat1_cm = 5.1e-4 # inv cm
+IMFP_scat2_cm = 5.2e-4 # inv cm
+IMFP_scat0bar_cm = 5.3e-4 # inv cm
+IMFP_scat1bar_cm = 5.4e-4 # inv cm
+IMFP_scat2bar_cm = 5.5e-4 # inv cm
 
 c = 2.998e+10  # cm/s
 
