@@ -15,9 +15,11 @@ NF = 3 # Number of flavors
 nphi_equator = 16 # number of direction in equator ---> theta = pi/2
 
 nu_e = 1e32 # 1/ccm
-nu_x = 2e32 # 1/ccm
-nu_ebar = 3e32 # 1/ccm
-nu_xbar = 4e32 # 1/ccm
+nu_mu = 2e32 # 1/ccm
+nu_tau = 3e32 # 1/ccm
+nu_ebar = 4e32 # 1/ccm
+nu_mubar = 5e32 # 1/ccm
+nu_taubar = 6e32 # 1/ccm
 
 # Energy bin size
 energy_bin_size_MeV = 0.8339001570751987 # Energy in Mev
@@ -65,11 +67,11 @@ for i, energy_bin in enumerate(energies_center_erg):
     for j, pdir in enumerate(phat):
         if np.allclose(pdir, [1, 0, 0]):
             particles[i, j, rkey["N00_Re"]    ] = nu_e
-            particles[i, j, rkey["N11_Re"]    ] = nu_x
-            particles[i, j, rkey["N22_Re"]    ] = nu_x
+            particles[i, j, rkey["N11_Re"]    ] = nu_mu
+            particles[i, j, rkey["N22_Re"]    ] = nu_tau
             particles[i, j, rkey["N00_Rebar"] ] = nu_ebar
-            particles[i, j, rkey["N11_Rebar"] ] = nu_xbar
-            particles[i, j, rkey["N22_Rebar"] ] = nu_xbar
+            particles[i, j, rkey["N11_Rebar"] ] = nu_mubar
+            particles[i, j, rkey["N22_Rebar"] ] = nu_taubar
 
 # Reshape the particles array
 particles = particles.reshape(n_energies * n_directions, n_variables)
