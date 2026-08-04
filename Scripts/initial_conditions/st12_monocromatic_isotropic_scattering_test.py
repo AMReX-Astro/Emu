@@ -66,8 +66,10 @@ for i, energy_bin in enumerate(energies_center_erg):
         if np.allclose(pdir, [1, 0, 0]):
             particles[i, j, rkey["N00_Re"]    ] = nu_e
             particles[i, j, rkey["N11_Re"]    ] = nu_x
+            particles[i, j, rkey["N22_Re"]    ] = nu_x
             particles[i, j, rkey["N00_Rebar"] ] = nu_ebar
             particles[i, j, rkey["N11_Rebar"] ] = nu_xbar
+            particles[i, j, rkey["N22_Rebar"] ] = nu_xbar
 
 # Reshape the particles array
 particles = particles.reshape(n_energies * n_directions, n_variables)
