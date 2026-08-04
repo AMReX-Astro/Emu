@@ -20,6 +20,45 @@ args = parser.parse_args()
 NF=3
 volume_ccm = 1e4**3 # ccm
 
+def distribution_delta_beam_direction(
+    t: float,
+    N0: float,
+    speed: float,
+    kappa: float,
+) -> float:
+
+    exponential = np.exp(-speed * kappa * t)
+    return N0 * (
+        (1.0 - exponential) / (4.0 * np.pi)
+        + exponential
+    )
+
+def distribution_delta_other_directions(
+    t: float,
+    N0: float,
+    speed: float,
+    kappa: float,
+) -> float:
+
+    exponential = np.exp(-speed * kappa * t)
+    return N0 * (1.0 - exponential) / (4.0 * np.pi)
+
+nu_e = 1e32 # 1/ccm
+nu_mu = 2e32 # 1/ccm
+nu_tau = 3e32 # 1/ccm
+nu_ebar = 4e32 # 1/ccm
+nu_mubar = 5e32 # 1/ccm
+nu_taubar = 6e32 # 1/ccm
+
+IMFP_scat0_cm = 1e-4 # inv cm
+IMFP_scat1_cm = 2e-4 # inv cm
+IMFP_scat2_cm = 3e-4 # inv cm
+IMFP_scat0bar_cm = 4e-4 # inv cm
+IMFP_scat1bar_cm = 5e-4 # inv cm
+IMFP_scat2bar_cm = 6e-4 # inv cm
+
+c = 2.998e+10  # cm/s
+
 if __name__ == "__main__":
 
     rkey, ikey = amrex.get_particle_keys(NF)
@@ -74,26 +113,79 @@ if __name__ == "__main__":
 
     # Plot n_x and n_others:
     time_s_arr = np.array(time_s)
+    
+    n_ee_x_theory = distribution_delta_beam_direction(time_s_arr, nu_e, c, IMFP_scat0_cm)
+    n_uu_x_theory = distribution_delta_beam_direction(time_s_arr, nu_mu, c, IMFP_scat1_cm)
+    n_tt_x_theory = distribution_delta_beam_direction(time_s_arr, nu_tau, c, IMFP_scat2_cm)
+    n_eebar_x_theory = distribution_delta_beam_direction(time_s_arr, nu_ebar, c, IMFP_scat0bar_cm)
+    n_uubar_x_theory = distribution_delta_beam_direction(time_s_arr, nu_mubar, c, IMFP_scat1bar_cm)
+    n_ttbar_x_theory = distribution_delta_beam_direction(time_s_arr, nu_taubar, c, IMFP_scat2bar_cm)
 
-    # Plot for n_x (direction [1,0,0]) and n_other
+    n_ee_other_theory = distribution_delta_other_directions(time_s_arr, nu_e, c, IMFP_scat0_cm)
+    n_uu_other_theory = distribution_delta_other_directions(time_s_arr, nu_mu, c, IMFP_scat1_cm)
+    n_tt_other_theory = distribution_delta_other_directions(time_s_arr, nu_tau, c, IMFP_scat2_cm)
+    n_eebar_other_theory = distribution_delta_other_directions(time_s_arr, nu_ebar, c, IMFP_scat0bar_cm)
+    n_uubar_other_theory = distribution_delta_other_directions(time_s_arr, nu_mubar, c, IMFP_scat1bar_cm)
+    n_ttbar_other_theory = distribution_delta_other_directions(time_s_arr, nu_taubar, c, IMFP_scat2bar_cm)
+
+    # Plot for neutrinos (ee, uu, tt) in two directions
     plt.figure(figsize=(12, 8))
-    plt.plot(time_s_arr, n_ee_x, label="n_ee_x [phat_x]", marker="o")
-    plt.plot(time_s_arr, n_uu_x, label="n_uu_x [phat_x]", marker="o")
-    plt.plot(time_s_arr, n_tt_x, label="n_tt_x [phat_x]", marker="o")
-    plt.plot(time_s_arr, n_eebar_x, label="n_eebar_x [phat_x]", marker="o")
-    plt.plot(time_s_arr, n_uubar_x, label="n_uubar_x [phat_x]", marker="o")
-    plt.plot(time_s_arr, n_ttbar_x, label="n_ttbar_x [phat_x]", marker="o")
 
-    plt.plot(time_s_arr, n_ee_other, label="n_ee_other [phat_other]", linestyle="--")
-    plt.plot(time_s_arr, n_uu_other, label="n_uu_other [phat_other]", linestyle="--")
-    plt.plot(time_s_arr, n_tt_other, label="n_tt_other [phat_other]", linestyle="--")
-    plt.plot(time_s_arr, n_eebar_other, label="n_eebar_other [phat_other]", linestyle="--")
-    plt.plot(time_s_arr, n_uubar_other, label="n_uubar_other [phat_other]", linestyle="--")
-    plt.plot(time_s_arr, n_ttbar_other, label="n_ttbar_other [phat_other]", linestyle="--")
+    # Set global font size
+    plt.rcParams.update({'font.size': 25})
 
-    plt.xlabel(r"$t\;[\mathrm{s}]$")
-    plt.ylabel(r"$n\,[\mathrm{cm}^{-3}]$")
-    plt.legend()
-    plt.grid(True)
+    # Numerical solution: thick lines for $\hat{p}_x$, dashed for $\hat{p}_{\mathrm{others}}$
+    plt.plot(time_s_arr, n_ee_x, label=r"$n_{\nu_e}^{\hat{p}_x}$", linewidth=4, linestyle="-", alpha=0.5, color="C0")
+    plt.plot(time_s_arr, n_uu_x, label=r"$n_{\nu_\mu}^{\hat{p}_x}$", linewidth=4, linestyle="-", alpha=0.5, color="C1")
+    plt.plot(time_s_arr, n_tt_x, label=r"$n_{\nu_\tau}^{\hat{p}_x}$", linewidth=4, linestyle="-", alpha=0.5, color="C3")
+
+    plt.plot(time_s_arr, n_ee_other, label=r"$n_{\nu_e}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=4, alpha=0.5, color="C4")
+    plt.plot(time_s_arr, n_uu_other, label=r"$n_{\nu_\mu}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=4, alpha=0.5, color="C5")
+    plt.plot(time_s_arr, n_tt_other, label=r"$n_{\nu_\tau}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=4, alpha=0.5, color="C6")
+
+    # Theoretical values: dotted for $\hat{p}_x$, dashed thin for $\hat{p}_{\mathrm{others}}$
+    plt.plot(time_s_arr, n_ee_x_theory, label=r"$n_{\nu_e,\mathrm{th}}^{\hat{p}_x}$", color="C0", linestyle=":", linewidth=1, alpha=1.0)
+    plt.plot(time_s_arr, n_uu_x_theory, label=r"$n_{\nu_\mu,\mathrm{th}}^{\hat{p}_x}$", color="C1", linestyle=":", linewidth=1, alpha=1.0)
+    plt.plot(time_s_arr, n_tt_x_theory, label=r"$n_{\nu_\tau,\mathrm{th}}^{\hat{p}_x}$", color="C3", linestyle=":", linewidth=1, alpha=1.0)
+
+    plt.plot(time_s_arr, n_ee_other_theory, label=r"$n_{\nu_e,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C4", linestyle="--", linewidth=1, alpha=1.0)
+    plt.plot(time_s_arr, n_uu_other_theory, label=r"$n_{\nu_\mu,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C5", linestyle="--", linewidth=1, alpha=1.0)
+    plt.plot(time_s_arr, n_tt_other_theory, label=r"$n_{\nu_\tau,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C6", linestyle="--", linewidth=1, alpha=1.0)
+
+    plt.xlabel(r"$t\;[\mathrm{s}]$", fontsize=25)
+    plt.ylabel(r"$n\,[\mathrm{cm}^{-3}]$", fontsize=25)
+    plt.tick_params(axis='both', which='major', labelsize=25)
+    plt.legend(fontsize=15, ncol=2)
     plt.tight_layout()
-    plt.savefig("n_x_and_n_others.pdf", bbox_inches="tight")
+    plt.savefig("n_x_and_n_others_neutrinos.pdf", bbox_inches="tight")
+    plt.close()
+
+    # Plot for antineutrinos (eebar, uubar, ttbar) in two directions
+    plt.figure(figsize=(12, 8))
+    plt.rcParams.update({'font.size': 25})
+
+    # Numerical solution: thick lines for $\hat{p}_x$, dashed for $\hat{p}_{\mathrm{others}}$
+    plt.plot(time_s_arr, n_eebar_x, label=r"$n_{\bar{\nu}_e}^{\hat{p}_x}$", linewidth=4, linestyle="-", alpha=0.5, color="C0")
+    plt.plot(time_s_arr, n_uubar_x, label=r"$n_{\bar{\nu}_\mu}^{\hat{p}_x}$", linewidth=4, linestyle="-", alpha=0.5, color="C1")
+    plt.plot(time_s_arr, n_ttbar_x, label=r"$n_{\bar{\nu}_\tau}^{\hat{p}_x}$", linewidth=4, linestyle="-", alpha=0.5, color="C3")
+
+    plt.plot(time_s_arr, n_eebar_other, label=r"$n_{\bar{\nu}_e}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=4, alpha=0.5, color="C4")
+    plt.plot(time_s_arr, n_uubar_other, label=r"$n_{\bar{\nu}_\mu}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=4, alpha=0.5, color="C5")
+    plt.plot(time_s_arr, n_ttbar_other, label=r"$n_{\bar{\nu}_\tau}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=4, alpha=0.5, color="C6")
+
+    # Theoretical values: dotted for $\hat{p}_x$, dashed thin for $\hat{p}_{\mathrm{others}}$
+    plt.plot(time_s_arr, n_eebar_x_theory, label=r"$n_{\bar{\nu}_e,\mathrm{th}}^{\hat{p}_x}$", color="C0", linestyle=":", linewidth=1, alpha=1.0)
+    plt.plot(time_s_arr, n_uubar_x_theory, label=r"$n_{\bar{\nu}_\mu,\mathrm{th}}^{\hat{p}_x}$", color="C1", linestyle=":", linewidth=1, alpha=1.0)
+    plt.plot(time_s_arr, n_ttbar_x_theory, label=r"$n_{\bar{\nu}_\tau,\mathrm{th}}^{\hat{p}_x}$", color="C3", linestyle=":", linewidth=1, alpha=1.0)
+
+    plt.plot(time_s_arr, n_eebar_other_theory, label=r"$n_{\bar{\nu}_e,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C4", linestyle=":", linewidth=1, alpha=1.0)
+    plt.plot(time_s_arr, n_uubar_other_theory, label=r"$n_{\bar{\nu}_\mu,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C5", linestyle=":", linewidth=1, alpha=1.0)
+    plt.plot(time_s_arr, n_ttbar_other_theory, label=r"$n_{\bar{\nu}_\tau,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C6", linestyle=":", linewidth=1, alpha=1.0)
+
+    plt.xlabel(r"$t\;[\mathrm{s}]$", fontsize=25)
+    plt.ylabel(r"$n\,[\mathrm{cm}^{-3}]$", fontsize=25)
+    plt.tick_params(axis='both', which='major', labelsize=25)
+    plt.legend(fontsize=15, ncol=2)
+    plt.tight_layout()
+    plt.savefig("n_x_and_n_others_antineutrinos.pdf", bbox_inches="tight")
+    plt.close()
