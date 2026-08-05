@@ -348,6 +348,16 @@ if __name__ == "__main__":
         C.H = Gamma.H * (N_eq.H - N.H) + (N_eq.H - N.H) * Gamma.H
         code += declare(C)
 
+        # Add isotropic scattering: C += C_in_scat - kappa_brakets ○ N
+        # kappa_brakets is a real flavor matrix (IMFP array); multiply Re/Im of N
+        # by the same real kappa_ij (Hadamard product), then accumulate onto C.
+        C = HermitianMatrix(args.N, "C_{}{}_{}"+t)
+        C_scat = HermitianMatrix(args.N, "C_in_scat_pp_{}{}_{}"+t)
+        kappa_brakets = HermitianMatrix(
+            args.N, "IMFP_scat"+t+"_brakets[{}][{}]").make_real_from_2d()
+        C.H = C_scat.H - kappa_brakets.H.multiply_elementwise(N.H)
+        code += C.code_accumulate()
+
         # QKE right-hand side: dN/dt = c*C - (i/hbar)*attenuation*[H, N].
         C = HermitianMatrix(args.N, "C_{}{}_{}"+t)
         H = HermitianMatrix(args.N, "V{}{}_{}"+t)

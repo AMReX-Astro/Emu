@@ -184,6 +184,31 @@ class HermitianMatrix(object):
         lines = [sympy.cxxcode(sympy.simplify(e)) for e in self.expressions()]
         return lines
 
+    def code_accumulate(self):
+        # Like code(), but emits "lhs += rhs;" so contributions can be
+        # added onto previously declared Hermitian components.
+        lines = []
+        for i in range(self.size):
+            for j in range(i, self.size):
+                lhs = self.entry_template.format(i, j, "Re")
+                rhs = sympy.cxxcode(sympy.simplify(sympy.re(self.H[i, j])))
+                lines.append("{} += {};".format(lhs, rhs))
+                if j > i:
+                    lhs = self.entry_template.format(i, j, "Im")
+                    rhs = sympy.cxxcode(sympy.simplify(sympy.im(self.H[i, j])))
+                    lines.append("{} += {};".format(lhs, rhs))
+        return lines
+
+    def make_real_from_2d(self):
+        # Collapse a matrix built from a 2-index template (e.g. A[{}][{}])
+        # into a purely real Hermitian matrix. Without this, construct()
+        # would bind the same symbol to both Re and Im, yielding A+iA.
+        for i in range(self.size):
+            for j in range(self.size):
+                # Keep only the real part of whatever construct() built.
+                self.H[i, j] = sympy.re(self.H[i, j])
+        return self
+
     def header(self):
         # Returns a list of strings of C++11 code with expressions for 
         # each real value that constitutes the Hermitian matrix

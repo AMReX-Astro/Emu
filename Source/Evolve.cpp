@@ -624,6 +624,12 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             Real IMFP_scatbar
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for scatteting: diag( kbar_e , kbar_u , kbar_t )
+            Real IMFP_scat_brakets
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t )
+            Real IMFP_scatbar_brakets
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for scatteting: diag( kbar_e , kbar_u , kbar_t )
             Real f_eq
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Neutrino equilibrium Fermi-dirac distribution matrix: f_eq = diag( f_e , f_u , f_t )
@@ -666,6 +672,18 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                         parms->IMFP_abs
                             [1]
                             [i];  // 1/cm : Read absorption inverse mean free path from input parameters file.
+                    IMFP_scat[i][i] =
+                        parms->IMFP_scat
+                            [0]
+                            [i];  // 1/cm : Read scattering inverse mean free path from input parameters file.
+                    IMFP_scatbar[i][i] =
+                        parms->IMFP_scat
+                            [1]
+                            [i];  // 1/cm : Read scattering inverse mean free path from input parameters file.
+                    IMFP_scat_brakets[i][j] =
+                        (IMFP_scat[i][i] + IMFP_scat[j][j]) / 2.0;
+                    IMFP_scatbar_brakets[i][j] =
+                        (IMFP_scatbar[i][i] + IMFP_scatbar[j][j]) / 2.0;
                     munu[i][i] =
                         parms->munu
                             [0]
