@@ -24,31 +24,25 @@ enum {
 #include "generated_files/Evolve.H_fill"
     ncomp_base,  // components always present on the mesh
 // Present only when IMFP_method == 1 (see GIdx::ncomp / Initialize).
-// Upper-triangle flavor indices: _00,_01,_11 (and _02,_12,_22 if NUM_FLAVORS==3),
-// plus matching bar (antineutrino) quantities.
+// Isotropic in-scattering collision term (complex Hermitian). Layout matches
+// N/Fx/... blocks and PIdx::offset: diagonal _ii_Re only; off-diagonal
+// _ij_Re then _ij_Im; then antineutrino counterparts with Rebar/Imbar.
 #if NUM_FLAVORS == 2
-#define GIDX_SCAT_FLAVOR_TAIL(name)                                            \
-    name##_01, name##_11, name##_00bar, name##_01bar, name##_11bar
-#define GIDX_SCAT_FLAVOR_BLOCK(name) name##_00, GIDX_SCAT_FLAVOR_TAIL(name)
+#define GIDX_SCAT_FLAVOR_REST(name)                                            \
+    name##_01_Re, name##_01_Im, name##_11_Re, name##_00_Rebar,                \
+        name##_01_Rebar, name##_01_Imbar, name##_11_Rebar
 #elif NUM_FLAVORS == 3
-#define GIDX_SCAT_FLAVOR_TAIL(name)                                            \
-    name##_01, name##_11, name##_02, name##_12, name##_22, name##_00bar,      \
-        name##_01bar, name##_11bar, name##_02bar, name##_12bar, name##_22bar
-#define GIDX_SCAT_FLAVOR_BLOCK(name) name##_00, GIDX_SCAT_FLAVOR_TAIL(name)
+#define GIDX_SCAT_FLAVOR_REST(name)                                            \
+    name##_01_Re, name##_01_Im, name##_02_Re, name##_02_Im, name##_11_Re,     \
+        name##_12_Re, name##_12_Im, name##_22_Re, name##_00_Rebar,             \
+        name##_01_Rebar, name##_01_Imbar, name##_02_Rebar, name##_02_Imbar,   \
+        name##_11_Rebar, name##_12_Rebar, name##_12_Imbar, name##_22_Rebar
 #else
 #error "NUM_FLAVORS must be 2 or 3 for monochromatic scattering mesh coeffs"
 #endif
-    C_out_scat_iso_monocromatic_00 = ncomp_base,
-    GIDX_SCAT_FLAVOR_TAIL(C_out_scat_iso_monocromatic),
-    GIDX_SCAT_FLAVOR_BLOCK(C_out_scat_dipx_monocromatic),
-    GIDX_SCAT_FLAVOR_BLOCK(C_out_scat_dipy_monocromatic),
-    GIDX_SCAT_FLAVOR_BLOCK(C_out_scat_dipz_monocromatic),
-    GIDX_SCAT_FLAVOR_BLOCK(C_in_scat_iso_monocromatic),
-    GIDX_SCAT_FLAVOR_BLOCK(C_in_scat_dipx_monocromatic),
-    GIDX_SCAT_FLAVOR_BLOCK(C_in_scat_dipy_monocromatic),
-    GIDX_SCAT_FLAVOR_BLOCK(C_in_scat_dipz_monocromatic),
-#undef GIDX_SCAT_FLAVOR_BLOCK
-#undef GIDX_SCAT_FLAVOR_TAIL
+    C_in_scat_iso_monocromatic_00_Re = ncomp_base,
+    GIDX_SCAT_FLAVOR_REST(C_in_scat_iso_monocromatic),
+#undef GIDX_SCAT_FLAVOR_REST
     ncomp_max
 };
 
