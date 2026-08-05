@@ -38,6 +38,71 @@ void Euler(EParticle& p, SchwSphericalMetric& metric, double dt, int steps) {
     }
 }
 
+// Classic 4th-order Runge-Kutta, adapted from the integrator I wrote
+// in PHYS 643 Project 1. We apply RK4 method to the Geodesic_Array
+// since geodesic_rhs needs a real EParticle (it round-trips
+// through spherical coordinates internally), each stage writes its trial
+// state into a scratch copy of the particle before evaluating the rhs.
+
+GeodesicArray operator+(const GeodesicArray& a, const GeodesicArray& b) {
+    GeodesicArray c{};
+    for (int i = 0; i < 8; i++) c[i] = a[i] + b[i];
+    return c;
+}
+
+GeodesicArray operator*(double s, const GeodesicArray& a) {
+    GeodesicArray c{};
+    for (int i = 0; i < 8; i++) c[i] = s * a[i];
+    return c;
+}
+
+GeodesicArray getState(const EParticle& p) {
+    return {p.rdata(PIdx::time), p.rdata(PIdx::x),
+            p.rdata(PIdx::y),    p.rdata(PIdx::z),
+            p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),
+            p.rdata(PIdx::pupy), p.rdata(PIdx::pupz)};
+}
+
+void setState(EParticle& p, const GeodesicArray& Y) {
+    p.rdata(PIdx::time) = Y[0];
+    p.rdata(PIdx::x)    = Y[1];
+    p.rdata(PIdx::y)    = Y[2];
+    p.rdata(PIdx::z)    = Y[3];
+    p.rdata(PIdx::pupt) = Y[4];
+    p.rdata(PIdx::pupx) = Y[5];
+    p.rdata(PIdx::pupy) = Y[6];
+    p.rdata(PIdx::pupz) = Y[7];
+}
+
+void RK4(EParticle& p, SchwSphericalMetric& metric, double dt, int steps) {
+    auto rhs = [&](const GeodesicArray& Y) -> GeodesicArray {
+        EParticle tmp = p;
+        setState(tmp, Y);
+        return metric.geodesic_rhs(tmp);
+    };
+
+    for (int i = 0; i < steps; i++) {
+        GeodesicArray Y = getState(p);
+
+        GeodesicArray k1 = rhs(Y);
+        GeodesicArray k2 = rhs(Y + 0.5 * dt * k1);
+        GeodesicArray k3 = rhs(Y + 0.5 * dt * k2);
+        GeodesicArray k4 = rhs(Y + dt * k3);
+
+        Y = Y + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4);
+        setState(p, Y);
+        // for debugging / ensuring that phi changes throughout the orbit 
+        // can remove once verified 
+        std::cout << "Step " << i + 1 << "/" << steps << "\n" 
+                << ", phi (deg) = " << std::atan2(p.rdata(PIdx::y),
+                                            p.rdata(PIdx::x))*180/std::numbers::pi
+                << "\n" 
+                << ", px = " << p.rdata(PIdx::pupx)
+                << "\n" 
+                << ", py = " << p.rdata(PIdx::pupy) << "\n";
+    }
+}
+
 int main() {
     // Black hole mass in geometric units (G = c = 1)
     const double M = 1.0;
@@ -68,12 +133,12 @@ int main() {
     const double L0 = p.rdata(PIdx::x) * p.rdata(PIdx::pupy)
                     - p.rdata(PIdx::y) * p.rdata(PIdx::pupx);         // 9
 
-    const double t_total = 10.0;
-    const int    steps   = 2000000;
+    const double t_total = 20.0;
+    const int    steps   = 10000;
     const double dt      = t_total / steps;
 
     SchwSphericalMetric metric(M);
-    Euler(p, metric, dt, steps);
+    RK4(p, metric, dt, steps);
 
     // After integration the particle is back in Cartesian coordinates.
     const double x  = p.rdata(PIdx::x);
@@ -88,8 +153,7 @@ int main() {
     const double E_final = (1.0 - 2.0 * M / r_final) * pt;
     const double L_final = x * py - y * px;
 
-    // Loose tolerance for now; isn's passing asserts with tight constraints 
-    const double tol = 1e-3;
+    const double tol = 1e-12;
 
     assert(std::abs(r_final - r0)             < tol);
     assert(std::abs(z)                        < tol);
@@ -109,7 +173,7 @@ int main() {
               << "  (expected " << E0 << ")\n";
     std::cout << "L        = " << L_final
               << "  (expected " << L0 << ")\n";
-std::cout << "All assertions passed.\n";
+std::cout << "All assertions passed with tolerance " << tol << ". \n";
 
     return 0;
 }

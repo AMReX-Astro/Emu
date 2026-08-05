@@ -100,11 +100,11 @@ class Schwarzschild {
             p.rdata(PIdx::z),    p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),
             p.rdata(PIdx::pupy), p.rdata(PIdx::pupz)};
 
-        // Removed lapse for testing 
+        // RK/Euler integrate coordiate time; must parameterize by coordinate time for consistency with how implementation will happen in Emu
         // Lapse for Schwarzschild spacetime (static, non-rotating) from Baumgarte and Shapiro, Table 2.1
-        // Question : why would we not just contract with the metric here?? 
+        // line 107 true in any coordinate system or frame: dlambda/dt = = (1/n_a*p^a), where n_a = lapse*(-1,0,0,0) 1/(-p_t) = 1/(lapse*p^t)
         const amrex::Real lapse = std::sqrt(1.0 - 2.0 * M_ / r);
-        const amrex::Real denom = Y[4];  // -p_t = lapse * p^t
+        const amrex::Real denom = lapse * Y[4];  
 
         GeodesicArray rhs{};
 
@@ -187,7 +187,7 @@ class SchwSphericalMetric : public SphericalMetric {
     Schwarzschild m_schw_;
 
     // d(jacobian_inv)/dr, /dtheta, /dphi -- partial derivatives of the
-    // inherited spherical -> Cartesian Jacobian 
+    // inherited spherical -> Cartesian Jacobian for the d/dlambda conversion of the geodesic equation
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
     jacobian_inv_dr(const EParticle& p) const {
         const amrex::Real theta = p.rdata(PIdx::y);
