@@ -355,7 +355,7 @@ if __name__ == "__main__":
         C_scat = HermitianMatrix(args.N, "C_in_scat_pp_{}{}_{}"+t)
         kappa_brakets = HermitianMatrix(
             args.N, "IMFP_scat"+t+"_brakets[{}][{}]").make_real_from_2d()
-        C.H = C_scat.H - kappa_brakets.H.multiply_elementwise(N.H)
+        C.H = C_scat.H - kappa_brakets.H.multiply_elementwise(N.H)/(4.0 * pi)
         code += C.code_accumulate()
 
         # QKE right-hand side: dN/dt = c*C - (i/hbar)*attenuation*[H, N].

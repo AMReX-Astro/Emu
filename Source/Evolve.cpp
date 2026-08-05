@@ -395,7 +395,7 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                                     // scat_off uses the same Hermitian packing as N (comp).
                                     const int scat_off = nunubar * n_scat_flav + comp;
                                     amrex::Gpu::Atomic::AddNoRet(&sarr(idx[0], idx[1], idx[2], GIdx::C_in_scat_iso_monocromatic_00_Re - start_comp + scat_off),
-                                                                 sx(i) * sy(j) * sz(k) *( PhysConst::c / ( 4 * MathConst::pi ) ) *  ( 4 * MathConst::pi / number_of_particles ) * kappa_scat_iso_mono_inverse_cm * p.rdata(particle_component_index));
+                                                                 sx(i) * sy(j) * sz(k) *( 1.0 / ( 4 * MathConst::pi ) ) *  ( 4 * MathConst::pi / number_of_particles ) * kappa_scat_iso_mono_inverse_cm * p.rdata(particle_component_index));
                                     // --------------------------------------------------------------------
                                 }
                             }
