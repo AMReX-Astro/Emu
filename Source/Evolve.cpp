@@ -509,6 +509,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             Real C_in_scat_pp_00_Re = 0;
             Real C_in_scat_pp_01_Re = 0;
             Real C_in_scat_pp_01_Im = 0;
+            Real C_in_scat_pp_02_Re = 0;
+            Real C_in_scat_pp_02_Im = 0;
             Real C_in_scat_pp_11_Re = 0;
             Real C_in_scat_pp_12_Re = 0;
             Real C_in_scat_pp_12_Im = 0;
@@ -516,6 +518,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             Real C_in_scat_pp_00_Rebar = 0;
             Real C_in_scat_pp_01_Rebar = 0;
             Real C_in_scat_pp_01_Imbar = 0;
+            Real C_in_scat_pp_02_Rebar = 0;
+            Real C_in_scat_pp_02_Imbar = 0;
             Real C_in_scat_pp_11_Rebar = 0;
             Real C_in_scat_pp_12_Rebar = 0;
             Real C_in_scat_pp_12_Imbar = 0;
@@ -680,10 +684,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                         parms->IMFP_scat
                             [1]
                             [i];  // 1/cm : Read scattering inverse mean free path from input parameters file.
-                    IMFP_scat_brakets[i][j] =
-                        (IMFP_scat[i][i] + IMFP_scat[j][j]) / 2.0;
-                    IMFP_scatbar_brakets[i][j] =
-                        (IMFP_scatbar[i][i] + IMFP_scatbar[j][j]) / 2.0;
                     munu[i][i] =
                         parms->munu
                             [0]
@@ -692,6 +692,14 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                         parms->munu
                             [1]
                             [i];  // ergs : Read antineutrino chemical potential from input parameters file.
+                }
+                for (int i = 0; i < NUM_FLAVORS; ++i) {
+                    for (int j = 0; j < NUM_FLAVORS; ++j) {
+                        IMFP_scat_brakets[i][j] =
+                            (IMFP_scat[i][i] + IMFP_scat[j][j]) / 2.0;
+                        IMFP_scatbar_brakets[i][j] =
+                            (IMFP_scatbar[i][i] + IMFP_scatbar[j][j]) / 2.0;
+                    }
                 }
             }
             // If opacity_method is 2, the code interpolate inverse mean free paths from NuLib table and electron neutrino chemical potential from EoS table to compute the collision term.
