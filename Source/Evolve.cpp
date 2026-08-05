@@ -495,6 +495,32 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             Real Ye_pp = 0;
             Real rho_pp = 0;  // g/ccm
 
+            // Scattering term to contain the interpolation to the particle position
+# if NUM_FLAVORS == 2
+            Real C_in_scat_pp_00_Re = 0;
+            Real C_in_scat_pp_01_Re = 0;
+            Real C_in_scat_pp_01_Im = 0;
+            Real C_in_scat_pp_11_Re = 0;
+            Real C_in_scat_pp_00_Rebar = 0;
+            Real C_in_scat_pp_01_Rebar = 0;
+            Real C_in_scat_pp_01_Imbar = 0;
+            Real C_in_scat_pp_11_Rebar = 0;
+# elif NUM_FLAVORS == 3
+            Real C_in_scat_pp_00_Re = 0;
+            Real C_in_scat_pp_01_Re = 0;
+            Real C_in_scat_pp_01_Im = 0;
+            Real C_in_scat_pp_11_Re = 0;
+            Real C_in_scat_pp_12_Re = 0;
+            Real C_in_scat_pp_12_Im = 0;
+            Real C_in_scat_pp_22_Re = 0;
+            Real C_in_scat_pp_00_Rebar = 0;
+            Real C_in_scat_pp_01_Rebar = 0;
+            Real C_in_scat_pp_01_Imbar = 0;
+            Real C_in_scat_pp_11_Rebar = 0;
+            Real C_in_scat_pp_12_Rebar = 0;
+            Real C_in_scat_pp_12_Imbar = 0;
+            Real C_in_scat_pp_22_Rebar = 0;
+# endif
             // phat = momentum direction (p/E), used for the flux contraction in the SI potential
             const amrex::Real phat[3] = {
                 p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
@@ -552,6 +578,35 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                         T_pp += vol * sarr(i, j, k, GIdx::T);
                         Ye_pp += vol * sarr(i, j, k, GIdx::Ye);
                         rho_pp += vol * sarr(i, j, k, GIdx::rho);
+#if NUM_FLAVORS == 2
+                        C_in_scat_pp_00_Re    += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_00_Re);
+                        C_in_scat_pp_01_Re    += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_01_Re);
+                        C_in_scat_pp_01_Im    += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_01_Im);
+                        C_in_scat_pp_11_Re    += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_11_Re);
+                        C_in_scat_pp_00_Rebar += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_00_Rebar);
+                        C_in_scat_pp_01_Rebar += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_01_Rebar);
+                        C_in_scat_pp_01_Imbar += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_01_Imbar);
+                        C_in_scat_pp_11_Rebar += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_11_Rebar);
+#elif NUM_FLAVORS == 3
+                        C_in_scat_pp_00_Re    += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_00_Re);
+                        C_in_scat_pp_01_Re    += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_01_Re);
+                        C_in_scat_pp_01_Im    += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_01_Im);
+                        C_in_scat_pp_11_Re    += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_11_Re);
+                        C_in_scat_pp_02_Re    += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_02_Re);
+                        C_in_scat_pp_02_Im    += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_02_Im);
+                        C_in_scat_pp_12_Re    += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_12_Re);
+                        C_in_scat_pp_12_Im    += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_12_Im);
+                        C_in_scat_pp_22_Re    += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_22_Re);
+                        C_in_scat_pp_00_Rebar += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_00_Rebar);
+                        C_in_scat_pp_01_Rebar += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_01_Rebar);
+                        C_in_scat_pp_01_Imbar += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_01_Imbar);
+                        C_in_scat_pp_11_Rebar += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_11_Rebar);
+                        C_in_scat_pp_02_Rebar += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_02_Rebar);
+                        C_in_scat_pp_02_Imbar += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_02_Imbar);
+                        C_in_scat_pp_12_Rebar += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_12_Rebar);
+                        C_in_scat_pp_12_Imbar += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_12_Imbar);
+                        C_in_scat_pp_22_Rebar += vol * sarr(i, j, k, GIdx::C_in_scat_iso_monocromatic_22_Rebar);
+#endif
                     }
                 }
             }
