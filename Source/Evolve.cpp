@@ -26,19 +26,38 @@ void Initialize(int IMFP_method) {
 #include "generated_files/Evolve.cpp_grid_names_fill"
     if (IMFP_method == 1) {
         // Names in GIdx / PIdx::offset order (Hermitian upper triangle).
+        // Neutrino block first, then antineutrino (…_Rebar / …_Imbar).
 #if NUM_FLAVORS == 2
-        const char* ordered[] = {"00_Re", "01_Re", "01_Im", "11_Re"};
+        names.push_back("C_in_scat_iso_monocromatic_00_Re");
+        names.push_back("C_in_scat_iso_monocromatic_01_Re");
+        names.push_back("C_in_scat_iso_monocromatic_01_Im");
+        names.push_back("C_in_scat_iso_monocromatic_11_Re");
+        names.push_back("C_in_scat_iso_monocromatic_00_Rebar");
+        names.push_back("C_in_scat_iso_monocromatic_01_Rebar");
+        names.push_back("C_in_scat_iso_monocromatic_01_Imbar");
+        names.push_back("C_in_scat_iso_monocromatic_11_Rebar");
 #elif NUM_FLAVORS == 3
-        const char* ordered[] = {"00_Re", "01_Re", "01_Im", "02_Re", "02_Im",
-                                 "11_Re", "12_Re", "12_Im", "22_Re"};
+        names.push_back("C_in_scat_iso_monocromatic_00_Re");
+        names.push_back("C_in_scat_iso_monocromatic_01_Re");
+        names.push_back("C_in_scat_iso_monocromatic_01_Im");
+        names.push_back("C_in_scat_iso_monocromatic_02_Re");
+        names.push_back("C_in_scat_iso_monocromatic_02_Im");
+        names.push_back("C_in_scat_iso_monocromatic_11_Re");
+        names.push_back("C_in_scat_iso_monocromatic_12_Re");
+        names.push_back("C_in_scat_iso_monocromatic_12_Im");
+        names.push_back("C_in_scat_iso_monocromatic_22_Re");
+        names.push_back("C_in_scat_iso_monocromatic_00_Rebar");
+        names.push_back("C_in_scat_iso_monocromatic_01_Rebar");
+        names.push_back("C_in_scat_iso_monocromatic_01_Imbar");
+        names.push_back("C_in_scat_iso_monocromatic_02_Rebar");
+        names.push_back("C_in_scat_iso_monocromatic_02_Imbar");
+        names.push_back("C_in_scat_iso_monocromatic_11_Rebar");
+        names.push_back("C_in_scat_iso_monocromatic_12_Rebar");
+        names.push_back("C_in_scat_iso_monocromatic_12_Imbar");
+        names.push_back("C_in_scat_iso_monocromatic_22_Rebar");
+#else
+#error "NUM_FLAVORS must be 2 or 3 for monochromatic scattering mesh coeffs"
 #endif
-        const char* base = "C_in_scat_iso_monocromatic";
-        for (const char* bar : {"", "bar"}) {
-            for (const char* idx : ordered) {
-                // Match N naming: …_00_Re, …_00_Rebar, …_01_Im, …_01_Imbar
-                names.push_back(std::string(base) + "_" + idx + bar);
-            }
-        }
     }
 }
 }  // namespace GIdx
@@ -301,6 +320,8 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                 PIdx::
                     N00_Re;  // real/imaginary components per NxN Hermitian block
 
+            amrex::Real number_of_particles = 92.0;
+
             // Sign each moment block acquires under a reflection across a face normal to
             // direction d (+1 even, -1 odd: -1 iff the block carries an odd number of
             // phat_d factors), in GIdx block order
@@ -309,11 +330,6 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                 {1, -1, 1, 1, 1, -1, -1, 1, 1, 1},   // x
                 {1, 1, -1, 1, 1, -1, 1, 1, -1, 1},   // y
                 {1, 1, 1, -1, 1, 1, -1, 1, -1, 1}};  // z
-
-            // OJO: This is a temporary variable to store the number of particles in the cell.
-            //  Another way to do this will be implemented later
-            int number_of_particles = 92;
-            // TODO: Implement a better way to get the number of particles in the cell.
 
             for (int k = sz.first(); k <= sz.last(); ++k) {
                 for (int j = sy.first(); j <= sy.last(); ++j) {
@@ -336,11 +352,6 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                             }
                         }
 
-                        // When IMFP_method==1, also deposit into the flavor-indexed
-                        // C_in scat iso (m==0) mesh fields (Hermitian Re/Im layout).
-                        // One neutrino Hermitian block has NUM_FLAVORS^2 real comps.
-                        constexpr int n_scat_flav = NUM_FLAVORS * NUM_FLAVORS;
-
                         // Deposit each particle N component into the matching component of
                         // every grid moment block, for neutrinos (nunubar=0) and antineutrinos (nunubar=1).
                         for (int nunubar = 0; nunubar < 2; ++nunubar) {
@@ -355,51 +366,77 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                                     const int particle_component_index = particle_index_base + comp;
                                     amrex::Gpu::Atomic::AddNoRet(&sarr(idx[0], idx[1], idx[2], grid_component_index),
                                                                  sign * vol * p.rdata(particle_component_index) * moment_factor[m]);
-
-                                    if (imfp_method != 1) continue;
-                                    // Isotropic in-scattering only (m==0).
-                                    if (m != 0) continue;
-
-                                    // Map Hermitian component -> flavor indices (a,b).
-                                    // Layout matches PIdx::offset (Re and Im).
-                                    int a = 0;
-                                    int b = 0;
-                                    bool found = false;
-                                    for (a = 0; a < NUM_FLAVORS; ++a) {
-                                        for (b = a; b < NUM_FLAVORS; ++b) {
-                                            if (comp == PIdx::offset(a, b, PIdx::Re) || (b > a && comp == PIdx::offset(a, b, PIdx::Im))) {
-                                                found = true;
-                                                break;
-                                            }
-                                        }
-                                        if (found) break;
-                                    }
-                                    if (!found) continue;
-
-                                    // Scattering opacities for method 1 are given as input
-                                    // parameters in inverse cm (IMFP_scat[nu/nubar][flavor]).
-                                    const amrex::Real IMFP_scata_cm = parms->IMFP_scat[nunubar][a];
-                                    const amrex::Real IMFP_scatb_cm = parms->IMFP_scat[nunubar][b];
-
-                                    // kappa_ab = delta_ab * kappa_a
-                                    [[maybe_unused]] const amrex::Real kappa_scat_iso_mono_inverse_cm = (a == b) ? IMFP_scata_cm : 0.0;
-
-                                    // (kappa_a + kappa_b)/2
-                                    [[maybe_unused]] const amrex::Real kappa_brakets_scat_iso_mono_inverse_cm = 0.5 * (IMFP_scata_cm + IMFP_scatb_cm);
-
-
-                                    // const amrex::Real C_in_scat_iso_mono_single_particle_contrib = sx(i) * sy(j) * sz(k) *( PhysConst::c / ( 4 * MathConst::pi ) ) *  ( 4 * MathConst::pi / number_of_particles ) * parms->IMFP_scat0_cm * p.rdata(particle_component_index);                               
-
-                                    // --------------------------------------------------------------------
-                                    // TEMPORARY CODE: edit this with the correct equations.
-                                    // scat_off uses the same Hermitian packing as N (comp).
-                                    const int scat_off = nunubar * n_scat_flav + comp;
-                                    amrex::Gpu::Atomic::AddNoRet(&sarr(idx[0], idx[1], idx[2], GIdx::C_in_scat_iso_monocromatic_00_Re - start_comp + scat_off),
-                                                                 sx(i) * sy(j) * sz(k) *( 1.0 / ( 4 * MathConst::pi ) ) *  ( 4 * MathConst::pi / number_of_particles ) * kappa_scat_iso_mono_inverse_cm * p.rdata(particle_component_index));
-                                    // --------------------------------------------------------------------
                                 }
                             }
                         }
+
+                        // --------------------------------------------------------------------
+                        // Independent isotropic in-scattering deposit (IMFP_method==1).
+                        // Separate from the N/Fx/... moment deposition above.
+                        // Mesh layout: Hermitian upper-triangle comps for neutrinos,
+                        // then the same for antineutrinos (see GIdx / PIdx::offset).
+                        // --------------------------------------------------------------------
+                        if (imfp_method == 1) {
+                            // One neutrino Hermitian block has NUM_FLAVORS^2 real comps.
+                            constexpr int n_scat_flav = NUM_FLAVORS * NUM_FLAVORS;
+
+                            for (int nunubar = 0; nunubar < 2; ++nunubar) {
+                                const int particle_index_base =
+                                    PIdx::N00_Re + nunubar * ncomp;
+
+                                // Iterate Hermitian upper triangle: (a,b) with a <= b.
+                                // Diagonal: Re only. Off-diagonal: Re then Im.
+                                for (int a = 0; a < NUM_FLAVORS; ++a) {
+                                    for (int b = a; b < NUM_FLAVORS; ++b) {
+                                        // Scattering opacities for method 1 are given as input
+                                        // parameters in inverse cm (IMFP_scat[nu/nubar][flavor]).
+                                        const amrex::Real IMFP_scata_cm =
+                                            parms->IMFP_scat[nunubar][a];
+                                        const amrex::Real IMFP_scatb_cm =
+                                            parms->IMFP_scat[nunubar][b];
+
+                                        // kappa_ab = delta_ab * kappa_a
+                                        [[maybe_unused]] const amrex::Real
+                                            kappa_scat_iso_mono_inverse_cm =
+                                                (a == b) ? IMFP_scata_cm : 0.0;
+
+                                        // (kappa_a + kappa_b)/2
+                                        [[maybe_unused]] const amrex::Real
+                                            kappa_brakets_scat_iso_mono_inverse_cm =
+                                                0.5 * (IMFP_scata_cm + IMFP_scatb_cm);
+
+                                        // // Print both (kappa_scat_iso_mono_inverse_cm) and (kappa_brakets_scat_iso_mono_inverse_cm)
+                                        // printf("Scattering (a=%d, b=%d, nu/nubar=%d): kappa_scat_iso_mono_inverse_cm = %g, kappa_brakets_scat_iso_mono_inverse_cm = %g\n",
+                                        //        a, b, nunubar,
+                                        //        (double)kappa_scat_iso_mono_inverse_cm,
+                                        //        (double)kappa_brakets_scat_iso_mono_inverse_cm);
+
+                                        // Deposit Re (always) and Im (off-diagonal only).
+                                        const int n_reim = (b > a) ? 2 : 1;
+                                        for (int reim = 0; reim < n_reim; ++reim) {
+                                            const int comp = PIdx::offset(
+                                                a, b,
+                                                (reim == 0) ? PIdx::Re : PIdx::Im);
+                                            const int particle_component_index =
+                                                particle_index_base + comp;
+
+                                            // TEMPORARY CODE: edit this with the correct equations.
+                                            // scat_off uses the same Hermitian packing as N (comp).
+                                            const int scat_off =
+                                                nunubar * n_scat_flav + comp;
+                                            amrex::Gpu::Atomic::AddNoRet(
+                                                &sarr(idx[0], idx[1], idx[2],
+                                                      GIdx::C_in_scat_iso_monocromatic_00_Re -
+                                                          start_comp + scat_off),
+                                                sx(i) * sy(j) * sz(k) *
+                                                    (1.0 / (4 * MathConst::pi)) * (4 * MathConst::pi / number_of_particles) *
+                                                    p.rdata(particle_component_index) * kappa_scat_iso_mono_inverse_cm);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                     }
                 }
             }
@@ -615,6 +652,37 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 }
             }
 
+// #if NUM_FLAVORS == 2
+//             // printf is device-safe; amrex::Print()/std::cout are host-only.
+//             printf("C_in_scat_pp_00_Re = %g\n", (double)C_in_scat_pp_00_Re);
+//             printf("C_in_scat_pp_01_Re = %g\n", (double)C_in_scat_pp_01_Re);
+//             printf("C_in_scat_pp_01_Im = %g\n", (double)C_in_scat_pp_01_Im);
+//             printf("C_in_scat_pp_11_Re = %g\n", (double)C_in_scat_pp_11_Re);
+//             printf("C_in_scat_pp_00_Rebar = %g\n", (double)C_in_scat_pp_00_Rebar);
+//             printf("C_in_scat_pp_01_Rebar = %g\n", (double)C_in_scat_pp_01_Rebar);
+//             printf("C_in_scat_pp_01_Imbar = %g\n", (double)C_in_scat_pp_01_Imbar);
+//             printf("C_in_scat_pp_11_Rebar = %g\n", (double)C_in_scat_pp_11_Rebar);
+// #elif NUM_FLAVORS == 3
+//             printf("C_in_scat_pp_00_Re = %g\n", (double)C_in_scat_pp_00_Re);
+//             printf("C_in_scat_pp_01_Re = %g\n", (double)C_in_scat_pp_01_Re);
+//             printf("C_in_scat_pp_01_Im = %g\n", (double)C_in_scat_pp_01_Im);
+//             printf("C_in_scat_pp_11_Re = %g\n", (double)C_in_scat_pp_11_Re);
+//             printf("C_in_scat_pp_02_Re = %g\n", (double)C_in_scat_pp_02_Re);
+//             printf("C_in_scat_pp_02_Im = %g\n", (double)C_in_scat_pp_02_Im);
+//             printf("C_in_scat_pp_12_Re = %g\n", (double)C_in_scat_pp_12_Re);
+//             printf("C_in_scat_pp_12_Im = %g\n", (double)C_in_scat_pp_12_Im);
+//             printf("C_in_scat_pp_22_Re = %g\n", (double)C_in_scat_pp_22_Re);
+//             printf("C_in_scat_pp_00_Rebar = %g\n", (double)C_in_scat_pp_00_Rebar);
+//             printf("C_in_scat_pp_01_Rebar = %g\n", (double)C_in_scat_pp_01_Rebar);
+//             printf("C_in_scat_pp_01_Imbar = %g\n", (double)C_in_scat_pp_01_Imbar);
+//             printf("C_in_scat_pp_11_Rebar = %g\n", (double)C_in_scat_pp_11_Rebar);
+//             printf("C_in_scat_pp_02_Rebar = %g\n", (double)C_in_scat_pp_02_Rebar);
+//             printf("C_in_scat_pp_02_Imbar = %g\n", (double)C_in_scat_pp_02_Imbar);
+//             printf("C_in_scat_pp_12_Rebar = %g\n", (double)C_in_scat_pp_12_Rebar);
+//             printf("C_in_scat_pp_12_Imbar = %g\n", (double)C_in_scat_pp_12_Imbar);
+//             printf("C_in_scat_pp_22_Rebar = %g\n", (double)C_in_scat_pp_22_Rebar);
+// #endif
+
             // Declare matrices to be used in quantum kinetic equation calculation
             Real IMFP_abs
                 [NUM_FLAVORS]
@@ -701,6 +769,15 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                             (IMFP_scatbar[i][i] + IMFP_scatbar[j][j]) / 2.0;
                     }
                 }
+                // for (int k = 0; k < NUM_FLAVORS; ++k) {
+                //     for (int l = 0; l < NUM_FLAVORS; ++l) {
+                //         printf("IMFP_abs[%d][%d] = %e; IMFP_absbar[%d][%d] = %e; IMFP_scat_brakets[%d][%d] = %e; IMFP_scatbar_brakets[%d][%d] = %e\n",
+                //             k, l, IMFP_abs[k][l],
+                //             k, l, IMFP_absbar[k][l],
+                //             k, l, IMFP_scat_brakets[k][l],
+                //             k, l, IMFP_scatbar_brakets[k][l]);
+                //     }
+                // }
             }
             // If opacity_method is 2, the code interpolate inverse mean free paths from NuLib table and electron neutrino chemical potential from EoS table to compute the collision term.
             else if (parms->IMFP_method == 2) {
@@ -912,6 +989,24 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                     }
                 }
             }
+
+            // printf("IMFP_scat_brakets[0][0]*p.rdata(PIdx::N00_Re) = %e\n", IMFP_scat_brakets[0][0]*p.rdata(PIdx::N00_Re));
+            // printf("IMFP_scat_brakets[0][1]*p.rdata(PIdx::N01_Re) = %e\n", IMFP_scat_brakets[0][1]*p.rdata(PIdx::N01_Re));
+            // printf("IMFP_scat_brakets[0][2]*p.rdata(PIdx::N02_Re) = %e\n", IMFP_scat_brakets[0][2]*p.rdata(PIdx::N02_Re));
+            // printf("IMFP_scat_brakets[0][2]*p.rdata(PIdx::N02_Im) = %e\n", IMFP_scat_brakets[0][2]*p.rdata(PIdx::N02_Im));
+            // printf("IMFP_scat_brakets[1][1]*p.rdata(PIdx::N11_Re) = %e\n", IMFP_scat_brakets[1][1]*p.rdata(PIdx::N11_Re));
+            // printf("IMFP_scat_brakets[1][2]*p.rdata(PIdx::N12_Re) = %e\n", IMFP_scat_brakets[1][2]*p.rdata(PIdx::N12_Re));
+            // printf("IMFP_scat_brakets[1][2]*p.rdata(PIdx::N12_Im) = %e\n", IMFP_scat_brakets[1][2]*p.rdata(PIdx::N12_Im));
+            // printf("IMFP_scat_brakets[2][2]*p.rdata(PIdx::N22_Re) = %e\n", IMFP_scat_brakets[2][2]*p.rdata(PIdx::N22_Re));
+            // printf("IMFP_scatbar_brakets[0][0]*p.rdata(PIdx::N00_Rebar) = %e\n", IMFP_scatbar_brakets[0][0]*p.rdata(PIdx::N00_Rebar));
+            // printf("IMFP_scatbar_brakets[0][1]*p.rdata(PIdx::N01_Rebar) = %e\n", IMFP_scatbar_brakets[0][1]*p.rdata(PIdx::N01_Rebar));
+            // printf("IMFP_scatbar_brakets[0][2]*p.rdata(PIdx::N02_Rebar) = %e\n", IMFP_scatbar_brakets[0][2]*p.rdata(PIdx::N02_Rebar));
+            // printf("IMFP_scatbar_brakets[0][2]*p.rdata(PIdx::N02_Imbar) = %e\n", IMFP_scatbar_brakets[0][2]*p.rdata(PIdx::N02_Imbar));
+            // printf("IMFP_scatbar_brakets[1][1]*p.rdata(PIdx::N11_Rebar) = %e\n", IMFP_scatbar_brakets[1][1]*p.rdata(PIdx::N11_Rebar));
+            // printf("IMFP_scatbar_brakets[1][2]*p.rdata(PIdx::N12_Rebar) = %e\n", IMFP_scatbar_brakets[1][2]*p.rdata(PIdx::N12_Rebar));
+            // printf("IMFP_scatbar_brakets[1][2]*p.rdata(PIdx::N12_Imbar) = %e\n", IMFP_scatbar_brakets[1][2]*p.rdata(PIdx::N12_Imbar));
+            // printf("IMFP_scatbar_brakets[2][2]*p.rdata(PIdx::N22_Rebar) = %e\n", IMFP_scatbar_brakets[2][2]*p.rdata(PIdx::N22_Rebar));
+
 // Compute the time derivative of \( N_{ab} \) using the Quantum Kinetic Equations (QKE).
 #include "generated_files/Evolve.cpp_dfdt_fill"
 

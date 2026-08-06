@@ -28,21 +28,36 @@ enum {
 // N/Fx/... blocks and PIdx::offset: diagonal _ii_Re only; off-diagonal
 // _ij_Re then _ij_Im; then antineutrino counterparts with Rebar/Imbar.
 #if NUM_FLAVORS == 2
-#define GIDX_SCAT_FLAVOR_REST(name)                                            \
-    name##_01_Re, name##_01_Im, name##_11_Re, name##_00_Rebar,                \
-        name##_01_Rebar, name##_01_Imbar, name##_11_Rebar
+    C_in_scat_iso_monocromatic_00_Re = ncomp_base,
+    C_in_scat_iso_monocromatic_01_Re,
+    C_in_scat_iso_monocromatic_01_Im,
+    C_in_scat_iso_monocromatic_11_Re,
+    C_in_scat_iso_monocromatic_00_Rebar,
+    C_in_scat_iso_monocromatic_01_Rebar,
+    C_in_scat_iso_monocromatic_01_Imbar,
+    C_in_scat_iso_monocromatic_11_Rebar,
 #elif NUM_FLAVORS == 3
-#define GIDX_SCAT_FLAVOR_REST(name)                                            \
-    name##_01_Re, name##_01_Im, name##_02_Re, name##_02_Im, name##_11_Re,     \
-        name##_12_Re, name##_12_Im, name##_22_Re, name##_00_Rebar,             \
-        name##_01_Rebar, name##_01_Imbar, name##_02_Rebar, name##_02_Imbar,   \
-        name##_11_Rebar, name##_12_Rebar, name##_12_Imbar, name##_22_Rebar
+    C_in_scat_iso_monocromatic_00_Re = ncomp_base,
+    C_in_scat_iso_monocromatic_01_Re,
+    C_in_scat_iso_monocromatic_01_Im,
+    C_in_scat_iso_monocromatic_02_Re,
+    C_in_scat_iso_monocromatic_02_Im,
+    C_in_scat_iso_monocromatic_11_Re,
+    C_in_scat_iso_monocromatic_12_Re,
+    C_in_scat_iso_monocromatic_12_Im,
+    C_in_scat_iso_monocromatic_22_Re,
+    C_in_scat_iso_monocromatic_00_Rebar,
+    C_in_scat_iso_monocromatic_01_Rebar,
+    C_in_scat_iso_monocromatic_01_Imbar,
+    C_in_scat_iso_monocromatic_02_Rebar,
+    C_in_scat_iso_monocromatic_02_Imbar,
+    C_in_scat_iso_monocromatic_11_Rebar,
+    C_in_scat_iso_monocromatic_12_Rebar,
+    C_in_scat_iso_monocromatic_12_Imbar,
+    C_in_scat_iso_monocromatic_22_Rebar,
 #else
 #error "NUM_FLAVORS must be 2 or 3 for monochromatic scattering mesh coeffs"
 #endif
-    C_in_scat_iso_monocromatic_00_Re = ncomp_base,
-    GIDX_SCAT_FLAVOR_REST(C_in_scat_iso_monocromatic),
-#undef GIDX_SCAT_FLAVOR_REST
     ncomp_max
 };
 
