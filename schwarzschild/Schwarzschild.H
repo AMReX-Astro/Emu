@@ -1,5 +1,5 @@
 // Schwarzschild Metric Implementation - Cartesian, Cylindrical, and Spherical coordinates
-// Schwawrzschild class helps each of the Metric-derived classes implement the geodesic equation in spherical polar coordinates, 
+// Schwawrzschild class helps each of the Metric-derived classes implement the geodesic equation in spherical polar coordinates,
 // while still allowing the caller to use their native coordinate system (Cartesian, Cylindrical, or Spherical).
 // Assumes black hole mass M, and uses geometric units (G=c=1)
 
@@ -18,7 +18,8 @@
 
 using FourVec = amrex::GpuArray<amrex::Real, 4>;
 using Mat4 = amrex::GpuArray<amrex::GpuArray<amrex::Real, 4>, 4>;
-using Christoffel = amrex::GpuArray<amrex::GpuArray<amrex::GpuArray<amrex::Real, 4>, 4>, 4>;
+using Christoffel =
+    amrex::GpuArray<amrex::GpuArray<amrex::GpuArray<amrex::Real, 4>, 4>, 4>;
 using GeodesicArray = amrex::GpuArray<amrex::Real, 8>;
 using EParticle = FlavoredNeutrinoContainer::ParticleType;
 
@@ -26,11 +27,10 @@ using EParticle = FlavoredNeutrinoContainer::ParticleType;
 // 4-momentum components already rotated into the spherical-polar basis.
 class Schwarzschild {
    public:
-    AMREX_GPU_DEVICE AMREX_GPU_HOST
-    Schwarzschild(amrex::Real M = 1.0) : M_(M) {}
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Schwarzschild(amrex::Real M = 1.0)
+        : M_(M) {}
 
-    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
-    gmunu(const EParticle& p) const {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4 gmunu(const EParticle& p) const {
         const amrex::Real r = p.rdata(PIdx::x);
         const amrex::Real theta = p.rdata(PIdx::y);
         const amrex::Real f = 1.0 - 2.0 * M_ / r;
@@ -47,8 +47,8 @@ class Schwarzschild {
     }
 
     // -sqrt(detg))
-    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real
-    detg(amrex::Real r, amrex::Real theta) const {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(amrex::Real r,
+                                                     amrex::Real theta) const {
         return -std::pow(r, 2) * std::sin(theta);
     }
 
@@ -95,16 +95,16 @@ class Schwarzschild {
 
         const Christoffel Gamma = christoffel(p);
 
-        GeodesicArray Y{
-            p.rdata(PIdx::time), p.rdata(PIdx::x),    p.rdata(PIdx::y),
-            p.rdata(PIdx::z),    p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),
-            p.rdata(PIdx::pupy), p.rdata(PIdx::pupz)};
+        GeodesicArray Y{p.rdata(PIdx::time), p.rdata(PIdx::x),
+                        p.rdata(PIdx::y),    p.rdata(PIdx::z),
+                        p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),
+                        p.rdata(PIdx::pupy), p.rdata(PIdx::pupz)};
 
         // RK/Euler integrate coordiate time; must parameterize by coordinate time for consistency with how implementation will happen in Emu
         // Lapse for Schwarzschild spacetime (static, non-rotating) from Baumgarte and Shapiro, Table 2.1
         // line 107 true in any coordinate system or frame: dlambda/dt = = (1/n_a*p^a), where n_a = lapse*(-1,0,0,0) 1/(-p_t) = 1/(lapse*p^t)
         const amrex::Real lapse = std::sqrt(1.0 - 2.0 * M_ / r);
-        const amrex::Real denom = lapse * Y[4];  
+        const amrex::Real denom = lapse * Y[4];
 
         GeodesicArray rhs{};
 
@@ -134,11 +134,11 @@ class Schwarzschild {
 // pos_conv/pos_conv_inv/vol are all inherited unchanged from SphericalMetric.
 class SchwSphericalMetric : public SphericalMetric {
    public:
-    AMREX_GPU_DEVICE AMREX_GPU_HOST
-    SchwSphericalMetric(amrex::Real M = 1.0) : m_schw_(M) {}
+    AMREX_GPU_DEVICE AMREX_GPU_HOST SchwSphericalMetric(amrex::Real M = 1.0)
+        : m_schw_(M) {}
 
     // NOTE: gmunu/detg/christoffel assume p is already in spherical polar.
-    // Only geodesic_rhs (below) satisfies that. 
+    // Only geodesic_rhs (below) satisfies that.
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
     gmunu(const EParticle& p) const override {
         return m_schw_.gmunu(p);
@@ -147,8 +147,8 @@ class SchwSphericalMetric : public SphericalMetric {
     // Trivial override to satisfy Metric::detg's pure virtual (EParticle-
     // based). The real cell-center detg used for flux/density corrections
     // is the RealVect overload below.
-    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real
-    detg(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
+        const EParticle& p) const override {
         return m_schw_.detg(p.rdata(PIdx::x), p.rdata(PIdx::y));
     }
 
@@ -158,8 +158,8 @@ class SchwSphericalMetric : public SphericalMetric {
     }
 
     // sqrt(-g) evaluated at a Cartesian grid cell center
-    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real
-    detg(const amrex::RealVect& x_center) const {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
+        const amrex::RealVect& x_center) const {
         const amrex::Real x = x_center[0];
         const amrex::Real y = x_center[1];
         const amrex::Real z = x_center[2];
@@ -290,7 +290,8 @@ class SchwSphericalMetric : public SphericalMetric {
                 dp += Jinv[i][mu] * rhs_sph[4 + mu];
                 dp += (dJinv_dr[i][mu] * drdlambda +
                        dJinv_dtheta[i][mu] * dthetadlambda +
-                       dJinv_dphi[i][mu] * dphidlambda) * p_sph[mu];
+                       dJinv_dphi[i][mu] * dphidlambda) *
+                      p_sph[mu];
             }
             rhs_cart[4 + i] = dp;
         }
@@ -301,13 +302,13 @@ class SchwSphericalMetric : public SphericalMetric {
 
 // Schwarzschild metric in Cartesian coordinates. coord_conv/coord_conv_inv/
 // jacobian/jacobian_inv/pos_conv/pos_conv_inv/vol stay inherited unchanged
-// from CartesianMetric (AMReX's native mesh frame) -- they are NOT overridden here, 
+// from CartesianMetric (AMReX's native mesh frame) -- they are NOT overridden here,
 // so any caller other than geodesic_rhs still sees the
 // expected Cartesian-native behavior from this class.
 class SchwCartesianMetric : public CartesianMetric {
    public:
-    AMREX_GPU_DEVICE AMREX_GPU_HOST
-    SchwCartesianMetric(amrex::Real M = 1.0) : m_schw_(M) {}
+    AMREX_GPU_DEVICE AMREX_GPU_HOST SchwCartesianMetric(amrex::Real M = 1.0)
+        : m_schw_(M) {}
 
     // NOTE: gmunu/detg/christoffel assume p is already in spherical polar.
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
@@ -323,13 +324,13 @@ class SchwCartesianMetric : public CartesianMetric {
     // Trivial override to satisfy Metric::detg's pure virtual (EParticle-
     // based). The real cell-center detg used for flux/density corrections
     // is the RealVect overload below.
-    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real
-    detg(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
+        const EParticle& p) const override {
         return m_schw_.detg(p.rdata(PIdx::x), p.rdata(PIdx::y));
     }
 
-    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real
-    detg(const amrex::RealVect& x_center) const {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
+        const amrex::RealVect& x_center) const {
         const amrex::Real x = x_center[0];
         const amrex::Real y = x_center[1];
         const amrex::Real z = x_center[2];
@@ -381,12 +382,12 @@ class SchwCartesianMetric : public CartesianMetric {
         return J;
     }
 
-    // coordinate order: t, r, theta, phi     
+    // coordinate order: t, r, theta, phi
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
     spherical_jacobian_inv(const EParticle& p) const {
-        const amrex::Real x1 = p.rdata(PIdx::x); 
-        const amrex::Real x2 = p.rdata(PIdx::y);  
-        const amrex::Real x3 = p.rdata(PIdx::z);  
+        const amrex::Real x1 = p.rdata(PIdx::x);
+        const amrex::Real x2 = p.rdata(PIdx::y);
+        const amrex::Real x3 = p.rdata(PIdx::z);
 
         Mat4 J{};
         for (int mu = 0; mu < 4; mu++) {
@@ -508,7 +509,8 @@ class SchwCartesianMetric : public CartesianMetric {
                 dp += Jinv[i][mu] * rhs_sph[4 + mu];
                 dp += (dJinv_dr[i][mu] * drdlambda +
                        dJinv_dtheta[i][mu] * dthetadlambda +
-                       dJinv_dphi[i][mu] * dphidlambda) * p_sph[mu];
+                       dJinv_dphi[i][mu] * dphidlambda) *
+                      p_sph[mu];
             }
             rhs_cart[4 + i] = dp;
         }
@@ -517,10 +519,9 @@ class SchwCartesianMetric : public CartesianMetric {
     }
 
     // Conversion from cartesian position and 4-momentum >
-    // spherical polar (r, theta, phi) + spherical-polar 4-momentum. 
+    // spherical polar (r, theta, phi) + spherical-polar 4-momentum.
     // Used only internally by geodesic_rhs.
-    AMREX_GPU_DEVICE AMREX_GPU_HOST void
-    to_spherical(EParticle& p) const {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void to_spherical(EParticle& p) const {
         const amrex::Real x1 = p.rdata(PIdx::x);
         const amrex::Real x2 = p.rdata(PIdx::y);
         const amrex::Real x3 = p.rdata(PIdx::z);
@@ -550,8 +551,7 @@ class SchwCartesianMetric : public CartesianMetric {
     }
 
     // Inverse of to_spherical: spherical polar > cartesian in place.
-    AMREX_GPU_DEVICE AMREX_GPU_HOST void
-    from_spherical(EParticle& p) const {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void from_spherical(EParticle& p) const {
         const Mat4 J = spherical_jacobian_inv(p);
 
         FourVec p_old = {p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),
@@ -567,9 +567,9 @@ class SchwCartesianMetric : public CartesianMetric {
         p.rdata(PIdx::pupy) = p_new[2];
         p.rdata(PIdx::pupz) = p_new[3];
 
-        const amrex::Real x1 = p.rdata(PIdx::x);  
-        const amrex::Real x2 = p.rdata(PIdx::y);  
-        const amrex::Real x3 = p.rdata(PIdx::z);  
+        const amrex::Real x1 = p.rdata(PIdx::x);
+        const amrex::Real x2 = p.rdata(PIdx::y);
+        const amrex::Real x3 = p.rdata(PIdx::z);
 
         p.rdata(PIdx::x) = x1 * std::sin(x2) * std::cos(x3);
         p.rdata(PIdx::y) = x1 * std::sin(x2) * std::sin(x3);
@@ -577,15 +577,15 @@ class SchwCartesianMetric : public CartesianMetric {
     }
 };
 
-// Schwarzschild metric in cylindrical coordinates. 
+// Schwarzschild metric in cylindrical coordinates.
 // coord_conv/jacobian/pos_conv/vol stay inherited unchanged from
 // CylindricalMetric so its native (rho, phi, z) frame is preserved
 // for any other caller. geodesic_rhs always goes through an explicit
 // Cartesian <-> spherical-polar round trip, independent of the native frame.
 class SchwCylindricalMetric : public CylindricalMetric {
    public:
-    AMREX_GPU_DEVICE AMREX_GPU_HOST
-    SchwCylindricalMetric(amrex::Real M = 1.0) : m_schw_(M) {}
+    AMREX_GPU_DEVICE AMREX_GPU_HOST SchwCylindricalMetric(amrex::Real M = 1.0)
+        : m_schw_(M) {}
 
     // NOTE: gmunu/detg/christoffel assume p is already in spherical polar.
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
@@ -598,16 +598,16 @@ class SchwCylindricalMetric : public CylindricalMetric {
         return m_schw_.christoffel(p);
     }
 
-    // Trivial override to satisfy Metric::detg; 
+    // Trivial override to satisfy Metric::detg;
     // Curvilinear coordinates will evaluate cell-center detg used for flux/density corrections
     // is the RealVect overload below.
-    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real
-    detg(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
+        const EParticle& p) const override {
         return m_schw_.detg(p.rdata(PIdx::x), p.rdata(PIdx::y));
     }
 
-    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real
-    detg(const amrex::RealVect& x_center) const {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
+        const amrex::RealVect& x_center) const {
         const amrex::Real x = x_center[0];
         const amrex::Real y = x_center[1];
         const amrex::Real z = x_center[2];
@@ -757,7 +757,8 @@ class SchwCylindricalMetric : public CylindricalMetric {
                 dp += Jinv[i][mu] * rhs_sph[4 + mu];
                 dp += (dJinv_dr[i][mu] * drdlambda +
                        dJinv_dtheta[i][mu] * dthetadlambda +
-                       dJinv_dphi[i][mu] * dphidlambda) * p_sph[mu];
+                       dJinv_dphi[i][mu] * dphidlambda) *
+                      p_sph[mu];
             }
             rhs_cart[4 + i] = dp;
         }
@@ -794,8 +795,7 @@ class SchwCylindricalMetric : public CylindricalMetric {
     // read here as if its rdata(x/y/z) hold Cartesian coordinates (this
     // matches the contract Evolve.cpp currently uses when calling
     // metric.geodesic_rhs(p) on a particle with Cartesian position/momentum).
-    AMREX_GPU_DEVICE AMREX_GPU_HOST void
-    to_spherical(EParticle& p) const {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void to_spherical(EParticle& p) const {
         const amrex::Real x1 = p.rdata(PIdx::x);
         const amrex::Real x2 = p.rdata(PIdx::y);
         const amrex::Real x3 = p.rdata(PIdx::z);
@@ -824,8 +824,7 @@ class SchwCylindricalMetric : public CylindricalMetric {
         p.rdata(PIdx::pupz) = p_new[3];
     }
 
-    AMREX_GPU_DEVICE AMREX_GPU_HOST void
-    from_spherical(EParticle& p) const {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void from_spherical(EParticle& p) const {
         const Mat4 J = spherical_jacobian_inv(p);
 
         FourVec p_old = {p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),

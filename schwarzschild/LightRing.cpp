@@ -6,40 +6,17 @@
 //   L = x p^y - y p^x        (angular momentum about z, equals r^2 p^phi in the
 //                              equatorial plane)
 
-#include "Schwarzschild.H"
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include "Schwarzschild.H"
+// #include <fstream>
 
-// Reuse the same Euler integrator pattern as unit_test/Metric.cpp.
-// The particle enters and leaves in Cartesian coordinates.
-
-void Euler(EParticle& p, SchwSphericalMetric& metric, double dt, int steps) {
-    for (int i = 0; i < steps; i++) {
-        GeodesicArray dydt = metric.geodesic_rhs(p);
-
-        GeodesicArray Y = {p.rdata(PIdx::time), p.rdata(PIdx::x),
-                           p.rdata(PIdx::y),    p.rdata(PIdx::z),
-                           p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),
-                           p.rdata(PIdx::pupy), p.rdata(PIdx::pupz)};
-
-        for (int j = 0; j < 8; j++) {
-            Y[j] += dt * dydt[j];
-        }
-
-        p.rdata(PIdx::time) = Y[0];
-        p.rdata(PIdx::x)    = Y[1];
-        p.rdata(PIdx::y)    = Y[2];
-        p.rdata(PIdx::z)    = Y[3];
-        p.rdata(PIdx::pupt) = Y[4];
-        p.rdata(PIdx::pupx) = Y[5];
-        p.rdata(PIdx::pupy) = Y[6];
-        p.rdata(PIdx::pupz) = Y[7];
-    }
-}
+// std::string filename = "light_ring_phi_values.txt";
+// std::ofstream outfile(filename, std::ios::app);
 
 // Classic 4th-order Runge-Kutta, adapted from the integrator I wrote
-// in PHYS 643 Project 1. We apply RK4 method to the Geodesic_Array
+// in PHYS 643 Project 1. Apply RK4 method to the Geodesic_Array
 // since geodesic_rhs needs a real EParticle (it round-trips
 // through spherical coordinates internally), each stage writes its trial
 // state into a scratch copy of the particle before evaluating the rhs.
@@ -57,17 +34,16 @@ GeodesicArray operator*(double s, const GeodesicArray& a) {
 }
 
 GeodesicArray getState(const EParticle& p) {
-    return {p.rdata(PIdx::time), p.rdata(PIdx::x),
-            p.rdata(PIdx::y),    p.rdata(PIdx::z),
-            p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),
+    return {p.rdata(PIdx::time), p.rdata(PIdx::x),    p.rdata(PIdx::y),
+            p.rdata(PIdx::z),    p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),
             p.rdata(PIdx::pupy), p.rdata(PIdx::pupz)};
 }
 
 void setState(EParticle& p, const GeodesicArray& Y) {
     p.rdata(PIdx::time) = Y[0];
-    p.rdata(PIdx::x)    = Y[1];
-    p.rdata(PIdx::y)    = Y[2];
-    p.rdata(PIdx::z)    = Y[3];
+    p.rdata(PIdx::x) = Y[1];
+    p.rdata(PIdx::y) = Y[2];
+    p.rdata(PIdx::z) = Y[3];
     p.rdata(PIdx::pupt) = Y[4];
     p.rdata(PIdx::pupx) = Y[5];
     p.rdata(PIdx::pupy) = Y[6];
@@ -91,16 +67,17 @@ void RK4(EParticle& p, SchwSphericalMetric& metric, double dt, int steps) {
 
         Y = Y + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4);
         setState(p, Y);
-        // for debugging / ensuring that phi changes throughout the orbit 
-        // can remove once verified 
-        std::cout << "Step " << i + 1 << "/" << steps << "\n" 
-                << ", phi (deg) = " << std::atan2(p.rdata(PIdx::y),
-                                            p.rdata(PIdx::x))*180/std::numbers::pi
-                << "\n" 
-                << ", px = " << p.rdata(PIdx::pupx)
-                << "\n" 
-                << ", py = " << p.rdata(PIdx::pupy) << "\n";
+        // for debugging; checked phi values at each step
+        // if(!outfile.is_open()) {
+        //     std::cerr << "Error opening file: " << filename << std::endl;
+        //     return;
+        // }
+        // outfile << "Step " << i + 1 << "/" << steps << ": "
+        //         << ", phi (deg) = " << std::atan2(p.rdata(PIdx::y),
+        //                                     p.rdata(PIdx::x))*(180.0/M_PI) << "\n";
     }
+    // file output used for debugging to check phi values
+    // outfile.close();
 }
 
 int main() {
@@ -120,60 +97,60 @@ int main() {
 
     EParticle p;
     p.rdata(PIdx::time) = 0.0;
-    p.rdata(PIdx::x)    = r0;           
-    p.rdata(PIdx::y)    = 0.0;          
-    p.rdata(PIdx::z)    = 0.0;          
+    p.rdata(PIdx::x) = r0;
+    p.rdata(PIdx::y) = 0.0;
+    p.rdata(PIdx::z) = 0.0;
     p.rdata(PIdx::pupt) = 3.0 * std::sqrt(3.0);
     p.rdata(PIdx::pupx) = 0.0;
-    p.rdata(PIdx::pupy) = r0;           
+    p.rdata(PIdx::pupy) = r0;
     p.rdata(PIdx::pupz) = 0.0;
 
     // Conserved quantities at t = 0.
-    const double E0 = (1.0 - 2.0 * M / r0) * p.rdata(PIdx::pupt);   // sqrt(3)
-    const double L0 = p.rdata(PIdx::x) * p.rdata(PIdx::pupy)
-                    - p.rdata(PIdx::y) * p.rdata(PIdx::pupx);         // 9
+    const double E0 = (1.0 - 2.0 * M / r0) * p.rdata(PIdx::pupt);
+    const double L0 = p.rdata(PIdx::x) * p.rdata(PIdx::pupy) -
+                      p.rdata(PIdx::y) * p.rdata(PIdx::pupx);
 
-    const double t_total = 20.0;
-    const int    steps   = 10000;
-    const double dt      = t_total / steps;
+    // t_total is long to ensure that at least one complete orbit is made
+    const double t_total = 100.0;
+    const int steps = 100000;
+    const double dt = t_total / steps;
+
+    // file output used for debugging to check phi values
+    // std::ofstream outfile("light_ring_phi_values.txt", std::ios::app);
 
     SchwSphericalMetric metric(M);
     RK4(p, metric, dt, steps);
 
     // After integration the particle is back in Cartesian coordinates.
-    const double x  = p.rdata(PIdx::x);
-    const double y  = p.rdata(PIdx::y);
-    const double z  = p.rdata(PIdx::z);
+    const double x = p.rdata(PIdx::x);
+    const double y = p.rdata(PIdx::y);
+    const double z = p.rdata(PIdx::z);
     const double pt = p.rdata(PIdx::pupt);
     const double px = p.rdata(PIdx::pupx);
     const double py = p.rdata(PIdx::pupy);
     const double pz = p.rdata(PIdx::pupz);
 
-    const double r_final = std::sqrt(x*x + y*y + z*z);
+    const double r_final = std::sqrt(x * x + y * y + z * z);
     const double E_final = (1.0 - 2.0 * M / r_final) * pt;
     const double L_final = x * py - y * px;
 
     const double tol = 1e-12;
 
-    assert(std::abs(r_final - r0)             < tol);
-    assert(std::abs(z)                        < tol);
-    assert(std::abs(pz)                       < tol);
-    assert(std::abs(pt - 3.0*std::sqrt(3.0)) < tol);
-    assert(std::abs(E_final - E0)             < tol);
-    assert(std::abs(L_final - L0)             < tol);
+    assert(std::abs(r_final - r0) < tol);
+    assert(std::abs(z) < tol);
+    assert(std::abs(pz) < tol);
+    assert(std::abs(pt - 3.0 * std::sqrt(3.0)) < tol);
+    assert(std::abs(E_final - E0) < tol);
+    assert(std::abs(L_final - L0) < tol);
 
     std::cout << "Schwarzschild light ring test (r = 3M, theta = pi/2)\n";
-    std::cout << "r        = " << r_final
-              << "  (expected " << r0 << ")\n";
-    std::cout << "z        = " << z
-              << "  (expected 0)\n";
-    std::cout << "p^t      = " << pt
-              << "  (expected " << 3.0*std::sqrt(3.0) << ")\n";
-    std::cout << "E        = " << E_final
-              << "  (expected " << E0 << ")\n";
-    std::cout << "L        = " << L_final
-              << "  (expected " << L0 << ")\n";
-std::cout << "All assertions passed with tolerance " << tol << ". \n";
+    std::cout << "r        = " << r_final << "  (expected " << r0 << ")\n";
+    std::cout << "z        = " << z << "  (expected 0)\n";
+    std::cout << "p^t      = " << pt << "  (expected " << 3.0 * std::sqrt(3.0)
+              << ")\n";
+    std::cout << "E        = " << E_final << "  (expected " << E0 << ")\n";
+    std::cout << "L        = " << L_final << "  (expected " << L0 << ")\n";
+    std::cout << "All assertions passed with tolerance " << tol << ". \n";
 
     return 0;
 }
