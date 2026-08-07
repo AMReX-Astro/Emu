@@ -1,9 +1,10 @@
 #include "FlavoredNeutrinoContainer.H"
 #include "Constants.H"
+#include "Metric.H"
 
 using namespace amrex;
 
-void FlavoredNeutrinoContainer::SyncLocation(int type) {
+void FlavoredNeutrinoContainer::SyncLocation(int type, int coord_sys) {
     BL_PROFILE("FlavoredNeutrinoContainer::SyncLocation");
 
     AMREX_ASSERT(type == Sync::CoordinateToPosition ||
@@ -22,15 +23,49 @@ void FlavoredNeutrinoContainer::SyncLocation(int type) {
             ParticleType& p = pstruct[i];
 
             if (type == Sync::CoordinateToPosition) {
-                // Copy integrated position to the particle position.
-                p.pos(0) = p.rdata(PIdx::x);
-                p.pos(1) = p.rdata(PIdx::y);
-                p.pos(2) = p.rdata(PIdx::z);
+                FourVec pos_mesh;
+
+                //matching integrated particle coordinate system to mesh coordinate system
+                if (coord_sys == 0) {
+                    CartesianMetric metric;
+                    pos_mesh = metric.pos_conv(p);
+                } else if (coord_sys == 1) {
+                    CylindricalMetric metric;
+                    pos_mesh = metric.pos_conv(p);
+                } else {
+                    SphericalMetric metric;
+                    pos_mesh = metric.pos_conv(p);
+                }
+
+                // Copy converted integrated position to the particle position.
+                p.pos(0) = pos_mesh[1];
+                p.pos(1) = pos_mesh[2];
+                p.pos(2) = pos_mesh[3];
+
             } else if (type == Sync::PositionToCoordinate) {
-                // Copy the reset particle position back to the integrated position.
+                // Copy the reset particle position back to the integrated position (in mesh coordinate system)
                 p.rdata(PIdx::x) = p.pos(0);
                 p.rdata(PIdx::y) = p.pos(1);
                 p.rdata(PIdx::z) = p.pos(2);
+
+                //turning integrated particle coordinate system back to cartesian
+
+                FourVec pos_int;
+
+                if (coord_sys == 0) {
+                    CartesianMetric metric;
+                    pos_int = metric.pos_conv_inv(p);
+                } else if (coord_sys == 1) {
+                    CylindricalMetric metric;
+                    pos_int = metric.pos_conv_inv(p);
+                } else {
+                    SphericalMetric metric;
+                    pos_int = metric.pos_conv_inv(p);
+                }
+
+                p.rdata(PIdx::x) = pos_int[1];
+                p.rdata(PIdx::y) = pos_int[2];
+                p.rdata(PIdx::z) = pos_int[3];
             }
         });
     }

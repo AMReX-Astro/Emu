@@ -98,7 +98,7 @@ class FlavoredNeutrinoContainer
 
     void ApplyBoundaryConditions(const TestParams* parms);
 
-    void SyncLocation(int type);
+    void SyncLocation(int type, int coord_sys);
 
     void UpdateLocationFrom(FlavoredNeutrinoContainer& Other);
 

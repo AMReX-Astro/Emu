@@ -8,6 +8,9 @@
 #include "EosTableFunctions.H"
 
 #include "NuLibTable.H"
+
+#include "Metric.H"
+
 #include "NuLibTableFunctions.H"
 
 using namespace amrex;
@@ -61,12 +64,42 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
 
     // Get the cell size array
     const auto dxi = geom.CellSizeArray();
+    // Getting the lower bounds of the domain
+    const auto p_lo = geom.ProbLoArray();
+    // Getting the upper bounds of the domain
+    const auto p_hi = geom.ProbHiArray();
+
     Real dt_translation = 0.0;
+
     if (parms->cfl_factor > 0.0) {
+        Real min_length;
+
+        if (parms->coord_sys == 0) {
+            // Cartesian: (dx1,dx2,dx3) = (dx,dy,dz)
+            min_length = std::min({dxi[0], dxi[1], dxi[2]});
+        }
+
+        else if (parms->coord_sys == 1) {
+            //Cylindrical: (dx1,dx2,dx3) = (dr, r*dphi, dz)
+            // r_min = lowest_r + r_width/4 (ad hoc) . To safe guard against lowest_r = 0
+            Real r_min = p_lo[0] + dxi[0] / 2;
+            min_length = std::min({dxi[0], r_min * dxi[1], dxi[2]});
+        }
+
+        else {
+            //Spherical: (dx1,dx2,dx3) = (dr, r*dtheta, r*sin(theta)*dphi )
+            //The spehrical part might require rethinking
+            Real sin_theta_min =
+                std::min({std::sin(p_lo[1]), std::sin(p_hi[1])});
+            Real r_min = p_lo[0] + dxi[0] / 4;
+            min_length = std::min(
+                {dxi[0], r_min * dxi[1], r_min * sin_theta_min * dxi[2]});
+        }
+
         // Calculate the time step size based on the translation CFL factor
-        // dt = (min(dx,dy,dz)/c) * cfl_factor
-        dt_translation = std::min({dxi[0], dxi[1], dxi[2]}) / PhysConst::c *
-                         parms->cfl_factor;
+
+        // dt = (min(dx1,dx2,dx3)/c) * cfl_factor
+        dt_translation = min_length / PhysConst::c * parms->cfl_factor;
     }
 
     Real dt_flavor = 0.0;
@@ -203,9 +236,8 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
 void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                      MultiFab& state, const Geometry& geom,
                      const TestParams* parms) {
-    const auto plo = geom.ProbLoArray();
+    const auto p_lo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
-    const Real inv_cell_volume = dxi[0] * dxi[1] * dxi[2];
 
     // Create an alias of the MultiFab so ParticleToMesh only erases the quantities
     // that will be set by the neutrinos.
@@ -244,9 +276,9 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
         neutrinos, deposit_state, 0,
         [=] AMREX_GPU_DEVICE(const FlavoredNeutrinoContainer::ParticleType& p,
                              amrex::Array4<amrex::Real> const& sarr) {
-            const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
-            const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
-            const amrex::Real delta_z = (p.pos(2) - plo[2]) * dxi[2];
+            const amrex::Real delta_x = (p.pos(0) - p_lo[0]) * dxi[0];
+            const amrex::Real delta_y = (p.pos(1) - p_lo[1]) * dxi[1];
+            const amrex::Real delta_z = (p.pos(2) - p_lo[2]) * dxi[2];
 
             const ParticleInterpolator<SHAPE_FACTOR_ORDER> sx(
                 delta_x, shape_factor_order_x);
@@ -294,6 +326,32 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
             for (int k = sz.first(); k <= sz.last(); ++k) {
                 for (int j = sy.first(); j <= sy.last(); ++j) {
                     for (int i = sx.first(); i <= sx.last(); ++i) {
+                        // getting the upper and lower bounds of the cell
+                        const amrex::Real x1_lo = p_lo[0] + i / dxi[0];
+                        const amrex::Real x1_hi = p_lo[0] + (i + 1) / dxi[0];
+                        const amrex::Real x2_lo = p_lo[1] + j / dxi[1];
+                        const amrex::Real x2_hi = p_lo[1] + (j + 1) / dxi[1];
+                        const amrex::Real x3_lo = p_lo[2] + k / dxi[2];
+                        const amrex::Real x3_hi = p_lo[2] + (k + 1) / dxi[2];
+
+                        //calculating cell volume
+                        amrex::Real V_cell;
+                        if (parms->coord_sys == 0) {
+                            CartesianMetric m;
+                            V_cell =
+                                m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
+                        } else if (parms->coord_sys == 1) {
+                            CylindricalMetric m;
+                            V_cell =
+                                m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
+                        } else {
+                            SphericalMetric m;
+                            V_cell =
+                                m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
+                        }
+
+                        const amrex::Real inv_cell_volume = 1.0 / V_cell;
+
                         const amrex::Real vol =
                             sx(i) * sy(j) * sz(k) * inv_cell_volume;
 
@@ -346,7 +404,7 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
 void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                                const MultiFab& state, const Geometry& geom,
                                const TestParams* parms) {
-    const auto plo = geom.ProbLoArray();
+    const auto p_lo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
 
     const int shape_factor_order_x =
@@ -416,9 +474,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 
 #include "generated_files/Evolve.cpp_Vvac_fill"
 
-            const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
-            const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
-            const amrex::Real delta_z = (p.pos(2) - plo[2]) * dxi[2];
+            const amrex::Real delta_x = (p.pos(0) - p_lo[0]) * dxi[0];
+            const amrex::Real delta_y = (p.pos(1) - p_lo[1]) * dxi[1];
+            const amrex::Real delta_z = (p.pos(2) - p_lo[2]) * dxi[2];
 
             const ParticleInterpolator<SHAPE_FACTOR_ORDER> sx(
                 delta_x, shape_factor_order_x);
@@ -771,22 +829,23 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 // Compute the time derivative of \( N_{ab} \) using the Quantum Kinetic Equations (QKE).
 #include "generated_files/Evolve.cpp_dfdt_fill"
 
+            //getting the rhs of the geodesic equations in cartesian coordinate system
+
+            CartesianMetric metric;
+
+            GeodesicArray geodesic_rhs = metric.geodesic_rhs(p);
+
             // set the dx/dt values
-            p.rdata(PIdx::x) =
-                p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
-            p.rdata(PIdx::y) =
-                p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
-            p.rdata(PIdx::z) =
-                p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
-            // set the dt/dt = 1. Neutrinos move at one second per second
-            p.rdata(PIdx::time) = 1.0;
-            // set the d(pE)/dt values
-            p.rdata(PIdx::pupx) = 0;
-            p.rdata(PIdx::pupy) = 0;
-            p.rdata(PIdx::pupz) = 0;
-            // set the dE/dt values
-            p.rdata(PIdx::pupt) = 0;
-            // set the dVphase/dt values
+            p.rdata(PIdx::time) = geodesic_rhs[0];
+            p.rdata(PIdx::x) = geodesic_rhs[1] * PhysConst::c;
+            p.rdata(PIdx::y) = geodesic_rhs[2] * PhysConst::c;
+            p.rdata(PIdx::z) = geodesic_rhs[3] * PhysConst::c;
+            // set the d(p)/dt values
+            p.rdata(PIdx::pupt) = geodesic_rhs[4];
+            p.rdata(PIdx::pupx) = geodesic_rhs[5];
+            p.rdata(PIdx::pupy) = geodesic_rhs[6];
+            p.rdata(PIdx::pupz) = geodesic_rhs[7];
+
             p.rdata(PIdx::Vphase) = 0;
         });
 }

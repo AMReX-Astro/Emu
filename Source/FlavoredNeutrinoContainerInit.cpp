@@ -4,6 +4,7 @@
 #include <string>
 #include "Constants.H"
 #include "FlavoredNeutrinoContainer.H"
+#include "Metric.H"
 
 using namespace amrex;
 
@@ -157,6 +158,8 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
     const auto plo = Geom(lev).ProbLoArray();
     const auto& a_bounds = Geom(lev).ProbDomain();
 
+    const int coord_sys = parms->coord_sys;
+
     const int nlocs_per_cell =
         AMREX_D_TERM(parms->nppc[0], *parms->nppc[1], *parms->nppc[2]);
 
@@ -168,7 +171,6 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
     // determine the number of directions per location
     int ndirs_per_loc = particle_data.size();
     amrex::Print() << "Using " << ndirs_per_loc << " directions." << std::endl;
-    const Real scale_fac = dx[0] * dx[1] * dx[2] / nlocs_per_cell;
 
     // Loop over multifabs //
 #ifdef _OPENMP
@@ -270,6 +272,29 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
 
             for (int i_loc = 0; i_loc < nlocs_per_cell; i_loc++) {
                 Real r[3];
+
+                // getting the upper and lower bounds of the cell
+                const Real x1_lo = plo[0] + i * dx[0];
+                const Real x1_hi = plo[0] + (i + 1) * dx[0];
+                const Real x2_lo = plo[1] + j * dx[1];
+                const Real x2_hi = plo[1] + (j + 1) * dx[1];
+                const Real x3_lo = plo[2] + k * dx[2];
+                const Real x3_hi = plo[2] + (k + 1) * dx[2];
+
+                //calculating cell volume
+                amrex::Real V_cell;
+                if (coord_sys == 0) {
+                    CartesianMetric m;
+                    V_cell = m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
+                } else if (coord_sys == 1) {
+                    CylindricalMetric m;
+                    V_cell = m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
+                } else {
+                    SphericalMetric m;
+                    V_cell = m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
+                }
+
+                const Real scale_fac = V_cell / nlocs_per_cell;
 
                 get_position_unit_cell(r, parms->nppc, i_loc);
 
