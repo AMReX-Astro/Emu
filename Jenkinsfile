@@ -172,7 +172,7 @@ pipeline {
 			}
 		}
 
-		stage('Monochromatic Isotropic Scattering'){ steps{
+		stage('Monochromatic Isotropic-Kernel Scattering'){ steps{
 
 				dir('Exec'){
 					sh 'python ../Scripts/initial_conditions/st12_monocromatic_isotropic_scattering_test.py'
