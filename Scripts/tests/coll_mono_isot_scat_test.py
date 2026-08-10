@@ -19,6 +19,7 @@ args = parser.parse_args()
 
 NF=3
 volume_ccm = 1e4**3 # ccm
+n_particles_per_cell = 92
 
 def distribution_delta_beam_direction(
     t: float,
@@ -29,7 +30,7 @@ def distribution_delta_beam_direction(
 
     exponential = np.exp(-speed * kappa * t)
     return N0 * (
-        (1.0 - exponential) / (4.0 * np.pi)
+        (1.0 - exponential) / n_particles_per_cell
         + exponential
     )
 
@@ -41,7 +42,7 @@ def distribution_delta_other_directions(
 ) -> float:
 
     exponential = np.exp(-speed * kappa * t)
-    return N0 * (1.0 - exponential) / (4.0 * np.pi)
+    return N0 * (1.0 - exponential) / n_particles_per_cell
 
 nu_e = 1e32 # 1/ccm
 nu_mu = 2e32 # 1/ccm
@@ -135,27 +136,28 @@ if __name__ == "__main__":
     plt.rcParams.update({'font.size': 25})
 
     # Numerical solution: thick lines for $\hat{p}_x$, dashed for $\hat{p}_{\mathrm{others}}$
-    plt.plot(time_s_arr, n_ee_x, label=r"$n_{\nu_e}^{\hat{p}_x}$", linewidth=4, linestyle="-", alpha=0.5, color="C0")
-    plt.plot(time_s_arr, n_uu_x, label=r"$n_{\nu_\mu}^{\hat{p}_x}$", linewidth=4, linestyle="-", alpha=0.5, color="C1")
-    plt.plot(time_s_arr, n_tt_x, label=r"$n_{\nu_\tau}^{\hat{p}_x}$", linewidth=4, linestyle="-", alpha=0.5, color="C3")
+    plt.plot(time_s_arr, n_ee_x, label=r"$n_{\nu_e}^{\hat{p}_x}$", linewidth=2, linestyle="-", alpha=0.25, color="C0")
+    plt.plot(time_s_arr, n_uu_x, label=r"$n_{\nu_\mu}^{\hat{p}_x}$", linewidth=2, linestyle="-", alpha=0.25, color="C1")
+    plt.plot(time_s_arr, n_tt_x, label=r"$n_{\nu_\tau}^{\hat{p}_x}$", linewidth=2, linestyle="-", alpha=0.25, color="C3")
 
-    plt.plot(time_s_arr, n_ee_other, label=r"$n_{\nu_e}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=4, alpha=0.5, color="C4")
-    plt.plot(time_s_arr, n_uu_other, label=r"$n_{\nu_\mu}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=4, alpha=0.5, color="C5")
-    plt.plot(time_s_arr, n_tt_other, label=r"$n_{\nu_\tau}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=4, alpha=0.5, color="C6")
+    plt.plot(time_s_arr, n_ee_other, label=r"$n_{\nu_e}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=2, alpha=0.25, color="C4")
+    plt.plot(time_s_arr, n_uu_other, label=r"$n_{\nu_\mu}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=2, alpha=0.25, color="C5")
+    plt.plot(time_s_arr, n_tt_other, label=r"$n_{\nu_\tau}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=2, alpha=0.25, color="C6")
 
     # Theoretical values: dotted for $\hat{p}_x$, dashed thin for $\hat{p}_{\mathrm{others}}$
-    plt.plot(time_s_arr, n_ee_x_theory, label=r"$n_{\nu_e,\mathrm{th}}^{\hat{p}_x}$", color="C0", linestyle=":", linewidth=1, alpha=1.0)
-    plt.plot(time_s_arr, n_uu_x_theory, label=r"$n_{\nu_\mu,\mathrm{th}}^{\hat{p}_x}$", color="C1", linestyle=":", linewidth=1, alpha=1.0)
-    plt.plot(time_s_arr, n_tt_x_theory, label=r"$n_{\nu_\tau,\mathrm{th}}^{\hat{p}_x}$", color="C3", linestyle=":", linewidth=1, alpha=1.0)
+    plt.plot(time_s_arr, n_ee_x_theory, label=r"$n_{\nu_e,\mathrm{th}}^{\hat{p}_x}$", color="C0", linestyle=":", linewidth=2, alpha=1.0)
+    plt.plot(time_s_arr, n_uu_x_theory, label=r"$n_{\nu_\mu,\mathrm{th}}^{\hat{p}_x}$", color="C1", linestyle=":", linewidth=2, alpha=1.0)
+    plt.plot(time_s_arr, n_tt_x_theory, label=r"$n_{\nu_\tau,\mathrm{th}}^{\hat{p}_x}$", color="C3", linestyle=":", linewidth=2, alpha=1.0)
 
-    plt.plot(time_s_arr, n_ee_other_theory, label=r"$n_{\nu_e,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C4", linestyle="--", linewidth=1, alpha=1.0)
-    plt.plot(time_s_arr, n_uu_other_theory, label=r"$n_{\nu_\mu,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C5", linestyle="--", linewidth=1, alpha=1.0)
-    plt.plot(time_s_arr, n_tt_other_theory, label=r"$n_{\nu_\tau,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C6", linestyle="--", linewidth=1, alpha=1.0)
+    plt.plot(time_s_arr, n_ee_other_theory, label=r"$n_{\nu_e,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C4", linestyle=":", linewidth=2, alpha=1.0)
+    plt.plot(time_s_arr, n_uu_other_theory, label=r"$n_{\nu_\mu,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C5", linestyle=":", linewidth=2, alpha=1.0)
+    plt.plot(time_s_arr, n_tt_other_theory, label=r"$n_{\nu_\tau,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C6", linestyle=":", linewidth=2, alpha=1.0)
 
     plt.xlabel(r"$t\;[\mathrm{s}]$", fontsize=25)
     plt.ylabel(r"$n\,[\mathrm{cm}^{-3}]$", fontsize=25)
     plt.tick_params(axis='both', which='major', labelsize=25)
     plt.legend(fontsize=15, ncol=2)
+    plt.yscale("log")
     plt.tight_layout()
     plt.savefig("n_x_and_n_others_neutrinos.pdf", bbox_inches="tight")
     plt.close()
@@ -165,27 +167,72 @@ if __name__ == "__main__":
     plt.rcParams.update({'font.size': 25})
 
     # Numerical solution: thick lines for $\hat{p}_x$, dashed for $\hat{p}_{\mathrm{others}}$
-    plt.plot(time_s_arr, n_eebar_x, label=r"$n_{\bar{\nu}_e}^{\hat{p}_x}$", linewidth=4, linestyle="-", alpha=0.5, color="C0")
-    plt.plot(time_s_arr, n_uubar_x, label=r"$n_{\bar{\nu}_\mu}^{\hat{p}_x}$", linewidth=4, linestyle="-", alpha=0.5, color="C1")
-    plt.plot(time_s_arr, n_ttbar_x, label=r"$n_{\bar{\nu}_\tau}^{\hat{p}_x}$", linewidth=4, linestyle="-", alpha=0.5, color="C3")
+    plt.plot(time_s_arr, n_eebar_x, label=r"$n_{\bar{\nu}_e}^{\hat{p}_x}$", linewidth=2, linestyle="-", alpha=0.25, color="C0")
+    plt.plot(time_s_arr, n_uubar_x, label=r"$n_{\bar{\nu}_\mu}^{\hat{p}_x}$", linewidth=2, linestyle="-", alpha=0.25, color="C1")
+    plt.plot(time_s_arr, n_ttbar_x, label=r"$n_{\bar{\nu}_\tau}^{\hat{p}_x}$", linewidth=2, linestyle="-", alpha=0.25, color="C3")
 
-    plt.plot(time_s_arr, n_eebar_other, label=r"$n_{\bar{\nu}_e}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=4, alpha=0.5, color="C4")
-    plt.plot(time_s_arr, n_uubar_other, label=r"$n_{\bar{\nu}_\mu}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=4, alpha=0.5, color="C5")
-    plt.plot(time_s_arr, n_ttbar_other, label=r"$n_{\bar{\nu}_\tau}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=4, alpha=0.5, color="C6")
+    plt.plot(time_s_arr, n_eebar_other, label=r"$n_{\bar{\nu}_e}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=2, alpha=0.25, color="C4")
+    plt.plot(time_s_arr, n_uubar_other, label=r"$n_{\bar{\nu}_\mu}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=2, alpha=0.25, color="C5")
+    plt.plot(time_s_arr, n_ttbar_other, label=r"$n_{\bar{\nu}_\tau}^{\hat{p}_{\mathrm{others}}}$", linestyle="-", linewidth=2, alpha=0.25, color="C6")
 
     # Theoretical values: dotted for $\hat{p}_x$, dashed thin for $\hat{p}_{\mathrm{others}}$
-    plt.plot(time_s_arr, n_eebar_x_theory, label=r"$n_{\bar{\nu}_e,\mathrm{th}}^{\hat{p}_x}$", color="C0", linestyle=":", linewidth=1, alpha=1.0)
-    plt.plot(time_s_arr, n_uubar_x_theory, label=r"$n_{\bar{\nu}_\mu,\mathrm{th}}^{\hat{p}_x}$", color="C1", linestyle=":", linewidth=1, alpha=1.0)
-    plt.plot(time_s_arr, n_ttbar_x_theory, label=r"$n_{\bar{\nu}_\tau,\mathrm{th}}^{\hat{p}_x}$", color="C3", linestyle=":", linewidth=1, alpha=1.0)
+    plt.plot(time_s_arr, n_eebar_x_theory, label=r"$n_{\bar{\nu}_e,\mathrm{th}}^{\hat{p}_x}$", color="C0", linestyle=":", linewidth=2, alpha=1.0)
+    plt.plot(time_s_arr, n_uubar_x_theory, label=r"$n_{\bar{\nu}_\mu,\mathrm{th}}^{\hat{p}_x}$", color="C1", linestyle=":", linewidth=2, alpha=1.0)
+    plt.plot(time_s_arr, n_ttbar_x_theory, label=r"$n_{\bar{\nu}_\tau,\mathrm{th}}^{\hat{p}_x}$", color="C3", linestyle=":", linewidth=2, alpha=1.0)
 
-    plt.plot(time_s_arr, n_eebar_other_theory, label=r"$n_{\bar{\nu}_e,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C4", linestyle=":", linewidth=1, alpha=1.0)
-    plt.plot(time_s_arr, n_uubar_other_theory, label=r"$n_{\bar{\nu}_\mu,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C5", linestyle=":", linewidth=1, alpha=1.0)
-    plt.plot(time_s_arr, n_ttbar_other_theory, label=r"$n_{\bar{\nu}_\tau,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C6", linestyle=":", linewidth=1, alpha=1.0)
+    plt.plot(time_s_arr, n_eebar_other_theory, label=r"$n_{\bar{\nu}_e,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C4", linestyle=":", linewidth=2, alpha=1.0)
+    plt.plot(time_s_arr, n_uubar_other_theory, label=r"$n_{\bar{\nu}_\mu,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C5", linestyle=":", linewidth=2, alpha=1.0)
+    plt.plot(time_s_arr, n_ttbar_other_theory, label=r"$n_{\bar{\nu}_\tau,\mathrm{th}}^{\hat{p}_{\mathrm{others}}}$", color="C6", linestyle=":", linewidth=2, alpha=1.0)
 
     plt.xlabel(r"$t\;[\mathrm{s}]$", fontsize=25)
     plt.ylabel(r"$n\,[\mathrm{cm}^{-3}]$", fontsize=25)
     plt.tick_params(axis='both', which='major', labelsize=25)
     plt.legend(fontsize=15, ncol=2)
+    plt.yscale("log")
     plt.tight_layout()
     plt.savefig("n_x_and_n_others_antineutrinos.pdf", bbox_inches="tight")
     plt.close()
+
+    # Only compute the error for all items but the first, without using nan_to_num
+    max_error_nee = np.nanmax(np.abs(np.asarray(n_ee_x)[1:] - np.asarray(n_ee_x_theory)[1:]) / np.asarray(n_ee_x_theory)[1:])
+    max_error_nmu = np.nanmax(np.abs(np.asarray(n_uu_x)[1:] - np.asarray(n_uu_x_theory)[1:]) / np.asarray(n_uu_x_theory)[1:])
+    max_error_ntau = np.nanmax(np.abs(np.asarray(n_tt_x)[1:] - np.asarray(n_tt_x_theory)[1:]) / np.asarray(n_tt_x_theory)[1:])
+    max_error_neebar = np.nanmax(np.abs(np.asarray(n_eebar_x)[1:] - np.asarray(n_eebar_x_theory)[1:]) / np.asarray(n_eebar_x_theory)[1:])
+    max_error_nmuubar = np.nanmax(np.abs(np.asarray(n_uubar_x)[1:] - np.asarray(n_uubar_x_theory)[1:]) / np.asarray(n_uubar_x_theory)[1:])
+    max_error_nttaubar = np.nanmax(np.abs(np.asarray(n_ttbar_x)[1:] - np.asarray(n_ttbar_x_theory)[1:]) / np.asarray(n_ttbar_x_theory)[1:])
+
+    max_error_nee_other = np.nanmax(np.abs(np.asarray(n_ee_other)[1:] - np.asarray(n_ee_other_theory)[1:]) / np.asarray(n_ee_other_theory)[1:])
+    max_error_nmu_other = np.nanmax(np.abs(np.asarray(n_uu_other)[1:] - np.asarray(n_uu_other_theory)[1:]) / np.asarray(n_uu_other_theory)[1:])
+    max_error_ntau_other = np.nanmax(np.abs(np.asarray(n_tt_other)[1:] - np.asarray(n_tt_other_theory)[1:]) / np.asarray(n_tt_other_theory)[1:])
+    max_error_neebar_other = np.nanmax(np.abs(np.asarray(n_eebar_other)[1:] - np.asarray(n_eebar_other_theory)[1:]) / np.asarray(n_eebar_other_theory)[1:])
+    max_error_nmuubar_other = np.nanmax(np.abs(np.asarray(n_uubar_other)[1:] - np.asarray(n_uubar_other_theory)[1:]) / np.asarray(n_uubar_other_theory)[1:])
+    max_error_nttaubar_other = np.nanmax(np.abs(np.asarray(n_ttbar_other)[1:] - np.asarray(n_ttbar_other_theory)[1:]) / np.asarray(n_ttbar_other_theory)[1:])
+
+    print(f"Max error for n_ee in x direction: {max_error_nee}")
+    print(f"Max error for n_uu in x direction: {max_error_nmu}")
+    print(f"Max error for n_tt in x direction: {max_error_ntau}")
+    print(f"Max error for n_eebar in x direction: {max_error_neebar}")
+    print(f"Max error for n_uubar in x direction: {max_error_nmuubar}")
+    print(f"Max error for n_ttbar in x direction: {max_error_nttaubar}")
+
+    print(f"Max error for n_ee in other directions: {max_error_nee_other}")
+    print(f"Max error for n_uu in other directions: {max_error_nmu_other}")
+    print(f"Max error for n_tt in other directions: {max_error_ntau_other}")
+    print(f"Max error for n_eebar in other directions: {max_error_neebar_other}")
+    print(f"Max error for n_uubar in other directions: {max_error_nmuubar_other}")
+    print(f"Max error for n_ttbar in other directions: {max_error_nttaubar_other}")
+
+    assert max_error_nee < 1e-4
+    assert max_error_nmu < 1e-4
+    assert max_error_ntau < 1e-4
+    assert max_error_neebar < 1e-4
+    assert max_error_nmuubar < 1e-4
+    assert max_error_nttaubar < 1e-4 
+
+    assert max_error_nee_other < 1e-4
+    assert max_error_nmu_other < 1e-4
+    assert max_error_ntau_other < 1e-4
+    assert max_error_neebar_other < 1e-4
+    assert max_error_nmuubar_other < 1e-4
+    assert max_error_nttaubar_other < 1e-4
+    print("Test passed")
