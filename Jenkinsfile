@@ -172,6 +172,18 @@ pipeline {
 			}
 		}
 
+		stage('Monochromatic Isotropic Scattering'){ steps{
+
+				dir('Exec'){
+					sh 'python ../Scripts/initial_conditions/st12_monocromatic_isotropic_scattering_test.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_monocromatic_isotropic_scattering_test'
+					sh ' python ../Scripts/tests/coll_mono_isot_scat_test.py '
+					archiveArtifacts artifacts: '*.pdf'
+					sh 'rm -rf plt*'
+				}
+			}
+		}
+		
 		stage('Metric test'){ steps{
 				dir('unit_test'){
 					sh 'make'
