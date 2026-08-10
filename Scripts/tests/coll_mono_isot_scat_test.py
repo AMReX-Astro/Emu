@@ -51,7 +51,8 @@ parser.add_argument("-na", "--no_assert", action="store_true", help="If --no_ass
 args = parser.parse_args()
 
 NF=3
-volume_ccm = 1e4**3 # ccm
+volume_cell_ccm = 1e4**3 # ccm
+volume_total_ccm = 3e4**3 # ccm
 n_particles_per_cell = 92
 
 def distribution_delta_beam_direction(
@@ -111,6 +112,13 @@ if __name__ == "__main__":
     n_ttbar_other = []
     time_s = []
 
+    n_total_ee = []
+    n_total_uu = []
+    n_total_tt = []
+    n_total_eebar = []
+    n_total_uubar = []
+    n_total_ttbar = []
+
     phat_x = np.array([1, 0, 0])
     phat_other = np.array([9.23879533e-01, 3.82683432e-01, 0.00000000e+00])
 
@@ -134,25 +142,37 @@ if __name__ == "__main__":
             p = rdata[j]
             phat_this_particle = np.array([p[rkey["pupx"]], p[rkey["pupy"]], p[rkey["pupz"]]]) / p[rkey["pupt"]]
             if np.allclose(phat_this_particle, phat_x) and not xflag:
-                n_ee_x.append(p[rkey["N00_Re"]] / volume_ccm)
-                n_uu_x.append(p[rkey["N11_Re"]] / volume_ccm)
-                n_tt_x.append(p[rkey["N22_Re"]] / volume_ccm)
-                n_eebar_x.append(p[rkey["N00_Rebar"]] / volume_ccm)
-                n_uubar_x.append(p[rkey["N11_Rebar"]] / volume_ccm)
-                n_ttbar_x.append(p[rkey["N22_Rebar"]] / volume_ccm)
+                n_ee_x.append(p[rkey["N00_Re"]] / volume_cell_ccm)
+                n_uu_x.append(p[rkey["N11_Re"]] / volume_cell_ccm)
+                n_tt_x.append(p[rkey["N22_Re"]] / volume_cell_ccm)
+                n_eebar_x.append(p[rkey["N00_Rebar"]] / volume_cell_ccm)
+                n_uubar_x.append(p[rkey["N11_Rebar"]] / volume_cell_ccm)
+                n_ttbar_x.append(p[rkey["N22_Rebar"]] / volume_cell_ccm)
                 xflag=True
 
             elif np.allclose(phat_this_particle, phat_other) and not otherflag:
                 otherflag=True
-                n_ee_other.append(p[rkey["N00_Re"]] / volume_ccm)
-                n_uu_other.append(p[rkey["N11_Re"]] / volume_ccm)
-                n_tt_other.append(p[rkey["N22_Re"]] / volume_ccm)
-                n_eebar_other.append(p[rkey["N00_Rebar"]] / volume_ccm)
-                n_uubar_other.append(p[rkey["N11_Rebar"]] / volume_ccm)
-                n_ttbar_other.append(p[rkey["N22_Rebar"]] / volume_ccm)
+                n_ee_other.append(p[rkey["N00_Re"]] / volume_cell_ccm)
+                n_uu_other.append(p[rkey["N11_Re"]] / volume_cell_ccm)
+                n_tt_other.append(p[rkey["N22_Re"]] / volume_cell_ccm)
+                n_eebar_other.append(p[rkey["N00_Rebar"]] / volume_cell_ccm)
+                n_uubar_other.append(p[rkey["N11_Rebar"]] / volume_cell_ccm)
+                n_ttbar_other.append(p[rkey["N22_Rebar"]] / volume_cell_ccm)
 
-            if xflag and otherflag:
-                break
+            if j==0:
+                n_total_ee.append(p[rkey["N00_Re"]] / volume_total_ccm)
+                n_total_uu.append(p[rkey["N11_Re"]] / volume_total_ccm)
+                n_total_tt.append(p[rkey["N22_Re"]] / volume_total_ccm)
+                n_total_eebar.append(p[rkey["N00_Rebar"]] / volume_total_ccm)
+                n_total_uubar.append(p[rkey["N11_Rebar"]] / volume_total_ccm)
+                n_total_ttbar.append(p[rkey["N22_Rebar"]] / volume_total_ccm)
+            else:
+                n_total_ee[-1] += p[rkey["N00_Re"]] / volume_total_ccm
+                n_total_uu[-1] += p[rkey["N11_Re"]] / volume_total_ccm
+                n_total_tt[-1] += p[rkey["N22_Re"]] / volume_total_ccm
+                n_total_eebar[-1] += p[rkey["N00_Rebar"]] / volume_total_ccm
+                n_total_uubar[-1] += p[rkey["N11_Rebar"]] / volume_total_ccm
+                n_total_ttbar[-1] += p[rkey["N22_Rebar"]] / volume_total_ccm
 
     # Plot n_x and n_others:
     time_s_arr = np.array(time_s)
@@ -277,4 +297,38 @@ if __name__ == "__main__":
     assert max_error_neebar_other < 1e-4
     assert max_error_nmuubar_other < 1e-4
     assert max_error_nttaubar_other < 1e-4
-    print("Test passed")
+    print("Isotropic scattering test passed")
+
+    # plot total number densities
+    plt.figure(figsize=(12, 8))
+    plt.rcParams.update({'font.size': 25})
+    plt.plot(time_s_arr, n_total_ee, label=r"$n_{\nu_e}$", linewidth=2, linestyle="-", alpha=1.0, color="C0")
+    plt.plot(time_s_arr, n_total_uu, label=r"$n_{\nu_\mu}$", linewidth=2, linestyle="-", alpha=1.0, color="C1")
+    plt.plot(time_s_arr, n_total_tt, label=r"$n_{\nu_\tau}$", linewidth=2, linestyle="-", alpha=1.0, color="C3")
+    plt.plot(time_s_arr, n_total_eebar, label=r"$n_{\bar{\nu}_e}$", linewidth=2, linestyle="-", alpha=1.0, color="C4")
+    plt.plot(time_s_arr, n_total_uubar, label=r"$n_{\bar{\nu}_\mu}$", linewidth=2, linestyle="-", alpha=1.0, color="C5")
+    plt.plot(time_s_arr, n_total_ttbar, label=r"$n_{\bar{\nu}_\tau}$", linewidth=2, linestyle="-", alpha=1.0, color="C6")
+    plt.xlabel(r"$t\;[\mathrm{s}]$", fontsize=25)
+    plt.ylabel(r"$n\,[\mathrm{cm}^{-3}]$", fontsize=25)
+    plt.tick_params(axis='both', which='major', labelsize=25)
+    plt.legend(fontsize=15, ncol=2)
+    plt.yscale("log")
+    plt.tight_layout()
+    plt.savefig("n_total.pdf", bbox_inches="tight")
+    plt.close()
+
+    print(f"Total number of neutrinos (1/ccm) e initial = {nu_e} and final = {n_total_ee[-1]}")
+    print(f"Total number of neutrinos (1/ccm) mu initial = {nu_mu} and final = {n_total_uu[-1]}")
+    print(f"Total number of neutrinos (1/ccm) tau initial = {nu_tau} and final = {n_total_tt[-1]}")
+
+    print(f"Total number of antineutrinos (1/ccm) ebar initial = {nu_ebar} and final = {n_total_eebar[-1]}")
+    print(f"Total number of antineutrinos (1/ccm) mubar initial = {nu_mubar} and final = {n_total_uubar[-1]}")
+    print(f"Total number of antineutrinos (1/ccm) taubar initial = {nu_taubar} and final = {n_total_ttbar[-1]}")
+
+    assert np.allclose(n_total_ee[-1], nu_e)
+    assert np.allclose(n_total_eebar[-1], nu_ebar)
+    assert np.allclose(n_total_uu[-1], nu_mu)
+    assert np.allclose(n_total_uubar[-1], nu_mubar)
+    assert np.allclose(n_total_tt[-1], nu_tau)
+    assert np.allclose(n_total_ttbar[-1], nu_taubar)
+    print("Total number densities conservation test passed")
