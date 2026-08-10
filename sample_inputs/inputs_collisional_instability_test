@@ -133,6 +133,11 @@ IMFP_scat2bar_cm = 0
 
 delta_E = 0 # Mev
 
+# Angular samples per energy bin in particle_input.dat (solid-angle weight 4*pi/N).
+# Must match n_directions used when generating particle_input.dat
+# (rows = n_energy_bins * N). Common value for nphi_equator=16 is 92.
+number_of_particles_per_energy_bin_per_cell = 92
+
 #################
 # Background Ye, T and rho
 #################

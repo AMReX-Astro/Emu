@@ -375,9 +375,10 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                         // aliased with ncomp_max (see start of this function).
                         // --------------------------------------------------------------------
                         if (imfp_method == 1) {
-                            // Temporary: hard-coded direction count for the mono-iso test.
-                            constexpr amrex::Real number_of_particles_per_energy_bin_per_cell = 92.0;
                             constexpr int n_scat_flav = NUM_FLAVORS * NUM_FLAVORS;
+                            const amrex::Real n_dir_per_E =
+                                static_cast<amrex::Real>(
+                                    parms->number_of_particles_per_energy_bin_per_cell);
 
                             for (int nunubar = 0; nunubar < 2; ++nunubar) {
                                 const int particle_index_base =
@@ -421,8 +422,7 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                                                           start_comp + scat_off),
                                                 sx(i) * sy(j) * sz(k) *
                                                     (1.0 / (4 * MathConst::pi)) *
-                                                    (4 * MathConst::pi /
-                                                     number_of_particles_per_energy_bin_per_cell) *
+                                                    (4 * MathConst::pi / n_dir_per_E) *
                                                     p.rdata(particle_component_index) *
                                                     kappa_scat_iso_mono_inverse_cm);
                                         }

@@ -14,6 +14,8 @@
 # - Single energy beam (particle file from
 #   Scripts/initial_conditions/st12_monocromatic_isotropic_scattering_test.py)
 # - 92 direction particles per cell
+#   (number_of_particles_per_energy_bin_per_cell = 92; must match n_directions
+#    in the particle file: rows = n_energy_bins * that value)
 #
 # Initial number densities (1/ccm) in the +x beam direction only
 # -------------------------------------------------------------
@@ -170,6 +172,10 @@ IMFP_scat1bar_cm = 5.4e-4 # inv cm
 IMFP_scat2bar_cm = 5.5e-4 # inv cm
 
 delta_E = 0 # Mev
+
+# Angular samples per energy bin in particle_input.dat (solid-angle weight 4*pi/N).
+# For st12 with nphi_equator=16, N = 92. Total file rows = n_energy_bins * N.
+number_of_particles_per_energy_bin_per_cell = 92
 
 #################
 # Background Ye, T and rho
