@@ -10,10 +10,11 @@
 #
 # Geometry / particles
 # --------------------
-# - Single cell: ncell = (1,1,1)
+# - Domain: ncell = (3,3,3), Lx = Ly = Lz = 3e4 cm
+#   (27 equal cells; cell volume = (1e4 cm)^3)
 # - Single energy beam (particle file from
 #   Scripts/initial_conditions/st12_monocromatic_isotropic_scattering_test.py)
-# - 92 direction particles per cell
+# - 92 direction particles per energy bin per cell
 #   (number_of_particles_per_energy_bin_per_cell = 92; must match n_directions
 #    in the particle file: rows = n_energy_bins * that value)
 #

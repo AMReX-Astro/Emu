@@ -10,8 +10,9 @@ in EMU against the analytic monoenergetic isotropic-scattering solution.
 
 Setup
 -----
-- Single computational cell with a single energy bin.
-- 92 direction particles per cell (one monoenergetic beam).
+- Domain: ncell = (3,3,3), Lx = Ly = Lz = 3e4 cm (27 cells;
+  cell volume = (1e4 cm)^3, domain volume = (3e4 cm)^3).
+- Single energy bin; 92 direction particles per energy bin per cell.
 - Initial condition: a delta-function beam along +x with number densities
     nu_e     = 1e32 1/ccm
     nu_mu    = 2e32 1/ccm
@@ -19,7 +20,7 @@ Setup
     nu_ebar  = 4e32 1/ccm
     nu_mubar = 5e32 1/ccm
     nu_taubar= 6e32 1/ccm
-  (other directions start empty).
+  (other directions start empty; same template in every cell).
 - Constant scattering opacities (1/cm):
     IMFP_scat0_cm    = 5e-4
     IMFP_scat1_cm    = 5.1e-4
@@ -34,6 +35,7 @@ Isotropic scattering redistributes the beam over angle. Asymptotically,
 each of the 92 directions approaches n_initial / 92. This script compares
 numerical particle densities along the beam and an off-beam direction to
 that analytic isotropization history and writes comparison plots.
+Number-density conservation is checked over the full 3x3x3 domain.
 '''
 import numpy as np
 import argparse

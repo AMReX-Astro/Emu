@@ -13,7 +13,10 @@ Setup written by this script
 ----------------------------
 - Single energy bin (monoenergetic beam).
 - 92 direction particles (from nphi_equator = 16 over the sphere).
-- Intended for a single-cell run (see inputs_monocromatic_isotropic_scattering_test).
+- Particle file is a per-cell angular template; EMU replicates it into every
+  cell. Intended for the 3x3x3 domain in
+  inputs_monocromatic_isotropic_scattering_test (ncell = (3,3,3),
+  Lx = Ly = Lz = 3e4 cm).
 - Initial beam along +x only, with number densities
     nu_e     = 1e32 1/ccm
     nu_mu    = 2e32 1/ccm
