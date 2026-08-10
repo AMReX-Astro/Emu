@@ -792,15 +792,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                             (IMFP_scatbar[i][i] + IMFP_scatbar[j][j]) / 2.0;
                     }
                 }
-                // for (int k = 0; k < NUM_FLAVORS; ++k) {
-                //     for (int l = 0; l < NUM_FLAVORS; ++l) {
-                //         printf("IMFP_abs[%d][%d] = %e; IMFP_absbar[%d][%d] = %e; IMFP_scat_brakets[%d][%d] = %e; IMFP_scatbar_brakets[%d][%d] = %e\n",
-                //             k, l, IMFP_abs[k][l],
-                //             k, l, IMFP_absbar[k][l],
-                //             k, l, IMFP_scat_brakets[k][l],
-                //             k, l, IMFP_scatbar_brakets[k][l]);
-                //     }
-                // }
             }
             // If opacity_method is 2, the code interpolate inverse mean free paths from NuLib table and electron neutrino chemical potential from EoS table to compute the collision term.
             else if (parms->IMFP_method == 2) {
