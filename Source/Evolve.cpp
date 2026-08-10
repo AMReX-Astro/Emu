@@ -405,12 +405,6 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                                             kappa_brakets_scat_iso_mono_inverse_cm =
                                                 0.5 * (IMFP_scata_cm + IMFP_scatb_cm);
 
-                                        // // Print both (kappa_scat_iso_mono_inverse_cm) and (kappa_brakets_scat_iso_mono_inverse_cm)
-                                        // printf("Scattering (a=%d, b=%d, nu/nubar=%d): kappa_scat_iso_mono_inverse_cm = %g, kappa_brakets_scat_iso_mono_inverse_cm = %g\n",
-                                        //        a, b, nunubar,
-                                        //        (double)kappa_scat_iso_mono_inverse_cm,
-                                        //        (double)kappa_brakets_scat_iso_mono_inverse_cm);
-
                                         // Deposit Re (always) and Im (off-diagonal only).
                                         const int n_reim = (b > a) ? 2 : 1;
                                         for (int reim = 0; reim < n_reim; ++reim) {
@@ -420,8 +414,6 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                                             const int particle_component_index =
                                                 particle_index_base + comp;
 
-                                            // TEMPORARY CODE: edit this with the correct equations.
-                                            // scat_off uses the same Hermitian packing as N (comp).
                                             const int scat_off =
                                                 nunubar * n_scat_flav + comp;
                                             amrex::Gpu::Atomic::AddNoRet(
@@ -652,37 +644,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 }
             }
 
-// #if NUM_FLAVORS == 2
-//             // printf is device-safe; amrex::Print()/std::cout are host-only.
-//             printf("C_in_scat_pp_00_Re = %g\n", (double)C_in_scat_pp_00_Re);
-//             printf("C_in_scat_pp_01_Re = %g\n", (double)C_in_scat_pp_01_Re);
-//             printf("C_in_scat_pp_01_Im = %g\n", (double)C_in_scat_pp_01_Im);
-//             printf("C_in_scat_pp_11_Re = %g\n", (double)C_in_scat_pp_11_Re);
-//             printf("C_in_scat_pp_00_Rebar = %g\n", (double)C_in_scat_pp_00_Rebar);
-//             printf("C_in_scat_pp_01_Rebar = %g\n", (double)C_in_scat_pp_01_Rebar);
-//             printf("C_in_scat_pp_01_Imbar = %g\n", (double)C_in_scat_pp_01_Imbar);
-//             printf("C_in_scat_pp_11_Rebar = %g\n", (double)C_in_scat_pp_11_Rebar);
-// #elif NUM_FLAVORS == 3
-//             printf("C_in_scat_pp_00_Re = %g\n", (double)C_in_scat_pp_00_Re);
-//             printf("C_in_scat_pp_01_Re = %g\n", (double)C_in_scat_pp_01_Re);
-//             printf("C_in_scat_pp_01_Im = %g\n", (double)C_in_scat_pp_01_Im);
-//             printf("C_in_scat_pp_11_Re = %g\n", (double)C_in_scat_pp_11_Re);
-//             printf("C_in_scat_pp_02_Re = %g\n", (double)C_in_scat_pp_02_Re);
-//             printf("C_in_scat_pp_02_Im = %g\n", (double)C_in_scat_pp_02_Im);
-//             printf("C_in_scat_pp_12_Re = %g\n", (double)C_in_scat_pp_12_Re);
-//             printf("C_in_scat_pp_12_Im = %g\n", (double)C_in_scat_pp_12_Im);
-//             printf("C_in_scat_pp_22_Re = %g\n", (double)C_in_scat_pp_22_Re);
-//             printf("C_in_scat_pp_00_Rebar = %g\n", (double)C_in_scat_pp_00_Rebar);
-//             printf("C_in_scat_pp_01_Rebar = %g\n", (double)C_in_scat_pp_01_Rebar);
-//             printf("C_in_scat_pp_01_Imbar = %g\n", (double)C_in_scat_pp_01_Imbar);
-//             printf("C_in_scat_pp_11_Rebar = %g\n", (double)C_in_scat_pp_11_Rebar);
-//             printf("C_in_scat_pp_02_Rebar = %g\n", (double)C_in_scat_pp_02_Rebar);
-//             printf("C_in_scat_pp_02_Imbar = %g\n", (double)C_in_scat_pp_02_Imbar);
-//             printf("C_in_scat_pp_12_Rebar = %g\n", (double)C_in_scat_pp_12_Rebar);
-//             printf("C_in_scat_pp_12_Imbar = %g\n", (double)C_in_scat_pp_12_Imbar);
-//             printf("C_in_scat_pp_22_Rebar = %g\n", (double)C_in_scat_pp_22_Rebar);
-// #endif
-
             // Declare matrices to be used in quantum kinetic equation calculation
             Real IMFP_abs
                 [NUM_FLAVORS]
@@ -714,10 +675,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             Real munubar
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Antineutrino chemical potential matrix: munu = diag ( munubar_e , munubar_x)
-
-            // The scattering opacities are interpolated/stored but not yet wired into the
-            // collision term (see the "... fix it ..." notes below); mark them reserved.
-            amrex::ignore_unused(IMFP_scat, IMFP_scatbar);
 
             // Initialize matrices with zeros
             for (int i = 0; i < NUM_FLAVORS; ++i) {
@@ -989,23 +946,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                     }
                 }
             }
-
-            // printf("IMFP_scat_brakets[0][0]*p.rdata(PIdx::N00_Re) = %e\n", IMFP_scat_brakets[0][0]*p.rdata(PIdx::N00_Re));
-            // printf("IMFP_scat_brakets[0][1]*p.rdata(PIdx::N01_Re) = %e\n", IMFP_scat_brakets[0][1]*p.rdata(PIdx::N01_Re));
-            // printf("IMFP_scat_brakets[0][2]*p.rdata(PIdx::N02_Re) = %e\n", IMFP_scat_brakets[0][2]*p.rdata(PIdx::N02_Re));
-            // printf("IMFP_scat_brakets[0][2]*p.rdata(PIdx::N02_Im) = %e\n", IMFP_scat_brakets[0][2]*p.rdata(PIdx::N02_Im));
-            // printf("IMFP_scat_brakets[1][1]*p.rdata(PIdx::N11_Re) = %e\n", IMFP_scat_brakets[1][1]*p.rdata(PIdx::N11_Re));
-            // printf("IMFP_scat_brakets[1][2]*p.rdata(PIdx::N12_Re) = %e\n", IMFP_scat_brakets[1][2]*p.rdata(PIdx::N12_Re));
-            // printf("IMFP_scat_brakets[1][2]*p.rdata(PIdx::N12_Im) = %e\n", IMFP_scat_brakets[1][2]*p.rdata(PIdx::N12_Im));
-            // printf("IMFP_scat_brakets[2][2]*p.rdata(PIdx::N22_Re) = %e\n", IMFP_scat_brakets[2][2]*p.rdata(PIdx::N22_Re));
-            // printf("IMFP_scatbar_brakets[0][0]*p.rdata(PIdx::N00_Rebar) = %e\n", IMFP_scatbar_brakets[0][0]*p.rdata(PIdx::N00_Rebar));
-            // printf("IMFP_scatbar_brakets[0][1]*p.rdata(PIdx::N01_Rebar) = %e\n", IMFP_scatbar_brakets[0][1]*p.rdata(PIdx::N01_Rebar));
-            // printf("IMFP_scatbar_brakets[0][2]*p.rdata(PIdx::N02_Rebar) = %e\n", IMFP_scatbar_brakets[0][2]*p.rdata(PIdx::N02_Rebar));
-            // printf("IMFP_scatbar_brakets[0][2]*p.rdata(PIdx::N02_Imbar) = %e\n", IMFP_scatbar_brakets[0][2]*p.rdata(PIdx::N02_Imbar));
-            // printf("IMFP_scatbar_brakets[1][1]*p.rdata(PIdx::N11_Rebar) = %e\n", IMFP_scatbar_brakets[1][1]*p.rdata(PIdx::N11_Rebar));
-            // printf("IMFP_scatbar_brakets[1][2]*p.rdata(PIdx::N12_Rebar) = %e\n", IMFP_scatbar_brakets[1][2]*p.rdata(PIdx::N12_Rebar));
-            // printf("IMFP_scatbar_brakets[1][2]*p.rdata(PIdx::N12_Imbar) = %e\n", IMFP_scatbar_brakets[1][2]*p.rdata(PIdx::N12_Imbar));
-            // printf("IMFP_scatbar_brakets[2][2]*p.rdata(PIdx::N22_Rebar) = %e\n", IMFP_scatbar_brakets[2][2]*p.rdata(PIdx::N22_Rebar));
 
 // Compute the time derivative of \( N_{ab} \) using the Quantum Kinetic Equations (QKE).
 #include "generated_files/Evolve.cpp_dfdt_fill"
