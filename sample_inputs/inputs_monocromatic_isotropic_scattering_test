@@ -61,10 +61,10 @@ integration.rk.min_factor = 0.1
 integration.rk.max_factor = 5.0
 
 # Domain size in 3D index space
-ncell = (1, 1, 1)
-Lx = 1e4 # cm
-Ly = 1e4 # cm
-Lz = 1e4 # cm
+ncell = (3, 3, 3)
+Lx = 3e4 # cm
+Ly = 3e4 # cm
+Lz = 3e4 # cm
 
 # Number of particles per cell
 nppc  = (1, 1, 1)

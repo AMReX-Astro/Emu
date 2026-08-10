@@ -127,23 +127,32 @@ if __name__ == "__main__":
 
         time_s.append(rdata[0][rkey["time"]])
 
+        xflag=False
+        otherflag=False
+
         for j in range(len(rdata)):
             p = rdata[j]
             phat_this_particle = np.array([p[rkey["pupx"]], p[rkey["pupy"]], p[rkey["pupz"]]]) / p[rkey["pupt"]]
-            if np.allclose(phat_this_particle, phat_x):
+            if np.allclose(phat_this_particle, phat_x) and not xflag:
                 n_ee_x.append(p[rkey["N00_Re"]] / volume_ccm)
                 n_uu_x.append(p[rkey["N11_Re"]] / volume_ccm)
                 n_tt_x.append(p[rkey["N22_Re"]] / volume_ccm)
                 n_eebar_x.append(p[rkey["N00_Rebar"]] / volume_ccm)
                 n_uubar_x.append(p[rkey["N11_Rebar"]] / volume_ccm)
                 n_ttbar_x.append(p[rkey["N22_Rebar"]] / volume_ccm)
-            elif np.allclose(phat_this_particle, phat_other):
+                xflag=True
+
+            elif np.allclose(phat_this_particle, phat_other) and not otherflag:
+                otherflag=True
                 n_ee_other.append(p[rkey["N00_Re"]] / volume_ccm)
                 n_uu_other.append(p[rkey["N11_Re"]] / volume_ccm)
                 n_tt_other.append(p[rkey["N22_Re"]] / volume_ccm)
                 n_eebar_other.append(p[rkey["N00_Rebar"]] / volume_ccm)
                 n_uubar_other.append(p[rkey["N11_Rebar"]] / volume_ccm)
                 n_ttbar_other.append(p[rkey["N22_Rebar"]] / volume_ccm)
+
+            if xflag and otherflag:
+                break
 
     # Plot n_x and n_others:
     time_s_arr = np.array(time_s)
