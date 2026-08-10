@@ -1,3 +1,41 @@
+# =============================================================================
+# Monochromatic isotropic scattering test (EMU inputs)
+# =============================================================================
+#
+# Purpose
+# -------
+# Test the isotropic components of the scattering kernel. The case of study
+# is an initial monoenergetic beam along +x that isotropizes under constant
+# scattering opacities.
+#
+# Geometry / particles
+# --------------------
+# - Single cell: ncell = (1,1,1)
+# - Single energy beam (particle file from
+#   Scripts/initial_conditions/st12_monocromatic_isotropic_scattering_test.py)
+# - 92 direction particles per cell
+#
+# Initial number densities (1/ccm) in the +x beam direction only
+# -------------------------------------------------------------
+#   nu_e = 1e32, nu_mu = 2e32, nu_tau = 3e32
+#   nu_ebar = 4e32, nu_mubar = 5e32, nu_taubar = 6e32
+#
+# Expected behavior
+# -----------------
+# Isotropic scattering redistributes the beam over angle. Asymptotically,
+# each direction approaches n_initial / 92.
+#
+# Scattering opacities used for this test (1/cm)
+# ----------------------------------------------
+#   IMFP_scat0_cm = 5e-4,    IMFP_scat1_cm = 5.1e-4,    IMFP_scat2_cm = 5.2e-4
+#   IMFP_scat0bar_cm = 5.3e-4, IMFP_scat1bar_cm = 5.4e-4, IMFP_scat2bar_cm = 5.5e-4
+#
+# Related scripts
+# ---------------
+#   Scripts/initial_conditions/st12_monocromatic_isotropic_scattering_test.py
+#   Scripts/tests/coll_mono_isot_scat_test.py
+# =============================================================================
+
 perturbation_type = 0
 perturbation_amplitude = 0.0
 

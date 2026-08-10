@@ -1,6 +1,39 @@
 '''
-This script tests the equilibrium value of the collision term.
+Monochromatic isotropic scattering test (validation / plotting)
+
 Created by Erick Urquilla, University of Tennessee, Knoxville.
+
+Purpose
+-------
+Validate the isotropic (angle-averaged) components of the scattering kernel
+in EMU against the analytic monoenergetic isotropic-scattering solution.
+
+Setup
+-----
+- Single computational cell with a single energy bin.
+- 92 direction particles per cell (one monoenergetic beam).
+- Initial condition: a delta-function beam along +x with number densities
+    nu_e     = 1e32 1/ccm
+    nu_mu    = 2e32 1/ccm
+    nu_tau   = 3e32 1/ccm
+    nu_ebar  = 4e32 1/ccm
+    nu_mubar = 5e32 1/ccm
+    nu_taubar= 6e32 1/ccm
+  (other directions start empty).
+- Constant scattering opacities (1/cm):
+    IMFP_scat0_cm    = 5e-4
+    IMFP_scat1_cm    = 5.1e-4
+    IMFP_scat2_cm    = 5.2e-4
+    IMFP_scat0bar_cm = 5.3e-4
+    IMFP_scat1bar_cm = 5.4e-4
+    IMFP_scat2bar_cm = 5.5e-4
+
+Expected behavior
+-----------------
+Isotropic scattering redistributes the beam over angle. Asymptotically,
+each of the 92 directions approaches n_initial / 92. This script compares
+numerical particle densities along the beam and an off-beam direction to
+that analytic isotropization history and writes comparison plots.
 '''
 import numpy as np
 import argparse

@@ -1,6 +1,33 @@
 '''
-Created by Erick Urquilla, Department of Physics and Astronomy, University of Tennessee, Knoxville.
-This script is used to create the empty monoenergetic particles
+Monochromatic isotropic scattering test (initial conditions)
+
+Created by Erick Urquilla, Department of Physics and Astronomy,
+University of Tennessee, Knoxville.
+
+Purpose
+-------
+Build the particle file for the monochromatic isotropic scattering test,
+which exercises the isotropic components of the EMU scattering kernel.
+
+Setup written by this script
+----------------------------
+- Single energy bin (monoenergetic beam).
+- 92 direction particles (from nphi_equator = 16 over the sphere).
+- Intended for a single-cell run (see inputs_monocromatic_isotropic_scattering_test).
+- Initial beam along +x only, with number densities
+    nu_e     = 1e32 1/ccm
+    nu_mu    = 2e32 1/ccm
+    nu_tau   = 3e32 1/ccm
+    nu_ebar  = 4e32 1/ccm
+    nu_mubar = 5e32 1/ccm
+    nu_taubar= 6e32 1/ccm
+  All other directions start with zero density.
+
+Physics of the test (for context)
+---------------------------------
+With constant scattering opacities from the inputs file
+(IMFP_scat0..2 and bar counterparts, ~5e-4 1/cm), the beam isotropizes.
+At late times every direction approaches n_initial / 92.
 '''
 import numpy as np
 import sys
