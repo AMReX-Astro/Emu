@@ -173,14 +173,13 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
     if (parms->IMFP_method == 1) {
         const int n_dir = parms->number_of_particles_per_energy_bin_per_cell;
         if (ndirs_per_loc % n_dir != 0) {
-            amrex::Abort(
-                "particle_data_filename row count (" +
-                std::to_string(ndirs_per_loc) +
-                ") is not divisible by "
-                "number_of_particles_per_energy_bin_per_cell (" +
-                std::to_string(n_dir) +
-                "). Expected rows = n_energy_bins * "
-                "number_of_particles_per_energy_bin_per_cell.");
+            amrex::Abort("particle_data_filename row count (" +
+                         std::to_string(ndirs_per_loc) +
+                         ") is not divisible by "
+                         "number_of_particles_per_energy_bin_per_cell (" +
+                         std::to_string(n_dir) +
+                         "). Expected rows = n_energy_bins * "
+                         "number_of_particles_per_energy_bin_per_cell.");
         }
     }
     const Real scale_fac = dx[0] * dx[1] * dx[2] / nlocs_per_cell;
