@@ -1,41 +1,13 @@
 '''
-Monochromatic isotropic scattering test (validation / plotting)
+Monochromatic isotropic scattering test — validation / plotting.
 
 Created by Erick Urquilla, University of Tennessee, Knoxville.
 
-Purpose
--------
-Validate the isotropic (angle-averaged) components of the scattering kernel
-in EMU against the analytic monoenergetic isotropic-scattering solution.
+Compares EMU plotfiles to the analytic monoenergetic isotropic-scattering
+solution and checks number-density conservation.
 
-Setup
------
-- Domain: ncell = (3,3,3), Lx = Ly = Lz = 3e4 cm (27 cells;
-  cell volume = (1e4 cm)^3, domain volume = (3e4 cm)^3).
-- Single energy bin; 92 direction particles per energy bin per cell.
-- Initial condition: a delta-function beam along +x with number densities
-    nu_e     = 1e32 1/ccm
-    nu_mu    = 2e32 1/ccm
-    nu_tau   = 3e32 1/ccm
-    nu_ebar  = 4e32 1/ccm
-    nu_mubar = 5e32 1/ccm
-    nu_taubar= 6e32 1/ccm
-  (other directions start empty; same template in every cell).
-- Constant scattering opacities (1/cm):
-    IMFP_scat0_cm    = 5e-4
-    IMFP_scat1_cm    = 5.1e-4
-    IMFP_scat2_cm    = 5.2e-4
-    IMFP_scat0bar_cm = 5.3e-4
-    IMFP_scat1bar_cm = 5.4e-4
-    IMFP_scat2bar_cm = 5.5e-4
-
-Expected behavior
------------------
-Isotropic scattering redistributes the beam over angle. Asymptotically,
-each of the 92 directions approaches n_initial / 92. This script compares
-numerical particle densities along the beam and an off-beam direction to
-that analytic isotropization history and writes comparison plots.
-Number-density conservation is checked over the full 3x3x3 domain.
+Setup documentation (geometry, densities, opacities, expected behavior):
+  sample_inputs/inputs_monocromatic_isotropic_scattering_test
 '''
 import numpy as np
 import argparse

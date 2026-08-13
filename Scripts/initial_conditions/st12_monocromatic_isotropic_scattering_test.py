@@ -1,36 +1,11 @@
 '''
-Monochromatic isotropic scattering test (initial conditions)
+Monochromatic isotropic scattering test — write particle_input.dat.
 
 Created by Erick Urquilla, Department of Physics and Astronomy,
 University of Tennessee, Knoxville.
 
-Purpose
--------
-Build the particle file for the monochromatic isotropic scattering test,
-which exercises the isotropic components of the EMU scattering kernel.
-
-Setup written by this script
-----------------------------
-- Single energy bin (monoenergetic beam).
-- 92 direction particles (from nphi_equator = 16 over the sphere).
-- Particle file is a per-cell angular template; EMU replicates it into every
-  cell. Intended for the 3x3x3 domain in
-  inputs_monocromatic_isotropic_scattering_test (ncell = (3,3,3),
-  Lx = Ly = Lz = 3e4 cm).
-- Initial beam along +x only, with number densities
-    nu_e     = 1e32 1/ccm
-    nu_mu    = 2e32 1/ccm
-    nu_tau   = 3e32 1/ccm
-    nu_ebar  = 4e32 1/ccm
-    nu_mubar = 5e32 1/ccm
-    nu_taubar= 6e32 1/ccm
-  All other directions start with zero density.
-
-Physics of the test (for context)
----------------------------------
-With constant scattering opacities from the inputs file
-(IMFP_scat0..2 and bar counterparts, ~5e-4 1/cm), the beam isotropizes.
-At late times every direction approaches n_initial / 92.
+Setup documentation (geometry, densities, opacities, expected behavior):
+  sample_inputs/inputs_monocromatic_isotropic_scattering_test
 '''
 import numpy as np
 import sys
