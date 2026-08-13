@@ -49,10 +49,10 @@ mu    = (pupx*r_hat_x + pupy*r_hat_y + pupz*r_hat_z) / p_mag # mu = p . r_hat / 
 # Test parameters 
 R      = 1.17e6    # sphere radius, cm
 r_out  = 2.2e6  # outer domain boundary, cm
-n_bins = 100    # number of radial bins
+n_bins = 60    # number of radial bins
 
-# Radial bin edges and centers (exterior only: R to r_out)
-r_edges   = np.linspace(R, r_out, n_bins + 1)
+# Radial bin edges and centers 
+r_edges   = np.linspace(0, r_out, n_bins + 1)
 r_centers = 0.5 * (r_edges[:-1] + r_edges[1:])
 
 
@@ -72,7 +72,7 @@ for i in range(n_bins):
     Fr_bins[i]  = np.sum(N00[mask] * mu[mask])
     Prr_bins[i] = np.sum(N00[mask] * mu[mask]**2)
 
-# Flux factor and Eddington factor 
+# Flux factor and Eddington factor for inter
 # indexed by each radial shell -> discrete function of r
 f_simulation = Fr_bins  / E_bins 
 p_simulation = Prr_bins / E_bins    
@@ -88,12 +88,22 @@ f_analytic = np.zeros(len(r_centers))
 p_analytic = np.zeros(len(r_centers))
 
 # We find the analytical p and f at each r shell
-for i, ri in enumerate(r_centers,):
-    mu_c    = np.sqrt(1.0 - (R / ri)**2)
-    mu_arr  = np.linspace(mu_c, 1.0, n_mu)
-    s = 2 * np.sqrt(np.maximum(1.0 - (ri/R)**2 * (1.0 - mu_arr**2), 0.0))
+for i, ri in enumerate(r_centers):
+    
+    if(ri < R):
+        mu_arr  = np.linspace(-1.0, 1.0, n_mu)
+        g = np.sqrt(np.maximum(1.0 - (ri/R)**2 * (1.0 - mu_arr**2), 0.0))
+        s = ri*mu_arr/R + g
+    
+    else:
+        mu_c    = np.sqrt(1.0 - (R / ri)**2)
+        mu_arr  = np.linspace(mu_c, 1.0, n_mu)
+        g = np.sqrt(np.maximum(1.0 - (ri/R)**2 * (1.0 - mu_arr**2), 0.0))
+        s = 2 * g
 
-    F_mu    = 1.0 - np.exp(-1.0 * kappa_R * s)
+
+    F_mu = 1.0 - np.exp(-1.0 * kappa_R * s)
+
     E_int   = np.trapz(F_mu, mu_arr)
     Fr_int  = np.trapz(mu_arr * F_mu, mu_arr)
     Prr_int = np.trapz(mu_arr**2 * F_mu, mu_arr)
