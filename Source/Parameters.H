@@ -211,6 +211,15 @@ struct TestParams : public amrex::Gpu::Managed {
         // Flag for collision term treatment
         pp.get("IMFP_method", IMFP_method);
 
+        for (int i = 0; i < NUM_FLAVORS; ++i) {
+            IMFP_abs[0][i] = 0.0;
+            IMFP_abs[1][i] = 0.0;
+            IMFP_scat[0][i] = 0.0;
+            IMFP_scat[1][i] = 0.0;
+            munu[0][i] = 0.0;
+            munu[1][i] = 0.0;
+        }
+
         if (IMFP_method > 0) {
             // Set equilibrium distribution function for neutrinos and antineutrinos
             pp.get("set_equilibrium_distribution",

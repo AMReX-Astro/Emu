@@ -1,5 +1,6 @@
 #include "Evolve.H"
 #include <cmath>
+#include <string>
 #include "Constants.H"
 #include "FlavoredNeutrinoContainer.H"
 #include "ParticleInterpolator.H"
@@ -15,7 +16,7 @@ using namespace amrex;
 namespace GIdx {
 amrex::Vector<std::string> names;
 
-void Initialize(int IMFP_method) {
+void Initialize() {
     names.resize(0);
     names.push_back("rho");
     names.push_back("T");
@@ -24,41 +25,31 @@ void Initialize(int IMFP_method) {
     names.push_back("vupy");
     names.push_back("vupz");
 #include "generated_files/Evolve.cpp_grid_names_fill"
-    if (IMFP_method == 1) {
-        // Names in GIdx / PIdx::offset order (Hermitian upper triangle).
-        // Neutrino block first, then antineutrino (…_Rebar / …_Imbar).
-#if NUM_FLAVORS == 2
-        names.push_back("C_in_scat_iso_monocromatic_00_Re");
-        names.push_back("C_in_scat_iso_monocromatic_01_Re");
-        names.push_back("C_in_scat_iso_monocromatic_01_Im");
-        names.push_back("C_in_scat_iso_monocromatic_11_Re");
-        names.push_back("C_in_scat_iso_monocromatic_00_Rebar");
-        names.push_back("C_in_scat_iso_monocromatic_01_Rebar");
-        names.push_back("C_in_scat_iso_monocromatic_01_Imbar");
-        names.push_back("C_in_scat_iso_monocromatic_11_Rebar");
-#elif NUM_FLAVORS == 3
-        names.push_back("C_in_scat_iso_monocromatic_00_Re");
-        names.push_back("C_in_scat_iso_monocromatic_01_Re");
-        names.push_back("C_in_scat_iso_monocromatic_01_Im");
-        names.push_back("C_in_scat_iso_monocromatic_02_Re");
-        names.push_back("C_in_scat_iso_monocromatic_02_Im");
-        names.push_back("C_in_scat_iso_monocromatic_11_Re");
-        names.push_back("C_in_scat_iso_monocromatic_12_Re");
-        names.push_back("C_in_scat_iso_monocromatic_12_Im");
-        names.push_back("C_in_scat_iso_monocromatic_22_Re");
-        names.push_back("C_in_scat_iso_monocromatic_00_Rebar");
-        names.push_back("C_in_scat_iso_monocromatic_01_Rebar");
-        names.push_back("C_in_scat_iso_monocromatic_01_Imbar");
-        names.push_back("C_in_scat_iso_monocromatic_02_Rebar");
-        names.push_back("C_in_scat_iso_monocromatic_02_Imbar");
-        names.push_back("C_in_scat_iso_monocromatic_11_Rebar");
-        names.push_back("C_in_scat_iso_monocromatic_12_Rebar");
-        names.push_back("C_in_scat_iso_monocromatic_12_Imbar");
-        names.push_back("C_in_scat_iso_monocromatic_22_Rebar");
-#else
-#error "NUM_FLAVORS must be 2 or 3 for monochromatic scattering mesh coeffs"
-#endif
+    // One Hermitian pair (nu, then nubar) per energy bin, PIdx::offset order.
+    // Example: C_in_scat_iso_energy_0_flavor_00_Re, ..._01_Re, ..._01_Im, ...
+    const int n_energies = FlavoredNeutrinoContainer::number_of_energies;
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        n_energies > 0,
+        "GIdx::Initialize() requires number_of_energies from the particle "
+        "file");
+    for (int ie = 0; ie < n_energies; ++ie) {
+        const std::string energy_tag =
+            "C_in_scat_iso_energy_" + std::to_string(ie) + "_flavor_";
+        for (int nunubar = 0; nunubar < 2; ++nunubar) {
+            const std::string bar = (nunubar == 1) ? "bar" : "";
+            for (int a = 0; a < NUM_FLAVORS; ++a) {
+                for (int b = a; b < NUM_FLAVORS; ++b) {
+                    const std::string ab =
+                        std::to_string(a) + std::to_string(b);
+                    names.push_back(energy_tag + ab + "_Re" + bar);
+                    if (b > a) {
+                        names.push_back(energy_tag + ab + "_Im" + bar);
+                    }
+                }
+            }
+        }
     }
+    AMREX_ALWAYS_ASSERT(static_cast<int>(names.size()) == ncomp());
 }
 }  // namespace GIdx
 
@@ -243,14 +234,11 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
     const Real inv_cell_volume = dxi[0] * dxi[1] * dxi[2];
 
     // Create an alias of the MultiFab so ParticleToMesh only erases the quantities
-    // that will be set by the neutrinos. When IMFP_method==1, also include the
-    // monochromatic scattering-coefficient block at the end of GIdx.
-    const int imfp_method = parms->IMFP_method;
+    // that will be set by the neutrinos, including the C_in_scat block.
     const int number_of_directions =
         FlavoredNeutrinoContainer::number_of_directions;
     int start_comp = GIdx::N00_Re;
-    int num_comps =
-        ((imfp_method == 1) ? GIdx::ncomp_max : GIdx::ncomp_base) - start_comp;
+    int num_comps = GIdx::ncomp() - start_comp;
     MultiFab deposit_state(state, amrex::make_alias, start_comp, num_comps);
 
     const int shape_factor_order_x =
@@ -379,11 +367,10 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                         }
 
                         // --------------------------------------------------------------------
-                        // Independent isotropic in-scattering deposit (IMFP_method==1 only).
-                        // Mesh comps C_in_scat_* exist only when the deposit MultiFab was
-                        // aliased with ncomp_max (see start of this function).
+                        // Isotropic in-scattering deposit into C_in_scat_* mesh components.
+                        // Currently deposited into energy bin 0.
                         // --------------------------------------------------------------------
-                        if (imfp_method == 1) {
+                        {
                             constexpr int n_scat_flav =
                                 NUM_FLAVORS * NUM_FLAVORS;
 
@@ -395,8 +382,8 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                                 // Diagonal: Re only. Off-diagonal: Re then Im.
                                 for (int a = 0; a < NUM_FLAVORS; ++a) {
                                     for (int b = a; b < NUM_FLAVORS; ++b) {
-                                        // Scattering opacities for method 1 are given as input
-                                        // parameters in inverse cm (IMFP_scat[nu/nubar][flavor]).
+                                        // Scattering opacities from input
+                                        // (IMFP_scat[nu/nubar][flavor], 1/cm).
                                         const amrex::Real IMFP_scata_cm =
                                             parms->IMFP_scat[nunubar][a];
                                         const amrex::Real IMFP_scatb_cm =
@@ -429,8 +416,9 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                                             amrex::Gpu::Atomic::AddNoRet(
                                                 &sarr(
                                                     idx[0], idx[1], idx[2],
-                                                    GIdx::C_in_scat_iso_monocromatic_00_Re -
-                                                        start_comp + scat_off),
+                                                    GIdx::C_in_scat_iso_index(
+                                                        0, scat_off) -
+                                                        start_comp),
                                                 sx(i) * sy(j) * sz(k) *
                                                     (1.0 /
                                                      (4 * MathConst::pi)) *
@@ -539,9 +527,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             Real Ye_pp = 0;
             Real rho_pp = 0;  // g/ccm
 
-        // Isotropic in-scattering interpolated to the particle (IMFP_method==1).
-        // Always declared/zeroed so the generated dfdt_fill can reference them;
-        // mesh reads below run only when method==1 (comps exist only then).
+        // Isotropic in-scattering interpolated to the particle.
+        // Always declared/zeroed so the generated dfdt_fill can reference them.
 #if NUM_FLAVORS == 2
             Real C_in_scat_pp_00_Re = 0;
             Real C_in_scat_pp_01_Re = 0;
@@ -629,114 +616,141 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                         Ye_pp += vol * sarr(i, j, k, GIdx::Ye);
                         rho_pp += vol * sarr(i, j, k, GIdx::rho);
 
-                        // Mesh C_in_scat_* exist only for IMFP_method==1 (see GIdx::ncomp).
-                        if (parms->IMFP_method == 1) {
+                        // Energy bin 0 corresponds to C_in_scat_iso_energy_0_flavor_*.
+                        {
+                            const int nubar = GIdx::n_c_in_scat_flavor;
 #if NUM_FLAVORS == 2
                             C_in_scat_pp_00_Re +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_00_Re);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, PIdx::offset(0, 0)));
                             C_in_scat_pp_01_Re +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_01_Re);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, PIdx::offset(0, 1, PIdx::Re)));
                             C_in_scat_pp_01_Im +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_01_Im);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, PIdx::offset(0, 1, PIdx::Im)));
                             C_in_scat_pp_11_Re +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_11_Re);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, PIdx::offset(1, 1)));
                             C_in_scat_pp_00_Rebar +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_00_Rebar);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, nubar + PIdx::offset(0, 0)));
                             C_in_scat_pp_01_Rebar +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_01_Rebar);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, nubar + PIdx::offset(0, 1, PIdx::Re)));
                             C_in_scat_pp_01_Imbar +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_01_Imbar);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, nubar + PIdx::offset(0, 1, PIdx::Im)));
                             C_in_scat_pp_11_Rebar +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_11_Rebar);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, nubar + PIdx::offset(1, 1)));
 #elif NUM_FLAVORS == 3
                             C_in_scat_pp_00_Re +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_00_Re);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, PIdx::offset(0, 0)));
                             C_in_scat_pp_01_Re +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_01_Re);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, PIdx::offset(0, 1, PIdx::Re)));
                             C_in_scat_pp_01_Im +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_01_Im);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, PIdx::offset(0, 1, PIdx::Im)));
                             C_in_scat_pp_11_Re +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_11_Re);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, PIdx::offset(1, 1)));
                             C_in_scat_pp_02_Re +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_02_Re);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, PIdx::offset(0, 2, PIdx::Re)));
                             C_in_scat_pp_02_Im +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_02_Im);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, PIdx::offset(0, 2, PIdx::Im)));
                             C_in_scat_pp_12_Re +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_12_Re);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, PIdx::offset(1, 2, PIdx::Re)));
                             C_in_scat_pp_12_Im +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_12_Im);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, PIdx::offset(1, 2, PIdx::Im)));
                             C_in_scat_pp_22_Re +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_22_Re);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, PIdx::offset(2, 2)));
                             C_in_scat_pp_00_Rebar +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_00_Rebar);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, nubar + PIdx::offset(0, 0)));
                             C_in_scat_pp_01_Rebar +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_01_Rebar);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, nubar + PIdx::offset(0, 1, PIdx::Re)));
                             C_in_scat_pp_01_Imbar +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_01_Imbar);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, nubar + PIdx::offset(0, 1, PIdx::Im)));
                             C_in_scat_pp_11_Rebar +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_11_Rebar);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, nubar + PIdx::offset(1, 1)));
                             C_in_scat_pp_02_Rebar +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_02_Rebar);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, nubar + PIdx::offset(0, 2, PIdx::Re)));
                             C_in_scat_pp_02_Imbar +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_02_Imbar);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, nubar + PIdx::offset(0, 2, PIdx::Im)));
                             C_in_scat_pp_12_Rebar +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_12_Rebar);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, nubar + PIdx::offset(1, 2, PIdx::Re)));
                             C_in_scat_pp_12_Imbar +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_12_Imbar);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, nubar + PIdx::offset(1, 2, PIdx::Im)));
                             C_in_scat_pp_22_Rebar +=
                                 vol *
                                 sarr(i, j, k,
-                                     GIdx::C_in_scat_iso_monocromatic_22_Rebar);
+                                     GIdx::C_in_scat_iso_index(
+                                         0, nubar + PIdx::offset(2, 2)));
 #endif
                         }
                     }

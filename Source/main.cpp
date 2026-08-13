@@ -97,8 +97,13 @@ void evolve_flavor(const TestParams* parms) {
     for (int i = 0; i < AMREX_SPACEDIM; i++)
         AMREX_ASSERT(parms->ncell[i] >= ngrow[i]);
 
-    // Mesh component count; monochromatic scattering coeffs only if IMFP_method==1
-    const int ncomp = GIdx::ncomp(parms->IMFP_method);
+    // Load particle-file metadata before allocating the mesh so C_in_scat
+    // components can be sized by number_of_energies (also needed on restart,
+    // when InitParticles is skipped).
+    FlavoredNeutrinoContainer::ReadParticleFileHeaders(
+        parms->particle_data_filename);
+
+    const int ncomp = GIdx::ncomp();
 
     // Create a MultiFab to hold our grid state data and initialize to 0.0
     MultiFab state(ba, dm, ncomp, ngrow);
@@ -185,7 +190,7 @@ void evolve_flavor(const TestParams* parms) {
     FillDomainBoundary(state, geom, grid_bcs);
 
     // initialize the grid variable names
-    GIdx::Initialize(parms->IMFP_method);
+    GIdx::Initialize();
 
     //We only need HDF5 tables if IMFP_method is 2.
     if (parms->IMFP_method == 2) {
@@ -211,12 +216,6 @@ void evolve_flavor(const TestParams* parms) {
 
     Real initial_time = 0.0;
     int initial_step = 0;
-
-    // Load particle-file metadata before init or restart so isotropic
-    // in-scattering (and related checks) have number_of_directions /
-    // number_of_energies even when InitParticles is skipped on restart.
-    FlavoredNeutrinoContainer::ReadParticleFileHeaders(
-        parms->particle_data_filename);
 
     if (parms->do_restart) {
         // get particle data from file

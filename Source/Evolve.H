@@ -22,54 +22,42 @@ enum {
     vupy,
     vupz,  // g/ccm, MeV, unitless, unitless (x3)
 #include "generated_files/Evolve.H_fill"
-    ncomp_base,  // components always present on the mesh
-// Present only when IMFP_method == 1 (see GIdx::ncomp / Initialize).
-// Isotropic in-scattering collision term (complex Hermitian). Layout matches
-// N/Fx/... blocks and PIdx::offset: diagonal _ii_Re only; off-diagonal
-// _ij_Re then _ij_Im; then antineutrino counterparts with Rebar/Imbar.
-#if NUM_FLAVORS == 2
-    C_in_scat_iso_monocromatic_00_Re = ncomp_base,
-    C_in_scat_iso_monocromatic_01_Re,
-    C_in_scat_iso_monocromatic_01_Im,
-    C_in_scat_iso_monocromatic_11_Re,
-    C_in_scat_iso_monocromatic_00_Rebar,
-    C_in_scat_iso_monocromatic_01_Rebar,
-    C_in_scat_iso_monocromatic_01_Imbar,
-    C_in_scat_iso_monocromatic_11_Rebar,
-#elif NUM_FLAVORS == 3
-    C_in_scat_iso_monocromatic_00_Re = ncomp_base,
-    C_in_scat_iso_monocromatic_01_Re,
-    C_in_scat_iso_monocromatic_01_Im,
-    C_in_scat_iso_monocromatic_02_Re,
-    C_in_scat_iso_monocromatic_02_Im,
-    C_in_scat_iso_monocromatic_11_Re,
-    C_in_scat_iso_monocromatic_12_Re,
-    C_in_scat_iso_monocromatic_12_Im,
-    C_in_scat_iso_monocromatic_22_Re,
-    C_in_scat_iso_monocromatic_00_Rebar,
-    C_in_scat_iso_monocromatic_01_Rebar,
-    C_in_scat_iso_monocromatic_01_Imbar,
-    C_in_scat_iso_monocromatic_02_Rebar,
-    C_in_scat_iso_monocromatic_02_Imbar,
-    C_in_scat_iso_monocromatic_11_Rebar,
-    C_in_scat_iso_monocromatic_12_Rebar,
-    C_in_scat_iso_monocromatic_12_Imbar,
-    C_in_scat_iso_monocromatic_22_Rebar,
-#else
-#error "NUM_FLAVORS must be 2 or 3 for monochromatic scattering mesh coeffs"
-#endif
-    ncomp_max
+    ncomp_base,  // components always present besides C_in_scat
+    // Start of the isotropic in-scattering block. Runtime size is
+    // number_of_energies * n_c_in_scat_per_energy. Per energy: neutrino
+    // Hermitian (PIdx::offset), then antineutrino.
+    C_in_scat_iso = ncomp_base
 };
 
-// Runtime mesh component count: includes monochromatic scattering
-// coefficients only for IMFP_method == 1.
-inline int ncomp(int IMFP_method) {
-    return (IMFP_method == 1) ? ncomp_max : ncomp_base;
+#if NUM_FLAVORS != 2 && NUM_FLAVORS != 3
+#error "NUM_FLAVORS must be 2 or 3 for isotropic scattering mesh coeffs"
+#endif
+
+// Hermitian storage per (nu or nubar) block: NF=2 -> 4, NF=3 -> 9.
+constexpr int n_c_in_scat_flavor = NUM_FLAVORS * NUM_FLAVORS;
+constexpr int n_c_in_scat_per_energy = 2 * n_c_in_scat_flavor;
+
+// Runtime mesh component count: base fields plus one C_in_scat Hermitian
+// pair (nu + nubar) per energy bin.
+inline int ncomp() {
+    const int nE = FlavoredNeutrinoContainer::number_of_energies;
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        nE > 0,
+        "GIdx::ncomp() requires number_of_energies from the particle file");
+    return ncomp_base + nE * n_c_in_scat_per_energy;
+}
+
+// Mesh index of C_in_scat_iso_energy_{ie}_flavor_* for energy_0based and
+// flavor_offset in PIdx::offset order (nubar starts at n_c_in_scat_flavor).
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE int C_in_scat_iso_index(
+    int energy_0based, int flavor_offset) {
+    return C_in_scat_iso + energy_0based * n_c_in_scat_per_energy +
+           flavor_offset;
 }
 
 extern amrex::Vector<std::string> names;
 
-void Initialize(int IMFP_method);
+void Initialize();
 }  // namespace GIdx
 
 amrex::Real compute_dt(const amrex::Geometry& geom, const MultiFab& state,
