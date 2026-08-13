@@ -65,11 +65,6 @@ struct TestParams : public amrex::Gpu::Managed {
         [2]
         [NUM_FLAVORS];  // equilibrium electron neutrino chemical potential in erg (CGS unist)
     Real delta_E;  // erg (CGS unist)
-    // Angular quadrature count used by isotropic monochromatic in-scattering
-    // (IMFP_method==1): solid-angle weight is 4*pi / this value. Equals the
-    // number of direction samples per energy bin written to particle_input.dat
-    // (not the total row count when multiple energy bins are present).
-    int number_of_particles_per_energy_bin_per_cell;
 
     // Attenuation to Hamiltonians
     Real attenuation_hamiltonians;  // Multiplication factor to [N,H]
@@ -255,11 +250,6 @@ struct TestParams : public amrex::Gpu::Managed {
                 Do_Pauli_blocking);  // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
             pp.get("delta_E", delta_E);
             delta_E *= 1e6 * CGSUnitsConst::eV;  // erg
-            pp.get("number_of_particles_per_energy_bin_per_cell",
-                   number_of_particles_per_energy_bin_per_cell);
-            if (number_of_particles_per_energy_bin_per_cell <= 0)
-                amrex::Abort(
-                    "number_of_particles_per_energy_bin_per_cell must be > 0");
 
         } else if (IMFP_method == 2) {
             //HDF5 table names (with full path) for EoS and NuLib tables

@@ -211,6 +211,13 @@ void evolve_flavor(const TestParams* parms) {
 
     Real initial_time = 0.0;
     int initial_step = 0;
+
+    // Load particle-file metadata before init or restart so isotropic
+    // in-scattering (and related checks) have number_of_directions /
+    // number_of_energies even when InitParticles is skipped on restart.
+    FlavoredNeutrinoContainer::ReadParticleFileHeaders(
+        parms->particle_data_filename);
+
     if (parms->do_restart) {
         // get particle data from file
         RecoverParticles(parms->restart_dir, neutrinos_old, initial_time,
