@@ -18,19 +18,17 @@
  *        matrices according to IMFP_method (0: none, 1: constant input,
  *        2: EoS + NuLib interpolation).
  *
- * Also sets energy_bin: 0 for IMFP_method 0 and 1, NuLib idx_group for
- * IMFP_method 2.
+ * energy_bin is an input: 0 for IMFP_method 0 and 1, NuLib idx_group for
+ * IMFP_method 2 (from find_nulib_energy_bin).
  *
  * Matrices are assumed to be zero-initialized by the caller.
  * Callable from the MeshToParticle device kernel.
  */
 AMREX_GPU_HOST_DEVICE
 void fill_particle_opacities(
-    const TestParams* parms, amrex::Real neutrino_energy_erg,
-    amrex::Real rho_pp, amrex::Real T_pp, amrex::Real Ye_pp,
-    const EOS_tabulated& EOS_tabulated_obj,
+    const TestParams* parms, amrex::Real rho_pp, amrex::Real T_pp,
+    amrex::Real Ye_pp, const EOS_tabulated& EOS_tabulated_obj,
     const NuLib_tabulated& NuLib_tabulated_obj,
-    const NuLib_energies& NuLib_energies_obj,
     amrex::Real IMFP_abs[NUM_FLAVORS][NUM_FLAVORS],
     amrex::Real IMFP_absbar[NUM_FLAVORS][NUM_FLAVORS],
     amrex::Real IMFP_scat[NUM_FLAVORS][NUM_FLAVORS],
@@ -38,6 +36,6 @@ void fill_particle_opacities(
     amrex::Real IMFP_scat_brakets[NUM_FLAVORS][NUM_FLAVORS],
     amrex::Real IMFP_scatbar_brakets[NUM_FLAVORS][NUM_FLAVORS],
     amrex::Real munu[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real munubar[NUM_FLAVORS][NUM_FLAVORS], int& energy_bin);
+    amrex::Real munubar[NUM_FLAVORS][NUM_FLAVORS], int energy_bin);
 
 #endif

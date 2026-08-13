@@ -1,19 +1,14 @@
 #include "FillParticleOpacities.H"
 
 #include "Constants.H"
-#include "EosTable.H"
-#include "NuLibTable.H"
 
 using namespace amrex;
-using namespace nulib_private;
 
 AMREX_GPU_HOST_DEVICE
 void fill_particle_opacities(
-    const TestParams* parms, amrex::Real neutrino_energy_erg,
-    amrex::Real rho_pp, amrex::Real T_pp, amrex::Real Ye_pp,
-    const EOS_tabulated& EOS_tabulated_obj,
+    const TestParams* parms, amrex::Real rho_pp, amrex::Real T_pp,
+    amrex::Real Ye_pp, const EOS_tabulated& EOS_tabulated_obj,
     const NuLib_tabulated& NuLib_tabulated_obj,
-    const NuLib_energies& NuLib_energies_obj,
     amrex::Real IMFP_abs[NUM_FLAVORS][NUM_FLAVORS],
     amrex::Real IMFP_absbar[NUM_FLAVORS][NUM_FLAVORS],
     amrex::Real IMFP_scat[NUM_FLAVORS][NUM_FLAVORS],
@@ -21,12 +16,11 @@ void fill_particle_opacities(
     amrex::Real IMFP_scat_brakets[NUM_FLAVORS][NUM_FLAVORS],
     amrex::Real IMFP_scatbar_brakets[NUM_FLAVORS][NUM_FLAVORS],
     amrex::Real munu[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real munubar[NUM_FLAVORS][NUM_FLAVORS], int& energy_bin) {
+    amrex::Real munubar[NUM_FLAVORS][NUM_FLAVORS], int energy_bin) {
     // If opacity_method is 1, the code will use the inverse mean free paths in the input parameters to compute the collision term.
     if (parms->IMFP_method == 0) {
-        energy_bin = 0;
+        // do nothing
     } else if (parms->IMFP_method == 1) {
-        energy_bin = 0;
         for (int i = 0; i < NUM_FLAVORS; ++i) {
             IMFP_abs[i][i] =
                 parms->IMFP_abs
@@ -104,30 +98,7 @@ void fill_particle_opacities(
             munu_val;  // erg : Save antineutrino chemical potential from EOS table in chemical potential matrix
 
         //--------------------- Values from NuLib table ---------------------------
-        int* helperVarsInt_nulib =
-            NuLib_tabulated_obj
-                .get_helperVarsInt_nulib();  // used via NULIBVAR_INT
-        double* energy_bottom =
-            NuLib_energies_obj.get_energy_bottom_nulib();
-        double* energy_top = NuLib_energies_obj.get_energy_top_nulib();
-
-        double neutrino_energy_MeV =
-            neutrino_energy_erg / (1e6 * CGSUnitsConst::eV);
-
-        //Decide which energy bin to use (i.e. determine 'idx_group')
-        int idx_group = -1;
-        for (int i = 0; i < NULIBVAR_INT(ngroup); i++) {
-            if (neutrino_energy_MeV >= energy_bottom[i] &&
-                neutrino_energy_MeV <= energy_top[i]) {
-                idx_group = i;
-                break;
-            }
-        }
-
-        if (idx_group == -1)
-            AMREX_ASSERT(0);  //abort if energy bin cannot be found.
-
-        energy_bin = idx_group;
+        const int idx_group = energy_bin;
 
         //idx_species = {0 for electron neutrino, 1 for electron antineutrino and 2 for all other heavier ones}
         //electron neutrino: [0, 0]

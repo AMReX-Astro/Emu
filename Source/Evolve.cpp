@@ -565,6 +565,17 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt),
                 p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
 
+            int energy_bin = 0;
+            if (parms->IMFP_method == 2) {
+                int* helperVarsInt_nulib =
+                    NuLib_tabulated_obj.get_helperVarsInt_nulib();
+                energy_bin = find_nulib_energy_bin(
+                    p.rdata(PIdx::pupt),
+                    NuLib_energies_obj.get_energy_bottom_nulib(),
+                    NuLib_energies_obj.get_energy_top_nulib(),
+                    NULIBVAR_INT(ngroup));
+            }
+
             for (int k = sz.first(); k <= sz.last(); ++k) {
                 for (int j = sy.first(); j <= sy.last(); ++j) {
                     for (int i = sx.first(); i <= sx.last(); ++i) {
@@ -808,14 +819,11 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 }
             }
 
-            int energy_bin = -1;
-
             fill_particle_opacities(
-                parms, p.rdata(PIdx::pupt), rho_pp, T_pp, Ye_pp,
-                EOS_tabulated_obj, NuLib_tabulated_obj, NuLib_energies_obj,
-                IMFP_abs, IMFP_absbar, IMFP_scat, IMFP_scatbar,
-                IMFP_scat_brakets, IMFP_scatbar_brakets, munu, munubar,
-                energy_bin);
+                parms, rho_pp, T_pp, Ye_pp, EOS_tabulated_obj,
+                NuLib_tabulated_obj, IMFP_abs, IMFP_absbar, IMFP_scat,
+                IMFP_scatbar, IMFP_scat_brakets, IMFP_scatbar_brakets, munu,
+                munubar, energy_bin);
 
             // Compute equilibrium distribution functions and include Pauli blocking term if requested
             if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {

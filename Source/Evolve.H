@@ -7,6 +7,7 @@
 #include <AMReX_REAL.H>
 #include <AMReX_Vector.H>
 #include <FlavoredNeutrinoContainer.H>
+#include "Constants.H"
 
 namespace GIdx {
 // x/y/z - direction of flux vector
@@ -88,5 +89,23 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
  */
 void empty_particles_inside_blackhole(FlavoredNeutrinoContainer& neutrinos,
                                       const TestParams* parms);
+
+// NuLib group index for a particle energy (erg). Aborts if no bin matches.
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE int find_nulib_energy_bin(
+    amrex::Real neutrino_energy_erg, const double* energy_bottom,
+    const double* energy_top, int ngroup) {
+    const double neutrino_energy_MeV =
+        neutrino_energy_erg / (1e6 * CGSUnitsConst::eV);
+    int idx_group = -1;
+    for (int i = 0; i < ngroup; ++i) {
+        if (neutrino_energy_MeV >= energy_bottom[i] &&
+            neutrino_energy_MeV <= energy_top[i]) {
+            idx_group = i;
+            break;
+        }
+    }
+    if (idx_group == -1) AMREX_ASSERT(0);
+    return idx_group;
+}
 
 #endif
