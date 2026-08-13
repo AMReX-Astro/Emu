@@ -64,7 +64,6 @@ struct TestParams : public amrex::Gpu::Managed {
     Real munu
         [2]
         [NUM_FLAVORS];  // equilibrium electron neutrino chemical potential in erg (CGS unist)
-    Real delta_E;  // erg (CGS unist)
 
     // Attenuation to Hamiltonians
     Real attenuation_hamiltonians;  // Multiplication factor to [N,H]
@@ -248,8 +247,6 @@ struct TestParams : public amrex::Gpu::Managed {
             pp.get(
                 "Do_Pauli_blocking",
                 Do_Pauli_blocking);  // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
-            pp.get("delta_E", delta_E);
-            delta_E *= 1e6 * CGSUnitsConst::eV;  // erg
 
         } else if (IMFP_method == 2) {
             //HDF5 table names (with full path) for EoS and NuLib tables
