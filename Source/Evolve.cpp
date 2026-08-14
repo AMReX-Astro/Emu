@@ -821,7 +821,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 
             const int interpolate_absorption_opacity = 1;
             const int interpolate_scattering_opacity = 1;
-            const int interpolate_chemical_potentials = 0;
+            const int interpolate_chemical_potentials = 1;
 
             fill_particle_opacities(
                 parms, rho_pp, T_pp, Ye_pp, EOS_tabulated_obj,
