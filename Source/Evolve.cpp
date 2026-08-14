@@ -819,11 +819,17 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 }
             }
 
+            const int interpolate_absorption_opacity = 1;
+            const int interpolate_scattering_opacity = 1;
+            const int interpolate_chemical_potentials = 0;
+
             fill_particle_opacities(
                 parms, rho_pp, T_pp, Ye_pp, EOS_tabulated_obj,
                 NuLib_tabulated_obj, IMFP_abs, IMFP_absbar, IMFP_scat,
                 IMFP_scatbar, IMFP_scat_brakets, IMFP_scatbar_brakets, munu,
-                munubar, energy_bin);
+                munubar, energy_bin, interpolate_absorption_opacity,
+                interpolate_scattering_opacity,
+                interpolate_chemical_potentials);
 
             // Compute equilibrium distribution functions and include Pauli blocking term if requested
             if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {

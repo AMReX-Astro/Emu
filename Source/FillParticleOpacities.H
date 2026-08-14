@@ -23,6 +23,11 @@
  *
  * Matrices are assumed to be zero-initialized by the caller.
  * Callable from the MeshToParticle device kernel.
+ *
+ * For IMFP_method 2, interpolate_* flags (0 or 1) select which table
+ * quantities are filled. 0 leaves the corresponding matrices at zero;
+ * 1 interpolates them from the EoS (chemical potentials) or NuLib
+ * (absorption and scattering IMFPs).
  */
 AMREX_GPU_HOST_DEVICE
 void fill_particle_opacities(
@@ -36,6 +41,8 @@ void fill_particle_opacities(
     amrex::Real IMFP_scat_brakets[NUM_FLAVORS][NUM_FLAVORS],
     amrex::Real IMFP_scatbar_brakets[NUM_FLAVORS][NUM_FLAVORS],
     amrex::Real munu[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real munubar[NUM_FLAVORS][NUM_FLAVORS], int energy_bin);
+    amrex::Real munubar[NUM_FLAVORS][NUM_FLAVORS], int energy_bin,
+    int interpolate_absorption_opacity, int interpolate_scattering_opacity,
+    int interpolate_chemical_potentials);
 
 #endif

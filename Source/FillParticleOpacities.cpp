@@ -16,7 +16,9 @@ void fill_particle_opacities(
     amrex::Real IMFP_scat_brakets[NUM_FLAVORS][NUM_FLAVORS],
     amrex::Real IMFP_scatbar_brakets[NUM_FLAVORS][NUM_FLAVORS],
     amrex::Real munu[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real munubar[NUM_FLAVORS][NUM_FLAVORS], int energy_bin) {
+    amrex::Real munubar[NUM_FLAVORS][NUM_FLAVORS], int energy_bin,
+    int interpolate_absorption_opacity, int interpolate_scattering_opacity,
+    int interpolate_chemical_potentials) {
     // If opacity_method is 1, the code will use the inverse mean free paths in the input parameters to compute the collision term.
     if (parms->IMFP_method == 0) {
         // do nothing
@@ -69,101 +71,117 @@ void fill_particle_opacities(
         Real Ye =
             Ye_pp;  // Electron fraction of background matter at this particle's position
 
-        //-------------------- Values from EoS table ------------------------------
-        double mue_out,
-            muhat_out;  // mue_out : Electron chemical potential. muhat_out : neutron minus proton chemical potential
         int keyerr, anyerr;
-        EOS_tabulated_obj.get_mue_muhat(rho, temperature, Ye, mue_out,
-                                        muhat_out, keyerr, anyerr);
-        if (anyerr)
-            AMREX_ASSERT(
-                0);  //If there is an error in interpolation call, stop execution.
+
+        //-------------------- Values from EoS table ------------------------------
+        if (interpolate_chemical_potentials == 1) {
+            double mue_out,
+                muhat_out;  // mue_out : Electron chemical potential. muhat_out : neutron minus proton chemical potential
+            EOS_tabulated_obj.get_mue_muhat(rho, temperature, Ye, mue_out,
+                                            muhat_out, keyerr, anyerr);
+            if (anyerr)
+                AMREX_ASSERT(
+                    0);  //If there is an error in interpolation call, stop execution.
 
 //#define DEBUG_INTERPOLATION_TABLES
 #ifdef DEBUG_INTERPOLATION_TABLES
-        amrex::Print() << "(FillParticleOpacities.cpp) mu_e interpolated = "
-                       << mue_out << std::endl;
-        amrex::Print() << "(FillParticleOpacities.cpp) muhat interpolated = "
-                       << muhat_out << std::endl;
+            amrex::Print()
+                << "(FillParticleOpacities.cpp) mu_e interpolated = "
+                << mue_out << std::endl;
+            amrex::Print()
+                << "(FillParticleOpacities.cpp) muhat interpolated = "
+                << muhat_out << std::endl;
 #endif
-        // munu_val : electron neutrino chemical potential
-        const double munu_val =
-            (mue_out - muhat_out) * 1e6 *
-            CGSUnitsConst::eV;  //munu -> "mu_e" - "muhat"
+            // munu_val : electron neutrino chemical potential
+            const double munu_val =
+                (mue_out - muhat_out) * 1e6 *
+                CGSUnitsConst::eV;  //munu -> "mu_e" - "muhat"
 
-        munu[0][0] =
-            munu_val;  // erg : Save neutrino chemical potential from EOS table in chemical potential matrix
-        munubar[0][0] =
-            -1.0 *
-            munu_val;  // erg : Save antineutrino chemical potential from EOS table in chemical potential matrix
+            munu[0][0] =
+                munu_val;  // erg : Save neutrino chemical potential from EOS table in chemical potential matrix
+            munubar[0][0] =
+                -1.0 *
+                munu_val;  // erg : Save antineutrino chemical potential from EOS table in chemical potential matrix
+        }
 
         //--------------------- Values from NuLib table ---------------------------
-        const int idx_group = energy_bin;
+        if (interpolate_absorption_opacity == 1 ||
+            interpolate_scattering_opacity == 1) {
+            const int idx_group = energy_bin;
 
-        //idx_species = {0 for electron neutrino, 1 for electron antineutrino and 2 for all other heavier ones}
-        //electron neutrino: [0, 0]
-        int idx_species = 0;
-        double absorption_opacity, scattering_opacity;
-        NuLib_tabulated_obj.get_opacities(
-            rho, temperature, Ye, absorption_opacity, scattering_opacity,
-            keyerr, anyerr, idx_species, idx_group);
-        if (anyerr) AMREX_ASSERT(0);
-
-#ifdef DEBUG_INTERPOLATION_TABLES
-        amrex::Print()
-            << "(FillParticleOpacities.cpp) absorption_opacity[e] interpolated = "
-            << absorption_opacity << std::endl;
-        amrex::Print()
-            << "(FillParticleOpacities.cpp) scattering_opacity[e] interpolated = "
-            << scattering_opacity << std::endl;
-#endif
-
-        IMFP_abs[0][0] = absorption_opacity;
-        IMFP_scat[0][0] = scattering_opacity;
-
-        //electron antineutrino: [1, 0]
-        idx_species = 1;
-        NuLib_tabulated_obj.get_opacities(
-            rho, temperature, Ye, absorption_opacity, scattering_opacity,
-            keyerr, anyerr, idx_species, idx_group);
-        if (anyerr) AMREX_ASSERT(0);
+            //idx_species = {0 for electron neutrino, 1 for electron antineutrino and 2 for all other heavier ones}
+            //electron neutrino: [0, 0]
+            int idx_species = 0;
+            double absorption_opacity, scattering_opacity;
+            NuLib_tabulated_obj.get_opacities(
+                rho, temperature, Ye, absorption_opacity, scattering_opacity,
+                keyerr, anyerr, idx_species, idx_group);
+            if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES
-        amrex::Print()
-            << "(FillParticleOpacities.cpp) absorption_opacity[a] interpolated = "
-            << absorption_opacity << std::endl;
-        amrex::Print()
-            << "(FillParticleOpacities.cpp) scattering_opacity[a] interpolated = "
-            << scattering_opacity << std::endl;
+            amrex::Print()
+                << "(FillParticleOpacities.cpp) absorption_opacity[e] interpolated = "
+                << absorption_opacity << std::endl;
+            amrex::Print()
+                << "(FillParticleOpacities.cpp) scattering_opacity[e] interpolated = "
+                << scattering_opacity << std::endl;
 #endif
 
-        IMFP_absbar[0][0] = absorption_opacity;
-        IMFP_scatbar[0][0] = scattering_opacity;
+            if (interpolate_absorption_opacity == 1)
+                IMFP_abs[0][0] = absorption_opacity;
+            if (interpolate_scattering_opacity == 1)
+                IMFP_scat[0][0] = scattering_opacity;
 
-        //heavier ones: muon neutrino[0,1], muon antineutruino[1,1], tau neutrino[0,2], tau antineutrino[1,2]
-        idx_species = 2;
-        NuLib_tabulated_obj.get_opacities(
-            rho, temperature, Ye, absorption_opacity, scattering_opacity,
-            keyerr, anyerr, idx_species, idx_group);
-        if (anyerr) AMREX_ASSERT(0);
+            //electron antineutrino: [1, 0]
+            idx_species = 1;
+            NuLib_tabulated_obj.get_opacities(
+                rho, temperature, Ye, absorption_opacity, scattering_opacity,
+                keyerr, anyerr, idx_species, idx_group);
+            if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES
-        amrex::Print()
-            << "(FillParticleOpacities.cpp) absorption_opacity[x] interpolated = "
-            << absorption_opacity << std::endl;
-        amrex::Print()
-            << "(FillParticleOpacities.cpp) scattering_opacity[x] interpolated = "
-            << scattering_opacity << std::endl;
+            amrex::Print()
+                << "(FillParticleOpacities.cpp) absorption_opacity[a] interpolated = "
+                << absorption_opacity << std::endl;
+            amrex::Print()
+                << "(FillParticleOpacities.cpp) scattering_opacity[a] interpolated = "
+                << scattering_opacity << std::endl;
 #endif
 
-        for (int i = 1; i < NUM_FLAVORS;
-             ++i) {  //0->neutrino or 1->antineutrino
-            // for(int j=1; j<NUM_FLAVORS; j++){  //0->electron, 1->heavy(muon), 2->heavy(tau); all heavy same for current table
-            IMFP_abs[i][i] = absorption_opacity;      // ... fix it ...
-            IMFP_absbar[i][i] = absorption_opacity;   // ... fix it ...
-            IMFP_scat[i][i] = scattering_opacity;     // ... fix it ...
-            IMFP_scatbar[i][i] = scattering_opacity;  // ... fix it ...
-            // }
+            if (interpolate_absorption_opacity == 1)
+                IMFP_absbar[0][0] = absorption_opacity;
+            if (interpolate_scattering_opacity == 1)
+                IMFP_scatbar[0][0] = scattering_opacity;
+
+            //heavier ones: muon neutrino[0,1], muon antineutruino[1,1], tau neutrino[0,2], tau antineutrino[1,2]
+            idx_species = 2;
+            NuLib_tabulated_obj.get_opacities(
+                rho, temperature, Ye, absorption_opacity, scattering_opacity,
+                keyerr, anyerr, idx_species, idx_group);
+            if (anyerr) AMREX_ASSERT(0);
+
+#ifdef DEBUG_INTERPOLATION_TABLES
+            amrex::Print()
+                << "(FillParticleOpacities.cpp) absorption_opacity[x] interpolated = "
+                << absorption_opacity << std::endl;
+            amrex::Print()
+                << "(FillParticleOpacities.cpp) scattering_opacity[x] interpolated = "
+                << scattering_opacity << std::endl;
+#endif
+
+            for (int i = 1; i < NUM_FLAVORS;
+                 ++i) {  //0->neutrino or 1->antineutrino
+                // for(int j=1; j<NUM_FLAVORS; j++){  //0->electron, 1->heavy(muon), 2->heavy(tau); all heavy same for current table
+                if (interpolate_absorption_opacity == 1) {
+                    IMFP_abs[i][i] = absorption_opacity;     // ... fix it ...
+                    IMFP_absbar[i][i] = absorption_opacity;  // ... fix it ...
+                }
+                if (interpolate_scattering_opacity == 1) {
+                    IMFP_scat[i][i] = scattering_opacity;     // ... fix it ...
+                    IMFP_scatbar[i][i] = scattering_opacity;  // ... fix it ...
+                }
+                // }
+            }
         }
         //-----------------------------------------------------------------------
     } else
