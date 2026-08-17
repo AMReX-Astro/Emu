@@ -386,9 +386,9 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                                         // Scattering opacities from input
                                         // (IMFP_scat[nu/nubar][flavor], 1/cm).
                                         const amrex::Real IMFP_scata_cm =
-                                            parms->IMFP_scat[nunubar][a];
+                                            parms->IMFP_scat[nunubar][a]*parms->attenuation_scattering_opacity;
                                         const amrex::Real IMFP_scatb_cm =
-                                            parms->IMFP_scat[nunubar][b];
+                                            parms->IMFP_scat[nunubar][b]*parms->attenuation_scattering_opacity;
 
                                         // kappa_ab = delta_ab * kappa_a
                                         const amrex::Real
@@ -823,16 +823,37 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             const int interpolate_scattering_opacity = 1;
             const int interpolate_chemical_potentials = 1;
 
-            fill_particle_opacities(
-                parms, rho_pp, T_pp, Ye_pp, EOS_tabulated_obj,
-                NuLib_tabulated_obj, IMFP_abs, IMFP_absbar, IMFP_scat,
-                IMFP_scatbar, IMFP_scat_brakets, IMFP_scatbar_brakets, munu,
-                munubar, energy_bin, interpolate_absorption_opacity,
-                interpolate_scattering_opacity,
-                interpolate_chemical_potentials);
+            if (parms->attenuation_absorption_opacity > 0.0 || parms->attenuation_scattering_opacity > 0.0) {
+                fill_particle_opacities(
+                    parms, rho_pp, T_pp, Ye_pp, EOS_tabulated_obj,
+                    NuLib_tabulated_obj, IMFP_abs, IMFP_absbar, IMFP_scat,
+                    IMFP_scatbar, IMFP_scat_brakets, IMFP_scatbar_brakets, munu,
+                    munubar, energy_bin, interpolate_absorption_opacity,
+                    interpolate_scattering_opacity,
+                    interpolate_chemical_potentials);
 
-            // Compute equilibrium distribution functions and include Pauli blocking term if requested
-            if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
+                // Initialize matrices with zeros (incl. scattering: used only for
+                // IMFP_method==1 in dfdt_fill; method 2 fills IMFP_scat from NuLib
+                // but does not yet apply the isotropic C_in / brakets QKE term).
+                for (int i = 0; i < NUM_FLAVORS; ++i) {
+                    for (int j = 0; j < NUM_FLAVORS; ++j) {
+                        IMFP_abs[i][j] *= parms->attenuation_absorption_opacity;
+                        IMFP_absbar[i][j] *= parms->attenuation_absorption_opacity;
+                        IMFP_scat[i][j] *= parms->attenuation_scattering_opacity;
+                        IMFP_scatbar[i][j] *= parms->attenuation_scattering_opacity;
+                        IMFP_scat_brakets[i][j] *= parms->attenuation_scattering_opacity;
+                        IMFP_scatbar_brakets[i][j] *= parms->attenuation_scattering_opacity;
+                    }
+                }
+            }
+
+            // Compute equilibrium distribution functions and include Pauli blocking term if requested.
+            // Keep the `>` comparison off the `if` that is immediately followed by
+            // `#if SET_EQUILIBRIUM == 1` — nvcc misparses that combination.
+            const bool do_absorption_eq =
+                (parms->IMFP_method == 1 || parms->IMFP_method == 2) &&
+                (parms->attenuation_absorption_opacity > Real(0.0));
+            if (do_absorption_eq) {
                 if (parms->set_equilibrium_distribution == 1) {
 #if SET_EQUILIBRIUM == 1
                     f_eq[0][0] = 8.0 *

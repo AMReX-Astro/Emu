@@ -105,8 +105,6 @@ write_plot_particles_every = 10
 do_restart = 0
 restart_dir = ""
 
-set_equilibrium_distribution = 1
-
 ###############################
 # NEUTRINO PHYSICS PARAMETERS #
 ###############################
@@ -143,22 +141,8 @@ deltaCP_degrees = 0
 # opacity stuff #
 #################
 IMFP_method = 1
-
-Do_Pauli_blocking = 0 # If 1, it will multiply the inverse mean free path by 1 / (1 - f_eq); if 0, do nothing.
-
-IMFP_abs0_cm = 0
-IMFP_abs1_cm = 0
-IMFP_abs2_cm = 0
-IMFP_abs0bar_cm = 0
-IMFP_abs1bar_cm = 0
-IMFP_abs2bar_cm = 0
-
-munu0_MeV = 0
-munu1_MeV = 0
-munu2_MeV = 0
-munu0bar_MeV = 0
-munu1bar_MeV = 0
-munu2bar_MeV = 0
+attenuation_absorption_opacity = 0
+attenuation_scattering_opacity = 1
 
 IMFP_scat0_cm = 5e-4 # inv cm
 IMFP_scat1_cm = 5.1e-4 # inv cm

@@ -71,6 +71,10 @@ struct TestParams : public amrex::Gpu::Managed {
     Real attenuation_matter;
     Real attenuation_self_interaction;
 
+    Real attenuation_absorption_opacity;
+    Real attenuation_scattering_opacity;
+    Real off_set_c_scattering_bin_with_nulib_energy_bin;
+
     // Black hole properties
     int do_blackhole;    // Flag to include a black hole in the simulation
     double bh_radius;    // Black hole radius (cm)
@@ -220,51 +224,64 @@ struct TestParams : public amrex::Gpu::Managed {
             munu[1][i] = 0.0;
         }
 
+        Do_Pauli_blocking = 0;
+        set_equilibrium_distribution = 0;
+
         if (IMFP_method > 0) {
             // Set equilibrium distribution function for neutrinos and antineutrinos
-            pp.get("set_equilibrium_distribution",
-                   set_equilibrium_distribution);
+            pp.get("attenuation_absorption_opacity",
+                   attenuation_absorption_opacity);
+            pp.get("attenuation_scattering_opacity",
+                   attenuation_scattering_opacity);
+            if (attenuation_absorption_opacity > 0.0 ) {
+                pp.get(
+                    "Do_Pauli_blocking",
+                    Do_Pauli_blocking);  // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
+                pp.get("set_equilibrium_distribution",
+                    set_equilibrium_distribution);
+            }
         }
 
         if (IMFP_method == 0) {
             // Do nothing
         } else if (IMFP_method == 1) {
-            for (int i = 0; i < NUM_FLAVORS; i++) {
-                std::string name;
-                name = std::string("IMFP_abs") + std::to_string(i) +
-                       std::string("_cm");
-                pp.get(name.c_str(), IMFP_abs[0][i]);
-                name = std::string("IMFP_abs") + std::to_string(i) +
-                       std::string("bar_cm");
-                pp.get(name.c_str(), IMFP_abs[1][i]);
-                name = std::string("IMFP_scat") + std::to_string(i) +
-                       std::string("_cm");
-                pp.get(name.c_str(), IMFP_scat[0][i]);
-                name = std::string("IMFP_scat") + std::to_string(i) +
-                       std::string("bar_cm");
-                pp.get(name.c_str(), IMFP_scat[1][i]);
-                name = std::string("munu") + std::to_string(i) +
-                       std::string("_MeV");
-                pp.get(name.c_str(), munu[0][i]);
-                name = std::string("munu") + std::to_string(i) +
-                       std::string("bar_MeV");
-                pp.get(name.c_str(), munu[1][i]);
-                munu[0][i] *= 1e6 * CGSUnitsConst::eV;
-                munu[1][i] *= 1e6 * CGSUnitsConst::eV;
+            std::string name;
+            if (attenuation_absorption_opacity > 0.0) {
+                for (int i = 0; i < NUM_FLAVORS; i++) {
+                    name = std::string("IMFP_abs") + std::to_string(i) +
+                        std::string("_cm");
+                    pp.get(name.c_str(), IMFP_abs[0][i]);
+                    name = std::string("IMFP_abs") + std::to_string(i) +
+                        std::string("bar_cm");
+                    pp.get(name.c_str(), IMFP_abs[1][i]);
+                    name = std::string("munu") + std::to_string(i) +
+                        std::string("_MeV");
+                    pp.get(name.c_str(), munu[0][i]);
+                    name = std::string("munu") + std::to_string(i) +
+                        std::string("bar_MeV");
+                    pp.get(name.c_str(), munu[1][i]);
+                    munu[0][i] *= 1e6 * CGSUnitsConst::eV;
+                    munu[1][i] *= 1e6 * CGSUnitsConst::eV;
+                }
             }
-
-            pp.get(
-                "Do_Pauli_blocking",
-                Do_Pauli_blocking);  // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
-
+            if (attenuation_scattering_opacity > 0.0) {
+                for (int i = 0; i < NUM_FLAVORS; i++) {
+                    name = std::string("IMFP_scat") + std::to_string(i) +
+                        std::string("_cm");
+                    pp.get(name.c_str(), IMFP_scat[0][i]);
+                    name = std::string("IMFP_scat") + std::to_string(i) +
+                        std::string("bar_cm");
+                    pp.get(name.c_str(), IMFP_scat[1][i]);
+                }
+            }
         } else if (IMFP_method == 2) {
-            //HDF5 table names (with full path) for EoS and NuLib tables
+            if (attenuation_scattering_opacity > 0.0) {
+                pp.get("off_set_c_scattering_bin_with_nulib_energy_bin",
+                       off_set_c_scattering_bin_with_nulib_energy_bin);
+            }
+            // HDF5 table names (with full path) for EoS and NuLib tables
             pp.get("nuceos_table_name", nuceos_table_name);
             pp.get("nulib_table_name", nulib_table_name);
-            pp.get(
-                "Do_Pauli_blocking",
-                Do_Pauli_blocking);  // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
-
         } else
             AMREX_ASSERT_WITH_MESSAGE(
                 false,

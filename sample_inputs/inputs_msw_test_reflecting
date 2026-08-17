@@ -107,7 +107,6 @@ deltaCP_degrees = 222
 # opacity stuff #
 #################
 IMFP_method = 0
-set_equilibrium_distribution = 0
 
 #################
 # Background Ye, T and rho
