@@ -1,11 +1,17 @@
 '''
-Monochromatic isotropic scattering test — write particle_input.dat.
+Multi-energy isotropic scattering test — write particle_input.dat.
 
 Created by Erick Urquilla, Department of Physics and Astronomy,
 University of Tennessee, Knoxville.
 
-Setup documentation (geometry, densities, opacities, expected behavior):
-  sample_inputs/inputs_monocromatic_isotropic_scattering_test
+Same +x beam setup as the monochromatic test (st12), but now with 13
+energy bins taken from the NuLib table (the first five NuLib bins are
+dropped so the run is cheaper). Each bin has a single occupied beam
+along +x; other directions start empty. Phase-space volume uses each
+bin's NuLib lower/upper edges.
+
+Run from Exec/. Pair with the matching multi-energy isotropic-scattering
+inputs file when available.
 '''
 import numpy as np
 import sys
@@ -29,20 +35,31 @@ nu_taubar = 6e32 # 1/ccm
 # Energy bin size
 energy_bin_size_MeV = 0.8339001570751987 # Energy in Mev
 
+'''
+# Energy bins from NuLib table (No cutted)
+--------- NuLib table energy bins ---------
 # Energy bin centers extracted from NuLib table
-energies_center_Mev = [50.0] # Energy in Mev
+energies_center_Mev = [1, 3, 5.23824, 8.00974, 11.4415, 15.6909, 20.9527, 27.4681, 35.5357, 45.5254, 57.8951, 73.2117, 92.1775, 115.662, 144.741, 180.748, 225.334, 280.542] # Energy in Mev
 # Energy bin bottom extracted from NuLib table
-energies_bottom_Mev = [50.0-energy_bin_size_MeV/2.0]
+energies_bottom_Mev = [0, 2, 4, 6.47649, 9.54299, 13.3401, 18.0418, 23.8636, 31.0725, 39.9989, 51.0519, 64.7382, 81.6853, 102.67, 128.654, 160.828, 200.668, 250]
 # Energy bin top extracted from NuLib table
-energies_top_Mev = [50.0+energy_bin_size_MeV/2.0]
+energies_top_Mev = [2, 4, 6.47649, 9.54299, 13.3401, 18.0418, 23.8636, 31.0725, 39.9989, 51.0519, 64.7382, 81.6853, 102.67, 128.654, 160.828, 200.668, 250, 311.085]
+'''
 
-# Energies in ergs
-energies_center_erg = np.array(energies_center_Mev) * 1e6*amrex.eV # Energy in ergs
-energies_bottom_erg = np.array(energies_bottom_Mev) * 1e6*amrex.eV # Energy in ergs
-energies_top_erg    = np.array(energies_top_Mev   ) * 1e6*amrex.eV # Energy in ergs
+# The following energy bins are an extraction of the NuLib table
+# I have delete the first five energy bin to make the fermi-dirac test facter
+# If I simulation want to run with all energy bins the user must change the energy bins manually
+
+# Energy bins from NuLib table (Cutted)
+# Energy bin centers extracted from NuLib table
+energies_center_Mev = [15.6909, 20.9527, 27.4681, 35.5357, 45.5254, 57.8951, 73.2117, 92.1775, 115.662, 144.741, 180.748, 225.334, 280.542] # Energy in Mev
+# Energy bin bottom extracted from NuLib table
+energies_bottom_Mev = [13.3401, 18.0418, 23.8636, 31.0725, 39.9989, 51.0519, 64.7382, 81.6853, 102.67, 128.654, 160.828, 200.668, 250]
+# Energy bin top extracted from NuLib table
+energies_top_Mev = [18.0418, 23.8636, 31.0725, 39.9989, 51.0519, 64.7382, 81.6853, 102.67, 128.654, 160.828, 200.668, 250, 311.085]
 
 # Generate the number of energy bins
-n_energies = len(energies_center_erg)
+n_energies = len(energies_center_Mev)
 
 # Get variable keys
 rkey, ikey = amrex.get_particle_keys(NF, ignore_pos=True)
@@ -63,10 +80,10 @@ n_particles = n_energies * n_directions
 particles = np.zeros((n_energies, n_directions, n_variables))
 
 # Fill the particles array using a loop, replacing append
-for i, energy_bin in enumerate(energies_center_erg):
+for i, energy_bin in enumerate(energies_center_Mev):
     particles[i , : , rkey["pupx"] : rkey["pupz"]+1 ] = energy_bin * phat
     particles[i , : , rkey["pupt"]                  ] = energy_bin
-    particles[i , : , rkey["Vphase"]                ] = ( 4.0 * np.pi / n_directions ) * ( ( energies_top_erg[i] ** 3 - energies_bottom_erg[i] ** 3 ) / 3.0 )
+    particles[i , : , rkey["Vphase"]                ] = ( 4.0 * np.pi / n_directions ) * ( ( energies_top_Mev[i] ** 3 - energies_bottom_Mev[i] ** 3 ) / 3.0 )
     
     # Set values only for the direction where phat = [1, 0, 0]; others remain zero
     for j, pdir in enumerate(phat):
