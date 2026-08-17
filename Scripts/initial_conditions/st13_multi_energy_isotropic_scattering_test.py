@@ -58,6 +58,11 @@ energies_bottom_Mev = [13.3401, 18.0418, 23.8636, 31.0725, 39.9989, 51.0519, 64.
 # Energy bin top extracted from NuLib table
 energies_top_Mev = [18.0418, 23.8636, 31.0725, 39.9989, 51.0519, 64.7382, 81.6853, 102.67, 128.654, 160.828, 200.668, 250, 311.085]
 
+# Energies in ergs
+energies_center_erg = np.array(energies_center_Mev) * 1e6*amrex.eV # Energy in ergs
+energies_bottom_erg = np.array(energies_bottom_Mev) * 1e6*amrex.eV # Energy in ergs
+energies_top_erg    = np.array(energies_top_Mev   ) * 1e6*amrex.eV # Energy in ergs
+
 # Generate the number of energy bins
 n_energies = len(energies_center_Mev)
 
@@ -80,10 +85,10 @@ n_particles = n_energies * n_directions
 particles = np.zeros((n_energies, n_directions, n_variables))
 
 # Fill the particles array using a loop, replacing append
-for i, energy_bin in enumerate(energies_center_Mev):
+for i, energy_bin in enumerate(energies_center_erg):
     particles[i , : , rkey["pupx"] : rkey["pupz"]+1 ] = energy_bin * phat
     particles[i , : , rkey["pupt"]                  ] = energy_bin
-    particles[i , : , rkey["Vphase"]                ] = ( 4.0 * np.pi / n_directions ) * ( ( energies_top_Mev[i] ** 3 - energies_bottom_Mev[i] ** 3 ) / 3.0 )
+    particles[i , : , rkey["Vphase"]                ] = ( 4.0 * np.pi / n_directions ) * ( ( energies_top_erg[i] ** 3 - energies_bottom_erg[i] ** 3 ) / 3.0 )
     
     # Set values only for the direction where phat = [1, 0, 0]; others remain zero
     for j, pdir in enumerate(phat):
