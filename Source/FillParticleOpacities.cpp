@@ -85,9 +85,8 @@ void fill_particle_opacities(
 
 //#define DEBUG_INTERPOLATION_TABLES
 #ifdef DEBUG_INTERPOLATION_TABLES
-            amrex::Print()
-                << "(FillParticleOpacities.cpp) mu_e interpolated = "
-                << mue_out << std::endl;
+            amrex::Print() << "(FillParticleOpacities.cpp) mu_e interpolated = "
+                           << mue_out << std::endl;
             amrex::Print()
                 << "(FillParticleOpacities.cpp) muhat interpolated = "
                 << muhat_out << std::endl;
@@ -119,12 +118,12 @@ void fill_particle_opacities(
             if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES
-            amrex::Print()
-                << "(FillParticleOpacities.cpp) absorption_opacity[e] interpolated = "
-                << absorption_opacity << std::endl;
-            amrex::Print()
-                << "(FillParticleOpacities.cpp) scattering_opacity[e] interpolated = "
-                << scattering_opacity << std::endl;
+            amrex::Print() << "(FillParticleOpacities.cpp) "
+                              "absorption_opacity[e] interpolated = "
+                           << absorption_opacity << std::endl;
+            amrex::Print() << "(FillParticleOpacities.cpp) "
+                              "scattering_opacity[e] interpolated = "
+                           << scattering_opacity << std::endl;
 #endif
 
             if (interpolate_absorption_opacity == 1)
@@ -140,12 +139,12 @@ void fill_particle_opacities(
             if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES
-            amrex::Print()
-                << "(FillParticleOpacities.cpp) absorption_opacity[a] interpolated = "
-                << absorption_opacity << std::endl;
-            amrex::Print()
-                << "(FillParticleOpacities.cpp) scattering_opacity[a] interpolated = "
-                << scattering_opacity << std::endl;
+            amrex::Print() << "(FillParticleOpacities.cpp) "
+                              "absorption_opacity[a] interpolated = "
+                           << absorption_opacity << std::endl;
+            amrex::Print() << "(FillParticleOpacities.cpp) "
+                              "scattering_opacity[a] interpolated = "
+                           << scattering_opacity << std::endl;
 #endif
 
             if (interpolate_absorption_opacity == 1)
@@ -161,12 +160,12 @@ void fill_particle_opacities(
             if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES
-            amrex::Print()
-                << "(FillParticleOpacities.cpp) absorption_opacity[x] interpolated = "
-                << absorption_opacity << std::endl;
-            amrex::Print()
-                << "(FillParticleOpacities.cpp) scattering_opacity[x] interpolated = "
-                << scattering_opacity << std::endl;
+            amrex::Print() << "(FillParticleOpacities.cpp) "
+                              "absorption_opacity[x] interpolated = "
+                           << absorption_opacity << std::endl;
+            amrex::Print() << "(FillParticleOpacities.cpp) "
+                              "scattering_opacity[x] interpolated = "
+                           << scattering_opacity << std::endl;
 #endif
 
             for (int i = 1; i < NUM_FLAVORS;
@@ -195,6 +194,6 @@ void fill_particle_opacities(
         }
         //-----------------------------------------------------------------------
     } else
-        AMREX_ASSERT_WITH_MESSAGE(
-            false, "only available opacity_method is 0, 1 or 2");
+        AMREX_ASSERT_WITH_MESSAGE(false,
+                                  "only available opacity_method is 0, 1 or 2");
 }

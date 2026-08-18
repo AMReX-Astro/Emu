@@ -79,9 +79,8 @@ void FlavoredNeutrinoContainer::ReadParticleFileHeaders(
     number_of_directions = parse_first_int_from_line(line);
 
     if (!getline_nonempty(file, line))
-        amrex::Abort(
-            "particle data file missing number_of_energies header: " +
-            filename);
+        amrex::Abort("particle data file missing number_of_energies header: " +
+                     filename);
     number_of_energies = parse_first_int_from_line(line);
 
     if (number_of_directions <= 0 || number_of_energies <= 0)
@@ -162,16 +161,14 @@ Gpu::ManagedVector<GpuArray<Real, PIdx::nattribs>> read_particle_data(
         // File columns: pupx, pupy, pupz, pupt, then N/flavor attributes.
         // Skip time/x/y/z (indices 0-3) and hydro (rho, T, Ye), which are
         // interpolated from the mesh rather than read from particle_input.dat.
-        for (int i = PIdx::pupx; i <= PIdx::pupt; ++i)
-            ss >> temp_particle[i];
+        for (int i = PIdx::pupx; i <= PIdx::pupt; ++i) ss >> temp_particle[i];
         for (int i = PIdx::N00_Re; i < PIdx::nattribs; ++i)
             ss >> temp_particle[i];
         particle_data.push_back(temp_particle);
     }
 
-    const int expected_rows =
-        FlavoredNeutrinoContainer::number_of_directions *
-        FlavoredNeutrinoContainer::number_of_energies;
+    const int expected_rows = FlavoredNeutrinoContainer::number_of_directions *
+                              FlavoredNeutrinoContainer::number_of_energies;
     const int num_data_rows = static_cast<int>(particle_data.size());
     if (num_data_rows != expected_rows) {
         amrex::Abort(

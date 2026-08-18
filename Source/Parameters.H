@@ -232,12 +232,12 @@ struct TestParams : public amrex::Gpu::Managed {
                    attenuation_absorption_opacity);
             pp.get("attenuation_scattering_opacity",
                    attenuation_scattering_opacity);
-            if (attenuation_absorption_opacity > 0.0 ) {
+            if (attenuation_absorption_opacity > 0.0) {
                 pp.get(
                     "Do_Pauli_blocking",
                     Do_Pauli_blocking);  // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
                 pp.get("set_equilibrium_distribution",
-                    set_equilibrium_distribution);
+                       set_equilibrium_distribution);
             }
         }
 
@@ -248,16 +248,16 @@ struct TestParams : public amrex::Gpu::Managed {
             if (attenuation_absorption_opacity > 0.0) {
                 for (int i = 0; i < NUM_FLAVORS; i++) {
                     name = std::string("IMFP_abs") + std::to_string(i) +
-                        std::string("_cm");
+                           std::string("_cm");
                     pp.get(name.c_str(), IMFP_abs[0][i]);
                     name = std::string("IMFP_abs") + std::to_string(i) +
-                        std::string("bar_cm");
+                           std::string("bar_cm");
                     pp.get(name.c_str(), IMFP_abs[1][i]);
                     name = std::string("munu") + std::to_string(i) +
-                        std::string("_MeV");
+                           std::string("_MeV");
                     pp.get(name.c_str(), munu[0][i]);
                     name = std::string("munu") + std::to_string(i) +
-                        std::string("bar_MeV");
+                           std::string("bar_MeV");
                     pp.get(name.c_str(), munu[1][i]);
                     munu[0][i] *= 1e6 * CGSUnitsConst::eV;
                     munu[1][i] *= 1e6 * CGSUnitsConst::eV;
@@ -266,10 +266,10 @@ struct TestParams : public amrex::Gpu::Managed {
             if (attenuation_scattering_opacity > 0.0) {
                 for (int i = 0; i < NUM_FLAVORS; i++) {
                     name = std::string("IMFP_scat") + std::to_string(i) +
-                        std::string("_cm");
+                           std::string("_cm");
                     pp.get(name.c_str(), IMFP_scat[0][i]);
                     name = std::string("IMFP_scat") + std::to_string(i) +
-                        std::string("bar_cm");
+                           std::string("bar_cm");
                     pp.get(name.c_str(), IMFP_scat[1][i]);
                 }
             }
