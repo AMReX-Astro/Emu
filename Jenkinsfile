@@ -183,6 +183,19 @@ pipeline {
 				}
 			}
 		}
+
+		stage('Multi-Energy Isotropic-Kernel Scattering'){ steps{
+
+				dir('Exec'){
+					sh 'python ../Scripts/initial_conditions/st13_multi_energy_isotropic_scattering_test.py'
+					sh 'python ../Scripts/initial_conditions/nsm_constant_background_rho_Ye_T_writer.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_multi_energy_isotropic_scattering_test'
+					sh 'python ../Scripts/tests/coll_multienergy_isot_scat_test.py'
+					archiveArtifacts artifacts: '*.pdf'
+					sh 'rm -rf plt* *pdf rho_Ye_T.hdf5'
+				}
+			}
+		}
 		
 		stage('Metric test'){ steps{
 				dir('unit_test'){
