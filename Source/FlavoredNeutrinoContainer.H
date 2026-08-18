@@ -26,6 +26,9 @@ struct PIdx {
         pupy,
         pupz,
         pupt,
+        rho_g_inv_ccm,
+        T_erg,
+        Ye,
 #include "generated_files/FlavoredNeutrinoContainer.H_fill"
         nattribs
     };

@@ -234,6 +234,10 @@ void evolve_flavor(const TestParams* parms) {
     // Deposit particles to grid
     deposit_to_mesh(neutrinos_old, state, geom, parms);
 
+    // Interpolate background rho, T, Ye onto particle attributes for the
+    // initial plotfile and so the first RHS copy sees hydro on the particles.
+    interpolate_hydro_to_particles(neutrinos_old, state, geom);
+
     // Write plotfile after initialization
     DataReducer rd;
     if (not parms->do_restart) {
@@ -252,6 +256,9 @@ void evolve_flavor(const TestParams* parms) {
                           FlavoredNeutrinoContainer& neutrinos,
                           Real /* time */) {
         /* Evaluate the neutrino distribution matrix RHS */
+
+        // Step 0: Interpolate background hydro (rho, T, Ye) onto particles
+        interpolate_hydro_to_particles(neutrinos, state, geom);
 
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
         deposit_to_mesh(neutrinos, state, geom, parms);
