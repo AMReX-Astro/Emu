@@ -26,13 +26,12 @@ void Initialize() {
     names.push_back("vupy");
     names.push_back("vupz");
 #include "generated_files/Evolve.cpp_grid_names_fill"
-    // One Hermitian pair (nu, then nubar) per energy bin, PIdx::offset order.
-    // Example: C_in_scat_iso_energy_0_flavor_00_Re, ..._01_Re, ..._01_Im, ...
-    const int n_energies = FlavoredNeutrinoContainer::number_of_energies;
+    // One Hermitian pair (nu, then nubar) per mesh energy bin, PIdx::offset
+    // order. Example: C_in_scat_iso_energy_0_flavor_00_Re, ..._01_Re, ...
+    const int n_energies = number_of_c_in_scat_energies;
     AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
         n_energies > 0,
-        "GIdx::Initialize() requires number_of_energies from the particle "
-        "file");
+        "GIdx::Initialize() requires number_of_c_in_scat_energies");
     for (int ie = 0; ie < n_energies; ++ie) {
         const std::string energy_tag =
             "C_in_scat_iso_energy_" + std::to_string(ie) + "_flavor_";
@@ -481,8 +480,9 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                         }
 
                         // --------------------------------------------------------------------
-                        // Isotropic in-scattering deposit into C_in_scat_* mesh components.
-                        // Currently deposited into energy bin 0.
+                        // Isotropic in-scattering deposit into C_in_scat_* mesh
+                        // components for this particle's energy_bin (0 for
+                        // IMFP_method 0/1, NuLib group for method 2).
                         // --------------------------------------------------------------------
                         {
                             constexpr int n_scat_flav =
@@ -525,7 +525,7 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                                                 &sarr(
                                                     idx[0], idx[1], idx[2],
                                                     GIdx::C_in_scat_iso_index(
-                                                        0, scat_off) -
+                                                        energy_bin, scat_off) -
                                                         start_comp),
                                                 sx(i) * sy(j) * sz(k) *
                                                     (1.0 /
@@ -782,7 +782,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                         V00_Re += matter_term;
                         V00_Rebar -= matter_term;
 
-                        // Energy bin 0 corresponds to C_in_scat_iso_energy_0_flavor_*.
+                        // Interpolate C_in_scat for this particle's energy_bin
+                        // (0 for IMFP_method 0/1, NuLib group for method 2).
                         {
                             const int nubar = GIdx::n_c_in_scat_flavor;
 #if NUM_FLAVORS == 2
@@ -790,133 +791,133 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, PIdx::offset(0, 0)));
+                                         energy_bin, PIdx::offset(0, 0)));
                             C_in_scat_pp_01_Re +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, PIdx::offset(0, 1, PIdx::Re)));
+                                         energy_bin, PIdx::offset(0, 1, PIdx::Re)));
                             C_in_scat_pp_01_Im +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, PIdx::offset(0, 1, PIdx::Im)));
+                                         energy_bin, PIdx::offset(0, 1, PIdx::Im)));
                             C_in_scat_pp_11_Re +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, PIdx::offset(1, 1)));
+                                         energy_bin, PIdx::offset(1, 1)));
                             C_in_scat_pp_00_Rebar +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, nubar + PIdx::offset(0, 0)));
+                                         energy_bin, nubar + PIdx::offset(0, 0)));
                             C_in_scat_pp_01_Rebar +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, nubar + PIdx::offset(0, 1, PIdx::Re)));
+                                         energy_bin, nubar + PIdx::offset(0, 1, PIdx::Re)));
                             C_in_scat_pp_01_Imbar +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, nubar + PIdx::offset(0, 1, PIdx::Im)));
+                                         energy_bin, nubar + PIdx::offset(0, 1, PIdx::Im)));
                             C_in_scat_pp_11_Rebar +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, nubar + PIdx::offset(1, 1)));
+                                         energy_bin, nubar + PIdx::offset(1, 1)));
 #elif NUM_FLAVORS == 3
                             C_in_scat_pp_00_Re +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, PIdx::offset(0, 0)));
+                                         energy_bin, PIdx::offset(0, 0)));
                             C_in_scat_pp_01_Re +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, PIdx::offset(0, 1, PIdx::Re)));
+                                         energy_bin, PIdx::offset(0, 1, PIdx::Re)));
                             C_in_scat_pp_01_Im +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, PIdx::offset(0, 1, PIdx::Im)));
+                                         energy_bin, PIdx::offset(0, 1, PIdx::Im)));
                             C_in_scat_pp_11_Re +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, PIdx::offset(1, 1)));
+                                         energy_bin, PIdx::offset(1, 1)));
                             C_in_scat_pp_02_Re +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, PIdx::offset(0, 2, PIdx::Re)));
+                                         energy_bin, PIdx::offset(0, 2, PIdx::Re)));
                             C_in_scat_pp_02_Im +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, PIdx::offset(0, 2, PIdx::Im)));
+                                         energy_bin, PIdx::offset(0, 2, PIdx::Im)));
                             C_in_scat_pp_12_Re +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, PIdx::offset(1, 2, PIdx::Re)));
+                                         energy_bin, PIdx::offset(1, 2, PIdx::Re)));
                             C_in_scat_pp_12_Im +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, PIdx::offset(1, 2, PIdx::Im)));
+                                         energy_bin, PIdx::offset(1, 2, PIdx::Im)));
                             C_in_scat_pp_22_Re +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, PIdx::offset(2, 2)));
+                                         energy_bin, PIdx::offset(2, 2)));
                             C_in_scat_pp_00_Rebar +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, nubar + PIdx::offset(0, 0)));
+                                         energy_bin, nubar + PIdx::offset(0, 0)));
                             C_in_scat_pp_01_Rebar +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, nubar + PIdx::offset(0, 1, PIdx::Re)));
+                                         energy_bin, nubar + PIdx::offset(0, 1, PIdx::Re)));
                             C_in_scat_pp_01_Imbar +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, nubar + PIdx::offset(0, 1, PIdx::Im)));
+                                         energy_bin, nubar + PIdx::offset(0, 1, PIdx::Im)));
                             C_in_scat_pp_11_Rebar +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, nubar + PIdx::offset(1, 1)));
+                                         energy_bin, nubar + PIdx::offset(1, 1)));
                             C_in_scat_pp_02_Rebar +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, nubar + PIdx::offset(0, 2, PIdx::Re)));
+                                         energy_bin, nubar + PIdx::offset(0, 2, PIdx::Re)));
                             C_in_scat_pp_02_Imbar +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, nubar + PIdx::offset(0, 2, PIdx::Im)));
+                                         energy_bin, nubar + PIdx::offset(0, 2, PIdx::Im)));
                             C_in_scat_pp_12_Rebar +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, nubar + PIdx::offset(1, 2, PIdx::Re)));
+                                         energy_bin, nubar + PIdx::offset(1, 2, PIdx::Re)));
                             C_in_scat_pp_12_Imbar +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, nubar + PIdx::offset(1, 2, PIdx::Im)));
+                                         energy_bin, nubar + PIdx::offset(1, 2, PIdx::Im)));
                             C_in_scat_pp_22_Rebar +=
                                 vol *
                                 sarr(i, j, k,
                                      GIdx::C_in_scat_iso_index(
-                                         0, nubar + PIdx::offset(2, 2)));
+                                         energy_bin, nubar + PIdx::offset(2, 2)));
 #endif
                         }
                     }

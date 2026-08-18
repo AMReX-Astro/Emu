@@ -97,11 +97,36 @@ void evolve_flavor(const TestParams* parms) {
     for (int i = 0; i < AMREX_SPACEDIM; i++)
         AMREX_ASSERT(parms->ncell[i] >= ngrow[i]);
 
-    // Load particle-file metadata before allocating the mesh so C_in_scat
-    // components can be sized by number_of_energies (also needed on restart,
-    // when InitParticles is skipped).
+    // Load particle-file metadata to validate number_of_directions and
+    // number_of_energies (also needed on restart, when InitParticles is
+    // skipped). These counts do not size the C_in_scat mesh block.
     FlavoredNeutrinoContainer::ReadParticleFileHeaders(
         parms->particle_data_filename);
+
+    if (parms->IMFP_method == 1) {
+        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+            FlavoredNeutrinoContainer::number_of_energies == 1,
+            "IMFP_method==1 requires number_of_energies == 1 in the particle "
+            "data file");
+    }
+
+    // HDF5 tables are required when IMFP_method is 2. Load them before
+    // allocating the mesh so C_in_scat can be sized by NuLib ngroup.
+    if (parms->IMFP_method == 2) {
+        amrex::Print() << "Reading EoS table... " << std::endl;
+        ReadEosTable(parms->nuceos_table_name);
+
+        amrex::Print() << "Reading NuLib table... " << std::endl;
+        ReadNuLibTable(parms->nulib_table_name);
+
+        using namespace nulib_private;
+        GIdx::number_of_c_in_scat_energies = NULIBVAR_INT(ngroup);
+        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+            GIdx::number_of_c_in_scat_energies > 0,
+            "NuLib table ngroup must be > 0 to size C_in_scat");
+    } else {
+        GIdx::number_of_c_in_scat_energies = 1;
+    }
 
     const int ncomp = GIdx::ncomp();
 
@@ -191,17 +216,6 @@ void evolve_flavor(const TestParams* parms) {
 
     // initialize the grid variable names
     GIdx::Initialize();
-
-    //We only need HDF5 tables if IMFP_method is 2.
-    if (parms->IMFP_method == 2) {
-        // read the EoS table
-        amrex::Print() << "Reading EoS table... " << std::endl;
-        ReadEosTable(parms->nuceos_table_name);
-
-        // read the NuLib table
-        amrex::Print() << "Reading NuLib table... " << std::endl;
-        ReadNuLibTable(parms->nulib_table_name);
-    }
 
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... " << std::endl;

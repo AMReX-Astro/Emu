@@ -25,8 +25,8 @@ enum {
 #include "generated_files/Evolve.H_fill"
     ncomp_base,  // components always present besides C_in_scat
     // Start of the isotropic in-scattering block. Runtime size is
-    // number_of_energies * n_c_in_scat_per_energy. Per energy: neutrino
-    // Hermitian (PIdx::offset), then antineutrino.
+    // number_of_c_in_scat_energies * n_c_in_scat_per_energy. Per energy:
+    // neutrino Hermitian (PIdx::offset), then antineutrino.
     C_in_scat_iso = ncomp_base
 };
 
@@ -38,14 +38,17 @@ enum {
 constexpr int n_c_in_scat_flavor = NUM_FLAVORS * NUM_FLAVORS;
 constexpr int n_c_in_scat_per_energy = 2 * n_c_in_scat_flavor;
 
+// Mesh C_in_scat energy-bin count: 1 for IMFP_method 0/1, NuLib ngroup
+// for IMFP_method 2. Independent of the particle-file number_of_energies.
+inline int number_of_c_in_scat_energies = 0;
+
 // Runtime mesh component count: base fields plus one C_in_scat Hermitian
-// pair (nu + nubar) per energy bin.
+// pair (nu + nubar) per mesh energy bin.
 inline int ncomp() {
-    const int nE = FlavoredNeutrinoContainer::number_of_energies;
     AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
-        nE > 0,
-        "GIdx::ncomp() requires number_of_energies from the particle file");
-    return ncomp_base + nE * n_c_in_scat_per_energy;
+        number_of_c_in_scat_energies > 0,
+        "GIdx::ncomp() requires number_of_c_in_scat_energies");
+    return ncomp_base + number_of_c_in_scat_energies * n_c_in_scat_per_energy;
 }
 
 // Mesh index of C_in_scat_iso_energy_{ie}_flavor_* for energy_0based and
