@@ -183,6 +183,16 @@ void fill_particle_opacities(
                 // }
             }
         }
+        if (interpolate_scattering_opacity == 1) {
+            for (int i = 0; i < NUM_FLAVORS; ++i) {
+                for (int j = 0; j < NUM_FLAVORS; ++j) {
+                    IMFP_scat_brakets[i][j] =
+                        0.5 * (IMFP_scat[i][i] + IMFP_scat[j][j]);
+                    IMFP_scatbar_brakets[i][j] =
+                        0.5 * (IMFP_scatbar[i][i] + IMFP_scatbar[j][j]);
+                }
+            }
+        }
         //-----------------------------------------------------------------------
     } else
         AMREX_ASSERT_WITH_MESSAGE(

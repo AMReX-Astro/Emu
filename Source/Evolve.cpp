@@ -269,10 +269,123 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
         parms->boundary_condition[3] == BoundaryCondition::reflecting,
         parms->boundary_condition[5] == BoundaryCondition::reflecting};
 
+    // Create EoS table object
+    using namespace nuc_eos_private;
+    EOS_tabulated EOS_tabulated_obj(alltables, epstable, logrho, logtemp, yes,
+                                    helperVarsReal, helperVarsInt);
+
+    // Create NuLib table object
+    using namespace nulib_private;
+    NuLib_tabulated NuLib_tabulated_obj(
+        alltables_nulib, logrho_nulib, logtemp_nulib, yes_nulib,
+        helperVarsReal_nulib, helperVarsInt_nulib);
+
+    NuLib_energies NuLib_energies_obj(energy_bottom, energy_top);
+
     amrex::ParticleToMesh(
         neutrinos, deposit_state, 0,
         [=] AMREX_GPU_DEVICE(const FlavoredNeutrinoContainer::ParticleType& p,
                              amrex::Array4<amrex::Real> const& sarr) {
+
+            //==============================================================//
+            // INTERPOLATION OF SCATTERING AND ABSORPTION OPACITIES         //
+            //==============================================================//
+
+            // Step 0: Background hydro interpolated onto this particle by
+            // interpolate_hydro_to_particles (copied here with copyParticles).
+            const Real T_pp = p.rdata(PIdx::T_erg);            // erg
+            const Real Ye_pp = p.rdata(PIdx::Ye);
+            const Real rho_pp = p.rdata(PIdx::rho_g_inv_ccm);  // g/ccm
+
+            int energy_bin = 0;
+            if (parms->IMFP_method == 2) {
+                int* helperVarsInt_nulib =
+                    NuLib_tabulated_obj.get_helperVarsInt_nulib();
+                energy_bin = find_nulib_energy_bin(
+                    p.rdata(PIdx::pupt),
+                    NuLib_energies_obj.get_energy_bottom_nulib(),
+                    NuLib_energies_obj.get_energy_top_nulib(),
+                    NULIBVAR_INT(ngroup));
+            }
+
+            // Declare matrices to be used in quantum kinetic equation calculation
+            Real IMFP_abs
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for nucleon absortion: diag( k_e , k_u , k_t )
+            Real IMFP_absbar
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for nucleon absortion: diag( kbar_e , kbar_u , kbar_t )
+            Real IMFP_scat
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t )
+            Real IMFP_scatbar
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for scatteting: diag( kbar_e , kbar_u , kbar_t )
+            Real IMFP_scat_brakets
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t )
+            Real IMFP_scatbar_brakets
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for scatteting: diag( kbar_e , kbar_u , kbar_t )
+            Real f_eq
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Neutrino equilibrium Fermi-dirac distribution matrix: f_eq = diag( f_e , f_u , f_t )
+            Real f_eqbar
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Antineutrino equilibrium Fermi-dirac distribution matrix: f_eq = diag( fbar_e , fbar_u , fbar_t )
+            Real munu
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Neutrino chemical potential matrix: munu = diag ( munu_e , munu_x)
+            Real munubar
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Antineutrino chemical potential matrix: munu = diag ( munubar_e , munubar_x)
+
+            // Initialize matrices with zeros. fill_particle_opacities then
+            // fills diagonals / brackets from input (method 1) or tables
+            // (method 2). Absorption, chemical potentials, and brackets are
+            // kept even when this kernel only uses scattering IMFPs.
+            for (int i = 0; i < NUM_FLAVORS; ++i) {
+                for (int j = 0; j < NUM_FLAVORS; ++j) {
+                    IMFP_abs[i][j] = 0.0;
+                    IMFP_absbar[i][j] = 0.0;
+                    IMFP_scat[i][j] = 0.0;
+                    IMFP_scatbar[i][j] = 0.0;
+                    IMFP_scat_brakets[i][j] = 0.0;
+                    IMFP_scatbar_brakets[i][j] = 0.0;
+                    f_eq[i][j] = 0.0;
+                    f_eqbar[i][j] = 0.0;
+                    munu[i][j] = 0.0;
+                    munubar[i][j] = 0.0;
+                }
+            }
+
+            const int interpolate_absorption_opacity = 1;
+            const int interpolate_scattering_opacity = 1;
+            const int interpolate_chemical_potentials = 1;
+
+            if (parms->attenuation_absorption_opacity > 0.0 || parms->attenuation_scattering_opacity > 0.0) {
+                fill_particle_opacities(
+                    parms, rho_pp, T_pp, Ye_pp, EOS_tabulated_obj,
+                    NuLib_tabulated_obj, IMFP_abs, IMFP_absbar, IMFP_scat,
+                    IMFP_scatbar, IMFP_scat_brakets, IMFP_scatbar_brakets, munu,
+                    munubar, energy_bin, interpolate_absorption_opacity,
+                    interpolate_scattering_opacity,
+                    interpolate_chemical_potentials);
+
+                // Scale interpolated IMFPs by the input attenuation factors.
+                for (int i = 0; i < NUM_FLAVORS; ++i) {
+                    for (int j = 0; j < NUM_FLAVORS; ++j) {
+                        IMFP_abs[i][j] *= parms->attenuation_absorption_opacity;
+                        IMFP_absbar[i][j] *= parms->attenuation_absorption_opacity;
+                        IMFP_scat[i][j] *= parms->attenuation_scattering_opacity;
+                        IMFP_scatbar[i][j] *= parms->attenuation_scattering_opacity;
+                        IMFP_scat_brakets[i][j] *= parms->attenuation_scattering_opacity;
+                        IMFP_scatbar_brakets[i][j] *= parms->attenuation_scattering_opacity;
+                    }
+                }
+            }
+            //==============================================================//
+
             const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
             const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
             const amrex::Real delta_z = (p.pos(2) - plo[2]) * dxi[2];
@@ -379,27 +492,21 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                                 const int particle_index_base =
                                     PIdx::N00_Re + nunubar * ncomp;
 
-                                // Iterate Hermitian upper triangle: (a,b) with a <= b.
-                                // Diagonal: Re only. Off-diagonal: Re then Im.
+                                // Iterate Hermitian diagonal only: kappa_ab = delta_ab * kappa_a.
+                                // Diagonal: Re only.
                                 for (int a = 0; a < NUM_FLAVORS; ++a) {
-                                    for (int b = a; b < NUM_FLAVORS; ++b) {
-                                        // Scattering opacities from input
-                                        // (IMFP_scat[nu/nubar][flavor], 1/cm).
-                                        const amrex::Real IMFP_scata_cm =
-                                            parms->IMFP_scat[nunubar][a]*parms->attenuation_scattering_opacity;
-                                        const amrex::Real IMFP_scatb_cm =
-                                            parms->IMFP_scat[nunubar][b]*parms->attenuation_scattering_opacity;
+                                    for (int b = a; b <= a; ++b) {
+
+                                        // Particle-local scattering IMFPs
+                                        // (already attenuated, 1/cm).
+                                        const amrex::Real IMFP_scat_a_cm =
+                                            (nunubar == 0) ? IMFP_scat[a][a]
+                                                           : IMFP_scatbar[a][a];
 
                                         // kappa_ab = delta_ab * kappa_a
                                         const amrex::Real
                                             kappa_scat_iso_mono_inverse_cm =
-                                                (a == b) ? IMFP_scata_cm : 0.0;
-
-                                        // (kappa_a + kappa_b)/2
-                                        const amrex::Real
-                                            kappa_brakets_scat_iso_mono_inverse_cm =
-                                                0.5 *
-                                                (IMFP_scata_cm + IMFP_scatb_cm);
+                                                (a == b) ? IMFP_scat_a_cm : 0.0;
 
                                         // Deposit Re (always) and Im (off-diagonal only).
                                         const int n_reim = (b > a) ? 2 : 1;
