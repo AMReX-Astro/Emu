@@ -73,7 +73,6 @@ struct TestParams : public amrex::Gpu::Managed {
 
     Real attenuation_absorption_opacity;
     Real attenuation_scattering_opacity;
-    Real off_set_c_scattering_bin_with_nulib_energy_bin;
 
     // Black hole properties
     int do_blackhole;    // Flag to include a black hole in the simulation
@@ -275,10 +274,6 @@ struct TestParams : public amrex::Gpu::Managed {
                 }
             }
         } else if (IMFP_method == 2) {
-            if (attenuation_scattering_opacity > 0.0) {
-                pp.get("off_set_c_scattering_bin_with_nulib_energy_bin",
-                       off_set_c_scattering_bin_with_nulib_energy_bin);
-            }
             // HDF5 table names (with full path) for EoS and NuLib tables
             pp.get("nuceos_table_name", nuceos_table_name);
             pp.get("nulib_table_name", nulib_table_name);
