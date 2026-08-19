@@ -52,6 +52,12 @@ class Metric {
     //Jacobian for the inverse conversion. called with converted p.
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Mat4 jacobian_inv(
         const EParticle& p) const = 0;
+    
+    //Rotate a cartesian 4-vector into the local orthonormal (tetrad) basis at
+    //native coordinates (x1,x2,x3): V^{a_hat} = R[a][j] * V^j.
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual FourVec tetrad_conv(
+        const FourVec& V, amrex::Real x1, amrex::Real x2,
+        amrex::Real x3) const = 0;    
 
     //The metric
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Mat4 gmunu(
@@ -151,6 +157,14 @@ class CartesianMetric : public Metric {
 
         return pos_new;
     }
+    
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec
+    tetrad_conv(const FourVec& V, amrex::Real x1, amrex::Real x2,
+                amrex::Real x3) const override {
+        amrex::ignore_unused(x1, x2, x3);
+        return V; 
+    }
+
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
     jacobian(const EParticle& p) const override {
@@ -327,6 +341,38 @@ class CylindricalMetric : public Metric {
         FourVec pos_old = {p.rdata(PIdx::time), x, y, p.rdata(PIdx::z)};
 
         return pos_old;
+    }
+
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec
+    tetrad_conv(const FourVec& V, amrex::Real x1, amrex::Real x2,
+                amrex::Real x3) const override {
+        amrex::ignore_unused(x1, x3);
+
+        Mat4 R{};
+
+        for (int mu = 0; mu < 4; mu++) {
+            for (int nu = 0; nu < 4; nu++) {
+                R[mu][nu] = 0.0;
+            }
+        }
+
+        R[0][0] = 1.0;
+        R[1][1] = std::cos(x2);   //cos(phi)      
+        R[1][2] = std::sin(x2);   //sin(phi)
+        R[2][1] = -std::sin(x2);  //-sin(phi)     
+        R[2][2] = std::cos(x2);   //cos(phi)
+        R[3][3] = 1.0;            
+
+        FourVec V_new{};
+
+        for (int mu = 0; mu < 4; mu++) {
+            for (int nu = 0; nu < 4; nu++) {
+                V_new[mu] += R[mu][nu] * V[nu];
+            }
+        }
+
+        return V_new;
     }
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
@@ -544,6 +590,47 @@ class SphericalMetric : public Metric {
 
         return pos_old;
     }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec
+    tetrad_conv(const FourVec& V, amrex::Real x1, amrex::Real x2,
+                amrex::Real x3) const override {
+        amrex::ignore_unused(x1);
+
+        const amrex::Real st = std::sin(x2);
+        const amrex::Real ct = std::cos(x2);
+        const amrex::Real sp = std::sin(x3);
+        const amrex::Real cp = std::cos(x3);
+
+        Mat4 R{};
+
+        for (int mu = 0; mu < 4; mu++) {
+            for (int nu = 0; nu < 4; nu++) {
+                R[mu][nu] = 0.0;
+            }
+        }
+
+        R[0][0] = 1.0;
+        R[1][1] = st * cp;  //sin(theta)cos(phi)  -> r_hat
+        R[1][2] = st * sp;  //sin(theta)sin(phi)
+        R[1][3] = ct;       //cos(theta)
+        R[2][1] = ct * cp;  //cos(theta)cos(phi)  -> theta_hat
+        R[2][2] = ct * sp;  //cos(theta)sin(phi)
+        R[2][3] = -st;      //-sin(theta)
+        R[3][1] = -sp;      //-sin(phi)           -> phi_hat
+        R[3][2] = cp;       //cos(phi)
+        R[3][3] = 0.0;      //
+
+        FourVec V_new{};
+
+        for (int mu = 0; mu < 4; mu++) {
+            for (int nu = 0; nu < 4; nu++) {
+                V_new[mu] += R[mu][nu] * V[nu];
+            }
+        }
+
+        return V_new;
+    }
+
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
     jacobian(const EParticle& p) const override {
