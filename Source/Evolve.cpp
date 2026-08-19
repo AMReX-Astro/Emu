@@ -306,84 +306,45 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                     NULIBVAR_INT(ngroup));
             }
 
-            // Declare matrices to be used in quantum kinetic equation calculation
-            Real IMFP_abs
-                [NUM_FLAVORS]
-                [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for nucleon absortion: diag( k_e , k_u , k_t )
-            Real IMFP_absbar
-                [NUM_FLAVORS]
-                [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for nucleon absortion: diag( kbar_e , kbar_u , kbar_t )
+            // Scattering IMFPs for the isotropic C_in deposit. Other opacity
+            // outputs are unused in this kernel and are passed as nullptr.
             Real IMFP_scat
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t )
             Real IMFP_scatbar
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for scatteting: diag( kbar_e , kbar_u , kbar_t )
-            Real IMFP_scat_brakets
-                [NUM_FLAVORS]
-                [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t )
-            Real IMFP_scatbar_brakets
-                [NUM_FLAVORS]
-                [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for scatteting: diag( kbar_e , kbar_u , kbar_t )
-            Real f_eq
-                [NUM_FLAVORS]
-                [NUM_FLAVORS];  // Neutrino equilibrium Fermi-dirac distribution matrix: f_eq = diag( f_e , f_u , f_t )
-            Real f_eqbar
-                [NUM_FLAVORS]
-                [NUM_FLAVORS];  // Antineutrino equilibrium Fermi-dirac distribution matrix: f_eq = diag( fbar_e , fbar_u , fbar_t )
-            Real munu
-                [NUM_FLAVORS]
-                [NUM_FLAVORS];  // Neutrino chemical potential matrix: munu = diag ( munu_e , munu_x)
-            Real munubar
-                [NUM_FLAVORS]
-                [NUM_FLAVORS];  // Antineutrino chemical potential matrix: munu = diag ( munubar_e , munubar_x)
 
-            // Initialize matrices with zeros. fill_particle_opacities then
-            // fills diagonals / brackets from input (method 1) or tables
-            // (method 2). Absorption, chemical potentials, and brackets are
-            // kept even when this kernel only uses scattering IMFPs.
             for (int i = 0; i < NUM_FLAVORS; ++i) {
                 for (int j = 0; j < NUM_FLAVORS; ++j) {
-                    IMFP_abs[i][j] = 0.0;
-                    IMFP_absbar[i][j] = 0.0;
                     IMFP_scat[i][j] = 0.0;
                     IMFP_scatbar[i][j] = 0.0;
-                    IMFP_scat_brakets[i][j] = 0.0;
-                    IMFP_scatbar_brakets[i][j] = 0.0;
-                    f_eq[i][j] = 0.0;
-                    f_eqbar[i][j] = 0.0;
-                    munu[i][j] = 0.0;
-                    munubar[i][j] = 0.0;
                 }
             }
 
-            const int interpolate_absorption_opacity = 1;
+            const int interpolate_absorption_opacity = 0;
             const int interpolate_scattering_opacity = 1;
-            const int interpolate_chemical_potentials = 1;
+            const int interpolate_scattering_opacity_brakets = 0;
+            const int interpolate_chemical_potentials = 0;
 
             if (parms->attenuation_absorption_opacity > 0.0 ||
                 parms->attenuation_scattering_opacity > 0.0) {
                 fill_particle_opacities(
                     parms, rho_pp, T_pp, Ye_pp, EOS_tabulated_obj,
-                    NuLib_tabulated_obj, IMFP_abs, IMFP_absbar, IMFP_scat,
-                    IMFP_scatbar, IMFP_scat_brakets, IMFP_scatbar_brakets, munu,
-                    munubar, energy_bin, interpolate_absorption_opacity,
+                    NuLib_tabulated_obj, energy_bin,
+                    interpolate_absorption_opacity,
                     interpolate_scattering_opacity,
-                    interpolate_chemical_potentials);
+                    interpolate_scattering_opacity_brakets,
+                    interpolate_chemical_potentials, nullptr, nullptr,
+                    IMFP_scat, IMFP_scatbar, nullptr, nullptr, nullptr,
+                    nullptr);
 
                 // Scale interpolated IMFPs by the input attenuation factors.
                 for (int i = 0; i < NUM_FLAVORS; ++i) {
                     for (int j = 0; j < NUM_FLAVORS; ++j) {
-                        IMFP_abs[i][j] *= parms->attenuation_absorption_opacity;
-                        IMFP_absbar[i][j] *=
-                            parms->attenuation_absorption_opacity;
                         IMFP_scat[i][j] *=
                             parms->attenuation_scattering_opacity;
                         IMFP_scatbar[i][j] *=
-                            parms->attenuation_scattering_opacity;
-                        IMFP_scat_brakets[i][j] *=
-                            parms->attenuation_scattering_opacity;
-                        IMFP_scatbar_brakets[i][j] *=
                             parms->attenuation_scattering_opacity;
                     }
                 }
@@ -768,19 +729,15 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 }
             }
 
-            // Declare matrices to be used in quantum kinetic equation calculation
+            // Declare matrices used in the QKE: absorption, scattering brackets,
+            // chemical potentials, and equilibrium distributions. Scattering
+            // IMFP diagonals are unused here and passed as nullptr.
             Real IMFP_abs
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for nucleon absortion: diag( k_e , k_u , k_t )
             Real IMFP_absbar
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for nucleon absortion: diag( kbar_e , kbar_u , kbar_t )
-            Real IMFP_scat
-                [NUM_FLAVORS]
-                [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t )
-            Real IMFP_scatbar
-                [NUM_FLAVORS]
-                [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for scatteting: diag( kbar_e , kbar_u , kbar_t )
             Real IMFP_scat_brakets
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t )
@@ -800,15 +757,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Antineutrino chemical potential matrix: munu = diag ( munubar_e , munubar_x)
 
-            // Initialize matrices with zeros (incl. scattering: used only for
-            // IMFP_method==1 in dfdt_fill; method 2 fills IMFP_scat from NuLib
-            // but does not yet apply the isotropic C_in / brakets QKE term).
             for (int i = 0; i < NUM_FLAVORS; ++i) {
                 for (int j = 0; j < NUM_FLAVORS; ++j) {
                     IMFP_abs[i][j] = 0.0;
                     IMFP_absbar[i][j] = 0.0;
-                    IMFP_scat[i][j] = 0.0;
-                    IMFP_scatbar[i][j] = 0.0;
                     IMFP_scat_brakets[i][j] = 0.0;
                     IMFP_scatbar_brakets[i][j] = 0.0;
                     f_eq[i][j] = 0.0;
@@ -819,31 +771,27 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             }
 
             const int interpolate_absorption_opacity = 1;
-            const int interpolate_scattering_opacity = 1;
+            const int interpolate_scattering_opacity = 0;
+            const int interpolate_scattering_opacity_brakets = 1;
             const int interpolate_chemical_potentials = 1;
 
             if (parms->attenuation_absorption_opacity > 0.0 ||
                 parms->attenuation_scattering_opacity > 0.0) {
                 fill_particle_opacities(
                     parms, rho_pp, T_pp, Ye_pp, EOS_tabulated_obj,
-                    NuLib_tabulated_obj, IMFP_abs, IMFP_absbar, IMFP_scat,
-                    IMFP_scatbar, IMFP_scat_brakets, IMFP_scatbar_brakets, munu,
-                    munubar, energy_bin, interpolate_absorption_opacity,
+                    NuLib_tabulated_obj, energy_bin,
+                    interpolate_absorption_opacity,
                     interpolate_scattering_opacity,
-                    interpolate_chemical_potentials);
+                    interpolate_scattering_opacity_brakets,
+                    interpolate_chemical_potentials, IMFP_abs, IMFP_absbar,
+                    nullptr, nullptr, IMFP_scat_brakets, IMFP_scatbar_brakets,
+                    munu, munubar);
 
-                // Initialize matrices with zeros (incl. scattering: used only for
-                // IMFP_method==1 in dfdt_fill; method 2 fills IMFP_scat from NuLib
-                // but does not yet apply the isotropic C_in / brakets QKE term).
                 for (int i = 0; i < NUM_FLAVORS; ++i) {
                     for (int j = 0; j < NUM_FLAVORS; ++j) {
                         IMFP_abs[i][j] *= parms->attenuation_absorption_opacity;
                         IMFP_absbar[i][j] *=
                             parms->attenuation_absorption_opacity;
-                        IMFP_scat[i][j] *=
-                            parms->attenuation_scattering_opacity;
-                        IMFP_scatbar[i][j] *=
-                            parms->attenuation_scattering_opacity;
                         IMFP_scat_brakets[i][j] *=
                             parms->attenuation_scattering_opacity;
                         IMFP_scatbar_brakets[i][j] *=

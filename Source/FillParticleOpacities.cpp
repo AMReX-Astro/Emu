@@ -8,53 +8,60 @@ AMREX_GPU_HOST_DEVICE
 void fill_particle_opacities(
     const TestParams* parms, amrex::Real rho_pp, amrex::Real T_pp,
     amrex::Real Ye_pp, const EOS_tabulated& EOS_tabulated_obj,
-    const NuLib_tabulated& NuLib_tabulated_obj,
-    amrex::Real IMFP_abs[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real IMFP_absbar[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real IMFP_scat[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real IMFP_scatbar[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real IMFP_scat_brakets[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real IMFP_scatbar_brakets[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real munu[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real munubar[NUM_FLAVORS][NUM_FLAVORS], int energy_bin,
+    const NuLib_tabulated& NuLib_tabulated_obj, int energy_bin,
     int interpolate_absorption_opacity, int interpolate_scattering_opacity,
-    int interpolate_chemical_potentials) {
+    int interpolate_scattering_opacity_brakets,
+    int interpolate_chemical_potentials, amrex::Real (*IMFP_abs)[NUM_FLAVORS],
+    amrex::Real (*IMFP_absbar)[NUM_FLAVORS],
+    amrex::Real (*IMFP_scat)[NUM_FLAVORS],
+    amrex::Real (*IMFP_scatbar)[NUM_FLAVORS],
+    amrex::Real (*IMFP_scat_brakets)[NUM_FLAVORS],
+    amrex::Real (*IMFP_scatbar_brakets)[NUM_FLAVORS],
+    amrex::Real (*munu)[NUM_FLAVORS], amrex::Real (*munubar)[NUM_FLAVORS]) {
     // If opacity_method is 1, the code will use the inverse mean free paths in the input parameters to compute the collision term.
     if (parms->IMFP_method == 0) {
         // do nothing
     } else if (parms->IMFP_method == 1) {
+        Real scat_diag[NUM_FLAVORS];
+        Real scatbar_diag[NUM_FLAVORS];
         for (int i = 0; i < NUM_FLAVORS; ++i) {
-            IMFP_abs[i][i] =
-                parms->IMFP_abs
-                    [0]
-                    [i];  // 1/cm : Read absorption inverse mean free path from input parameters file.
-            IMFP_absbar[i][i] =
-                parms->IMFP_abs
-                    [1]
-                    [i];  // 1/cm : Read absorption inverse mean free path from input parameters file.
-            IMFP_scat[i][i] =
-                parms->IMFP_scat
-                    [0]
+            scat_diag[i] = parms->IMFP_scat[0][i];
+            scatbar_diag[i] = parms->IMFP_scat[1][i];
+            if (interpolate_absorption_opacity == 1) {
+                IMFP_abs[i][i] =
+                    parms->IMFP_abs
+                        [0]
+                        [i];  // 1/cm : Read absorption inverse mean free path from input parameters file.
+                IMFP_absbar[i][i] =
+                    parms->IMFP_abs
+                        [1]
+                        [i];  // 1/cm : Read absorption inverse mean free path from input parameters file.
+            }
+            if (interpolate_scattering_opacity == 1) {
+                IMFP_scat[i][i] = scat_diag
                     [i];  // 1/cm : Read scattering inverse mean free path from input parameters file.
-            IMFP_scatbar[i][i] =
-                parms->IMFP_scat
-                    [1]
+                IMFP_scatbar[i][i] = scatbar_diag
                     [i];  // 1/cm : Read scattering inverse mean free path from input parameters file.
-            munu[i][i] =
-                parms->munu
-                    [0]
-                    [i];  // ergs : Read neutrino chemical potential from input parameters file.
-            munubar[i][i] =
-                parms->munu
-                    [1]
-                    [i];  // ergs : Read antineutrino chemical potential from input parameters file.
+            }
+            if (interpolate_chemical_potentials == 1) {
+                munu[i][i] =
+                    parms->munu
+                        [0]
+                        [i];  // ergs : Read neutrino chemical potential from input parameters file.
+                munubar[i][i] =
+                    parms->munu
+                        [1]
+                        [i];  // ergs : Read antineutrino chemical potential from input parameters file.
+            }
         }
-        for (int i = 0; i < NUM_FLAVORS; ++i) {
-            for (int j = 0; j < NUM_FLAVORS; ++j) {
-                IMFP_scat_brakets[i][j] =
-                    (IMFP_scat[i][i] + IMFP_scat[j][j]) / 2.0;
-                IMFP_scatbar_brakets[i][j] =
-                    (IMFP_scatbar[i][i] + IMFP_scatbar[j][j]) / 2.0;
+        if (interpolate_scattering_opacity_brakets == 1) {
+            for (int i = 0; i < NUM_FLAVORS; ++i) {
+                for (int j = 0; j < NUM_FLAVORS; ++j) {
+                    IMFP_scat_brakets[i][j] =
+                        0.5 * (scat_diag[i] + scat_diag[j]);
+                    IMFP_scatbar_brakets[i][j] =
+                        0.5 * (scatbar_diag[i] + scatbar_diag[j]);
+                }
             }
         }
     }
@@ -105,8 +112,16 @@ void fill_particle_opacities(
 
         //--------------------- Values from NuLib table ---------------------------
         if (interpolate_absorption_opacity == 1 ||
-            interpolate_scattering_opacity == 1) {
+            interpolate_scattering_opacity == 1 ||
+            interpolate_scattering_opacity_brakets == 1) {
             const int idx_group = energy_bin;
+
+            Real scat_diag[NUM_FLAVORS];
+            Real scatbar_diag[NUM_FLAVORS];
+            for (int i = 0; i < NUM_FLAVORS; ++i) {
+                scat_diag[i] = 0.0;
+                scatbar_diag[i] = 0.0;
+            }
 
             //idx_species = {0 for electron neutrino, 1 for electron antineutrino and 2 for all other heavier ones}
             //electron neutrino: [0, 0]
@@ -128,8 +143,7 @@ void fill_particle_opacities(
 
             if (interpolate_absorption_opacity == 1)
                 IMFP_abs[0][0] = absorption_opacity;
-            if (interpolate_scattering_opacity == 1)
-                IMFP_scat[0][0] = scattering_opacity;
+            scat_diag[0] = scattering_opacity;
 
             //electron antineutrino: [1, 0]
             idx_species = 1;
@@ -149,8 +163,7 @@ void fill_particle_opacities(
 
             if (interpolate_absorption_opacity == 1)
                 IMFP_absbar[0][0] = absorption_opacity;
-            if (interpolate_scattering_opacity == 1)
-                IMFP_scatbar[0][0] = scattering_opacity;
+            scatbar_diag[0] = scattering_opacity;
 
             //heavier ones: muon neutrino[0,1], muon antineutruino[1,1], tau neutrino[0,2], tau antineutrino[1,2]
             idx_species = 2;
@@ -170,25 +183,29 @@ void fill_particle_opacities(
 
             for (int i = 1; i < NUM_FLAVORS;
                  ++i) {  //0->neutrino or 1->antineutrino
-                // for(int j=1; j<NUM_FLAVORS; j++){  //0->electron, 1->heavy(muon), 2->heavy(tau); all heavy same for current table
+
                 if (interpolate_absorption_opacity == 1) {
-                    IMFP_abs[i][i] = absorption_opacity;     // ... fix it ...
-                    IMFP_absbar[i][i] = absorption_opacity;  // ... fix it ...
+                    IMFP_abs[i][i] = absorption_opacity;
+                    IMFP_absbar[i][i] = absorption_opacity;
                 }
-                if (interpolate_scattering_opacity == 1) {
-                    IMFP_scat[i][i] = scattering_opacity;     // ... fix it ...
-                    IMFP_scatbar[i][i] = scattering_opacity;  // ... fix it ...
-                }
-                // }
+                scat_diag[i] = scattering_opacity;
+                scatbar_diag[i] = scattering_opacity;
             }
-        }
-        if (interpolate_scattering_opacity == 1) {
-            for (int i = 0; i < NUM_FLAVORS; ++i) {
-                for (int j = 0; j < NUM_FLAVORS; ++j) {
-                    IMFP_scat_brakets[i][j] =
-                        0.5 * (IMFP_scat[i][i] + IMFP_scat[j][j]);
-                    IMFP_scatbar_brakets[i][j] =
-                        0.5 * (IMFP_scatbar[i][i] + IMFP_scatbar[j][j]);
+
+            if (interpolate_scattering_opacity == 1) {
+                for (int i = 0; i < NUM_FLAVORS; ++i) {
+                    IMFP_scat[i][i] = scat_diag[i];
+                    IMFP_scatbar[i][i] = scatbar_diag[i];
+                }
+            }
+            if (interpolate_scattering_opacity_brakets == 1) {
+                for (int i = 0; i < NUM_FLAVORS; ++i) {
+                    for (int j = 0; j < NUM_FLAVORS; ++j) {
+                        IMFP_scat_brakets[i][j] =
+                            0.5 * (scat_diag[i] + scat_diag[j]);
+                        IMFP_scatbar_brakets[i][j] =
+                            0.5 * (scatbar_diag[i] + scatbar_diag[j]);
+                    }
                 }
             }
         }
