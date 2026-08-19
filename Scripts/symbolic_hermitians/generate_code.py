@@ -376,3 +376,44 @@ if __name__ == "__main__":
         code.append("p.rdata(PIdx::TrHN) += ("+sympy.cxxcode(sympy.simplify(TrHN))+");")
 
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))
+
+    #=======================================#
+    # Evolve.cpp_C_in_scat_pp_declare #
+    #=======================================#
+    # Zero-initialized particle-local isotropic in-scattering Hermitian
+    # components (upper triangle, Re then Im, neutrinos then antineutrinos).
+    code = []
+    for t in tails:
+        names = HermitianMatrix(args.N, "C_in_scat_pp_{}{}_{}"+t).header()
+        for name in names:
+            code.append("Real {} = 0;".format(name))
+    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_C_in_scat_pp_declare"))
+
+    #=========================================#
+    # Evolve.cpp_interpolate_from_mesh_fill_scattering #
+    #=========================================#
+    # Interpolate isotropic in-scattering mesh coefficients onto the particle.
+    # For each independent Hermitian component (upper triangle, Re then Im):
+    #     C_in_scat_pp_{ij}_{Re/Im}{bar} += vol * sarr(..., C_in_scat_iso_index(...))
+    # Neutrinos use flavor_offset = PIdx::offset(...); antineutrinos add nubar.
+    code = []
+    for t in tails:
+        names = HermitianMatrix(args.N, "C_in_scat_pp_{}{}_{}"+t).header()
+        name_iter = iter(names)
+        for i in range(args.N):
+            for j in range(i, args.N):
+                reim_list = ["Re"] if i == j else ["Re", "Im"]
+                for reim in reim_list:
+                    name = next(name_iter)
+                    if i == j:
+                        offset = "PIdx::offset({}, {})".format(i, j)
+                    else:
+                        offset = "PIdx::offset({}, {}, PIdx::{})".format(i, j, reim)
+                    if t == "bar":
+                        offset = "nubar + " + offset
+                    code.append(
+                        "{} += vol * sarr(i, j, k, GIdx::C_in_scat_iso_index(energy_bin, {}));".format(
+                            name, offset)
+                    )
+    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_interpolate_from_mesh_fill_scattering"))
+
