@@ -159,30 +159,35 @@ if __name__ == "__main__":
 
         time_s.append(rdata[0][rkey["time"]])
 
-        xflag=False
-        otherflag=False
+        # Find the first particle with phat == phat_x and phat == phat_other without using flags
+        found_x = False
+        found_other = False
 
         for j in range(len(rdata)):
             p = rdata[j]
             phat_this_particle = np.array([p[rkey["pupx"]], p[rkey["pupy"]], p[rkey["pupz"]]]) / p[rkey["pupt"]]
-            if np.allclose(phat_this_particle, phat_x) and not xflag:
+
+            # Only append the first match for phat_x
+            if not found_x and np.allclose(phat_this_particle, phat_x):
                 n_ee_x.append(p[rkey["N00_Re"]] / volume_cell_ccm)
                 n_uu_x.append(p[rkey["N11_Re"]] / volume_cell_ccm)
                 n_tt_x.append(p[rkey["N22_Re"]] / volume_cell_ccm)
                 n_eebar_x.append(p[rkey["N00_Rebar"]] / volume_cell_ccm)
                 n_uubar_x.append(p[rkey["N11_Rebar"]] / volume_cell_ccm)
                 n_ttbar_x.append(p[rkey["N22_Rebar"]] / volume_cell_ccm)
-                xflag=True
+                found_x = True
 
-            elif np.allclose(phat_this_particle, phat_other) and not otherflag:
-                otherflag=True
+            # Only append the first match for phat_other
+            if not found_other and np.allclose(phat_this_particle, phat_other):
                 n_ee_other.append(p[rkey["N00_Re"]] / volume_cell_ccm)
                 n_uu_other.append(p[rkey["N11_Re"]] / volume_cell_ccm)
                 n_tt_other.append(p[rkey["N22_Re"]] / volume_cell_ccm)
                 n_eebar_other.append(p[rkey["N00_Rebar"]] / volume_cell_ccm)
                 n_uubar_other.append(p[rkey["N11_Rebar"]] / volume_cell_ccm)
                 n_ttbar_other.append(p[rkey["N22_Rebar"]] / volume_cell_ccm)
+                found_other = True
 
+            # Handle totals
             if j==0:
                 n_total_ee.append(p[rkey["N00_Re"]] / volume_total_ccm)
                 n_total_uu.append(p[rkey["N11_Re"]] / volume_total_ccm)
