@@ -479,7 +479,8 @@ void evolve_flavor(const TestParams* parms) {
     const Real starting_dt = compute_dt(geom, state, parms);
 
     // Do all the science!
-    amrex::Print() << "Starting timestepping loop... " << std::endl;
+    amrex::Print() << "Starting timestepping loop... starting_dt=" << starting_dt
+                   << std::endl;
 
     Real start_time = amrex::second();
 
@@ -509,9 +510,9 @@ int main(int argc, char* argv[]) {
     //It can be changed with a ParmParse parameter, amrex.the_arena_init_size, in the unit of bytes.
     //The default initial size for other arenas is 8388608 (i.e., 8 MB).
     ParmParse pp;
-    pp.add("amrex.the_arena_init_size", 8388608);
-    pp.add("amrex.the_managed_arena_init_size", 8388608);
-    pp.add("amrex.the_device_arena_init_size", 8388608);
+    // pp.add("amrex.the_arena_init_size", 8388608);
+    // pp.add("amrex.the_managed_arena_init_size", 8388608);
+    // pp.add("amrex.the_device_arena_init_size", 8388608);
 
     amrex::Initialize(argc, argv);
 
@@ -523,8 +524,15 @@ int main(int argc, char* argv[]) {
     }
 
     // by default amrex initializes rng deterministically
-    // this uses the time for a different run each time
-    amrex::InitRandom(ParallelDescriptor::MyProc() + time(NULL),
+    // this uses the time for a different run each time, unless the inputs
+    // file sets rng_seed to a nonzero value, which pins it for reproducible
+    // (and directly comparable) runs.
+    long long rng_seed = 0;
+    pp.query("rng_seed", rng_seed);
+    const ULong rng_seed_base = rng_seed != 0
+                                     ? static_cast<ULong>(rng_seed)
+                                     : static_cast<ULong>(time(NULL));
+    amrex::InitRandom(ParallelDescriptor::MyProc() + rng_seed_base,
                       ParallelDescriptor::NProcs());
 
     {
