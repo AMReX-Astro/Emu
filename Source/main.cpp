@@ -479,8 +479,8 @@ void evolve_flavor(const TestParams* parms) {
     const Real starting_dt = compute_dt(geom, state, parms);
 
     // Do all the science!
-    amrex::Print() << "Starting timestepping loop... starting_dt=" << starting_dt
-                   << std::endl;
+    amrex::Print() << "Starting timestepping loop... starting_dt="
+                   << starting_dt << std::endl;
 
     Real start_time = amrex::second();
 
@@ -529,9 +529,8 @@ int main(int argc, char* argv[]) {
     // (and directly comparable) runs.
     long long rng_seed = 0;
     pp.query("rng_seed", rng_seed);
-    const ULong rng_seed_base = rng_seed != 0
-                                     ? static_cast<ULong>(rng_seed)
-                                     : static_cast<ULong>(time(NULL));
+    const ULong rng_seed_base = rng_seed != 0 ? static_cast<ULong>(rng_seed)
+                                              : static_cast<ULong>(time(NULL));
     amrex::InitRandom(ParallelDescriptor::MyProc() + rng_seed_base,
                       ParallelDescriptor::NProcs());
 
