@@ -295,7 +295,8 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
 
             // Store temporary to avoid calling p.rdata() many times. >3x speedup in the kernel.
             amrex::Real pN[2 * ncomp];
-            for (int n = 0; n < 2 * ncomp; ++n) pN[n] = p.rdata(PIdx::N00_Re + n);
+            for (int n = 0; n < 2 * ncomp; ++n)
+                pN[n] = p.rdata(PIdx::N00_Re + n);
 
             for (int k = sz.first(); k <= sz.last(); ++k) {
                 for (int j = sy.first(); j <= sy.last(); ++j) {
