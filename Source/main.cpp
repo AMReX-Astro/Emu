@@ -38,6 +38,20 @@
 
 using namespace amrex;
 
+// Sort particles to optimize grid-particle interactions. Particles are laid out
+// grouped by cell at initialization but advect out of that order, and
+// Redistribute moves them between grids without reordering within a tile. Only
+// valid once particles are already on their correct grids.
+static void sort_particles(FlavoredNeutrinoContainer& neutrinos,
+                           const TestParams* parms) {
+    if (parms->particle_sort_method == 1) {
+        neutrinos.SortParticlesByCell();
+    } else if (parms->particle_sort_method == 2) {
+        neutrinos.SortParticlesForDeposition(
+            amrex::IntVect(AMREX_D_DECL(0, 0, 0)));
+    }
+}
+
 void evolve_flavor(const TestParams* parms) {
     // Per-face boundary conditions are read into parms->boundary_condition,
     // indexed as 2*dim+side (side 0=lo, 1=hi).
@@ -220,6 +234,11 @@ void evolve_flavor(const TestParams* parms) {
         neutrinos_old.InitParticles(parms);
     }
 
+    // Sort before the copy and the initial deposit, so the pre-loop deposit and
+    // the first timestep see cell-major data too. Matters for restarts, where the
+    // ordering is whatever the run that wrote the checkpoint happened to have.
+    sort_particles(neutrinos_old, parms);
+
     // Copy particles from old data to new data
     // (the second argument is true to indicate particle container data is local
     //  and we can skip calling Redistribute() after copying the particles)
@@ -291,6 +310,9 @@ void evolve_flavor(const TestParams* parms) {
 
         // Now Redistribute the new time particles to their new grids.
         neutrinos.RedistributeLocal();
+
+        // Sort particles to optimize grid-particle interactions
+        sort_particles(neutrinos, parms);
 
         // Update the integrated coordinates with the new particle locations
         // since Redistribute() applies periodic boundary conditions.
