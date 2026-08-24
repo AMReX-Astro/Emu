@@ -244,8 +244,13 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
 
     amrex::ParticleToMesh(
         neutrinos, deposit_state, 0,
-        [=] AMREX_GPU_DEVICE(const FlavoredNeutrinoContainer::ParticleType& p,
+        // Taking (tile data, index) rather than a particle struct lets the
+        // attribute reads come straight from the SoA arrays; FNParticleConstView
+        // restores the p.rdata()/p.pos() interface the body below uses.
+        [=] AMREX_GPU_DEVICE(FlavoredNeutrinoContainer::ConstPTDType const& ptd,
+                             const int p_index,
                              amrex::Array4<amrex::Real> const& sarr) {
+            FlavoredNeutrinoContainer::FNParticleConstView p{ptd, p_index};
             const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
             const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
             const amrex::Real delta_z = (p.pos(2) - plo[2]) * dxi[2];
@@ -379,8 +384,12 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 
     amrex::MeshToParticle(
         neutrinos_rhs, state, 0,
-        [=] AMREX_GPU_DEVICE(FlavoredNeutrinoContainer::ParticleType & p,
+        // pass particle tile and index so attribute reads come straight from the SoA arrays
+        [=] AMREX_GPU_DEVICE(FlavoredNeutrinoContainer::PTDType const& ptd,
+                             const int p_index,
                              amrex::Array4<const amrex::Real> const& sarr) {
+            FlavoredNeutrinoContainer::FNParticleView p{ptd, p_index};
+
             // store the particle positions for use later
             const Real x = p.rdata(PIdx::x);
             const Real y = p.rdata(PIdx::y);
@@ -818,11 +827,10 @@ void empty_particles_inside_blackhole(FlavoredNeutrinoContainer& neutrinos,
     const int lev = 0;
     for (FNParIter pti(neutrinos, lev); pti.isValid(); ++pti) {
         const int np = pti.numParticles();
-        FlavoredNeutrinoContainer::ParticleType* pstruct =
-            &(pti.GetArrayOfStructs()[0]);
+        auto ptd = pti.GetParticleTile().getParticleTileData();
 
         amrex::ParallelFor(np, [=] AMREX_GPU_DEVICE(int i) {
-            FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
+            FlavoredNeutrinoContainer::FNParticleView p{ptd, i};
 
             // Compute particle distance from black hole center
             double particle_distance_from_bh_center = sqrt(

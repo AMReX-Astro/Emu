@@ -16,10 +16,10 @@ void FlavoredNeutrinoContainer::SyncLocation(int type) {
 #endif
     for (FNParIter pti(*this, lev); pti.isValid(); ++pti) {
         const int np = pti.numParticles();
-        ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
+        auto ptd = pti.GetParticleTile().getParticleTileData();
 
         amrex::ParallelFor(np, [=] AMREX_GPU_DEVICE(int i) {
-            ParticleType& p = pstruct[i];
+            FNParticleView p{ptd, i};
 
             if (type == Sync::CoordinateToPosition) {
                 // Copy integrated position to the particle position.
@@ -47,10 +47,10 @@ void FlavoredNeutrinoContainer::ApplyBoundaryConditions(
 #endif
     for (FNParIter pti(*this, lev); pti.isValid(); ++pti) {
         const int np = pti.numParticles();
-        ParticleType* pstruct = &(pti.GetArrayOfStructs()[0]);
+        auto ptd = pti.GetParticleTile().getParticleTileData();
 
         amrex::ParallelFor(np, [=] AMREX_GPU_DEVICE(int i) {
-            ParticleType& p = pstruct[i];
+            FNParticleView p{ptd, i};
 
             // Domain length per dimension; per-face modes are in
             // parms->boundary_condition, indexed 2*dim+side (0=lo at 0, 1=hi at L).

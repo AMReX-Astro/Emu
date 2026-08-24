@@ -398,8 +398,7 @@ void evolve_flavor(const TestParams* parms) {
                                             FlavoredNeutrinoContainer& S_new,
                                             Real abs_tol,
                                             Real rel_tol) -> Real {
-        using TParIter = amrex::ParIter<PIdx::nattribs, 0, 0, 0>;
-        using ParticleType = amrex::Particle<PIdx::nattribs, 0>;
+        using TParIter = amrex::ParIter<0, 0, PIdx::nattribs, 0>;
 
         constexpr int Nflav = NUM_FLAVORS;
         constexpr int nu_start = static_cast<int>(PIdx::N00_Re);
@@ -417,13 +416,18 @@ void evolve_flavor(const TestParams* parms) {
         for (; pt_err.isValid(); ++pt_err, ++pt_old, ++pt_new) {
             const int np = pt_err.numParticles();
             if (np == 0) continue;
-            const ParticleType* p_err = &(pt_err.GetArrayOfStructs()[0]);
-            const ParticleType* p_old = &(pt_old.GetArrayOfStructs()[0]);
-            const ParticleType* p_new = &(pt_new.GetArrayOfStructs()[0]);
+            auto td_err = pt_err.GetParticleTile().getParticleTileData();
+            auto td_old = pt_old.GetParticleTile().getParticleTileData();
+            auto td_new = pt_new.GetParticleTile().getParticleTileData();
 
             Real tile_max = amrex::Reduce::Max<Real>(
                 np,
                 [=] AMREX_GPU_DEVICE(int i) -> Real {
+                    // views that access the particle data for this tile only
+                    FlavoredNeutrinoContainer::FNParticleView p_err{td_err, i};
+                    FlavoredNeutrinoContainer::FNParticleView p_old{td_old, i};
+                    FlavoredNeutrinoContainer::FNParticleView p_new{td_new, i};
+
                     // Per-flavor diagonal magnitudes (Re part of each diagonal) and
                     // the matrix trace. The k-th diagonal of an Nflav x Nflav Hermitian
                     // matrix packed (Re,Im) row-by-row sits at offset k*(2*Nflav - k).
@@ -437,26 +441,26 @@ void evolve_flavor(const TestParams* parms) {
                     for (int k = 0; k < Nflav; ++k) {
                         int diag = k * (2 * Nflav - k);
                         diagN[k] = amrex::max(
-                            std::abs(p_old[i].rdata(nu_start + diag)),
-                            std::abs(p_new[i].rdata(nu_start + diag)));
+                            std::abs(p_old.rdata(nu_start + diag)),
+                            std::abs(p_new.rdata(nu_start + diag)));
                         diagNbar[k] = amrex::max(
-                            std::abs(p_old[i].rdata(nubar_start + diag)),
-                            std::abs(p_new[i].rdata(nubar_start + diag)));
+                            std::abs(p_old.rdata(nubar_start + diag)),
+                            std::abs(p_new.rdata(nubar_start + diag)));
                         TrN += diagN[k];
                         TrNbar += diagNbar[k];
                     }
 
-                    const Real ref_p = std::abs(p_old[i].rdata(PIdx::pupt));
+                    const Real ref_p = std::abs(p_old.rdata(PIdx::pupt));
 
                     // scale_c = reference_scale * abs_tol + rel_tol * max(|old_c|, |new_c|)
                     auto scaled_error = [&](int c, Real reference_scale) {
                         const Real maxval =
-                            amrex::max(std::abs(p_old[i].rdata(c)),
-                                       std::abs(p_new[i].rdata(c)));
+                            amrex::max(std::abs(p_old.rdata(c)),
+                                       std::abs(p_new.rdata(c)));
                         const Real scale =
                             reference_scale * abs_tol + rel_tol * maxval;
                         if (scale == Real(0.0)) return Real(0.0);
-                        return std::abs(p_err[i].rdata(c)) / scale;
+                        return std::abs(p_err.rdata(c)) / scale;
                     };
 
                     Real val = 0.0;
