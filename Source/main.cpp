@@ -44,6 +44,7 @@ using namespace amrex;
 // valid once particles are already on their correct grids.
 static void sort_particles(FlavoredNeutrinoContainer& neutrinos,
                            const TestParams* parms) {
+    BL_PROFILE("sort_particles()");
     if (parms->particle_sort_method == 1) {
         neutrinos.SortParticlesByCell();
     } else if (parms->particle_sort_method == 2) {
@@ -265,11 +266,15 @@ void evolve_flavor(const TestParams* parms) {
                           FlavoredNeutrinoContainer& neutrinos,
                           Real /* time */) {
         /* Evaluate the neutrino distribution matrix RHS */
+        BL_PROFILE("Emu::RHS()");
 
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
         deposit_to_mesh(neutrinos, state, geom, parms);
-        state.FillBoundary(geom.periodicity());
-        FillDomainBoundary(state, geom, grid_bcs);
+        {
+            BL_PROFILE("Emu::RHS::fill_boundaries()");
+            state.FillBoundary(geom.periodicity());
+            FillDomainBoundary(state, geom, grid_bcs);
+        }
 
         // Step 2: Copy Particles and their F from neutrino state to neutrino RHS ParticleContainer
         //
@@ -281,7 +286,10 @@ void evolve_flavor(const TestParams* parms) {
         //    Thus, this copy clears the old RHS particles and creates particles in the RHS container corresponding
         //    to the current particles in neutrinos.
 
-        neutrinos_rhs.copyParticles(neutrinos, true);
+        {
+            BL_PROFILE("Emu::RHS::copy_particles()");
+            neutrinos_rhs.copyParticles(neutrinos, true);
+        }
         // Step 3: Interpolate Mesh to construct the neutrino RHS in place
         interpolate_rhs_from_mesh(neutrinos_rhs, state, geom, parms);
     };
@@ -291,6 +299,7 @@ void evolve_flavor(const TestParams* parms) {
     auto post_timestep_fun = [&](FlavoredNeutrinoContainer& neutrinos,
                                  amrex::Real time) {
         /* Post-timestep function. The integrator new-time data is the latest data available. */
+        BL_PROFILE("Emu::post_timestep()");
 
         // If a black hole is present, set N=0 and Nbar=0 for all particles inside
         // the black hole so it absorbs the neutrinos that fall into it.
@@ -309,7 +318,10 @@ void evolve_flavor(const TestParams* parms) {
         neutrinos.ApplyBoundaryConditions(parms);
 
         // Now Redistribute the new time particles to their new grids.
-        neutrinos.RedistributeLocal();
+        {
+            BL_PROFILE("Emu::RedistributeLocal()");
+            neutrinos.RedistributeLocal();
+        }
 
         // Sort particles to optimize grid-particle interactions
         sort_particles(neutrinos, parms);

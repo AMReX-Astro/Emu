@@ -45,6 +45,7 @@ void Initialize() {
  */
 Real compute_dt(const Geometry& geom, const MultiFab& state,
                 const TestParams* parms) {
+    BL_PROFILE("compute_dt()");
     // If the time step method is 1, return the minimum time step
     if (parms->time_step_method == 1) {
         return parms->minimum_time_step;
@@ -203,6 +204,7 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
 void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                      MultiFab& state, const Geometry& geom,
                      const TestParams* parms) {
+    BL_PROFILE("deposit_to_mesh()");
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
     const Real inv_cell_volume = dxi[0] * dxi[1] * dxi[2];
@@ -351,6 +353,7 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
 void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                                const MultiFab& state, const Geometry& geom,
                                const TestParams* parms) {
+    BL_PROFILE("interpolate_rhs_from_mesh()");
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
 
