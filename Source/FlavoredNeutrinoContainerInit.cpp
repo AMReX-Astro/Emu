@@ -89,7 +89,8 @@ Gpu::ManagedVector<GpuArray<Real, PIdx::nattribs>> read_particle_data(
     while (std::getline(file, line)) {
         ss = std::stringstream(line);
         // skip over the first four attributes (x,y,z,t)
-        for (int i = 4; i < PIdx::nattribs; i++) ss >> temp_particle[i];
+        for (int i = PIdx::pupx; i < PIdx::nattribs; i++)
+            ss >> temp_particle[i];
         particle_data.push_back(temp_particle);
     }
 
@@ -142,7 +143,7 @@ AMREX_GPU_HOST_DEVICE void symmetric_uniform(
 FlavoredNeutrinoContainer::FlavoredNeutrinoContainer(
     const Geometry& a_geom, const DistributionMapping& a_dmap,
     const BoxArray& a_ba)
-    : ParticleContainer<PIdx::nattribs, 0, 0, 0>(a_geom, a_dmap, a_ba) {
+    : ParticleContainer<0, 0, PIdx::nattribs, 0>(a_geom, a_dmap, a_ba) {
 #include "generated_files/FlavoredNeutrinoContainerInit.H_particle_varnames_fill"
 }
 
@@ -225,7 +226,7 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
 
         // this will be the particle ID for the first new particle in the tile
         long new_pid;
-        ParticleType* pstruct;
+        FlavoredNeutrinoContainer::PTDType ptd;
 #ifdef _OPENMP
 #pragma omp critical
 #endif
@@ -235,7 +236,7 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
                 particles[std::make_pair(mfi.index(), mfi.LocalTileIndex())];
 
             // Resize the particle container
-            auto old_size = particle_tile.GetArrayOfStructs().size();
+            auto old_size = particle_tile.numParticles();
             auto new_size = old_size + num_to_add;
             particle_tile.resize(new_size);
 
@@ -245,7 +246,7 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
             // set the starting particle ID for the next tile of particles
             ParticleType::NextID(new_pid + num_to_add);
 
-            pstruct = particle_tile.GetArrayOfStructs()().data();
+            ptd = particle_tile.getParticleTileData();
         }
 
         int procID = ParallelDescriptor::MyProc();
@@ -287,7 +288,7 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
                     // Get the Particle data corresponding to our particle index in pidx
                     const int pidx = poffset[cellid] - poffset[0] +
                                      i_loc * ndirs_per_loc + i_direction;
-                    ParticleType& p = pstruct[pidx];
+                    FlavoredNeutrinoContainer::FNParticleView p{ptd, pidx};
 
                     // Set particle ID using the ID for the first of the new particles in this tile
                     // plus our zero-based particle index
@@ -502,7 +503,7 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
     Real pupt_min = amrex::ReduceMin(
         *this,
         [=] AMREX_GPU_HOST_DEVICE(
-            const FlavoredNeutrinoContainer::ParticleType& p) -> Real {
+            const FlavoredNeutrinoContainer::SuperParticleType& p) -> Real {
             return p.rdata(PIdx::pupt);
         });
     ParallelDescriptor::ReduceRealMin(pupt_min);

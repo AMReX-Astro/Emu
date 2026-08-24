@@ -41,6 +41,12 @@ struct TestParams : public amrex::Gpu::Managed {
     Real minimum_time_step;  // Minimum time step allowed in the simulation
     int time_step_method;    // Time step method flag
 
+    // 0 = never sort, 1 = SortParticlesByCell (plain
+    // cell-major), 2 = SortParticlesForDeposition (ordering chosen by AMReX to
+    // reduce atomic contention during deposition). 1 seems to work best for our
+    // chunky particles with many variables.
+    int particle_sort_method;
+
     // File name with particles' initial conditions
     // This includes energy, momentum, N, Nbar, phase space volume, and others.
     std::string particle_data_filename;
@@ -115,6 +121,11 @@ struct TestParams : public amrex::Gpu::Managed {
         pp.get("restart_dir", restart_dir);
         pp.get("minimum_time_step", minimum_time_step);
         pp.get("time_step_method", time_step_method);
+
+        // 0 = no sorting, 1 = SortParticlesByCell, 2 = SortParticlesForDeposition.
+        // Defaults to 1: fastest in testing on V100
+        particle_sort_method = 1;
+        pp.query("particle_sort_method", particle_sort_method);
 
         // File name with particles' initial conditions
         // This includes energy, momentum, N, Nbar, phase space volume, and others.
