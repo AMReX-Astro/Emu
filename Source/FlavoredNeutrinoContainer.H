@@ -67,26 +67,31 @@ struct FNParticleViewT {
     PTD ptd;
     int i;
 
-    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-    decltype(auto) rdata(int comp) const { return ptd.rdata(comp)[i]; }
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE decltype(auto) rdata(
+        int comp) const {
+        return ptd.rdata(comp)[i];
+    }
 
-    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-    decltype(auto) pos(int dir) const { return ptd.pos(dir, i); }
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE decltype(auto) pos(int dir) const {
+        return ptd.pos(dir, i);
+    }
 
     // Reached through the tile data rather than ptd.m_aos[i] directly: amrex
     // resolves these to the array of structs under this layout and to the
     // separate idcpu array under a pure-SoA one, so the view does not hard-code
     // where the id lives.
-    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-    decltype(auto) id() const { return ptd.id(i); }
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE decltype(auto) id() const {
+        return ptd.id(i);
+    }
 
-    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-    decltype(auto) cpu() const { return ptd.cpu(i); }
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE decltype(auto) cpu() const {
+        return ptd.cpu(i);
+    }
 
-    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-    decltype(auto) idcpu() const { return ptd.idcpu(i); }
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE decltype(auto) idcpu() const {
+        return ptd.idcpu(i);
+    }
 };
-
 
 // The saxpy amrex's TimeIntegrator applies to each particle. It takes the
 // particle tile data and an index rather than a particle struct, which is the
@@ -160,6 +165,5 @@ class FlavoredNeutrinoContainer
     using FNParticleConstView = FNParticleViewT<ConstPTDType>;
     inline static ApplyFlavoredNeutrinoRHS<PTDType> particle_apply_rhs{};
 };
-
 
 #endif

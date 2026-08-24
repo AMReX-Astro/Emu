@@ -440,9 +440,9 @@ void evolve_flavor(const TestParams* parms) {
                     Real TrN = 0.0, TrNbar = 0.0;
                     for (int k = 0; k < Nflav; ++k) {
                         int diag = k * (2 * Nflav - k);
-                        diagN[k] = amrex::max(
-                            std::abs(p_old.rdata(nu_start + diag)),
-                            std::abs(p_new.rdata(nu_start + diag)));
+                        diagN[k] =
+                            amrex::max(std::abs(p_old.rdata(nu_start + diag)),
+                                       std::abs(p_new.rdata(nu_start + diag)));
                         diagNbar[k] = amrex::max(
                             std::abs(p_old.rdata(nubar_start + diag)),
                             std::abs(p_new.rdata(nubar_start + diag)));
@@ -454,9 +454,8 @@ void evolve_flavor(const TestParams* parms) {
 
                     // scale_c = reference_scale * abs_tol + rel_tol * max(|old_c|, |new_c|)
                     auto scaled_error = [&](int c, Real reference_scale) {
-                        const Real maxval =
-                            amrex::max(std::abs(p_old.rdata(c)),
-                                       std::abs(p_new.rdata(c)));
+                        const Real maxval = amrex::max(
+                            std::abs(p_old.rdata(c)), std::abs(p_new.rdata(c)));
                         const Real scale =
                             reference_scale * abs_tol + rel_tol * maxval;
                         if (scale == Real(0.0)) return Real(0.0);
