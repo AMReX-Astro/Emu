@@ -420,7 +420,6 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
     static_assert(SHAPE_FACTOR_ORDER <= 2,
                   "ParticleInterpolator implements orders 0-2 only");
     constexpr int stencil_width = 3;
-    constexpr int stencil_size = stencil_width * stencil_width * stencil_width;
 
     // Get the cell volume, spacing, and domain size
     const auto plo = geom.ProbLoArray();
@@ -584,16 +583,14 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
             // Resolve each stencil destination once per cell: it depends only on
             // the cell, not on the particle or the component. The parity is one
             // bit, so pack it per moment rather than storing signs as doubles --
-            // a [stencil_size][num_moments] array of doubles would cost 270
-            // registers at NUM_MOMENTS=3 and pin the kernel at the 255 ceiling.
+            // a sign per (stencil cell, moment) would cost 270 registers at
+            // NUM_MOMENTS=3 and pin the kernel at the 255 ceiling.
             static_assert(num_moments <= 32, "one sign bit per moment");
-            int dest_cell[stencil_size][3];
-            int sign_flips[stencil_size];
+            int dest_cell[stencil_width][stencil_width][stencil_width][3];
+            int sign_flips[stencil_width][stencil_width][stencil_width];
             for (int sk = 0; sk < stencil_width; ++sk) {
                 for (int sj = 0; sj < stencil_width; ++sj) {
                     for (int si = 0; si < stencil_width; ++si) {
-                        const int stencil =
-                            (sk * stencil_width + sj) * stencil_width + si;
                         int cell[3] = {home_i + si - 1, home_j + sj - 1,
                                        home_k + sk - 1};
                         int reflected = 0;
@@ -606,9 +603,9 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                                 reflected |= (1 << d);
                             }
                         }
-                        dest_cell[stencil][0] = cell[0];
-                        dest_cell[stencil][1] = cell[1];
-                        dest_cell[stencil][2] = cell[2];
+                        dest_cell[sk][sj][si][0] = cell[0];
+                        dest_cell[sk][sj][si][1] = cell[1];
+                        dest_cell[sk][sj][si][2] = cell[2];
 
                         int flips = 0;
                         for (int moment = 0; reflected && moment < num_moments;
@@ -618,13 +615,13 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                             if ((odd ^ (odd >> 1) ^ (odd >> 2)) & 1)
                                 flips |= (1 << moment);
                         }
-                        sign_flips[stencil] = flips;
+                        sign_flips[sk][sj][si] = flips;
                     }
                 }
             }
 
-            // One grid component at a time, so only stencil_size accumulators
-            // are live regardless of NUM_MOMENTS.
+            // One grid component at a time, so only one accumulator per stencil
+            // cell is live regardless of NUM_MOMENTS.
             for (int grid_comp = 0; grid_comp < num_grid_comps; ++grid_comp) {
                 const int block = grid_comp / comps_per_block;
                 const int flavor_comp = grid_comp - block * comps_per_block;
@@ -633,8 +630,12 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                 const int particle_component_index =
                     PIdx::N00_Re + nunubar * comps_per_block + flavor_comp;
 
-                amrex::Real stencil_sum[stencil_size];
-                for (int s = 0; s < stencil_size; ++s) stencil_sum[s] = 0.0;
+                amrex::Real
+                    stencil_sum[stencil_width][stencil_width][stencil_width];
+                for (int sk = 0; sk < stencil_width; ++sk)
+                    for (int sj = 0; sj < stencil_width; ++sj)
+                        for (int si = 0; si < stencil_width; ++si)
+                            stencil_sum[sk][sj][si] = 0.0;
 
                 for (int sorted_index = particle_begin;
                      sorted_index < particle_end; ++sorted_index) {
@@ -652,9 +653,7 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                             const amrex::Real weight_jk =
                                 weight_k * particle_geometry.shape_j(sj);
                             for (int si = 0; si < stencil_width; ++si) {
-                                stencil_sum[(sk * stencil_width + sj) *
-                                                stencil_width +
-                                            si] +=
+                                stencil_sum[sk][sj][si] +=
                                     weight_jk * particle_geometry.shape_i(si) *
                                     value;
                             }
@@ -662,14 +661,21 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                     }
                 }
 
-                for (int stencil = 0; stencil < stencil_size; ++stencil) {
-                    if (stencil_sum[stencil] == 0.0) continue;
-                    const amrex::Real sign =
-                        ((sign_flips[stencil] >> moment) & 1) ? -1.0 : 1.0;
-                    amrex::HostDevice::Atomic::Add(
-                        &fabarr(dest_cell[stencil][0], dest_cell[stencil][1],
-                                dest_cell[stencil][2], grid_comp),
-                        sign * stencil_sum[stencil]);
+                for (int sk = 0; sk < stencil_width; ++sk) {
+                    for (int sj = 0; sj < stencil_width; ++sj) {
+                        for (int si = 0; si < stencil_width; ++si) {
+                            const amrex::Real sum = stencil_sum[sk][sj][si];
+                            if (sum == 0.0) continue;
+                            const amrex::Real sign =
+                                ((sign_flips[sk][sj][si] >> moment) & 1) ? -1.0
+                                                                         : 1.0;
+                            amrex::HostDevice::Atomic::Add(
+                                &fabarr(dest_cell[sk][sj][si][0],
+                                        dest_cell[sk][sj][si][1],
+                                        dest_cell[sk][sj][si][2], grid_comp),
+                                sign * sum);
+                        }
+                    }
                 }
             }
         });
