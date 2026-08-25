@@ -47,6 +47,15 @@ struct TestParams : public amrex::Gpu::Managed {
     // chunky particles with many variables.
     int particle_sort_method;
 
+    // Deposition kernel selection.
+    // 0 = amrex::ParticleToMesh scatter, one thread per particle, atomics into
+    //     every stencil cell (the original).
+    // 1 = one thread per (cell, grid component), accumulating that cell's
+    //     particles in registers before a single atomic per stencil cell. This
+    //     amortizes the atomics over the particles in a cell.
+    // 2 = run both and abort if they disagree (validation only, ~2x cost).
+    int deposit_method;
+
     // File name with particles' initial conditions
     // This includes energy, momentum, N, Nbar, phase space volume, and others.
     std::string particle_data_filename;
@@ -126,6 +135,11 @@ struct TestParams : public amrex::Gpu::Managed {
         // Defaults to 1: fastest in testing on V100
         particle_sort_method = 1;
         pp.query("particle_sort_method", particle_sort_method);
+
+        // 0 = per-particle atomic scatter, 1 = per-cell accumulation,
+        // 2 = run both and compare. See the declaration above.
+        deposit_method = 0;
+        pp.query("deposit_method", deposit_method);
 
         // File name with particles' initial conditions
         // This includes energy, momentum, N, Nbar, phase space volume, and others.

@@ -201,10 +201,14 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
     return dt;
 }
 
-void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
-                     MultiFab& state, const Geometry& geom,
-                     const TestParams* parms) {
-    BL_PROFILE("deposit_to_mesh()");
+// Original deposition: amrex::ParticleToMesh runs one thread per particle, and
+// every particle atomically adds into all (SHAPE_FACTOR_ORDER+1)^3 stencil cells
+// for each grid component. Kept as the reference implementation for
+// deposit_method 0 and for the A/B comparison in deposit_method 2.
+static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
+                                   MultiFab& state, const Geometry& geom,
+                                   const TestParams* parms) {
+    BL_PROFILE("deposit_to_mesh_atomic()");
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
     const Real inv_cell_volume = dxi[0] * dxi[1] * dxi[2];
@@ -348,6 +352,353 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                 }
             }
         });
+}
+
+// Which directions a moment block is odd in under reflection. Bit d is set iff
+// block m carries an odd number of phat_d factors, in GIdx block order
+// N, Fx, Fy, Fz[, Pxx, Pxy, Pxz, Pyy, Pyz, Pzz]. A reflection across a face
+// normal to d flips phat_d, so the block's sign flips iff that bit is set.
+// set as a constexpr function rather than a table for efficiency
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE constexpr int odd_phat_directions(
+    int moment) {
+    return (moment == 1)   ? 0b001    // Fx
+           : (moment == 2) ? 0b010    // Fy
+           : (moment == 3) ? 0b100    // Fz
+           : (moment == 5) ? 0b011    // Pxy
+           : (moment == 6) ? 0b101    // Pxz
+           : (moment == 8) ? 0b110    // Pyz
+                           : 0b000;   // N, Pxx, Pyy, Pzz
+}
+
+// View onto one particle's precomputed geometry: the shape factors rebased onto
+// the particle's home cell (entry s is the weight for cell home + s - 1, zero
+// outside the stencil) followed by one moment factor per block. Slices are
+// stored in bin order so the deposition loop streams them contiguously.
+template <int NumMoments>
+struct ParticleGeometryT {
+    static constexpr int kShapeI = 0;
+    static constexpr int kShapeJ = 3;
+    static constexpr int kShapeK = 6;
+    static constexpr int kMomentFactor = 9;
+    static constexpr int kStride = kMomentFactor + NumMoments;
+
+    amrex::Real* data;
+
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE static ParticleGeometryT at(
+        amrex::Real* base, int index) {
+        return ParticleGeometryT{base + std::size_t(index) * kStride};
+    }
+
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real& shape_i(int s) const {
+        return data[kShapeI + s];
+    }
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real& shape_j(int s) const {
+        return data[kShapeJ + s];
+    }
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real& shape_k(int s) const {
+        return data[kShapeK + s];
+    }
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real& moment_factor(
+        int m) const {
+        return data[kMomentFactor + m];
+    }
+};
+
+using ParticleGeometry = ParticleGeometryT<NUM_MOMENTS == 3 ? 10 : 4>;
+
+// Cell-parallel deposition: one thread per source cell, walking the grid
+// components one at a time and keeping a single accumulator per stencil
+// destination. Atomics then land once per (cell, destination, component)
+// instead of once per (particle, destination, component), amortizing them over
+// the particles in a cell.
+static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
+                                 MultiFab& state, const Geometry& geom,
+                                 const TestParams* parms) {
+    BL_PROFILE("deposit_to_mesh_cell()");
+
+    static_assert(SHAPE_FACTOR_ORDER <= 2,
+                  "ParticleInterpolator implements orders 0-2 only");
+
+    // Get the cell volume, spacing, and domain size
+    const auto plo = geom.ProbLoArray();
+    const auto dxi = geom.InvCellSizeArray();
+    const Real inv_cell_volume = dxi[0] * dxi[1] * dxi[2];
+    const Box& domain = geom.Domain();
+
+    // Create an alias of the MultiFab so we only erase what the neutrinos set
+    const int start_comp = GIdx::N00_Re;
+    const int num_grid_comps = GIdx::ncomp - start_comp;
+    MultiFab deposit_state(state, amrex::make_alias, start_comp,
+                           num_grid_comps);
+    deposit_state.setVal(0.0);
+
+    // Set actual shape factor order to 0 in any unit-length direction
+    const int shape_order_i =
+        geom.Domain().length(0) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_order_j =
+        geom.Domain().length(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_order_k =
+        geom.Domain().length(2) > 1 ? SHAPE_FACTOR_ORDER : 0;
+
+    // get boundary information
+    const amrex::GpuArray<int, 3> domain_lo{
+        domain.smallEnd(0), domain.smallEnd(1), domain.smallEnd(2)};
+    const amrex::GpuArray<int, 3> domain_hi{domain.bigEnd(0), domain.bigEnd(1),
+                                            domain.bigEnd(2)};
+    const amrex::GpuArray<int, 3> reflect_lo{
+        parms->boundary_condition[0] == BoundaryCondition::reflecting,
+        parms->boundary_condition[2] == BoundaryCondition::reflecting,
+        parms->boundary_condition[4] == BoundaryCondition::reflecting};
+    const amrex::GpuArray<int, 3> reflect_hi{
+        parms->boundary_condition[1] == BoundaryCondition::reflecting,
+        parms->boundary_condition[3] == BoundaryCondition::reflecting,
+        parms->boundary_condition[5] == BoundaryCondition::reflecting};
+
+    constexpr int num_moments = NUM_MOMENTS == 3 ? 10 : 4;
+    constexpr int comps_per_block = PIdx::N00_Rebar - PIdx::N00_Re;
+
+    // Stencil is (order+1)^3 <= 3^3, centered on the particle's own cell.
+    constexpr int stencil_width = 3;
+    constexpr int stencil_size = stencil_width * stencil_width * stencil_width;
+
+    using ParIter = typename FlavoredNeutrinoContainer::ParConstIterType;
+    for (ParIter pti(neutrinos, 0); pti.isValid(); ++pti) {
+        const auto& tile = pti.GetParticleTile();
+        const int num_particles = tile.numParticles();
+        if (num_particles == 0) continue;
+        const auto& ptd = tile.getConstParticleTileData();
+
+        const Box& box = pti.validbox();
+        const auto box_lo = amrex::lbound(box);
+        const auto box_len = amrex::length(box);
+        const int num_cells = box_len.x * box_len.y * box_len.z;
+
+        // DenseBins' Box overload indexes with the absolute cell index without
+        // subtracting smallEnd (AMReX_DenseBins.H:185-201), so it mis-bins any
+        // box not at the origin. Flatten explicitly instead, and send strays to
+        // an overflow bin so they assert rather than clamp into an edge bin.
+        amrex::DenseBins<FlavoredNeutrinoContainer::ConstPTDType> bins;
+        {
+            BL_PROFILE("deposit_to_mesh_cell::bin");
+            bins.build(
+                num_particles, ptd, num_cells + 1,
+                [=] AMREX_GPU_DEVICE(
+                    const FlavoredNeutrinoContainer::ConstPTDType& tile_data,
+                    int index) noexcept -> unsigned int {
+                    const amrex::IntVect cell = amrex::getParticleCell(
+                        tile_data, index, plo, dxi, domain);
+                    const int local_i = cell[0] - box_lo.x;
+                    const int local_j = cell[1] - box_lo.y;
+                    const int local_k = cell[2] - box_lo.z;
+                    if (local_i < 0 || local_i >= box_len.x || local_j < 0 ||
+                        local_j >= box_len.y || local_k < 0 ||
+                        local_k >= box_len.z)
+                        return static_cast<unsigned int>(num_cells);
+                    return static_cast<unsigned int>(
+                        (local_k * box_len.y + local_j) * box_len.x + local_i);
+                });
+
+            int overflow[2];
+            amrex::Gpu::dtoh_memcpy(overflow, bins.offsetsPtr() + num_cells,
+                                    2 * sizeof(int));
+            AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+                overflow[1] == overflow[0],
+                "deposit_to_mesh_cell: particle outside its own valid box; "
+                "Redistribute is out of sync with the deposition");
+        }
+
+        const auto* bin_offsets = bins.offsetsPtr();
+        const auto* bin_order = bins.permutationPtr();
+
+        // Per-particle geometry, built once and reused by every component, and
+        // stored in bin order so the component loop streams it contiguously.
+        // Shape factors are rebased onto the particle's own cell -- entry j is
+        // the weight for cell (home + j - 1), zero outside the stencil -- which
+        // keeps the accumulation loop branch-free. inv_cell_volume is folded in.
+        amrex::Gpu::DeviceVector<amrex::Real> geometry_storage(
+            std::size_t(num_particles) * ParticleGeometry::kStride);
+        amrex::Real* geometry = geometry_storage.dataPtr();
+        {
+            BL_PROFILE("deposit_to_mesh_cell::precompute");
+            amrex::ParallelFor(
+                num_particles, [=] AMREX_GPU_DEVICE(int sorted_index) {
+                    const int p_index = bin_order[sorted_index];
+                    FlavoredNeutrinoContainer::FNParticleConstView p{ptd,
+                                                                     p_index};
+
+                    const amrex::IntVect home_cell = amrex::getParticleCell(
+                        ptd, p_index, plo, dxi, domain);
+
+                    const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_i(
+                        (p.pos(0) - plo[0]) * dxi[0], shape_order_i);
+                    const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_j(
+                        (p.pos(1) - plo[1]) * dxi[1], shape_order_j);
+                    const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_k(
+                        (p.pos(2) - plo[2]) * dxi[2], shape_order_k);
+
+                    const ParticleGeometry particle_geometry =
+                        ParticleGeometry::at(geometry, sorted_index);
+
+                    for (int s = 0; s < stencil_width; ++s) {
+                        const int cell_i = home_cell[0] + s - 1;
+                        const int cell_j = home_cell[1] + s - 1;
+                        const int cell_k = home_cell[2] + s - 1;
+                        const int index_i = cell_i - shape_i.first();
+                        const int index_j = cell_j - shape_j.first();
+                        const int index_k = cell_k - shape_k.first();
+                        particle_geometry.shape_i(s) =
+                            (index_i >= 0 && index_i <= shape_order_i)
+                                ? shape_i(cell_i) * inv_cell_volume
+                                : 0.0;
+                        particle_geometry.shape_j(s) =
+                            (index_j >= 0 && index_j <= shape_order_j)
+                                ? shape_j(cell_j)
+                                : 0.0;
+                        particle_geometry.shape_k(s) =
+                            (index_k >= 0 && index_k <= shape_order_k)
+                                ? shape_k(cell_k)
+                                : 0.0;
+                    }
+
+                    const amrex::Real inv_pupt = 1.0 / p.rdata(PIdx::pupt);
+                    const amrex::Real phat[3] = {
+                        p.rdata(PIdx::pupx) * inv_pupt,
+                        p.rdata(PIdx::pupy) * inv_pupt,
+                        p.rdata(PIdx::pupz) * inv_pupt};
+                    particle_geometry.moment_factor(0) = 1.0;      // N
+                    particle_geometry.moment_factor(1) = phat[0];  // Fx
+                    particle_geometry.moment_factor(2) = phat[1];  // Fy
+                    particle_geometry.moment_factor(3) = phat[2];  // Fz
+#if NUM_MOMENTS == 3
+                    particle_geometry.moment_factor(4) = phat[0] * phat[0];
+                    particle_geometry.moment_factor(5) = phat[0] * phat[1];
+                    particle_geometry.moment_factor(6) = phat[0] * phat[2];
+                    particle_geometry.moment_factor(7) = phat[1] * phat[1];
+                    particle_geometry.moment_factor(8) = phat[1] * phat[2];
+                    particle_geometry.moment_factor(9) = phat[2] * phat[2];
+#endif
+                });
+        }
+
+        auto fabarr = deposit_state[pti].array();
+
+        BL_PROFILE_VAR("deposit_to_mesh_cell::gather", blp_gather);
+        amrex::ParallelFor(num_cells, [=] AMREX_GPU_DEVICE(int cell_index) {
+            const int particle_begin = bin_offsets[cell_index];
+            const int particle_end = bin_offsets[cell_index + 1];
+            if (particle_begin == particle_end) return;
+
+            const int home_i = box_lo.x + (cell_index % box_len.x);
+            const int home_j = box_lo.y + ((cell_index / box_len.x) % box_len.y);
+            const int home_k = box_lo.z + (cell_index / (box_len.x * box_len.y));
+
+            // Resolve each stencil destination once per cell: it depends only on
+            // the cell, not on the particle or the component. The parity is one
+            // bit, so pack it per moment rather than storing signs as doubles --
+            // a [stencil_size][num_moments] array of doubles would cost 270
+            // registers at NUM_MOMENTS=3 and pin the kernel at the 255 ceiling.
+            static_assert(num_moments <= 32, "one sign bit per moment");
+            int dest_cell[stencil_size][3];
+            int sign_flips[stencil_size];
+            for (int sk = 0; sk < stencil_width; ++sk) {
+                for (int sj = 0; sj < stencil_width; ++sj) {
+                    for (int si = 0; si < stencil_width; ++si) {
+                        const int stencil =
+                            (sk * stencil_width + sj) * stencil_width + si;
+                        int cell[3] = {home_i + si - 1, home_j + sj - 1,
+                                       home_k + sk - 1};
+                        int reflected = 0;
+                        for (int d = 0; d < 3; ++d) {
+                            if (reflect_lo[d] && cell[d] < domain_lo[d]) {
+                                cell[d] = 2 * domain_lo[d] - 1 - cell[d];
+                                reflected |= (1 << d);
+                            } else if (reflect_hi[d] && cell[d] > domain_hi[d]) {
+                                cell[d] = 2 * domain_hi[d] + 1 - cell[d];
+                                reflected |= (1 << d);
+                            }
+                        }
+                        dest_cell[stencil][0] = cell[0];
+                        dest_cell[stencil][1] = cell[1];
+                        dest_cell[stencil][2] = cell[2];
+
+                        int flips = 0;
+                        for (int moment = 0; reflected && moment < num_moments;
+                             ++moment) {
+                            const int odd =
+                                odd_phat_directions(moment) & reflected;
+                            if ((odd ^ (odd >> 1) ^ (odd >> 2)) & 1)
+                                flips |= (1 << moment);
+                        }
+                        sign_flips[stencil] = flips;
+                    }
+                }
+            }
+
+            // One grid component at a time, so only stencil_size accumulators
+            // are live regardless of NUM_MOMENTS.
+            for (int grid_comp = 0; grid_comp < num_grid_comps; ++grid_comp) {
+                const int block = grid_comp / comps_per_block;
+                const int flavor_comp = grid_comp - block * comps_per_block;
+                const int moment = block / 2;
+                const int nunubar = block - 2 * moment;
+                const int particle_component_index =
+                    PIdx::N00_Re + nunubar * comps_per_block + flavor_comp;
+
+                amrex::Real stencil_sum[stencil_size];
+                for (int s = 0; s < stencil_size; ++s) stencil_sum[s] = 0.0;
+
+                for (int sorted_index = particle_begin;
+                     sorted_index < particle_end; ++sorted_index) {
+                    const ParticleGeometry particle_geometry =
+                        ParticleGeometry::at(geometry, sorted_index);
+
+                    const amrex::Real value =
+                        particle_geometry.moment_factor(moment) *
+                        ptd.rdata(particle_component_index)
+                            [bin_order[sorted_index]];
+
+                    for (int sk = 0; sk < stencil_width; ++sk) {
+                        const amrex::Real weight_k = particle_geometry.shape_k(sk);
+                        for (int sj = 0; sj < stencil_width; ++sj) {
+                            const amrex::Real weight_jk =
+                                weight_k * particle_geometry.shape_j(sj);
+                            for (int si = 0; si < stencil_width; ++si) {
+                                stencil_sum[(sk * stencil_width + sj) *
+                                                stencil_width +
+                                            si] +=
+                                    weight_jk * particle_geometry.shape_i(si) *
+                                    value;
+                            }
+                        }
+                    }
+                }
+
+                for (int stencil = 0; stencil < stencil_size; ++stencil) {
+                    if (stencil_sum[stencil] == 0.0) continue;
+                    const amrex::Real sign =
+                        ((sign_flips[stencil] >> moment) & 1) ? -1.0 : 1.0;
+                    amrex::HostDevice::Atomic::Add(
+                        &fabarr(dest_cell[stencil][0], dest_cell[stencil][1],
+                                dest_cell[stencil][2], grid_comp),
+                        sign * stencil_sum[stencil]);
+                }
+            }
+        });
+        BL_PROFILE_VAR_STOP(blp_gather);
+    }
+
+    deposit_state.SumBoundary(geom.periodicity());
+}
+
+void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
+                     MultiFab& state, const Geometry& geom,
+                     const TestParams* parms) {
+    BL_PROFILE("deposit_to_mesh()");
+    if (parms->deposit_method == 0) {
+        deposit_to_mesh_atomic(neutrinos, state, geom, parms);
+    } else {
+        deposit_to_mesh_cell(neutrinos, state, geom, parms);
+    }
 }
 
 void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
