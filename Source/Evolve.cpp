@@ -462,38 +462,15 @@ struct StencilCache {
     }
 };
 
-// View onto one particle's precomputed geometry: the shape factors rebased onto
-// the particle's home cell (entry s is the weight for cell home + s - 1, zero
-// outside the stencil) followed by one moment factor per block. Slices are
-// stored in bin order so the deposition loop streams them contiguously.
+// One particle's precomputed geometry: the shape factors rebased onto the
+// particle's home cell (entry s is the weight for cell home + s - 1, zero
+// outside the stencil), plus one factor per moment. One of these per particle,
+// held in bin order, so the deposition loop streams a particle's whole slice in
+// a single burst -- keep this a plain contiguous struct for that reason.
 template <int NumMoments>
 struct ParticleGeometryT {
-    static constexpr int kShapeI = 0;
-    static constexpr int kShapeJ = 3;
-    static constexpr int kShapeK = 6;
-    static constexpr int kMomentFactor = 9;
-    static constexpr int kStride = kMomentFactor + NumMoments;
-
-    amrex::Real* data;
-
-    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE static ParticleGeometryT at(
-        amrex::Real* base, int index) {
-        return ParticleGeometryT{base + std::size_t(index) * kStride};
-    }
-
-    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real& shape_i(int s) const {
-        return data[kShapeI + s];
-    }
-    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real& shape_j(int s) const {
-        return data[kShapeJ + s];
-    }
-    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real& shape_k(int s) const {
-        return data[kShapeK + s];
-    }
-    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real& moment_factor(
-        int m) const {
-        return data[kMomentFactor + m];
-    }
+    amrex::Real shape[3][3];  // [x/y/z][stencil offset]
+    amrex::Real moment_factor[NumMoments];
 };
 
 using ParticleGeometry = ParticleGeometryT<NUM_MOMENTS == 3 ? 10 : 4>;
@@ -595,9 +572,9 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
         // Shape factors are rebased onto the particle's own cell -- entry j is
         // the weight for cell (home + j - 1), zero outside the stencil -- which
         // keeps the accumulation loop branch-free. inv_cell_volume is folded in.
-        amrex::Gpu::DeviceVector<amrex::Real> geometry_storage(
-            std::size_t(num_particles) * ParticleGeometry::kStride);
-        amrex::Real* geometry = geometry_storage.dataPtr();
+        amrex::Gpu::DeviceVector<ParticleGeometry> geometry_storage(
+            num_particles);
+        ParticleGeometry* geometry = geometry_storage.dataPtr();
         {
             BL_PROFILE("deposit_to_mesh_cell::precompute");
             amrex::ParallelFor(
@@ -616,8 +593,8 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                     const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_k(
                         (p.pos(2) - plo[2]) * dxi[2], shape_order_k);
 
-                    const ParticleGeometry particle_geometry =
-                        ParticleGeometry::at(geometry, sorted_index);
+                    ParticleGeometry& particle_geometry =
+                        geometry[sorted_index];
 
                     for (int s = 0; s < stencil_width; ++s) {
                         const int cell_i = home_cell[0] + s - 1;
@@ -626,15 +603,15 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                         const int index_i = cell_i - shape_i.first();
                         const int index_j = cell_j - shape_j.first();
                         const int index_k = cell_k - shape_k.first();
-                        particle_geometry.shape_i(s) =
+                        particle_geometry.shape[0][s] =
                             (index_i >= 0 && index_i <= shape_order_i)
                                 ? shape_i(cell_i) * inv_cell_volume
                                 : 0.0;
-                        particle_geometry.shape_j(s) =
+                        particle_geometry.shape[1][s] =
                             (index_j >= 0 && index_j <= shape_order_j)
                                 ? shape_j(cell_j)
                                 : 0.0;
-                        particle_geometry.shape_k(s) =
+                        particle_geometry.shape[2][s] =
                             (index_k >= 0 && index_k <= shape_order_k)
                                 ? shape_k(cell_k)
                                 : 0.0;
@@ -645,17 +622,17 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                         p.rdata(PIdx::pupx) * inv_pupt,
                         p.rdata(PIdx::pupy) * inv_pupt,
                         p.rdata(PIdx::pupz) * inv_pupt};
-                    particle_geometry.moment_factor(0) = 1.0;      // N
-                    particle_geometry.moment_factor(1) = phat[0];  // Fx
-                    particle_geometry.moment_factor(2) = phat[1];  // Fy
-                    particle_geometry.moment_factor(3) = phat[2];  // Fz
+                    particle_geometry.moment_factor[0] = 1.0;      // N
+                    particle_geometry.moment_factor[1] = phat[0];  // Fx
+                    particle_geometry.moment_factor[2] = phat[1];  // Fy
+                    particle_geometry.moment_factor[3] = phat[2];  // Fz
 #if NUM_MOMENTS == 3
-                    particle_geometry.moment_factor(4) = phat[0] * phat[0];
-                    particle_geometry.moment_factor(5) = phat[0] * phat[1];
-                    particle_geometry.moment_factor(6) = phat[0] * phat[2];
-                    particle_geometry.moment_factor(7) = phat[1] * phat[1];
-                    particle_geometry.moment_factor(8) = phat[1] * phat[2];
-                    particle_geometry.moment_factor(9) = phat[2] * phat[2];
+                    particle_geometry.moment_factor[4] = phat[0] * phat[0];
+                    particle_geometry.moment_factor[5] = phat[0] * phat[1];
+                    particle_geometry.moment_factor[6] = phat[0] * phat[2];
+                    particle_geometry.moment_factor[7] = phat[1] * phat[1];
+                    particle_geometry.moment_factor[8] = phat[1] * phat[2];
+                    particle_geometry.moment_factor[9] = phat[2] * phat[2];
 #endif
                 });
         }
@@ -693,23 +670,24 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
 
                 for (int sorted_index = particle_begin;
                      sorted_index < particle_end; ++sorted_index) {
-                    const ParticleGeometry particle_geometry =
-                        ParticleGeometry::at(geometry, sorted_index);
+                    const ParticleGeometry& particle_geometry =
+                        geometry[sorted_index];
 
                     const amrex::Real value =
-                        particle_geometry.moment_factor(moment) *
+                        particle_geometry.moment_factor[moment] *
                         ptd.rdata(particle_component_index)
                             [bin_order[sorted_index]];
 
                     for (int sk = 0; sk < stencil_width; ++sk) {
-                        const amrex::Real weight_k = particle_geometry.shape_k(sk);
+                        const amrex::Real weight_k =
+                            particle_geometry.shape[2][sk];
                         for (int sj = 0; sj < stencil_width; ++sj) {
                             const amrex::Real weight_jk =
-                                weight_k * particle_geometry.shape_j(sj);
+                                weight_k * particle_geometry.shape[1][sj];
                             for (int si = 0; si < stencil_width; ++si) {
                                 sums.value[sk][sj][si] +=
-                                    weight_jk * particle_geometry.shape_i(si) *
-                                    value;
+                                    weight_jk *
+                                    particle_geometry.shape[0][si] * value;
                             }
                         }
                     }
