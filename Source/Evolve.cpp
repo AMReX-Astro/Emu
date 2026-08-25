@@ -370,6 +370,21 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE constexpr int odd_phat_directions(
                            : 0b000;   // N, Pxx, Pyy, Pzz
 }
 
+// Accumulators for one grid component's deposition stencil, zeroed on
+// construction. Declare these inside the component loop: they are written 27x
+// per particle, and giving them the enclosing StencilCache's lifetime demotes
+// them from registers to the thread's stack frame (+27 doubles) for ~2.5%.
+template <int Width>
+struct StencilSums {
+    amrex::Real value[Width][Width][Width];
+
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE StencilSums() {
+        for (int sk = 0; sk < Width; ++sk)
+            for (int sj = 0; sj < Width; ++sj)
+                for (int si = 0; si < Width; ++si) value[sk][sj][si] = 0.0;
+    }
+};
+
 // Per-cell scratch for one deposition stencil. Both the destination cell of each
 // stencil offset and the sign it picks up from a reflecting fold depend only on
 // the cell, so locate() resolves them once and every grid component reuses them.
@@ -381,20 +396,6 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE constexpr int odd_phat_directions(
 template <int Width, int NumMoments>
 struct StencilCache {
     static_assert(NumMoments <= 32, "one parity bit per moment");
-
-    // Accumulators for a single grid component. Declared inside the component
-    // loop and zeroed on construction. Do not make these members of the cache:
-    // they are written 27x per particle, and giving them the cache's lifetime
-    // demotes them from registers to the stack frame (+27 doubles) for ~2.5%.
-    struct Sums {
-        amrex::Real value[Width][Width][Width];
-
-        AMREX_GPU_DEVICE AMREX_FORCE_INLINE Sums() {
-            for (int sk = 0; sk < Width; ++sk)
-                for (int sj = 0; sj < Width; ++sj)
-                    for (int si = 0; si < Width; ++si) value[sk][sj][si] = 0.0;
-        }
-    };
 
     int dest[Width][Width][Width][3];
     int parity[Width][Width][Width];  // bit m set where moment m flips sign
@@ -441,10 +442,9 @@ struct StencilCache {
     // Add every nonzero accumulator into the grid, applying the sign this moment
     // picks up from any reflecting fold.
     template <typename Array4Type>
-    AMREX_GPU_DEVICE AMREX_FORCE_INLINE void flush(const Sums& sums,
-                                                   const Array4Type& fabarr,
-                                                   int grid_comp,
-                                                   int moment) const {
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE void flush(
+        const StencilSums<Width>& sums, const Array4Type& fabarr, int grid_comp,
+        int moment) const {
         for (int sk = 0; sk < Width; ++sk) {
             for (int sj = 0; sj < Width; ++sj) {
                 for (int si = 0; si < Width; ++si) {
@@ -651,8 +651,7 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
 
             // Destinations and parities depend only on the cell, so resolve
             // them once and let every grid component reuse them.
-            using Cache = StencilCache<stencil_width, num_moments>;
-            Cache cache;
+            StencilCache<stencil_width, num_moments> cache;
             cache.locate(home_i, home_j, home_k, domain_lo, domain_hi,
                          reflect_lo, reflect_hi);
 
@@ -666,7 +665,7 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                 const int particle_component_index =
                     PIdx::N00_Re + nunubar * comps_per_block + flavor_comp;
 
-                Cache::Sums sums;
+                StencilSums<stencil_width> sums;
 
                 for (int sorted_index = particle_begin;
                      sorted_index < particle_end; ++sorted_index) {
