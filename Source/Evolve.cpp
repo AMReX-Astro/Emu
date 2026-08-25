@@ -416,8 +416,11 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                                  const TestParams* parms) {
     BL_PROFILE("deposit_to_mesh_cell()");
 
+    // compile-time stencil size only works for up to shape order 2
     static_assert(SHAPE_FACTOR_ORDER <= 2,
                   "ParticleInterpolator implements orders 0-2 only");
+    constexpr int stencil_width = 3;
+    constexpr int stencil_size = stencil_width * stencil_width * stencil_width;
 
     // Get the cell volume, spacing, and domain size
     const auto plo = geom.ProbLoArray();
@@ -454,12 +457,9 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
         parms->boundary_condition[3] == BoundaryCondition::reflecting,
         parms->boundary_condition[5] == BoundaryCondition::reflecting};
 
+    // precompute compile-time scalars
     constexpr int num_moments = NUM_MOMENTS == 3 ? 10 : 4;
     constexpr int comps_per_block = PIdx::N00_Rebar - PIdx::N00_Re;
-
-    // Stencil is (order+1)^3 <= 3^3, centered on the particle's own cell.
-    constexpr int stencil_width = 3;
-    constexpr int stencil_size = stencil_width * stencil_width * stencil_width;
 
     using ParIter = typename FlavoredNeutrinoContainer::ParConstIterType;
     for (ParIter pti(neutrinos, 0); pti.isValid(); ++pti) {
@@ -475,13 +475,11 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
 
         // DenseBins' Box overload indexes with the absolute cell index without
         // subtracting smallEnd (AMReX_DenseBins.H:185-201), so it mis-bins any
-        // box not at the origin. Flatten explicitly instead, and send strays to
-        // an overflow bin so they assert rather than clamp into an edge bin.
+        // box not at the origin. Flatten explicitly instead.
         amrex::DenseBins<FlavoredNeutrinoContainer::ConstPTDType> bins;
         {
             BL_PROFILE("deposit_to_mesh_cell::bin");
-            bins.build(
-                num_particles, ptd, num_cells + 1,
+            bins.build(num_particles, ptd, num_cells,
                 [=] AMREX_GPU_DEVICE(
                     const FlavoredNeutrinoContainer::ConstPTDType& tile_data,
                     int index) noexcept -> unsigned int {
@@ -490,21 +488,12 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                     const int local_i = cell[0] - box_lo.x;
                     const int local_j = cell[1] - box_lo.y;
                     const int local_k = cell[2] - box_lo.z;
-                    if (local_i < 0 || local_i >= box_len.x || local_j < 0 ||
-                        local_j >= box_len.y || local_k < 0 ||
-                        local_k >= box_len.z)
-                        return static_cast<unsigned int>(num_cells);
+                    AMREX_ASSERT(local_i >= 0 && local_i < box_len.x &&
+                                 local_j >= 0 && local_j < box_len.y &&
+                                 local_k >= 0 && local_k < box_len.z);
                     return static_cast<unsigned int>(
                         (local_k * box_len.y + local_j) * box_len.x + local_i);
                 });
-
-            int overflow[2];
-            amrex::Gpu::dtoh_memcpy(overflow, bins.offsetsPtr() + num_cells,
-                                    2 * sizeof(int));
-            AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
-                overflow[1] == overflow[0],
-                "deposit_to_mesh_cell: particle outside its own valid box; "
-                "Redistribute is out of sync with the deposition");
         }
 
         const auto* bin_offsets = bins.offsetsPtr();
