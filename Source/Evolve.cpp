@@ -379,25 +379,19 @@ moment_phat_directions(int moment) {
                            : MomentDirections{-1, -1}; // N
 }
 
-// normal to d flips phat_d, so the block's sign flips iff that bit is set.
-// set as a constexpr function rather than a table for efficiency
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE constexpr int odd_phat_directions(
-    int moment) {
-    const MomentDirections d = moment_phat_directions(moment);
-    return (d.a >= 0 ? (1 << d.a) : 0) ^ (d.b >= 0 ? (1 << d.b) : 0);
+// normal to d negates phat_d, so a moment flips sign iff d appears an odd
+// number of times among the phat factors that build it.
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE constexpr bool moment_flips(int moment,
+                                                                     int d) {
+    const MomentDirections dirs = moment_phat_directions(moment);
+    return (dirs.a == d) ^ (dirs.b == d);
 }
 
-// A direction appearing twice cancels: Pxx, Pyy, Pzz and N have even parity.
-static_assert(odd_phat_directions(0) == 0b000, "N");
-static_assert(odd_phat_directions(1) == 0b001, "Fx");
-static_assert(odd_phat_directions(2) == 0b010, "Fy");
-static_assert(odd_phat_directions(3) == 0b100, "Fz");
-static_assert(odd_phat_directions(4) == 0b000, "Pxx");
-static_assert(odd_phat_directions(5) == 0b011, "Pxy");
-static_assert(odd_phat_directions(6) == 0b101, "Pxz");
-static_assert(odd_phat_directions(7) == 0b000, "Pyy");
-static_assert(odd_phat_directions(8) == 0b110, "Pyz");
-static_assert(odd_phat_directions(9) == 0b000, "Pzz");
+static_assert(!moment_flips(0, 0), "N is a scalar");
+static_assert(moment_flips(1, 0) && !moment_flips(1, 1), "Fx flips only in x");
+static_assert(!moment_flips(4, 0), "Pxx has two x factors, which cancel");
+static_assert(moment_flips(5, 0) && moment_flips(5, 1) && !moment_flips(5, 2),
+              "Pxy flips in x and in y, but not in z");
 
 // Accumulators for one grid component's deposition stencil, zeroed on
 // construction. Declare these inside the component loop: they are written 27x
@@ -458,9 +452,10 @@ struct StencilCache {
 
                     int flips = 0;
                     for (int m = 0; reflected && m < NumMoments; ++m) {
-                        const int odd = odd_phat_directions(m) & reflected;
-                        if ((odd ^ (odd >> 1) ^ (odd >> 2)) & 1)
-                            flips |= (1 << m);
+                        bool flip = false;
+                        for (int d = 0; d < 3; ++d)
+                            if (reflected & (1 << d)) flip ^= moment_flips(m, d);
+                        if (flip) flips |= (1 << m);
                     }
                     parity[sk][sj][si] = flips;
                 }
@@ -528,8 +523,8 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
     const Box& domain = geom.Domain();
 
     // Create an alias of the MultiFab so we only erase what the neutrinos set
-    const int start_comp = GIdx::N00_Re;
-    const int num_grid_comps = GIdx::ncomp - start_comp;
+    constexpr int start_comp = GIdx::N00_Re;
+    constexpr int num_grid_comps = GIdx::ncomp - start_comp;
     MultiFab deposit_state(state, amrex::make_alias, start_comp,
                            num_grid_comps);
     deposit_state.setVal(0.0);
@@ -559,6 +554,9 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
     // precompute compile-time scalars
     constexpr int num_moments = NUM_MOMENTS == 3 ? 10 : 4;
     constexpr int comps_per_block = PIdx::N00_Rebar - PIdx::N00_Re;
+    // The flat component loop below decomposes grid_comp on this layout.
+    static_assert(num_grid_comps == num_moments * 2 * comps_per_block,
+                  "grid components are laid out as [moment][nu/nubar][flavor]");
 
     using ParIter = typename FlavoredNeutrinoContainer::ParConstIterType;
     for (ParIter pti(neutrinos, 0); pti.isValid(); ++pti) {
