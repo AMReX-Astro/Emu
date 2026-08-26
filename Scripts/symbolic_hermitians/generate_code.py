@@ -224,15 +224,14 @@ if __name__ == "__main__":
     host = []
     device = []
     for it, t in enumerate(tails):
-        offset = it * args.N * args.N
         Vnames = HermitianMatrix(args.N, "V{}{}_{}"+t).header()
         M2 = HermitianMatrix(args.N, "M2matrix{}{}_{}")
         M2.H = massmatrix.H.conjugate() if t=="bar" else massmatrix.H
         for k, (name, expr) in enumerate(zip(Vnames, M2.header())):
+            index = "["+str(it)+"]["+str(k)+"]"
             # Inside TestParams::Initialize the mixing parameters are members.
-            host.append("Vvac["+str(offset+k)+"] = "+expr.replace("parms->","")+";")
-            device.append("Real "+name+" = parms->Vvac["+str(offset+k)+
-                          "]*Vvac_fac;")
+            host.append("Vvac"+index+" = "+expr.replace("parms->","")+";")
+            device.append("Real "+name+" = parms->Vvac"+index+"*Vvac_fac;")
     write_code(host,   os.path.join(args.emu_home,"Source/generated_files","Parameters.H_Vvac_fill"))
     write_code(device, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_Vvac_fill"))
 

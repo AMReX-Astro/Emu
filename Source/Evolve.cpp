@@ -452,16 +452,18 @@ AMREX_GPU_DEVICE AMREX_FORCE_INLINE void flush_stencil(
     }
 }
 
+// Width of the deposition stencil in each direction.
+static_assert(SHAPE_FACTOR_ORDER <= 2,
+              "ParticleInterpolator implements orders 0-2 only");
+constexpr int stencil_width = 3;
+
 // One particle's precomputed geometry: the shape factors rebased onto the
-// particle's home cell (entry s is the weight for cell home + s - 1, zero
-// outside the stencil), plus the unit momentum direction every moment weight is
-// built from. One of these per particle, held in bin order, so the deposition
-// loop streams a particle's whole slice in a single burst -- keep this a plain
-// contiguous struct for that reason. 12 doubles is exactly 3 32-byte sectors,
-// so records stay sector-aligned however many moments are in play.
+// particle's home cell plus the unit momentum direction every moment weight is
+// built from. AoS is correct format here so the deposition
+// loop streams a particle's whole slice in a single burst
 struct ParticleGeometry {
-    amrex::Real shape[3][3];  // [x/y/z][stencil offset]
-    amrex::Real phat[3];      // momentum direction, |phat| = 1
+    amrex::Real shape[3][stencil_width];  // [x/y/z][stencil offset]
+    amrex::Real phat[3];                  // momentum direction, |phat| = 1
 };
 
 static_assert(sizeof(ParticleGeometry) == 12 * sizeof(amrex::Real),
@@ -477,10 +479,9 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                                  const TestParams* parms) {
     BL_PROFILE("deposit_to_mesh_cell()");
 
-    // compile-time stencil size only works for up to shape order 2
-    static_assert(SHAPE_FACTOR_ORDER <= 2,
-                  "ParticleInterpolator implements orders 0-2 only");
-    constexpr int stencil_width = 3;
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        parms->particle_sort_method == 1,
+        "deposit_method=1 expects particle_sort_method=1 (sort by cell)");
 
     // Get the cell volume, spacing, and domain size
     const auto plo = geom.ProbLoArray();
@@ -536,9 +537,9 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
         const auto box_len = amrex::length(box);
         const int num_cells = box_len.x * box_len.y * box_len.z;
 
-        // DenseBins' Box overload indexes with the absolute cell index without
-        // subtracting smallEnd (AMReX_DenseBins.H:185-201), so it mis-bins any
-        // box not at the origin. Flatten explicitly instead.
+        // DenseBins records the particle index boundaries that divide
+        // particles into different grid cells. The lambda returns the
+        // linearized cell index for each particle
         amrex::DenseBins<FlavoredNeutrinoContainer::ConstPTDType> bins;
         {
             BL_PROFILE("deposit_to_mesh_cell::bin");
@@ -622,10 +623,7 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
 
         BL_PROFILE_VAR("deposit_to_mesh_cell::gather", blp_gather);
         // One thread per (cell, grid component), component on the fast axis so
-        // that the lanes of a warp are different components of the same cell:
-        // they walk the same particle list and read the same ParticleGeometry
-        // from the same address, which the coalescer serves as one broadcast
-        // instead of 32 scattered sectors.
+        // that the lanes of a warp are different components of the same cell
         const int num_cell_comps = num_cells * num_grid_comps;
         amrex::ParallelFor(num_cell_comps, [=] AMREX_GPU_DEVICE(int task) {
             const int cell_index = task / num_grid_comps;
@@ -685,13 +683,8 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
         });
         BL_PROFILE_VAR_STOP(blp_gather);
 
-        // AMReX gives each ParIter iteration its own GPU stream, so the kernels
-        // launched above may still be running when this box's temporaries -- the
-        // DenseBins arrays and the geometry vector -- are freed at the end of the
-        // iteration. The next box then reallocates that same arena memory and
-        // overwrites it mid-flight. Sync before letting them go. This is why the
-        // corruption only appears with more than one box per rank: with one box
-        // there is no subsequent allocation to reuse the memory.
+        // Sync to prevent work on another box from overwriting the
+        // DenesBins and geometry storage before the kernels finish using them.
         amrex::Gpu::streamSynchronize();
     }
 

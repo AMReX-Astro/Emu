@@ -100,10 +100,7 @@ struct ParticleInterpolator {
     }
 
     // Index of the cell containing the particle. This must agree with
-    // amrex::getParticleCell, which the binning and Redistribute both use, so it
-    // is floor() rather than a truncation with a sign correction: truncating
-    // overshoots by one at exactly integral, non-positive delta (a particle
-    // sitting on a cell boundary at or below the domain's lower edge).
+    // amrex::getParticleCell
     AMREX_GPU_DEVICE AMREX_FORCE_INLINE int nearest_cell_center_index(
         Real delta) const noexcept {
         return static_cast<int>(std::floor(delta));

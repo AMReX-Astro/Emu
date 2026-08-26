@@ -67,10 +67,11 @@ struct TestParams : public amrex::Gpu::Managed {
     Real alpha1, alpha2;             // Majorana phases in radians
     Real deltaCP;                    // CP-violating phases in radians
 
-    // Vacuum Hamiltonian numerator M2 (flavor basis), neutrinos then
-    // antineutrinos. Built once in Initialize() because it depends only on the
-    // masses and mixing angles; the kernel just divides by the particle energy.
-    Real Vvac[2 * NUM_FLAVORS * NUM_FLAVORS];
+    // Vacuum Hamiltonian numerator M2 (flavor basis), indexed
+    // [0 = neutrinos, 1 = antineutrinos][packed Hermitian component]. Built once
+    // in Initialize() because it depends only on the masses and mixing angles;
+    // the kernel just divides by the particle energy.
+    Real Vvac[2][NUM_FLAVORS * NUM_FLAVORS];
 
     // perturbation parameters
     int perturbation_type;
