@@ -53,7 +53,8 @@ struct TestParams : public amrex::Gpu::Managed {
     // 1 = one thread per (cell, grid component), accumulating that cell's
     //     particles in registers before a single atomic per stencil cell. This
     //     amortizes the atomics over the particles in a cell.
-    // 2 = run both and abort if they disagree (validation only, ~2x cost).
+    // 2 = run both and report any component whose deposited field differs by
+    //     more than a relative 1e-11 (validation only, ~2x cost).
     int deposit_method;
 
     // File name with particles' initial conditions
@@ -141,9 +142,7 @@ struct TestParams : public amrex::Gpu::Managed {
         particle_sort_method = 1;
         pp.query("particle_sort_method", particle_sort_method);
 
-        // 0 = per-particle atomic scatter, 1 = per-cell accumulation,
-        // 2 = run both and compare. See the declaration above.
-        deposit_method = 0;
+        deposit_method = 1;
         pp.query("deposit_method", deposit_method);
 
         // File name with particles' initial conditions
