@@ -357,18 +357,47 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
 // Which directions a moment block is odd in under reflection. Bit d is set iff
 // block m carries an odd number of phat_d factors, in GIdx block order
 // N, Fx, Fy, Fz[, Pxx, Pxy, Pxz, Pyy, Pyz, Pzz]. A reflection across a face
+// Each moment's weight is a product of at most two phat components: N is 1, F_d
+// is phat[d], and P_ab is phat[a]*phat[b]. Rather than store all of these per
+// particle, store phat itself and form the product in the deposition loop -- one
+// multiply, against 7 fewer doubles per particle at NUM_MOMENTS=3.
+struct MomentDirections {
+    int a, b;  // index into phat; -1 contributes a factor of 1
+};
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE constexpr MomentDirections
+moment_phat_directions(int moment) {
+    return (moment == 1)   ? MomentDirections{0, -1}   // Fx
+           : (moment == 2) ? MomentDirections{1, -1}   // Fy
+           : (moment == 3) ? MomentDirections{2, -1}   // Fz
+           : (moment == 4) ? MomentDirections{0, 0}    // Pxx
+           : (moment == 5) ? MomentDirections{0, 1}    // Pxy
+           : (moment == 6) ? MomentDirections{0, 2}    // Pxz
+           : (moment == 7) ? MomentDirections{1, 1}    // Pyy
+           : (moment == 8) ? MomentDirections{1, 2}    // Pyz
+           : (moment == 9) ? MomentDirections{2, 2}    // Pzz
+                           : MomentDirections{-1, -1}; // N
+}
+
 // normal to d flips phat_d, so the block's sign flips iff that bit is set.
 // set as a constexpr function rather than a table for efficiency
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE constexpr int odd_phat_directions(
     int moment) {
-    return (moment == 1)   ? 0b001    // Fx
-           : (moment == 2) ? 0b010    // Fy
-           : (moment == 3) ? 0b100    // Fz
-           : (moment == 5) ? 0b011    // Pxy
-           : (moment == 6) ? 0b101    // Pxz
-           : (moment == 8) ? 0b110    // Pyz
-                           : 0b000;   // N, Pxx, Pyy, Pzz
+    const MomentDirections d = moment_phat_directions(moment);
+    return (d.a >= 0 ? (1 << d.a) : 0) ^ (d.b >= 0 ? (1 << d.b) : 0);
 }
+
+// A direction appearing twice cancels: Pxx, Pyy, Pzz and N have even parity.
+static_assert(odd_phat_directions(0) == 0b000, "N");
+static_assert(odd_phat_directions(1) == 0b001, "Fx");
+static_assert(odd_phat_directions(2) == 0b010, "Fy");
+static_assert(odd_phat_directions(3) == 0b100, "Fz");
+static_assert(odd_phat_directions(4) == 0b000, "Pxx");
+static_assert(odd_phat_directions(5) == 0b011, "Pxy");
+static_assert(odd_phat_directions(6) == 0b101, "Pxz");
+static_assert(odd_phat_directions(7) == 0b000, "Pyy");
+static_assert(odd_phat_directions(8) == 0b110, "Pyz");
+static_assert(odd_phat_directions(9) == 0b000, "Pzz");
 
 // Accumulators for one grid component's deposition stencil, zeroed on
 // construction. Declare these inside the component loop: they are written 27x
@@ -464,16 +493,18 @@ struct StencilCache {
 
 // One particle's precomputed geometry: the shape factors rebased onto the
 // particle's home cell (entry s is the weight for cell home + s - 1, zero
-// outside the stencil), plus one factor per moment. One of these per particle,
-// held in bin order, so the deposition loop streams a particle's whole slice in
-// a single burst -- keep this a plain contiguous struct for that reason.
-template <int NumMoments>
-struct ParticleGeometryT {
+// outside the stencil), plus the unit momentum direction every moment weight is
+// built from. One of these per particle, held in bin order, so the deposition
+// loop streams a particle's whole slice in a single burst -- keep this a plain
+// contiguous struct for that reason. 12 doubles is exactly 3 32-byte sectors,
+// so records stay sector-aligned however many moments are in play.
+struct ParticleGeometry {
     amrex::Real shape[3][3];  // [x/y/z][stencil offset]
-    amrex::Real moment_factor[NumMoments];
+    amrex::Real phat[3];      // momentum direction, |phat| = 1
 };
 
-using ParticleGeometry = ParticleGeometryT<NUM_MOMENTS == 3 ? 10 : 4>;
+static_assert(sizeof(ParticleGeometry) == 12 * sizeof(amrex::Real),
+              "ParticleGeometry must stay padding-free and sector-aligned");
 
 // Cell-parallel deposition: one thread per source cell, walking the grid
 // components one at a time and keeping a single accumulator per stencil
@@ -618,22 +649,9 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                     }
 
                     const amrex::Real inv_pupt = 1.0 / p.rdata(PIdx::pupt);
-                    const amrex::Real phat[3] = {
-                        p.rdata(PIdx::pupx) * inv_pupt,
-                        p.rdata(PIdx::pupy) * inv_pupt,
-                        p.rdata(PIdx::pupz) * inv_pupt};
-                    particle_geometry.moment_factor[0] = 1.0;      // N
-                    particle_geometry.moment_factor[1] = phat[0];  // Fx
-                    particle_geometry.moment_factor[2] = phat[1];  // Fy
-                    particle_geometry.moment_factor[3] = phat[2];  // Fz
-#if NUM_MOMENTS == 3
-                    particle_geometry.moment_factor[4] = phat[0] * phat[0];
-                    particle_geometry.moment_factor[5] = phat[0] * phat[1];
-                    particle_geometry.moment_factor[6] = phat[0] * phat[2];
-                    particle_geometry.moment_factor[7] = phat[1] * phat[1];
-                    particle_geometry.moment_factor[8] = phat[1] * phat[2];
-                    particle_geometry.moment_factor[9] = phat[2] * phat[2];
-#endif
+                    particle_geometry.phat[0] = p.rdata(PIdx::pupx) * inv_pupt;
+                    particle_geometry.phat[1] = p.rdata(PIdx::pupy) * inv_pupt;
+                    particle_geometry.phat[2] = p.rdata(PIdx::pupz) * inv_pupt;
                 });
         }
 
@@ -661,6 +679,7 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                 const int block = grid_comp / comps_per_block;
                 const int flavor_comp = grid_comp - block * comps_per_block;
                 const int moment = block / 2;
+                const MomentDirections phat_dirs = moment_phat_directions(moment);
                 const int nunubar = block - 2 * moment;
                 const int particle_component_index =
                     PIdx::N00_Re + nunubar * comps_per_block + flavor_comp;
@@ -672,10 +691,14 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                     const ParticleGeometry& particle_geometry =
                         geometry[sorted_index];
 
+                    const amrex::Real moment_factor =
+                        (phat_dirs.a < 0 ? 1.0
+                                         : particle_geometry.phat[phat_dirs.a]) *
+                        (phat_dirs.b < 0 ? 1.0
+                                         : particle_geometry.phat[phat_dirs.b]);
                     const amrex::Real value =
-                        particle_geometry.moment_factor[moment] *
-                        ptd.rdata(particle_component_index)
-                            [bin_order[sorted_index]];
+                        moment_factor * ptd.rdata(particle_component_index)
+                                            [bin_order[sorted_index]];
 
                     for (int sk = 0; sk < stencil_width; ++sk) {
                         const amrex::Real weight_k =
