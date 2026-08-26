@@ -278,9 +278,17 @@ if __name__ == "__main__":
     # electron-flavor real diagonal only) is added in Evolve.cpp.
     code = []
 
-    # Flux-contracted number-density matrices, built from the minus_current_dot_phat() values.
-    N        = HermitianMatrix(args.N, "minus_current_dot_phat(GIdx::N{}{}_{})")
-    Nbarconj = HermitianMatrix(args.N, "minus_current_dot_phat(GIdx::N{}{}_{}bar)").conjugate()
+    # Build the self-interaction current  J = N - conj(Nbar)  symbolically
+    for tmpl, gidx in (("n{}{}_{}",    "GIdx::N{}{}_{}"),
+                       ("n{}{}_{}bar", "GIdx::N{}{}_{}bar")):
+        for name, comp in zip(HermitianMatrix(args.N, tmpl).header(),
+                              HermitianMatrix(args.N, gidx).header()):
+            code.append("const amrex::Real "+name+" = minus_current_dot_phat("+comp+");")
+    code.append("")
+
+    # Flux-contracted number-density matrices, built from those temporaries.
+    N        = HermitianMatrix(args.N, "n{}{}_{}")
+    Nbarconj = HermitianMatrix(args.N, "n{}{}_{}bar").conjugate()
 
     V    = HermitianMatrix(args.N, "V{}{}_{}")
     V.H  = N.H - Nbarconj.H
@@ -292,8 +300,8 @@ if __name__ == "__main__":
     Vbarexprs = Vbar.header()
 
     for name, vexpr, vbarexpr in zip(Vnames, Vexprs, Vbarexprs):
-        code.append(name       +" += sqrt(2.) * PhysConst::GF * vol * ("+vexpr   +");")
-        code.append(name+"bar" +" += sqrt(2.) * PhysConst::GF * vol * ("+vbarexpr+");")
+        code.append(name       +" += Vfac * ("+vexpr   +");")
+        code.append(name+"bar" +" += Vfac * ("+vbarexpr+");")
         code.append("")
 
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_interpolate_from_mesh_fill"))

@@ -840,6 +840,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                     for (int i = sx.first(); i <= sx.last(); ++i) {
                         const amrex::Real vol = sx(i) * sy(j) * sz(k);
 
+                        // Prefactor shared by every component
+                        const amrex::Real Vfac =
+                            sqrt(2.) * PhysConst::GF * vol;
+
                         // Minus the Minkowski contraction of the number-density four-current
                         // (N, Fx, Fy, Fz) with the four-momentum direction phat = (1, phatx,
                         // phaty, phatz). With signature (-+++), current.phat = -N + F.phat,
