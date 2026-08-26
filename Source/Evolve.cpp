@@ -431,21 +431,21 @@ AMREX_GPU_DEVICE AMREX_FORCE_INLINE void flush_stencil(
                 // Fold offsets that land outside a reflecting face back into
                 // the domain, flipping the sign once per reflected direction
                 // this moment is odd in.
-                int cell[3] = {home_i + si - 1, home_j + sj - 1,
-                               home_k + sk - 1};
+                int ijk[3] = {home_i + si - 1, home_j + sj - 1,
+                              home_k + sk - 1};
                 bool flip = false;
                 for (int d = 0; d < 3; ++d) {
-                    if (reflect_lo[d] && cell[d] < domain_lo[d]) {
-                        cell[d] = 2 * domain_lo[d] - 1 - cell[d];
+                    if (reflect_lo[d] && ijk[d] < domain_lo[d]) {
+                        ijk[d] = 2 * domain_lo[d] - 1 - ijk[d];
                         flip ^= moment_flips(moment, d);
-                    } else if (reflect_hi[d] && cell[d] > domain_hi[d]) {
-                        cell[d] = 2 * domain_hi[d] + 1 - cell[d];
+                    } else if (reflect_hi[d] && ijk[d] > domain_hi[d]) {
+                        ijk[d] = 2 * domain_hi[d] + 1 - ijk[d];
                         flip ^= moment_flips(moment, d);
                     }
                 }
 
                 amrex::HostDevice::Atomic::Add(
-                    &fabarr(cell[0], cell[1], cell[2], grid_comp),
+                    &fabarr(ijk[0], ijk[1], ijk[2], grid_comp),
                     flip ? -value : value);
             }
         }
