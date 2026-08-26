@@ -66,6 +66,11 @@ struct TestParams : public amrex::Gpu::Managed {
     Real alpha1, alpha2;             // Majorana phases in radians
     Real deltaCP;                    // CP-violating phases in radians
 
+    // Vacuum Hamiltonian numerator M2 (flavor basis), neutrinos then
+    // antineutrinos. Built once in Initialize() because it depends only on the
+    // masses and mixing angles; the kernel just divides by the particle energy.
+    Real Vvac[2 * NUM_FLAVORS * NUM_FLAVORS];
+
     // perturbation parameters
     int perturbation_type;
     Real perturbation_wavelength_cm;
@@ -172,6 +177,10 @@ struct TestParams : public amrex::Gpu::Managed {
             alpha2 *= M_PI / 180.;
             deltaCP *= M_PI / 180.;
         }
+
+        // Vacuum Hamiltonian numerator, evaluated once now rather than per
+        // particle per timestep inside interpolate_rhs_from_mesh().
+#include "generated_files/Parameters.H_Vvac_fill"
 
         // attenuation to hamiltonians
         pp.get("attenuation_hamiltonians", attenuation_hamiltonians);

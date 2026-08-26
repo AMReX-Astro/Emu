@@ -811,6 +811,11 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 }
             }
 
+            // Shared by every component of the vacuum Hamiltonian below: the
+            // stored M2 numerator only needs scaling by c^4 / (2E).
+            const amrex::Real Vvac_fac =
+                PhysConst::c4 / (2. * p.rdata(PIdx::pupt));
+
 #include "generated_files/Evolve.cpp_Vvac_fill"
 
             const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];

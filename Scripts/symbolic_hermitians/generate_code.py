@@ -216,14 +216,25 @@ if __name__ == "__main__":
     # Vacuum Hamiltonian in the flavor basis: V = M2 * c^4 / (2 E), with masses in g.
     # Antineutrinos see the complex conjugate of the (Hermitian) mass-squared matrix;
     # the conjugation is applied analytically via massmatrix.H.conjugate().
-    code = []
-    for t in tails:
+    # The M2 numerator depends only on the masses and mixing angles, so it is the
+    # same for every particle and every step. Emit it twice:
+    # once for TestParams to evaluate on the host at parse time, and once for the
+    # kernel, which now only scales the stored value by Vvac_fac = c^4 / (2E),
+    # a temporary Evolve.cpp declares just before including this fill.
+    host = []
+    device = []
+    for it, t in enumerate(tails):
+        offset = it * args.N * args.N
         Vnames = HermitianMatrix(args.N, "V{}{}_{}"+t).header()
         M2 = HermitianMatrix(args.N, "M2matrix{}{}_{}")
         M2.H = massmatrix.H.conjugate() if t=="bar" else massmatrix.H
-        for name, expr in zip(Vnames, M2.header()):
-            code.append("Real "+name+" = ("+expr+")*PhysConst::c4/(2.*p.rdata(PIdx::pupt));")
-    write_code(code, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_Vvac_fill"))
+        for k, (name, expr) in enumerate(zip(Vnames, M2.header())):
+            # Inside TestParams::Initialize the mixing parameters are members.
+            host.append("Vvac["+str(offset+k)+"] = "+expr.replace("parms->","")+";")
+            device.append("Real "+name+" = parms->Vvac["+str(offset+k)+
+                          "]*Vvac_fac;")
+    write_code(host,   os.path.join(args.emu_home,"Source/generated_files","Parameters.H_Vvac_fill"))
+    write_code(device, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_Vvac_fill"))
 
     #============================#
     # Evolve.cpp_compute_dt_fill #
