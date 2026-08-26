@@ -656,7 +656,16 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
         auto fabarr = deposit_state[pti].array();
 
         BL_PROFILE_VAR("deposit_to_mesh_cell::gather", blp_gather);
-        amrex::ParallelFor(num_cells, [=] AMREX_GPU_DEVICE(int cell_index) {
+        // One thread per (cell, grid component), component on the fast axis so
+        // that the lanes of a warp are different components of the same cell:
+        // they walk the same particle list and read the same ParticleGeometry
+        // from the same address, which the coalescer serves as one broadcast
+        // instead of 32 scattered sectors.
+        const int num_cell_comps = num_cells * num_grid_comps;
+        amrex::ParallelFor(num_cell_comps, [=] AMREX_GPU_DEVICE(int task) {
+            const int cell_index = task / num_grid_comps;
+            const int grid_comp = task - cell_index * num_grid_comps;
+
             const int particle_begin = bin_offsets[cell_index];
             const int particle_end = bin_offsets[cell_index + 1];
             if (particle_begin == particle_end) return;
@@ -665,58 +674,60 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
             const int home_j = box_lo.y + ((cell_index / box_len.x) % box_len.y);
             const int home_k = box_lo.z + (cell_index / (box_len.x * box_len.y));
 
-            // Destinations and parities depend only on the cell, so resolve
-            // them once and let every grid component reuse them.
+            const int block = grid_comp / comps_per_block;
+            const int flavor_comp = grid_comp - block * comps_per_block;
+            const int moment = block / 2;
+            const MomentDirections phat_dirs = moment_phat_directions(moment);
+            const int nunubar = block - 2 * moment;
+            const int particle_component_index =
+                PIdx::N00_Re + nunubar * comps_per_block + flavor_comp;
+
             StencilCache<stencil_width, num_moments> cache;
             cache.locate(home_i, home_j, home_k, domain_lo, domain_hi,
                          reflect_lo, reflect_hi);
 
-            // One grid component at a time, so only one accumulator per stencil
-            // cell is live regardless of NUM_MOMENTS.
-            for (int grid_comp = 0; grid_comp < num_grid_comps; ++grid_comp) {
-                const int block = grid_comp / comps_per_block;
-                const int flavor_comp = grid_comp - block * comps_per_block;
-                const int moment = block / 2;
-                const MomentDirections phat_dirs = moment_phat_directions(moment);
-                const int nunubar = block - 2 * moment;
-                const int particle_component_index =
-                    PIdx::N00_Re + nunubar * comps_per_block + flavor_comp;
+            StencilSums<stencil_width> sums;
 
-                StencilSums<stencil_width> sums;
+            for (int sorted_index = particle_begin;
+                 sorted_index < particle_end; ++sorted_index) {
+                const ParticleGeometry& particle_geometry =
+                    geometry[sorted_index];
 
-                for (int sorted_index = particle_begin;
-                     sorted_index < particle_end; ++sorted_index) {
-                    const ParticleGeometry& particle_geometry =
-                        geometry[sorted_index];
+                const amrex::Real moment_factor =
+                    (phat_dirs.a < 0 ? 1.0
+                                     : particle_geometry.phat[phat_dirs.a]) *
+                    (phat_dirs.b < 0 ? 1.0
+                                     : particle_geometry.phat[phat_dirs.b]);
+                const amrex::Real value =
+                    moment_factor * ptd.rdata(particle_component_index)
+                                        [bin_order[sorted_index]];
 
-                    const amrex::Real moment_factor =
-                        (phat_dirs.a < 0 ? 1.0
-                                         : particle_geometry.phat[phat_dirs.a]) *
-                        (phat_dirs.b < 0 ? 1.0
-                                         : particle_geometry.phat[phat_dirs.b]);
-                    const amrex::Real value =
-                        moment_factor * ptd.rdata(particle_component_index)
-                                            [bin_order[sorted_index]];
-
-                    for (int sk = 0; sk < stencil_width; ++sk) {
-                        const amrex::Real weight_k =
-                            particle_geometry.shape[2][sk];
-                        for (int sj = 0; sj < stencil_width; ++sj) {
-                            const amrex::Real weight_jk =
-                                weight_k * particle_geometry.shape[1][sj];
-                            for (int si = 0; si < stencil_width; ++si) {
-                                sums.value[sk][sj][si] +=
-                                    weight_jk *
-                                    particle_geometry.shape[0][si] * value;
-                            }
+                for (int sk = 0; sk < stencil_width; ++sk) {
+                    const amrex::Real weight_k = particle_geometry.shape[2][sk];
+                    for (int sj = 0; sj < stencil_width; ++sj) {
+                        const amrex::Real weight_jk =
+                            weight_k * particle_geometry.shape[1][sj];
+                        for (int si = 0; si < stencil_width; ++si) {
+                            sums.value[sk][sj][si] +=
+                                weight_jk * particle_geometry.shape[0][si] *
+                                value;
                         }
                     }
                 }
-
-                cache.flush(sums, fabarr, grid_comp, moment);
             }
+
+            cache.flush(sums, fabarr, grid_comp, moment);
         });
         BL_PROFILE_VAR_STOP(blp_gather);
+
+        // AMReX gives each ParIter iteration its own GPU stream, so the kernels
+        // launched above may still be running when this box's temporaries -- the
+        // DenseBins arrays and the geometry vector -- are freed at the end of the
+        // iteration. The next box then reallocates that same arena memory and
+        // overwrites it mid-flight. Sync before letting them go. This is why the
+        // corruption only appears with more than one box per rank: with one box
+        // there is no subsequent allocation to reuse the memory.
+        amrex::Gpu::streamSynchronize();
     }
 
     deposit_state.SumBoundary(geom.periodicity());
@@ -728,8 +739,36 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
     BL_PROFILE("deposit_to_mesh()");
     if (parms->deposit_method == 0) {
         deposit_to_mesh_atomic(neutrinos, state, geom, parms);
-    } else {
+    } else if (parms->deposit_method == 1) {
         deposit_to_mesh_cell(neutrinos, state, geom, parms);
+    } else {
+        // Deposit both ways and compare the field itself, before the time
+        // integration amplifies any difference.
+        const int nc = GIdx::ncomp - GIdx::N00_Re;
+        MultiFab ref(state.boxArray(), state.DistributionMap(), nc, 0);
+        deposit_to_mesh_atomic(neutrinos, state, geom, parms);
+        MultiFab::Copy(ref, state, GIdx::N00_Re, 0, nc, 0);
+
+        deposit_to_mesh_cell(neutrinos, state, geom, parms);
+        MultiFab cur(state.boxArray(), state.DistributionMap(), nc, 0);
+        MultiFab::Copy(cur, state, GIdx::N00_Re, 0, nc, 0);
+        MultiFab::Subtract(cur, ref, 0, 0, nc, 0);
+
+        int nbad = 0;
+        for (int c = 0; c < nc; ++c) {
+            const Real dn = cur.norm0(c);
+            const Real rn = ref.norm0(c);
+            if (dn > 1.0e-11 * std::max(rn, 1.0e-100)) {
+                if (nbad < 6)
+                    amrex::Print() << "  DEPOSIT MISMATCH comp " << c
+                                   << "  norm0(diff)=" << dn
+                                   << "  norm0(ref)=" << rn << "  rel="
+                                   << dn / std::max(rn, 1.0e-100) << "\n";
+                ++nbad;
+            }
+        }
+        amrex::Print() << "  deposit compare: " << (nc - nbad) << "/" << nc
+                       << " components match\n";
     }
 }
 
