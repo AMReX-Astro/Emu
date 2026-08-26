@@ -408,83 +408,49 @@ struct StencilSums {
     }
 };
 
-// Per-cell scratch for one deposition stencil. Both the destination cell of each
-// stencil offset and the sign it picks up from a reflecting fold depend only on
-// the cell, so locate() resolves them once and every grid component reuses them.
-// These two arrays live in the thread's stack frame, which is fine because they
-// are read once per component; the accumulators must not join them (see Sums).
-// The parity is stored as one bit per moment rather than a sign per (offset,
-// moment): as doubles that would cost 270 registers at NUM_MOMENTS=3 and pin the
-// kernel at the 255 ceiling.
-template <int Width, int NumMoments>
-struct StencilCache {
-    static_assert(NumMoments <= 32, "one parity bit per moment");
+// Add every nonzero accumulator into the grid, resolving each stencil offset's
+// destination and reflection sign on the fly. These were once precomputed per
+// cell and reused by every grid component; now that a thread owns a single
+// component there is nothing to reuse, and a stored table would cost 432 bytes
+// of per-thread scratch for one use. Resolving inline also means only this
+// thread's own moment is tested for a sign flip, rather than all of them.
+template <int Width, typename Array4Type>
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE void flush_stencil(
+    StencilSums<Width> sums, const Array4Type& fabarr, int grid_comp,
+    int moment, int home_i, int home_j, int home_k,
+    const amrex::GpuArray<int, 3>& domain_lo,
+    const amrex::GpuArray<int, 3>& domain_hi,
+    const amrex::GpuArray<int, 3>& reflect_lo,
+    const amrex::GpuArray<int, 3>& reflect_hi) {
+    for (int sk = 0; sk < Width; ++sk) {
+        for (int sj = 0; sj < Width; ++sj) {
+            for (int si = 0; si < Width; ++si) {
+                const amrex::Real value = sums.value[sk][sj][si];
+                if (value == 0.0) continue;
 
-    int dest[Width][Width][Width][3];
-    int parity[Width][Width][Width];  // bit m set where moment m flips sign
-
-    // Resolve every stencil destination around the given cell, folding offsets
-    // that land outside a reflecting face back into the domain.
-    AMREX_GPU_DEVICE AMREX_FORCE_INLINE void locate(
-        int home_i, int home_j, int home_k,
-        const amrex::GpuArray<int, 3>& domain_lo,
-        const amrex::GpuArray<int, 3>& domain_hi,
-        const amrex::GpuArray<int, 3>& reflect_lo,
-        const amrex::GpuArray<int, 3>& reflect_hi) {
-        for (int sk = 0; sk < Width; ++sk) {
-            for (int sj = 0; sj < Width; ++sj) {
-                for (int si = 0; si < Width; ++si) {
-                    int cell[3] = {home_i + si - 1, home_j + sj - 1,
-                                   home_k + sk - 1};
-                    int reflected = 0;
-                    for (int d = 0; d < 3; ++d) {
-                        if (reflect_lo[d] && cell[d] < domain_lo[d]) {
-                            cell[d] = 2 * domain_lo[d] - 1 - cell[d];
-                            reflected |= (1 << d);
-                        } else if (reflect_hi[d] && cell[d] > domain_hi[d]) {
-                            cell[d] = 2 * domain_hi[d] + 1 - cell[d];
-                            reflected |= (1 << d);
-                        }
+                // Fold offsets that land outside a reflecting face back into
+                // the domain, flipping the sign once per reflected direction
+                // this moment is odd in.
+                int cell[3] = {home_i + si - 1, home_j + sj - 1,
+                               home_k + sk - 1};
+                bool flip = false;
+                for (int d = 0; d < 3; ++d) {
+                    if (reflect_lo[d] && cell[d] < domain_lo[d]) {
+                        cell[d] = 2 * domain_lo[d] - 1 - cell[d];
+                        flip ^= moment_flips(moment, d);
+                    } else if (reflect_hi[d] && cell[d] > domain_hi[d]) {
+                        cell[d] = 2 * domain_hi[d] + 1 - cell[d];
+                        flip ^= moment_flips(moment, d);
                     }
-                    dest[sk][sj][si][0] = cell[0];
-                    dest[sk][sj][si][1] = cell[1];
-                    dest[sk][sj][si][2] = cell[2];
-
-                    int flips = 0;
-                    for (int m = 0; reflected && m < NumMoments; ++m) {
-                        bool flip = false;
-                        for (int d = 0; d < 3; ++d)
-                            if (reflected & (1 << d)) flip ^= moment_flips(m, d);
-                        if (flip) flips |= (1 << m);
-                    }
-                    parity[sk][sj][si] = flips;
                 }
+
+                amrex::HostDevice::Atomic::Add(
+                    &fabarr(cell[0], cell[1], cell[2], grid_comp),
+                    flip ? -value : value);
             }
         }
     }
-
-    // Add every nonzero accumulator into the grid, applying the sign this moment
-    // picks up from any reflecting fold.
-    template <typename Array4Type>
-    AMREX_GPU_DEVICE AMREX_FORCE_INLINE void flush(
-        const StencilSums<Width>& sums, const Array4Type& fabarr, int grid_comp,
-        int moment) const {
-        for (int sk = 0; sk < Width; ++sk) {
-            for (int sj = 0; sj < Width; ++sj) {
-                for (int si = 0; si < Width; ++si) {
-                    const amrex::Real value = sums.value[sk][sj][si];
-                    if (value == 0.0) continue;
-                    const amrex::Real sign =
-                        ((parity[sk][sj][si] >> moment) & 1) ? -1.0 : 1.0;
-                    amrex::HostDevice::Atomic::Add(
-                        &fabarr(dest[sk][sj][si][0], dest[sk][sj][si][1],
-                                dest[sk][sj][si][2], grid_comp),
-                        sign * value);
-                }
-            }
-        }
-    }
-};
+}
 
 // One particle's precomputed geometry: the shape factors rebased onto the
 // particle's home cell (entry s is the weight for cell home + s - 1, zero
@@ -682,10 +648,6 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
             const int particle_component_index =
                 PIdx::N00_Re + nunubar * comps_per_block + flavor_comp;
 
-            StencilCache<stencil_width, num_moments> cache;
-            cache.locate(home_i, home_j, home_k, domain_lo, domain_hi,
-                         reflect_lo, reflect_hi);
-
             StencilSums<stencil_width> sums;
 
             for (int sorted_index = particle_begin;
@@ -716,7 +678,8 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                 }
             }
 
-            cache.flush(sums, fabarr, grid_comp, moment);
+            flush_stencil(sums, fabarr, grid_comp, moment, home_i, home_j,
+                          home_k, domain_lo, domain_hi, reflect_lo, reflect_hi);
         });
         BL_PROFILE_VAR_STOP(blp_gather);
 
