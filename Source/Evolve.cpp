@@ -367,16 +367,16 @@ struct MomentDirections {
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE constexpr MomentDirections
 moment_phat_directions(int moment) {
-    return (moment == 1)   ? MomentDirections{0, -1}   // Fx
-           : (moment == 2) ? MomentDirections{1, -1}   // Fy
-           : (moment == 3) ? MomentDirections{2, -1}   // Fz
-           : (moment == 4) ? MomentDirections{0, 0}    // Pxx
-           : (moment == 5) ? MomentDirections{0, 1}    // Pxy
-           : (moment == 6) ? MomentDirections{0, 2}    // Pxz
-           : (moment == 7) ? MomentDirections{1, 1}    // Pyy
-           : (moment == 8) ? MomentDirections{1, 2}    // Pyz
-           : (moment == 9) ? MomentDirections{2, 2}    // Pzz
-                           : MomentDirections{-1, -1}; // N
+    return (moment == 1)   ? MomentDirections{0, -1}    // Fx
+           : (moment == 2) ? MomentDirections{1, -1}    // Fy
+           : (moment == 3) ? MomentDirections{2, -1}    // Fz
+           : (moment == 4) ? MomentDirections{0, 0}     // Pxx
+           : (moment == 5) ? MomentDirections{0, 1}     // Pxy
+           : (moment == 6) ? MomentDirections{0, 2}     // Pxz
+           : (moment == 7) ? MomentDirections{1, 1}     // Pyy
+           : (moment == 8) ? MomentDirections{1, 2}     // Pyz
+           : (moment == 9) ? MomentDirections{2, 2}     // Pzz
+                           : MomentDirections{-1, -1};  // N
 }
 
 // normal to d negates phat_d, so a moment flips sign iff d appears an odd
@@ -542,7 +542,8 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
         amrex::DenseBins<FlavoredNeutrinoContainer::ConstPTDType> bins;
         {
             BL_PROFILE("deposit_to_mesh_cell::bin");
-            bins.build(num_particles, ptd, num_cells,
+            bins.build(
+                num_particles, ptd, num_cells,
                 [=] AMREX_GPU_DEVICE(
                     const FlavoredNeutrinoContainer::ConstPTDType& tile_data,
                     int index) noexcept -> unsigned int {
@@ -572,51 +573,49 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
         ParticleGeometry* geometry = geometry_storage.dataPtr();
         {
             BL_PROFILE("deposit_to_mesh_cell::precompute");
-            amrex::ParallelFor(
-                num_particles, [=] AMREX_GPU_DEVICE(int sorted_index) {
-                    const int p_index = bin_order[sorted_index];
-                    FlavoredNeutrinoContainer::FNParticleConstView p{ptd,
-                                                                     p_index};
+            amrex::ParallelFor(num_particles, [=] AMREX_GPU_DEVICE(
+                                                  int sorted_index) {
+                const int p_index = bin_order[sorted_index];
+                FlavoredNeutrinoContainer::FNParticleConstView p{ptd, p_index};
 
-                    const amrex::IntVect home_cell = amrex::getParticleCell(
-                        ptd, p_index, plo, dxi, domain);
+                const amrex::IntVect home_cell =
+                    amrex::getParticleCell(ptd, p_index, plo, dxi, domain);
 
-                    const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_i(
-                        (p.pos(0) - plo[0]) * dxi[0], shape_order_i);
-                    const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_j(
-                        (p.pos(1) - plo[1]) * dxi[1], shape_order_j);
-                    const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_k(
-                        (p.pos(2) - plo[2]) * dxi[2], shape_order_k);
+                const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_i(
+                    (p.pos(0) - plo[0]) * dxi[0], shape_order_i);
+                const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_j(
+                    (p.pos(1) - plo[1]) * dxi[1], shape_order_j);
+                const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_k(
+                    (p.pos(2) - plo[2]) * dxi[2], shape_order_k);
 
-                    ParticleGeometry& particle_geometry =
-                        geometry[sorted_index];
+                ParticleGeometry& particle_geometry = geometry[sorted_index];
 
-                    for (int s = 0; s < stencil_width; ++s) {
-                        const int cell_i = home_cell[0] + s - 1;
-                        const int cell_j = home_cell[1] + s - 1;
-                        const int cell_k = home_cell[2] + s - 1;
-                        const int index_i = cell_i - shape_i.first();
-                        const int index_j = cell_j - shape_j.first();
-                        const int index_k = cell_k - shape_k.first();
-                        particle_geometry.shape[0][s] =
-                            (index_i >= 0 && index_i <= shape_order_i)
-                                ? shape_i(cell_i) * inv_cell_volume
-                                : 0.0;
-                        particle_geometry.shape[1][s] =
-                            (index_j >= 0 && index_j <= shape_order_j)
-                                ? shape_j(cell_j)
-                                : 0.0;
-                        particle_geometry.shape[2][s] =
-                            (index_k >= 0 && index_k <= shape_order_k)
-                                ? shape_k(cell_k)
-                                : 0.0;
-                    }
+                for (int s = 0; s < stencil_width; ++s) {
+                    const int cell_i = home_cell[0] + s - 1;
+                    const int cell_j = home_cell[1] + s - 1;
+                    const int cell_k = home_cell[2] + s - 1;
+                    const int index_i = cell_i - shape_i.first();
+                    const int index_j = cell_j - shape_j.first();
+                    const int index_k = cell_k - shape_k.first();
+                    particle_geometry.shape[0][s] =
+                        (index_i >= 0 && index_i <= shape_order_i)
+                            ? shape_i(cell_i) * inv_cell_volume
+                            : 0.0;
+                    particle_geometry.shape[1][s] =
+                        (index_j >= 0 && index_j <= shape_order_j)
+                            ? shape_j(cell_j)
+                            : 0.0;
+                    particle_geometry.shape[2][s] =
+                        (index_k >= 0 && index_k <= shape_order_k)
+                            ? shape_k(cell_k)
+                            : 0.0;
+                }
 
-                    const amrex::Real inv_pupt = 1.0 / p.rdata(PIdx::pupt);
-                    particle_geometry.phat[0] = p.rdata(PIdx::pupx) * inv_pupt;
-                    particle_geometry.phat[1] = p.rdata(PIdx::pupy) * inv_pupt;
-                    particle_geometry.phat[2] = p.rdata(PIdx::pupz) * inv_pupt;
-                });
+                const amrex::Real inv_pupt = 1.0 / p.rdata(PIdx::pupt);
+                particle_geometry.phat[0] = p.rdata(PIdx::pupx) * inv_pupt;
+                particle_geometry.phat[1] = p.rdata(PIdx::pupy) * inv_pupt;
+                particle_geometry.phat[2] = p.rdata(PIdx::pupz) * inv_pupt;
+            });
         }
 
         auto fabarr = deposit_state[pti].array();
@@ -637,8 +636,10 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
             if (particle_begin == particle_end) return;
 
             const int home_i = box_lo.x + (cell_index % box_len.x);
-            const int home_j = box_lo.y + ((cell_index / box_len.x) % box_len.y);
-            const int home_k = box_lo.z + (cell_index / (box_len.x * box_len.y));
+            const int home_j =
+                box_lo.y + ((cell_index / box_len.x) % box_len.y);
+            const int home_k =
+                box_lo.z + (cell_index / (box_len.x * box_len.y));
 
             const int block = grid_comp / comps_per_block;
             const int flavor_comp = grid_comp - block * comps_per_block;
@@ -650,8 +651,8 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
 
             StencilSums<stencil_width> sums;
 
-            for (int sorted_index = particle_begin;
-                 sorted_index < particle_end; ++sorted_index) {
+            for (int sorted_index = particle_begin; sorted_index < particle_end;
+                 ++sorted_index) {
                 const ParticleGeometry& particle_geometry =
                     geometry[sorted_index];
 
@@ -661,8 +662,9 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                     (phat_dirs.b < 0 ? 1.0
                                      : particle_geometry.phat[phat_dirs.b]);
                 const amrex::Real value =
-                    moment_factor * ptd.rdata(particle_component_index)
-                                        [bin_order[sorted_index]];
+                    moment_factor *
+                    ptd.rdata(
+                        particle_component_index)[bin_order[sorted_index]];
 
                 for (int sk = 0; sk < stencil_width; ++sk) {
                     const amrex::Real weight_k = particle_geometry.shape[2][sk];
@@ -723,10 +725,10 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
             const Real rn = ref.norm0(c);
             if (dn > 1.0e-11 * std::max(rn, 1.0e-100)) {
                 if (nbad < 6)
-                    amrex::Print() << "  DEPOSIT MISMATCH comp " << c
-                                   << "  norm0(diff)=" << dn
-                                   << "  norm0(ref)=" << rn << "  rel="
-                                   << dn / std::max(rn, 1.0e-100) << "\n";
+                    amrex::Print()
+                        << "  DEPOSIT MISMATCH comp " << c
+                        << "  norm0(diff)=" << dn << "  norm0(ref)=" << rn
+                        << "  rel=" << dn / std::max(rn, 1.0e-100) << "\n";
                 ++nbad;
             }
         }
@@ -846,8 +848,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                         const amrex::Real vol = sx(i) * sy(j) * sz(k);
 
                         // Prefactor shared by every component
-                        const amrex::Real Vfac =
-                            sqrt(2.) * PhysConst::GF * vol;
+                        const amrex::Real Vfac = sqrt(2.) * PhysConst::GF * vol;
 
                         // Minus the Minkowski contraction of the number-density four-current
                         // (N, Fx, Fy, Fz) with the four-momentum direction phat = (1, phatx,
