@@ -201,10 +201,14 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
     return dt;
 }
 
-void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
-                     MultiFab& state, const Geometry& geom,
-                     const TestParams* parms) {
-    BL_PROFILE("deposit_to_mesh()");
+// Original deposition: amrex::ParticleToMesh runs one thread per particle, and
+// every particle atomically adds into all (SHAPE_FACTOR_ORDER+1)^3 stencil cells
+// for each grid component. Kept as the reference implementation for
+// deposit_method 0 and for the A/B comparison in deposit_method 2.
+static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
+                                   MultiFab& state, const Geometry& geom,
+                                   const TestParams* parms) {
+    BL_PROFILE("deposit_to_mesh_atomic()");
     const auto plo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
     const Real inv_cell_volume = dxi[0] * dxi[1] * dxi[2];
@@ -350,6 +354,382 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
         });
 }
 
+// Which directions a moment block is odd in under reflection. Bit d is set iff
+// block m carries an odd number of phat_d factors, in GIdx block order
+// N, Fx, Fy, Fz[, Pxx, Pxy, Pxz, Pyy, Pyz, Pzz]. A reflection across a face
+// Each moment's weight is a product of at most two phat components: N is 1, F_d
+// is phat[d], and P_ab is phat[a]*phat[b]. Rather than store all of these per
+// particle, store phat itself and form the product in the deposition loop -- one
+// multiply, against 7 fewer doubles per particle at NUM_MOMENTS=3.
+struct MomentDirections {
+    int a, b;  // index into phat; -1 contributes a factor of 1
+};
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE constexpr MomentDirections
+moment_phat_directions(int moment) {
+    return (moment == 1)   ? MomentDirections{0, -1}    // Fx
+           : (moment == 2) ? MomentDirections{1, -1}    // Fy
+           : (moment == 3) ? MomentDirections{2, -1}    // Fz
+           : (moment == 4) ? MomentDirections{0, 0}     // Pxx
+           : (moment == 5) ? MomentDirections{0, 1}     // Pxy
+           : (moment == 6) ? MomentDirections{0, 2}     // Pxz
+           : (moment == 7) ? MomentDirections{1, 1}     // Pyy
+           : (moment == 8) ? MomentDirections{1, 2}     // Pyz
+           : (moment == 9) ? MomentDirections{2, 2}     // Pzz
+                           : MomentDirections{-1, -1};  // N
+}
+
+// normal to d negates phat_d, so a moment flips sign iff d appears an odd
+// number of times among the phat factors that build it.
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE constexpr bool moment_flips(int moment,
+                                                                     int d) {
+    const MomentDirections dirs = moment_phat_directions(moment);
+    return (dirs.a == d) ^ (dirs.b == d);
+}
+
+static_assert(!moment_flips(0, 0), "N is a scalar");
+static_assert(moment_flips(1, 0) && !moment_flips(1, 1), "Fx flips only in x");
+static_assert(!moment_flips(4, 0), "Pxx has two x factors, which cancel");
+static_assert(moment_flips(5, 0) && moment_flips(5, 1) && !moment_flips(5, 2),
+              "Pxy flips in x and in y, but not in z");
+
+// Accumulators for one grid component's deposition stencil, zeroed on
+// construction. Declare these inside the component loop: they are written 27x
+// per particle, and giving them the enclosing StencilCache's lifetime demotes
+// them from registers to the thread's stack frame (+27 doubles) for ~2.5%.
+template <int Width>
+struct StencilSums {
+    amrex::Real value[Width][Width][Width];
+
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE StencilSums() {
+        for (int sk = 0; sk < Width; ++sk)
+            for (int sj = 0; sj < Width; ++sj)
+                for (int si = 0; si < Width; ++si) value[sk][sj][si] = 0.0;
+    }
+};
+
+// Add every nonzero accumulator into the grid, resolving each stencil offset's
+// destination and reflection sign on the fly. These were once precomputed per
+// cell and reused by every grid component; now that a thread owns a single
+// component there is nothing to reuse, and a stored table would cost 432 bytes
+// of per-thread scratch for one use. Resolving inline also means only this
+// thread's own moment is tested for a sign flip, rather than all of them.
+template <int Width, typename Array4Type>
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE void flush_stencil(
+    StencilSums<Width> sums, const Array4Type& fabarr, int grid_comp,
+    int moment, int home_i, int home_j, int home_k,
+    const amrex::GpuArray<int, 3>& domain_lo,
+    const amrex::GpuArray<int, 3>& domain_hi,
+    const amrex::GpuArray<int, 3>& reflect_lo,
+    const amrex::GpuArray<int, 3>& reflect_hi) {
+    for (int sk = 0; sk < Width; ++sk) {
+        for (int sj = 0; sj < Width; ++sj) {
+            for (int si = 0; si < Width; ++si) {
+                const amrex::Real value = sums.value[sk][sj][si];
+                if (value == 0.0) continue;
+
+                // Fold offsets that land outside a reflecting face back into
+                // the domain, flipping the sign once per reflected direction
+                // this moment is odd in.
+                int ijk[3] = {home_i + si - 1, home_j + sj - 1,
+                              home_k + sk - 1};
+                bool flip = false;
+                for (int d = 0; d < 3; ++d) {
+                    if (reflect_lo[d] && ijk[d] < domain_lo[d]) {
+                        ijk[d] = 2 * domain_lo[d] - 1 - ijk[d];
+                        flip ^= moment_flips(moment, d);
+                    } else if (reflect_hi[d] && ijk[d] > domain_hi[d]) {
+                        ijk[d] = 2 * domain_hi[d] + 1 - ijk[d];
+                        flip ^= moment_flips(moment, d);
+                    }
+                }
+
+                amrex::HostDevice::Atomic::Add(
+                    &fabarr(ijk[0], ijk[1], ijk[2], grid_comp),
+                    flip ? -value : value);
+            }
+        }
+    }
+}
+
+// Width of the deposition stencil in each direction.
+static_assert(SHAPE_FACTOR_ORDER <= 2,
+              "ParticleInterpolator implements orders 0-2 only");
+constexpr int stencil_width = 3;
+
+// One particle's precomputed geometry: the shape factors rebased onto the
+// particle's home cell plus the unit momentum direction every moment weight is
+// built from. AoS is correct format here so the deposition
+// loop streams a particle's whole slice in a single burst
+struct ParticleGeometry {
+    amrex::Real shape[3][stencil_width];  // [x/y/z][stencil offset]
+    amrex::Real phat[3];                  // momentum direction, |phat| = 1
+};
+
+static_assert(sizeof(ParticleGeometry) == 12 * sizeof(amrex::Real),
+              "ParticleGeometry must stay padding-free and sector-aligned");
+
+// Cell-parallel deposition: one thread per source cell, walking the grid
+// components one at a time and keeping a single accumulator per stencil
+// destination. Atomics then land once per (cell, destination, component)
+// instead of once per (particle, destination, component), amortizing them over
+// the particles in a cell.
+static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
+                                 MultiFab& state, const Geometry& geom,
+                                 const TestParams* parms) {
+    BL_PROFILE("deposit_to_mesh_cell()");
+
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        parms->particle_sort_method == 1,
+        "deposit_method=1 expects particle_sort_method=1 (sort by cell)");
+
+    // Get the cell volume, spacing, and domain size
+    const auto plo = geom.ProbLoArray();
+    const auto dxi = geom.InvCellSizeArray();
+    const Real inv_cell_volume = dxi[0] * dxi[1] * dxi[2];
+    const Box& domain = geom.Domain();
+
+    // Create an alias of the MultiFab so we only erase what the neutrinos set
+    constexpr int start_comp = GIdx::N00_Re;
+    constexpr int num_grid_comps = GIdx::ncomp - start_comp;
+    MultiFab deposit_state(state, amrex::make_alias, start_comp,
+                           num_grid_comps);
+    deposit_state.setVal(0.0);
+
+    // Set actual shape factor order to 0 in any unit-length direction
+    const int shape_order_i =
+        geom.Domain().length(0) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_order_j =
+        geom.Domain().length(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_order_k =
+        geom.Domain().length(2) > 1 ? SHAPE_FACTOR_ORDER : 0;
+
+    // get boundary information
+    const amrex::GpuArray<int, 3> domain_lo{
+        domain.smallEnd(0), domain.smallEnd(1), domain.smallEnd(2)};
+    const amrex::GpuArray<int, 3> domain_hi{domain.bigEnd(0), domain.bigEnd(1),
+                                            domain.bigEnd(2)};
+    const amrex::GpuArray<int, 3> reflect_lo{
+        parms->boundary_condition[0] == BoundaryCondition::reflecting,
+        parms->boundary_condition[2] == BoundaryCondition::reflecting,
+        parms->boundary_condition[4] == BoundaryCondition::reflecting};
+    const amrex::GpuArray<int, 3> reflect_hi{
+        parms->boundary_condition[1] == BoundaryCondition::reflecting,
+        parms->boundary_condition[3] == BoundaryCondition::reflecting,
+        parms->boundary_condition[5] == BoundaryCondition::reflecting};
+
+    // precompute compile-time scalars
+    constexpr int num_moments = NUM_MOMENTS == 3 ? 10 : 4;
+    constexpr int comps_per_block = PIdx::N00_Rebar - PIdx::N00_Re;
+    // The flat component loop below decomposes grid_comp on this layout.
+    static_assert(num_grid_comps == num_moments * 2 * comps_per_block,
+                  "grid components are laid out as [moment][nu/nubar][flavor]");
+
+    using ParIter = typename FlavoredNeutrinoContainer::ParConstIterType;
+    for (ParIter pti(neutrinos, 0); pti.isValid(); ++pti) {
+        const auto& tile = pti.GetParticleTile();
+        const int num_particles = tile.numParticles();
+        if (num_particles == 0) continue;
+        const auto& ptd = tile.getConstParticleTileData();
+
+        const Box& box = pti.validbox();
+        const auto box_lo = amrex::lbound(box);
+        const auto box_len = amrex::length(box);
+        const int num_cells = box_len.x * box_len.y * box_len.z;
+
+        // DenseBins records the particle index boundaries that divide
+        // particles into different grid cells. The lambda returns the
+        // linearized cell index for each particle
+        amrex::DenseBins<FlavoredNeutrinoContainer::ConstPTDType> bins;
+        {
+            BL_PROFILE("deposit_to_mesh_cell::bin");
+            bins.build(
+                num_particles, ptd, num_cells,
+                [=] AMREX_GPU_DEVICE(
+                    const FlavoredNeutrinoContainer::ConstPTDType& tile_data,
+                    int index) noexcept -> unsigned int {
+                    const amrex::IntVect cell = amrex::getParticleCell(
+                        tile_data, index, plo, dxi, domain);
+                    const int local_i = cell[0] - box_lo.x;
+                    const int local_j = cell[1] - box_lo.y;
+                    const int local_k = cell[2] - box_lo.z;
+                    AMREX_ASSERT(local_i >= 0 && local_i < box_len.x &&
+                                 local_j >= 0 && local_j < box_len.y &&
+                                 local_k >= 0 && local_k < box_len.z);
+                    return static_cast<unsigned int>(
+                        (local_k * box_len.y + local_j) * box_len.x + local_i);
+                });
+        }
+
+        const auto* bin_offsets = bins.offsetsPtr();
+        const auto* bin_order = bins.permutationPtr();
+
+        // Per-particle geometry, built once and reused by every component, and
+        // stored in bin order so the component loop streams it contiguously.
+        // Shape factors are rebased onto the particle's own cell -- entry j is
+        // the weight for cell (home + j - 1), zero outside the stencil -- which
+        // keeps the accumulation loop branch-free. inv_cell_volume is folded in.
+        amrex::Gpu::DeviceVector<ParticleGeometry> geometry_storage(
+            num_particles);
+        ParticleGeometry* geometry = geometry_storage.dataPtr();
+        {
+            BL_PROFILE("deposit_to_mesh_cell::precompute");
+            amrex::ParallelFor(num_particles, [=] AMREX_GPU_DEVICE(
+                                                  int sorted_index) {
+                const int p_index = bin_order[sorted_index];
+                FlavoredNeutrinoContainer::FNParticleConstView p{ptd, p_index};
+
+                const amrex::IntVect home_cell =
+                    amrex::getParticleCell(ptd, p_index, plo, dxi, domain);
+
+                const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_i(
+                    (p.pos(0) - plo[0]) * dxi[0], shape_order_i);
+                const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_j(
+                    (p.pos(1) - plo[1]) * dxi[1], shape_order_j);
+                const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_k(
+                    (p.pos(2) - plo[2]) * dxi[2], shape_order_k);
+
+                ParticleGeometry& particle_geometry = geometry[sorted_index];
+
+                for (int s = 0; s < stencil_width; ++s) {
+                    const int cell_i = home_cell[0] + s - 1;
+                    const int cell_j = home_cell[1] + s - 1;
+                    const int cell_k = home_cell[2] + s - 1;
+                    const int index_i = cell_i - shape_i.first();
+                    const int index_j = cell_j - shape_j.first();
+                    const int index_k = cell_k - shape_k.first();
+                    particle_geometry.shape[0][s] =
+                        (index_i >= 0 && index_i <= shape_order_i)
+                            ? shape_i(cell_i) * inv_cell_volume
+                            : 0.0;
+                    particle_geometry.shape[1][s] =
+                        (index_j >= 0 && index_j <= shape_order_j)
+                            ? shape_j(cell_j)
+                            : 0.0;
+                    particle_geometry.shape[2][s] =
+                        (index_k >= 0 && index_k <= shape_order_k)
+                            ? shape_k(cell_k)
+                            : 0.0;
+                }
+
+                const amrex::Real inv_pupt = 1.0 / p.rdata(PIdx::pupt);
+                particle_geometry.phat[0] = p.rdata(PIdx::pupx) * inv_pupt;
+                particle_geometry.phat[1] = p.rdata(PIdx::pupy) * inv_pupt;
+                particle_geometry.phat[2] = p.rdata(PIdx::pupz) * inv_pupt;
+            });
+        }
+
+        auto fabarr = deposit_state[pti].array();
+
+        BL_PROFILE_VAR("deposit_to_mesh_cell::gather", blp_gather);
+        // One thread per (cell, grid component), component on the fast axis so
+        // that the lanes of a warp are different components of the same cell
+        const int num_cell_comps = num_cells * num_grid_comps;
+        amrex::ParallelFor(num_cell_comps, [=] AMREX_GPU_DEVICE(int task) {
+            const int cell_index = task / num_grid_comps;
+            const int grid_comp = task - cell_index * num_grid_comps;
+
+            const int particle_begin = bin_offsets[cell_index];
+            const int particle_end = bin_offsets[cell_index + 1];
+            if (particle_begin == particle_end) return;
+
+            const int home_i = box_lo.x + (cell_index % box_len.x);
+            const int home_j =
+                box_lo.y + ((cell_index / box_len.x) % box_len.y);
+            const int home_k =
+                box_lo.z + (cell_index / (box_len.x * box_len.y));
+
+            const int block = grid_comp / comps_per_block;
+            const int flavor_comp = grid_comp - block * comps_per_block;
+            const int moment = block / 2;
+            const MomentDirections phat_dirs = moment_phat_directions(moment);
+            const int nunubar = block - 2 * moment;
+            const int particle_component_index =
+                PIdx::N00_Re + nunubar * comps_per_block + flavor_comp;
+
+            StencilSums<stencil_width> sums;
+
+            for (int sorted_index = particle_begin; sorted_index < particle_end;
+                 ++sorted_index) {
+                const ParticleGeometry& particle_geometry =
+                    geometry[sorted_index];
+
+                const amrex::Real moment_factor =
+                    (phat_dirs.a < 0 ? 1.0
+                                     : particle_geometry.phat[phat_dirs.a]) *
+                    (phat_dirs.b < 0 ? 1.0
+                                     : particle_geometry.phat[phat_dirs.b]);
+                const amrex::Real value =
+                    moment_factor *
+                    ptd.rdata(
+                        particle_component_index)[bin_order[sorted_index]];
+
+                for (int sk = 0; sk < stencil_width; ++sk) {
+                    const amrex::Real weight_k = particle_geometry.shape[2][sk];
+                    for (int sj = 0; sj < stencil_width; ++sj) {
+                        const amrex::Real weight_jk =
+                            weight_k * particle_geometry.shape[1][sj];
+                        for (int si = 0; si < stencil_width; ++si) {
+                            sums.value[sk][sj][si] +=
+                                weight_jk * particle_geometry.shape[0][si] *
+                                value;
+                        }
+                    }
+                }
+            }
+
+            flush_stencil(sums, fabarr, grid_comp, moment, home_i, home_j,
+                          home_k, domain_lo, domain_hi, reflect_lo, reflect_hi);
+        });
+        BL_PROFILE_VAR_STOP(blp_gather);
+
+        // Sync to prevent work on another box from overwriting the
+        // DenesBins and geometry storage before the kernels finish using them.
+        amrex::Gpu::streamSynchronize();
+    }
+
+    deposit_state.SumBoundary(geom.periodicity());
+}
+
+void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
+                     MultiFab& state, const Geometry& geom,
+                     const TestParams* parms) {
+    BL_PROFILE("deposit_to_mesh()");
+    if (parms->deposit_method == 0) {
+        deposit_to_mesh_atomic(neutrinos, state, geom, parms);
+    } else if (parms->deposit_method == 1) {
+        deposit_to_mesh_cell(neutrinos, state, geom, parms);
+    } else {
+        // Deposit both ways and compare the field itself, before the time
+        // integration amplifies any difference.
+        const int nc = GIdx::ncomp - GIdx::N00_Re;
+        MultiFab ref(state.boxArray(), state.DistributionMap(), nc, 0);
+        deposit_to_mesh_atomic(neutrinos, state, geom, parms);
+        MultiFab::Copy(ref, state, GIdx::N00_Re, 0, nc, 0);
+
+        deposit_to_mesh_cell(neutrinos, state, geom, parms);
+        MultiFab cur(state.boxArray(), state.DistributionMap(), nc, 0);
+        MultiFab::Copy(cur, state, GIdx::N00_Re, 0, nc, 0);
+        MultiFab::Subtract(cur, ref, 0, 0, nc, 0);
+
+        int nbad = 0;
+        for (int c = 0; c < nc; ++c) {
+            const Real dn = cur.norm0(c);
+            const Real rn = ref.norm0(c);
+            if (dn > 1.0e-11 * std::max(rn, 1.0e-100)) {
+                if (nbad < 6)
+                    amrex::Print()
+                        << "  DEPOSIT MISMATCH comp " << c
+                        << "  norm0(diff)=" << dn << "  norm0(ref)=" << rn
+                        << "  rel=" << dn / std::max(rn, 1.0e-100) << "\n";
+                ++nbad;
+            }
+        }
+        amrex::Print() << "  deposit compare: " << (nc - nbad) << "/" << nc
+                       << " components match\n";
+    }
+}
+
 void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                                const MultiFab& state, const Geometry& geom,
                                const TestParams* parms) {
@@ -426,6 +806,11 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 }
             }
 
+            // Shared by every component of the vacuum Hamiltonian below: the
+            // stored M2 numerator only needs scaling by c^4 / (2E).
+            const amrex::Real Vvac_fac =
+                PhysConst::c4 / (2. * p.rdata(PIdx::pupt));
+
 #include "generated_files/Evolve.cpp_Vvac_fill"
 
             const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
@@ -454,6 +839,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 for (int j = sy.first(); j <= sy.last(); ++j) {
                     for (int i = sx.first(); i <= sx.last(); ++i) {
                         const amrex::Real vol = sx(i) * sy(j) * sz(k);
+
+                        // Prefactor shared by every component
+                        const amrex::Real Vfac = sqrt(2.) * PhysConst::GF * vol;
 
                         // Minus the Minkowski contraction of the number-density four-current
                         // (N, Fx, Fy, Fz) with the four-momentum direction phat = (1, phatx,
