@@ -19,7 +19,7 @@ integration.rk.type = 4          # DormandPrince (0=User, 1=ForwardEuler, 2=Trap
 integration.use_adaptive_time_step = 0
 
 # Domain size in 3D index space
-ncell = (100,1,1)
+ncell = (500,1,1)
 Lx = 2.2e6 # cm
 Ly = 3.141592653589793 # radians (theta: 0 to pi)
 Lz = 6.283185307179586 # radians (phi: 0 to 2pi)
@@ -29,12 +29,12 @@ nppc  = (1, 1, 1)
 particle_data_filename = "particle_input.dat"
 
 # Maximum size of each grid in the domain
-max_grid_size_x = 100
+max_grid_size_x = 125
 max_grid_size_y = 1
 max_grid_size_z = 1
 
 # Number of steps to run
-nsteps = 1000
+nsteps = 8500
 
 # Minimum timestep (s)
 minimum_time_step = 1e-15
@@ -52,7 +52,7 @@ amrex.fpe_trap_invalid=1
 write_plot_every = 100
 
 # Write particle data in plotfiles
-write_plot_particles_every = 100
+write_plot_particles_every = 500
 
 # checkpointing
 do_restart = 0
