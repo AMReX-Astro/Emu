@@ -35,6 +35,7 @@ class Metric {
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual void coord_conv(
         EParticle& p) const = 0;
 
+    //returns converted coordinates ( cartesian to curvilieanr ). Does not alter particle values
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual FourVec pos_conv(
         EParticle& p) const = 0;
 
@@ -42,6 +43,7 @@ class Metric {
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual void coord_conv_inv(
         EParticle& p) const = 0;
 
+    //returns converted coordinates ( curvilinear to cartesian ). Does not alter particle values
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual FourVec pos_conv_inv(
         EParticle& p) const = 0;
 
@@ -52,12 +54,12 @@ class Metric {
     //Jacobian for the inverse conversion. called with converted p.
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Mat4 jacobian_inv(
         const EParticle& p) const = 0;
-    
+
     //Rotate a cartesian 4-vector into the local orthonormal (tetrad) basis at
-    //native coordinates (x1,x2,x3): V^{a_hat} = R[a][j] * V^j.
+    //mesh coordinates (x1,x2,x3): V^{a_hat} = R[a][j] * V^j.
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual FourVec tetrad_conv(
         const FourVec& V, amrex::Real x1, amrex::Real x2,
-        amrex::Real x3) const = 0;    
+        amrex::Real x3) const = 0;
 
     //The metric
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Mat4 gmunu(
@@ -197,7 +199,7 @@ class CartesianMetric : public Metric {
     AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec
     tetrad_conv(const FourVec& V, amrex::Real x1, amrex::Real x2,
                 amrex::Real x3) const override {
-        return V; 
+        return V;
     }
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
@@ -341,7 +343,6 @@ class CylindricalMetric : public Metric {
         return pos_old;
     }
 
-
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
     jacobian(const EParticle& p) const override {
         const amrex::Real x1 = p.rdata(PIdx::x);
@@ -391,7 +392,6 @@ class CylindricalMetric : public Metric {
     AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec
     tetrad_conv(const FourVec& V, amrex::Real x1, amrex::Real x2,
                 amrex::Real x3) const override {
-
         Mat4 R{};
 
         for (int mu = 0; mu < 4; mu++) {
@@ -401,11 +401,11 @@ class CylindricalMetric : public Metric {
         }
 
         R[0][0] = 1.0;
-        R[1][1] = std::cos(x2);   //cos(phi)      
+        R[1][1] = std::cos(x2);   //cos(phi)
         R[1][2] = std::sin(x2);   //sin(phi)
-        R[2][1] = -std::sin(x2);  //-sin(phi)     
+        R[2][1] = -std::sin(x2);  //-sin(phi)
         R[2][2] = std::cos(x2);   //cos(phi)
-        R[3][3] = 1.0;            
+        R[3][3] = 1.0;
 
         FourVec V_new{};
 
@@ -588,7 +588,6 @@ class SphericalMetric : public Metric {
         return pos_old;
     }
 
-
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
     jacobian(const EParticle& p) const override {
         const amrex::Real x1 = p.rdata(PIdx::x);
@@ -644,11 +643,10 @@ class SphericalMetric : public Metric {
 
         return J;
     }
-     
+
     AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec
     tetrad_conv(const FourVec& V, amrex::Real x1, amrex::Real x2,
                 amrex::Real x3) const override {
-
         Mat4 R{};
 
         for (int mu = 0; mu < 4; mu++) {
@@ -660,13 +658,14 @@ class SphericalMetric : public Metric {
         R[0][0] = 1.0;
         R[1][1] = std::sin(x2) * std::cos(x3);  //sin(theta)cos(phi)  -> r_hat
         R[1][2] = std::sin(x2) * std::sin(x3);  //sin(theta)sin(phi)
-        R[1][3] = std::cos(x2);       //cos(theta)
-        R[2][1] = std::cos(x2) * std::cos(x3);  //cos(theta)cos(phi)  -> theta_hat
+        R[1][3] = std::cos(x2);                 //cos(theta)
+        R[2][1] =
+            std::cos(x2) * std::cos(x3);  //cos(theta)cos(phi)  -> theta_hat
         R[2][2] = std::cos(x2) * std::sin(x3);  //cos(theta)sin(phi)
-        R[2][3] = -std::sin(x2);      //-sin(theta)
-        R[3][1] = -std::sin(x3);      //-sin(phi)           -> phi_hat
-        R[3][2] = std::cos(x3);       //cos(phi)
-        R[3][3] = 0.0;      //
+        R[2][3] = -std::sin(x2);                //-sin(theta)
+        R[3][1] = -std::sin(x3);                //-sin(phi)           -> phi_hat
+        R[3][2] = std::cos(x3);                 //cos(phi)
+        R[3][3] = 0.0;                          //
 
         FourVec V_new{};
 
