@@ -519,9 +519,9 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
                     }
 
                 }  // loop over direction
-            }  // loop over location
-        });  // loop over grid cells
-    }  // loop over multifabs
+            }      // loop over location
+        });        // loop over grid cells
+    }              // loop over multifabs
 
     // get the minimum neutrino energy for calculating the timestep
     Real pupt_min = amrex::ReduceMin(
