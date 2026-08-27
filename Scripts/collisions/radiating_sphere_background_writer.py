@@ -12,7 +12,7 @@ import nsm_grid_generator
 # EMU grid parameters
 
 R       = 1.17e6    # sphere radius, cm
-ncellsx = 100 # scalar, number of cells in x-direction
+ncellsx = 500 # scalar, number of cells in x-direction
 ncellsy = 1 # scalar, number of cells in y-direction
 ncellsz = 1 # scalar, number of cells in z-direction
 xmin    = 0.0 #cm     
