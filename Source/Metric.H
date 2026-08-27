@@ -21,7 +21,8 @@ using Christoffel =
 using GeodesicArray =
     amrex::GpuArray<amrex::Real, 8>;  //for 4-position and then 4-momentum
 
-using EParticle = FlavoredNeutrinoContainer::ParticleType;
+// A standalone particle struct with access to SoA data
+using EParticle = FlavoredNeutrinoContainer::SuperParticleType;
 
 //abstract base class- Metric
 

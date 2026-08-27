@@ -38,6 +38,21 @@
 
 using namespace amrex;
 
+// Sort particles to optimize grid-particle interactions. Particles are laid out
+// grouped by cell at initialization but advect out of that order, and
+// Redistribute moves them between grids without reordering within a tile. Only
+// valid once particles are already on their correct grids.
+static void sort_particles(FlavoredNeutrinoContainer& neutrinos,
+                           const TestParams* parms) {
+    BL_PROFILE("sort_particles()");
+    if (parms->particle_sort_method == 1) {
+        neutrinos.SortParticlesByCell();
+    } else if (parms->particle_sort_method == 2) {
+        neutrinos.SortParticlesForDeposition(
+            amrex::IntVect(AMREX_D_DECL(0, 0, 0)));
+    }
+}
+
 void evolve_flavor(const TestParams* parms) {
     // Per-face boundary conditions are read into parms->boundary_condition,
     // indexed as 2*dim+side (side 0=lo, 1=hi).
@@ -220,6 +235,11 @@ void evolve_flavor(const TestParams* parms) {
         neutrinos_old.InitParticles(parms);
     }
 
+    // Sort before the copy and the initial deposit, so the pre-loop deposit and
+    // the first timestep see cell-major data too. Matters for restarts, where the
+    // ordering is whatever the run that wrote the checkpoint happened to have.
+    sort_particles(neutrinos_old, parms);
+
     // Copy particles from old data to new data
     // (the second argument is true to indicate particle container data is local
     //  and we can skip calling Redistribute() after copying the particles)
@@ -246,11 +266,15 @@ void evolve_flavor(const TestParams* parms) {
                           FlavoredNeutrinoContainer& neutrinos,
                           Real /* time */) {
         /* Evaluate the neutrino distribution matrix RHS */
+        BL_PROFILE("Emu::RHS()");
 
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
         deposit_to_mesh(neutrinos, state, geom, parms);
-        state.FillBoundary(geom.periodicity());
-        FillDomainBoundary(state, geom, grid_bcs);
+        {
+            BL_PROFILE("Emu::RHS::fill_boundaries()");
+            state.FillBoundary(geom.periodicity());
+            FillDomainBoundary(state, geom, grid_bcs);
+        }
 
         // Step 2: Copy Particles and their F from neutrino state to neutrino RHS ParticleContainer
         //
@@ -262,7 +286,10 @@ void evolve_flavor(const TestParams* parms) {
         //    Thus, this copy clears the old RHS particles and creates particles in the RHS container corresponding
         //    to the current particles in neutrinos.
 
-        neutrinos_rhs.copyParticles(neutrinos, true);
+        {
+            BL_PROFILE("Emu::RHS::copy_particles()");
+            neutrinos_rhs.copyParticles(neutrinos, true);
+        }
         // Step 3: Interpolate Mesh to construct the neutrino RHS in place
         interpolate_rhs_from_mesh(neutrinos_rhs, state, geom, parms);
     };
@@ -272,6 +299,7 @@ void evolve_flavor(const TestParams* parms) {
     auto post_timestep_fun = [&](FlavoredNeutrinoContainer& neutrinos,
                                  amrex::Real time) {
         /* Post-timestep function. The integrator new-time data is the latest data available. */
+        BL_PROFILE("Emu::post_timestep()");
 
         // If a black hole is present, set N=0 and Nbar=0 for all particles inside
         // the black hole so it absorbs the neutrinos that fall into it.
@@ -290,7 +318,13 @@ void evolve_flavor(const TestParams* parms) {
         neutrinos.ApplyBoundaryConditions(parms);
 
         // Now Redistribute the new time particles to their new grids.
-        neutrinos.RedistributeLocal();
+        {
+            BL_PROFILE("Emu::RedistributeLocal()");
+            neutrinos.RedistributeLocal();
+        }
+
+        // Sort particles to optimize grid-particle interactions
+        sort_particles(neutrinos, parms);
 
         // Update the integrated coordinates with the new particle locations
         // since Redistribute() applies periodic boundary conditions.
@@ -364,8 +398,7 @@ void evolve_flavor(const TestParams* parms) {
                                             FlavoredNeutrinoContainer& S_new,
                                             Real abs_tol,
                                             Real rel_tol) -> Real {
-        using TParIter = amrex::ParIter<PIdx::nattribs, 0, 0, 0>;
-        using ParticleType = amrex::Particle<PIdx::nattribs, 0>;
+        using TParIter = amrex::ParIter<0, 0, PIdx::nattribs, 0>;
 
         constexpr int Nflav = NUM_FLAVORS;
         constexpr int nu_start = static_cast<int>(PIdx::N00_Re);
@@ -383,13 +416,18 @@ void evolve_flavor(const TestParams* parms) {
         for (; pt_err.isValid(); ++pt_err, ++pt_old, ++pt_new) {
             const int np = pt_err.numParticles();
             if (np == 0) continue;
-            const ParticleType* p_err = &(pt_err.GetArrayOfStructs()[0]);
-            const ParticleType* p_old = &(pt_old.GetArrayOfStructs()[0]);
-            const ParticleType* p_new = &(pt_new.GetArrayOfStructs()[0]);
+            auto td_err = pt_err.GetParticleTile().getParticleTileData();
+            auto td_old = pt_old.GetParticleTile().getParticleTileData();
+            auto td_new = pt_new.GetParticleTile().getParticleTileData();
 
             Real tile_max = amrex::Reduce::Max<Real>(
                 np,
                 [=] AMREX_GPU_DEVICE(int i) -> Real {
+                    // views that access the particle data for this tile only
+                    FlavoredNeutrinoContainer::FNParticleView p_err{td_err, i};
+                    FlavoredNeutrinoContainer::FNParticleView p_old{td_old, i};
+                    FlavoredNeutrinoContainer::FNParticleView p_new{td_new, i};
+
                     // Per-flavor diagonal magnitudes (Re part of each diagonal) and
                     // the matrix trace. The k-th diagonal of an Nflav x Nflav Hermitian
                     // matrix packed (Re,Im) row-by-row sits at offset k*(2*Nflav - k).
@@ -402,27 +440,26 @@ void evolve_flavor(const TestParams* parms) {
                     Real TrN = 0.0, TrNbar = 0.0;
                     for (int k = 0; k < Nflav; ++k) {
                         int diag = k * (2 * Nflav - k);
-                        diagN[k] = amrex::max(
-                            std::abs(p_old[i].rdata(nu_start + diag)),
-                            std::abs(p_new[i].rdata(nu_start + diag)));
+                        diagN[k] =
+                            amrex::max(std::abs(p_old.rdata(nu_start + diag)),
+                                       std::abs(p_new.rdata(nu_start + diag)));
                         diagNbar[k] = amrex::max(
-                            std::abs(p_old[i].rdata(nubar_start + diag)),
-                            std::abs(p_new[i].rdata(nubar_start + diag)));
+                            std::abs(p_old.rdata(nubar_start + diag)),
+                            std::abs(p_new.rdata(nubar_start + diag)));
                         TrN += diagN[k];
                         TrNbar += diagNbar[k];
                     }
 
-                    const Real ref_p = std::abs(p_old[i].rdata(PIdx::pupt));
+                    const Real ref_p = std::abs(p_old.rdata(PIdx::pupt));
 
                     // scale_c = reference_scale * abs_tol + rel_tol * max(|old_c|, |new_c|)
                     auto scaled_error = [&](int c, Real reference_scale) {
-                        const Real maxval =
-                            amrex::max(std::abs(p_old[i].rdata(c)),
-                                       std::abs(p_new[i].rdata(c)));
+                        const Real maxval = amrex::max(
+                            std::abs(p_old.rdata(c)), std::abs(p_new.rdata(c)));
                         const Real scale =
                             reference_scale * abs_tol + rel_tol * maxval;
                         if (scale == Real(0.0)) return Real(0.0);
-                        return std::abs(p_err[i].rdata(c)) / scale;
+                        return std::abs(p_err.rdata(c)) / scale;
                     };
 
                     Real val = 0.0;
@@ -479,7 +516,8 @@ void evolve_flavor(const TestParams* parms) {
     const Real starting_dt = compute_dt(geom, state, parms);
 
     // Do all the science!
-    amrex::Print() << "Starting timestepping loop... " << std::endl;
+    amrex::Print() << "Starting timestepping loop... starting_dt="
+                   << starting_dt << std::endl;
 
     Real start_time = amrex::second();
 
@@ -509,9 +547,9 @@ int main(int argc, char* argv[]) {
     //It can be changed with a ParmParse parameter, amrex.the_arena_init_size, in the unit of bytes.
     //The default initial size for other arenas is 8388608 (i.e., 8 MB).
     ParmParse pp;
-    pp.add("amrex.the_arena_init_size", 8388608);
-    pp.add("amrex.the_managed_arena_init_size", 8388608);
-    pp.add("amrex.the_device_arena_init_size", 8388608);
+    // pp.add("amrex.the_arena_init_size", 8388608);
+    // pp.add("amrex.the_managed_arena_init_size", 8388608);
+    // pp.add("amrex.the_device_arena_init_size", 8388608);
 
     amrex::Initialize(argc, argv);
 
@@ -523,8 +561,14 @@ int main(int argc, char* argv[]) {
     }
 
     // by default amrex initializes rng deterministically
-    // this uses the time for a different run each time
-    amrex::InitRandom(ParallelDescriptor::MyProc() + time(NULL),
+    // this uses the time for a different run each time, unless the inputs
+    // file sets rng_seed to a nonzero value, which pins it for reproducible
+    // (and directly comparable) runs.
+    long long rng_seed = 0;
+    pp.query("rng_seed", rng_seed);
+    const ULong rng_seed_base = rng_seed != 0 ? static_cast<ULong>(rng_seed)
+                                              : static_cast<ULong>(time(NULL));
+    amrex::InitRandom(ParallelDescriptor::MyProc() + rng_seed_base,
                       ParallelDescriptor::NProcs());
 
     {
