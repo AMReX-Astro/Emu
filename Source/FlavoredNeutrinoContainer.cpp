@@ -110,19 +110,31 @@ void FlavoredNeutrinoContainer::ApplyBoundaryConditions(
                 // later by RedistributeLocal.
                 if (mode == BoundaryCondition::reflecting ||
                     mode == BoundaryCondition::outflow) {
-                    
                     p.pos(d) = reflected_pos;
 
-                    if(parms->coord_sys==0){ CartesianMetric metric; metric.coord_conv(p);}
-                    else if(parms->coord_sys==1){ CylindricalMetric metric; metric.coord_conv(p);}
-                    else { SphericalMetric metric; metric.coord_conv(p);}
+                    if (parms->coord_sys == 0) {
+                        CartesianMetric metric;
+                        metric.coord_conv(p);
+                    } else if (parms->coord_sys == 1) {
+                        CylindricalMetric metric;
+                        metric.coord_conv(p);
+                    } else {
+                        SphericalMetric metric;
+                        metric.coord_conv(p);
+                    }
 
                     p.rdata(PIdx::pupx + d) = -p.rdata(PIdx::pupx + d);
-                    
 
-                    if(parms->coord_sys==0){ CartesianMetric metric; metric.coord_conv_inv(p);}
-                    else if(parms->coord_sys==1){ CylindricalMetric metric; metric.coord_conv_inv(p);}
-                    else { SphericalMetric metric; metric.coord_conv_inv(p);}
+                    if (parms->coord_sys == 0) {
+                        CartesianMetric metric;
+                        metric.coord_conv_inv(p);
+                    } else if (parms->coord_sys == 1) {
+                        CylindricalMetric metric;
+                        metric.coord_conv_inv(p);
+                    } else {
+                        SphericalMetric metric;
+                        metric.coord_conv_inv(p);
+                    }
 
                     // p.rdata(PIdx::pupx) = p.rdata(PIdx::pupx) + 0.05*p.rdata(PIdx::pupt);
                     //p.rdata(PIdx::pupy) = p.rdata(PIdx::pupy) + 0.05*p.rdata(PIdx::pupt);
@@ -135,7 +147,6 @@ void FlavoredNeutrinoContainer::ApplyBoundaryConditions(
                     //p.rdata(PIdx::pupx) *= scale;
                     //p.rdata(PIdx::pupy) *= scale;
                     //p.rdata(PIdx::pupz) *= scale;
-
 
                     // Outflow: zero the density matrix so the particle carries
                     // nothing back into the domain (no incoming flux).
