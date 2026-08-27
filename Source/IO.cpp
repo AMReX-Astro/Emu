@@ -257,7 +257,8 @@ void writeJobInfo(const std::string& dir, const amrex::Geometry& geom) {
     // same type of GPU.
 
     jobInfoFile << PrettyLine;
-    jobInfoFile << "GPU Information:       " << "\n";
+    jobInfoFile << "GPU Information:       "
+                << "\n";
     jobInfoFile << PrettyLine;
 
     jobInfoFile << "GPU model name: " << Gpu::Device::deviceName() << "\n";
