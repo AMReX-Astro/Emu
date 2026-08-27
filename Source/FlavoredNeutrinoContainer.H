@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include <AMReX_GpuContainers.H>
+#include <AMReX_IntegratorBase.H>
 #include <AMReX_Particles.H>
 
 #include "Constants.H"
@@ -59,23 +60,68 @@ struct Sync {
     enum { CoordinateToPosition = 0, PositionToCoordinate };
 };
 
-template <typename P>
+// A lightweight handle to one particle's attributes in SoA storage. It exposes
+// the same rdata()/pos() interface an AoS particle struct does, so kernel bodies
+// (including everything emitted by Scripts/symbolic_hermitians) are unchanged:
+// only the way a kernel obtains its "p" differs. Reads and writes go straight
+// through to the underlying arrays, so this is a view, not a copy.
+template <typename PTD>
+struct FNParticleViewT {
+    PTD ptd;
+    int i;
+
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE decltype(auto) rdata(
+        int comp) const {
+        return ptd.rdata(comp)[i];
+    }
+
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE decltype(auto) pos(int dir) const {
+        return ptd.pos(dir, i);
+    }
+
+    // Reached through the tile data rather than ptd.m_aos[i] directly: amrex
+    // resolves these to the array of structs under this layout and to the
+    // separate idcpu array under a pure-SoA one, so the view does not hard-code
+    // where the id lives.
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE decltype(auto) id() const {
+        return ptd.id(i);
+    }
+
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE decltype(auto) cpu() const {
+        return ptd.cpu(i);
+    }
+
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE decltype(auto) idcpu() const {
+        return ptd.idcpu(i);
+    }
+};
+
+// The saxpy amrex's TimeIntegrator applies to each particle. It takes the
+// particle tile data and an index rather than a particle struct, which is the
+// form amrex dispatches to when a container's real components live in
+// struct-of-arrays storage (integrator_detail::call_particle_apply_rhs in
+// AMReX_IntegratorBase.H). The views are built here so that the body stays
+// written in terms of p.rdata().
+template <typename PTD>
 struct ApplyFlavoredNeutrinoRHS {
     ApplyFlavoredNeutrinoRHS() {}
 
     AMREX_GPU_HOST_DEVICE
-    void operator()(P& p, amrex::Real dt, const P& p_dFdt) const noexcept {
+    void operator()(PTD const& ytd, int i, amrex::Real dt,
+                    PTD const& xtd) const noexcept {
         // evolve the flavor by applying RHS update of the saxpy form F += dt * dFdt
         // for a general time integration scheme, dt is a timestep-like weight
+        FNParticleViewT<PTD> p{ytd, i};
+        FNParticleViewT<PTD> p_dFdt{xtd, i};
         for (int pidx = 0; pidx < PIdx::nattribs; pidx++) {
             p.rdata(pidx) = dt * p_dFdt.rdata(pidx) + p.rdata(pidx);
         }
     }
 };
 
-class FNParIter : public amrex::ParIter<PIdx::nattribs, 0, 0, 0> {
+class FNParIter : public amrex::ParIter<0, 0, PIdx::nattribs, 0> {
    public:
-    using amrex::ParIter<PIdx::nattribs, 0, 0, 0>::ParIter;
+    using amrex::ParIter<0, 0, PIdx::nattribs, 0>::ParIter;
 
     const RealVector& GetAttribs(int comp) const {
         return GetStructOfArrays().GetRealData(comp);
@@ -87,7 +133,7 @@ class FNParIter : public amrex::ParIter<PIdx::nattribs, 0, 0, 0> {
 };
 
 class FlavoredNeutrinoContainer
-    : public amrex::ParticleContainer<PIdx::nattribs, 0, 0, 0> {
+    : public amrex::ParticleContainer<0, 0, PIdx::nattribs, 0> {
     amrex::Vector<std::string> attribute_names;
 
    public:
@@ -124,7 +170,9 @@ class FlavoredNeutrinoContainer
     }
 
     /* Public data members */
-    static ApplyFlavoredNeutrinoRHS<ParticleType> particle_apply_rhs;
+    using FNParticleView = FNParticleViewT<PTDType>;
+    using FNParticleConstView = FNParticleViewT<ConstPTDType>;
+    inline static ApplyFlavoredNeutrinoRHS<PTDType> particle_apply_rhs{};
 };
 
 #endif

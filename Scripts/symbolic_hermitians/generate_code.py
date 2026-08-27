@@ -216,14 +216,24 @@ if __name__ == "__main__":
     # Vacuum Hamiltonian in the flavor basis: V = M2 * c^4 / (2 E), with masses in g.
     # Antineutrinos see the complex conjugate of the (Hermitian) mass-squared matrix;
     # the conjugation is applied analytically via massmatrix.H.conjugate().
-    code = []
-    for t in tails:
+    # The M2 numerator depends only on the masses and mixing angles, so it is the
+    # same for every particle and every step. Emit it twice:
+    # once for TestParams to evaluate on the host at parse time, and once for the
+    # kernel, which now only scales the stored value by Vvac_fac = c^4 / (2E),
+    # a temporary Evolve.cpp declares just before including this fill.
+    host = []
+    device = []
+    for it, t in enumerate(tails):
         Vnames = HermitianMatrix(args.N, "V{}{}_{}"+t).header()
         M2 = HermitianMatrix(args.N, "M2matrix{}{}_{}")
         M2.H = massmatrix.H.conjugate() if t=="bar" else massmatrix.H
-        for name, expr in zip(Vnames, M2.header()):
-            code.append("Real "+name+" = ("+expr+")*PhysConst::c4/(2.*p.rdata(PIdx::pupt));")
-    write_code(code, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_Vvac_fill"))
+        for k, (name, expr) in enumerate(zip(Vnames, M2.header())):
+            index = "["+str(it)+"]["+str(k)+"]"
+            # Inside TestParams::Initialize the mixing parameters are members.
+            host.append("Vvac"+index+" = "+expr.replace("parms->","")+";")
+            device.append("Real "+name+" = parms->Vvac"+index+"*Vvac_fac;")
+    write_code(host,   os.path.join(args.emu_home,"Source/generated_files","Parameters.H_Vvac_fill"))
+    write_code(device, os.path.join(args.emu_home,"Source/generated_files","Evolve.cpp_Vvac_fill"))
 
     #============================#
     # Evolve.cpp_compute_dt_fill #
@@ -278,9 +288,17 @@ if __name__ == "__main__":
     # electron-flavor real diagonal only) is added in Evolve.cpp.
     code = []
 
-    # Flux-contracted number-density matrices, built from the minus_current_dot_phat() values.
-    N        = HermitianMatrix(args.N, "minus_current_dot_phat(GIdx::N{}{}_{})")
-    Nbarconj = HermitianMatrix(args.N, "minus_current_dot_phat(GIdx::N{}{}_{}bar)").conjugate()
+    # Build the self-interaction current  J = N - conj(Nbar)  symbolically
+    for tmpl, gidx in (("n{}{}_{}",    "GIdx::N{}{}_{}"),
+                       ("n{}{}_{}bar", "GIdx::N{}{}_{}bar")):
+        for name, comp in zip(HermitianMatrix(args.N, tmpl).header(),
+                              HermitianMatrix(args.N, gidx).header()):
+            code.append("const amrex::Real "+name+" = minus_current_dot_phat("+comp+");")
+    code.append("")
+
+    # Flux-contracted number-density matrices, built from those temporaries.
+    N        = HermitianMatrix(args.N, "n{}{}_{}")
+    Nbarconj = HermitianMatrix(args.N, "n{}{}_{}bar").conjugate()
 
     V    = HermitianMatrix(args.N, "V{}{}_{}")
     V.H  = N.H - Nbarconj.H
@@ -292,8 +310,8 @@ if __name__ == "__main__":
     Vbarexprs = Vbar.header()
 
     for name, vexpr, vbarexpr in zip(Vnames, Vexprs, Vbarexprs):
-        code.append(name       +" += sqrt(2.) * PhysConst::GF * vol * ("+vexpr   +");")
-        code.append(name+"bar" +" += sqrt(2.) * PhysConst::GF * vol * ("+vbarexpr+");")
+        code.append(name       +" += Vfac * ("+vexpr   +");")
+        code.append(name+"bar" +" += Vfac * ("+vbarexpr+");")
         code.append("")
 
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_interpolate_from_mesh_fill"))

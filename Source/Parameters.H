@@ -41,6 +41,22 @@ struct TestParams : public amrex::Gpu::Managed {
     Real minimum_time_step;  // Minimum time step allowed in the simulation
     int time_step_method;    // Time step method flag
 
+    // 0 = never sort, 1 = SortParticlesByCell (plain
+    // cell-major), 2 = SortParticlesForDeposition (ordering chosen by AMReX to
+    // reduce atomic contention during deposition). 1 seems to work best for our
+    // chunky particles with many variables.
+    int particle_sort_method;
+
+    // Deposition kernel selection.
+    // 0 = amrex::ParticleToMesh scatter, one thread per particle, atomics into
+    //     every stencil cell (the original).
+    // 1 = one thread per (cell, grid component), accumulating that cell's
+    //     particles in registers before a single atomic per stencil cell. This
+    //     amortizes the atomics over the particles in a cell.
+    // 2 = run both and report any component whose deposited field differs by
+    //     more than a relative 1e-11 (validation only, ~2x cost).
+    int deposit_method;
+
     // File name with particles' initial conditions
     // This includes energy, momentum, N, Nbar, phase space volume, and others.
     std::string particle_data_filename;
@@ -50,6 +66,12 @@ struct TestParams : public amrex::Gpu::Managed {
     Real theta12, theta13, theta23;  // Neutrino mixing angles in radians
     Real alpha1, alpha2;             // Majorana phases in radians
     Real deltaCP;                    // CP-violating phases in radians
+
+    // Vacuum Hamiltonian numerator M2 (flavor basis), indexed
+    // [0 = neutrinos, 1 = antineutrinos][packed Hermitian component]. Built once
+    // in Initialize() because it depends only on the masses and mixing angles;
+    // the kernel just divides by the particle energy.
+    Real Vvac[2][NUM_FLAVORS * NUM_FLAVORS];
 
     // perturbation parameters
     int perturbation_type;
@@ -118,6 +140,14 @@ struct TestParams : public amrex::Gpu::Managed {
         pp.get("minimum_time_step", minimum_time_step);
         pp.get("time_step_method", time_step_method);
 
+        // 0 = no sorting, 1 = SortParticlesByCell, 2 = SortParticlesForDeposition.
+        // Defaults to 1: fastest in testing on V100
+        particle_sort_method = 1;
+        pp.query("particle_sort_method", particle_sort_method);
+
+        deposit_method = 1;
+        pp.query("deposit_method", deposit_method);
+
         // File name with particles' initial conditions
         // This includes energy, momentum, N, Nbar, phase space volume, and others.
         pp.get("particle_data_filename", particle_data_filename);
@@ -149,6 +179,10 @@ struct TestParams : public amrex::Gpu::Managed {
             alpha2 *= M_PI / 180.;
             deltaCP *= M_PI / 180.;
         }
+
+        // Vacuum Hamiltonian numerator, evaluated once now rather than per
+        // particle per timestep inside interpolate_rhs_from_mesh().
+#include "generated_files/Parameters.H_Vvac_fill"
 
         // attenuation to hamiltonians
         pp.get("attenuation_hamiltonians", attenuation_hamiltonians);

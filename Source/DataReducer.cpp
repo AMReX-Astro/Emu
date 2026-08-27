@@ -213,13 +213,14 @@ void DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
                                      const amrex::Real time, const int step,
                                      const amrex::Real dt,
                                      const amrex::Real scaled_error) {
+    BL_PROFILE("DataReducer::WriteReducedData0D()");
     // get index volume of the domain
     int ncells = geom.Domain().volume();
 
     //==================================//
     // Do reductions over the particles //
     //==================================//
-    using PType = typename FlavoredNeutrinoContainer::ParticleType;
+    using PType = typename FlavoredNeutrinoContainer::SuperParticleType;
     amrex::ReduceOps<ReduceOpSum, ReduceOpSum, ReduceOpSum> reduce_ops;
     auto particleResult = amrex::ParticleReduce<
         ReduceData<amrex::Real, amrex::Real, amrex::Real> >(
