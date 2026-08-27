@@ -299,10 +299,28 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
             // Momentum-direction factors (phat = p/E) multiplying the deposited N,
             // one per grid moment block in GIdx block order:
             // N, Fx, Fy, Fz[, Pxx, Pxy, Pxz, Pyy, Pyz, Pzz].
-            const amrex::Real phat[3] = {
-                p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
-                p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt),
-                p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
+            amrex::Real phat[3] = {p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
+                                   p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt),
+                                   p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
+
+            // For curvilinear coordinates, we convert phat to curvilinear components projected on a local orthonormal tetrad for each particle
+            if (parms->coord_sys != 0) {
+                const FourVec ph_old = {1.0, phat[0], phat[1], phat[2]};
+                FourVec ph_new{};
+                if (parms->coord_sys == 1) {
+                    CylindricalMetric m;
+                    ph_new =
+                        m.tetrad_conv(ph_old, p.pos(0), p.pos(1), p.pos(2));
+                } else {
+                    SphericalMetric m;
+                    ph_new =
+                        m.tetrad_conv(ph_old, p.pos(0), p.pos(1), p.pos(2));
+                }
+                phat[0] = ph_new[1];
+                phat[1] = ph_new[2];
+                phat[2] = ph_new[3];
+            }
+
             amrex::Real moment_factor[NUM_MOMENTS == 3 ? 10 : 4];
             moment_factor[0] = 1.0;      // N
             moment_factor[1] = phat[0];  // Fx
@@ -500,10 +518,27 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             Real rho_pp = 0;  // g/ccm
 
             // phat = momentum direction (p/E), used for the flux contraction in the SI potential
-            const amrex::Real phat[3] = {
-                p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
-                p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt),
-                p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
+            amrex::Real phat[3] = {p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
+                                   p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt),
+                                   p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
+
+            // For curvilinear coordinates, we convert phat to curvilinear components projected on a local orthonormal tetrad for each particle
+            if (parms->coord_sys != 0) {
+                const FourVec ph_old = {1.0, phat[0], phat[1], phat[2]};
+                FourVec ph_new{};
+                if (parms->coord_sys == 1) {
+                    CylindricalMetric m;
+                    ph_new =
+                        m.tetrad_conv(ph_old, p.pos(0), p.pos(1), p.pos(2));
+                } else {
+                    SphericalMetric m;
+                    ph_new =
+                        m.tetrad_conv(ph_old, p.pos(0), p.pos(1), p.pos(2));
+                }
+                phat[0] = ph_new[1];
+                phat[1] = ph_new[2];
+                phat[2] = ph_new[3];
+            }
 
             for (int k = sz.first(); k <= sz.last(); ++k) {
                 for (int j = sy.first(); j <= sy.last(); ++j) {
