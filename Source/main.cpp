@@ -268,6 +268,13 @@ void evolve_flavor(const TestParams* parms) {
         /* Evaluate the neutrino distribution matrix RHS */
         BL_PROFILE("Emu::RHS()");
 
+        // Step 0: Publish this stage's integrated coordinates as the particle
+        // positions, so the deposit and interpolation see where the particles
+        // actually are at this stage rather than at the start of the step.
+        // This is a per-particle field copy: it reorders nothing, so the RK
+        // stage containers stay index-aligned.
+        neutrinos.SyncLocation(Sync::CoordinateToPosition);
+
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
         deposit_to_mesh(neutrinos, state, geom, parms);
         {

@@ -196,6 +196,17 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
     }
 
     if (dt < parms->minimum_time_step) dt = parms->minimum_time_step;
+
+    // Particle positions are synchronized at every RK stage, so a particle may
+    // sit outside its box's valid region during the step. The deposition bins
+    // one ghost layer and the grid carries ngrow = 1 + stencil_radius, which
+    // allows exactly one cell of drift -- so a particle must not travel more
+    // than one cell per step. This bounds cfl_factor and minimum_time_step
+    // together, since either can set dt.
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        PhysConst::c * dt <= std::min({dxi[0], dxi[1], dxi[2]}),
+        "timestep lets particles drift more than one cell; reduce cfl_factor "
+        "or minimum_time_step");
     // printf("dt = %g, dt_flavor = %g, dt_translation = %g\n", dt, dt_flavor, dt_translation);
 
     return dt;
@@ -532,7 +543,12 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
         if (num_particles == 0) continue;
         const auto& ptd = tile.getConstParticleTileData();
 
-        const Box& box = pti.validbox();
+        // Grow by one cell: positions are synchronized every RK stage, so a
+        // particle can have drifted out of its valid box since the last
+        // Redistribute. Binning that layer gives it a bin and a thread, and its
+        // stencil then reaches at most ngrow cells out, where SumBoundary picks
+        // it up. Without this the deposit would be silently dropped.
+        const Box box = amrex::grow(pti.validbox(), 1);
         const auto box_lo = amrex::lbound(box);
         const auto box_len = amrex::length(box);
         const int num_cells = box_len.x * box_len.y * box_len.z;
