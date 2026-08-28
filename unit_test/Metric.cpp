@@ -35,9 +35,26 @@ void Euler(EParticle& p, Metric& metric, double dt, int steps) {
     }
 }
 
+void copy_particle(EParticle& dst, const EParticle& src) {
+    for (int c = 0; c < PIdx::nattribs; ++c) {
+        dst.rdata(c) = src.rdata(c);
+    }
+}
+
 int main() {
     //declaring and initializing the particle
-    EParticle p;
+
+    //creating a particle structure of arrays with nattribs attributes and 2 particles
+    amrex::ParticleReal soa[PIdx::nattribs][2] = {};
+
+    //ptd points to which place in memory holds the particular attribute for each particle
+    FlavoredNeutrinoContainer::PTDType ptd{};
+
+    for (int c = 0; c < PIdx::nattribs; ++c) {
+        ptd.m_rdata[c] = &soa[c][0];
+    }
+
+    EParticle p{ptd, 0};
 
     p.rdata(PIdx::time) = 0.0;
     p.rdata(PIdx::x) = 1.0;
@@ -51,9 +68,9 @@ int main() {
     p.rdata(PIdx::pupz) = 2.0;
 
     //duplicate initial particle
-    EParticle p1;
+    EParticle p1{ptd, 1};
 
-    p1 = p;
+    copy_particle(p1, p);
 
     //time step setup
     double t = 5;
@@ -116,7 +133,7 @@ int main() {
 
     CylindricalMetric metric2;
 
-    p = p1;
+    copy_particle(p, p1);
 
     Euler(p, metric2, dt, steps);  //Euler does the time integration
 
@@ -173,7 +190,7 @@ int main() {
 
     SphericalMetric metric3;
 
-    p = p1;
+    copy_particle(p, p1);
 
     Euler(p, metric3, dt, steps);  //Euler does the time integration
 

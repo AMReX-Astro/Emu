@@ -4,6 +4,9 @@ perturbation_amplitude = 1e-6
 #Spherical coordinate system
 coord_sys = 2
 
+#deposit_to_mesh method
+deposit_method = 0
+
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 0
 attenuation_vacuum = 1.0
