@@ -62,6 +62,9 @@ labels =   [   "pos_x",
                         "pupy",
                         "pupz",
                         "pupt",
+                        "rho_g_inv_ccm",
+                        "T_erg",
+                        "Ye",
                         *[line.strip().rstrip(',') for line in open(hf_path) if line.strip() and not line.strip().startswith('#')]
                     ]
 

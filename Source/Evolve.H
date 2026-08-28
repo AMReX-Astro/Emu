@@ -37,6 +37,10 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                      amrex::MultiFab& state, const amrex::Geometry& geom,
                      const TestParams* parms);
 
+void interpolate_hydro_to_particles(FlavoredNeutrinoContainer& neutrinos,
+                                    const amrex::MultiFab& state,
+                                    const amrex::Geometry& geom);
+
 void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                                const amrex::MultiFab& state,
                                const amrex::Geometry& geom,
