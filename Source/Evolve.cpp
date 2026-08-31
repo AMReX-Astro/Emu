@@ -1,5 +1,6 @@
 #include "Evolve.H"
 #include <cmath>
+#include <string>
 #include "Constants.H"
 #include "FlavoredNeutrinoContainer.H"
 #include "ParticleInterpolator.H"
@@ -7,6 +8,7 @@
 #include "EosTable.H"
 #include "EosTableFunctions.H"
 
+#include "FillParticleOpacities.H"
 #include "NuLibTable.H"
 #include "NuLibTableFunctions.H"
 
@@ -24,6 +26,30 @@ void Initialize() {
     names.push_back("vupy");
     names.push_back("vupz");
 #include "generated_files/Evolve.cpp_grid_names_fill"
+    // One Hermitian pair (nu, then nubar) per mesh energy bin, PIdx::offset
+    // order. Example: C_in_scat_iso_energy_0_flavor_00_Re, ..._01_Re, ...
+    const int n_energies = number_of_c_in_scat_energies;
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        n_energies > 0,
+        "GIdx::Initialize() requires number_of_c_in_scat_energies");
+    for (int ie = 0; ie < n_energies; ++ie) {
+        const std::string energy_tag =
+            "C_in_scat_iso_energy_" + std::to_string(ie) + "_flavor_";
+        for (int nunubar = 0; nunubar < 2; ++nunubar) {
+            const std::string bar = (nunubar == 1) ? "bar" : "";
+            for (int a = 0; a < NUM_FLAVORS; ++a) {
+                for (int b = a; b < NUM_FLAVORS; ++b) {
+                    const std::string ab =
+                        std::to_string(a) + std::to_string(b);
+                    names.push_back(energy_tag + ab + "_Re" + bar);
+                    if (b > a) {
+                        names.push_back(energy_tag + ab + "_Im" + bar);
+                    }
+                }
+            }
+        }
+    }
+    AMREX_ALWAYS_ASSERT(static_cast<int>(names.size()) == ncomp());
 }
 }  // namespace GIdx
 
@@ -225,9 +251,11 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
     const Real inv_cell_volume = dxi[0] * dxi[1] * dxi[2];
 
     // Create an alias of the MultiFab so ParticleToMesh only erases the quantities
-    // that will be set by the neutrinos.
+    // that will be set by the neutrinos, including the C_in_scat block.
+    const int number_of_directions =
+        FlavoredNeutrinoContainer::number_of_directions;
     int start_comp = GIdx::N00_Re;
-    int num_comps = GIdx::ncomp - start_comp;
+    int num_comps = GIdx::ncomp() - start_comp;
     MultiFab deposit_state(state, amrex::make_alias, start_comp, num_comps);
 
     const int shape_factor_order_x =
@@ -257,6 +285,19 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
         parms->boundary_condition[3] == BoundaryCondition::reflecting,
         parms->boundary_condition[5] == BoundaryCondition::reflecting};
 
+    // Create EoS table object
+    using namespace nuc_eos_private;
+    EOS_tabulated EOS_tabulated_obj(alltables, epstable, logrho, logtemp, yes,
+                                    helperVarsReal, helperVarsInt);
+
+    // Create NuLib table object
+    using namespace nulib_private;
+    NuLib_tabulated NuLib_tabulated_obj(
+        alltables_nulib, logrho_nulib, logtemp_nulib, yes_nulib,
+        helperVarsReal_nulib, helperVarsInt_nulib);
+
+    NuLib_energies NuLib_energies_obj(energy_bottom, energy_top);
+
     amrex::ParticleToMesh(
         neutrinos, deposit_state, 0,
         // Taking (tile data, index) rather than a particle struct lets the
@@ -266,6 +307,73 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                              const int p_index,
                              amrex::Array4<amrex::Real> const& sarr) {
             FlavoredNeutrinoContainer::FNParticleConstView p{ptd, p_index};
+
+            //==============================================================//
+            // INTERPOLATION OF SCATTERING AND ABSORPTION OPACITIES         //
+            //==============================================================//
+
+            // Step 0: Background hydro interpolated onto this particle by
+            // interpolate_hydro_to_particles (copied here with copyParticles).
+            const Real T_pp = p.rdata(PIdx::T_erg);  // erg
+            const Real Ye_pp = p.rdata(PIdx::Ye);
+            const Real rho_pp = p.rdata(PIdx::rho_g_inv_ccm);  // g/ccm
+
+            int energy_bin = 0;
+            if (parms->IMFP_method == 2) {
+                int* helperVarsInt_nulib =
+                    NuLib_tabulated_obj.get_helperVarsInt_nulib();
+                energy_bin = find_nulib_energy_bin(
+                    p.rdata(PIdx::pupt),
+                    NuLib_energies_obj.get_energy_bottom_nulib(),
+                    NuLib_energies_obj.get_energy_top_nulib(),
+                    NULIBVAR_INT(ngroup));
+            }
+
+            // Scattering IMFPs for the isotropic C_in deposit. Other opacity
+            // outputs are unused in this kernel and are passed as nullptr.
+            Real IMFP_scat
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t )
+            Real IMFP_scatbar
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for scatteting: diag( kbar_e , kbar_u , kbar_t )
+
+            for (int i = 0; i < NUM_FLAVORS; ++i) {
+                for (int j = 0; j < NUM_FLAVORS; ++j) {
+                    IMFP_scat[i][j] = 0.0;
+                    IMFP_scatbar[i][j] = 0.0;
+                }
+            }
+
+            const int interpolate_absorption_opacity = 0;
+            const int interpolate_scattering_opacity = 1;
+            const int interpolate_scattering_opacity_brakets = 0;
+            const int interpolate_chemical_potentials = 0;
+
+            if (parms->attenuation_absorption_opacity > 0.0 ||
+                parms->attenuation_scattering_opacity > 0.0) {
+                fill_particle_opacities(
+                    parms, rho_pp, T_pp, Ye_pp, EOS_tabulated_obj,
+                    NuLib_tabulated_obj, energy_bin,
+                    interpolate_absorption_opacity,
+                    interpolate_scattering_opacity,
+                    interpolate_scattering_opacity_brakets,
+                    interpolate_chemical_potentials, nullptr, nullptr,
+                    IMFP_scat, IMFP_scatbar, nullptr, nullptr, nullptr,
+                    nullptr);
+
+                // Scale interpolated IMFPs by the input attenuation factors.
+                for (int i = 0; i < NUM_FLAVORS; ++i) {
+                    for (int j = 0; j < NUM_FLAVORS; ++j) {
+                        IMFP_scat[i][j] *=
+                            parms->attenuation_scattering_opacity;
+                        IMFP_scatbar[i][j] *=
+                            parms->attenuation_scattering_opacity;
+                    }
+                }
+            }
+            //==============================================================//
+
             const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
             const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
             const amrex::Real delta_z = (p.pos(2) - plo[2]) * dxi[2];
@@ -356,6 +464,67 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                                         sign * vol *
                                             p.rdata(particle_component_index) *
                                             moment_factor[m]);
+                                }
+                            }
+                        }
+
+                        // --------------------------------------------------------------------
+                        // Isotropic in-scattering deposit into C_in_scat_* mesh
+                        // components for this particle's energy_bin (0 for
+                        // IMFP_method 0/1, NuLib group for method 2).
+                        // --------------------------------------------------------------------
+                        {
+                            constexpr int n_scat_flav =
+                                NUM_FLAVORS * NUM_FLAVORS;
+
+                            for (int nunubar = 0; nunubar < 2; ++nunubar) {
+                                const int particle_index_base =
+                                    PIdx::N00_Re + nunubar * ncomp;
+
+                                // Iterate Hermitian diagonal only: kappa_ab = delta_ab * kappa_a.
+                                // Diagonal: Re only.
+                                for (int a = 0; a < NUM_FLAVORS; ++a) {
+                                    for (int b = a; b <= a; ++b) {
+                                        // Particle-local scattering IMFPs
+                                        // (already attenuated, 1/cm).
+                                        const amrex::Real IMFP_scat_a_cm =
+                                            (nunubar == 0) ? IMFP_scat[a][a]
+                                                           : IMFP_scatbar[a][a];
+
+                                        // kappa_ab = delta_ab * kappa_a
+                                        const amrex::Real
+                                            kappa_scat_iso_mono_inverse_cm =
+                                                (a == b) ? IMFP_scat_a_cm : 0.0;
+
+                                        // Deposit Re (always) and Im (off-diagonal only).
+                                        const int n_reim = (b > a) ? 2 : 1;
+                                        for (int reim = 0; reim < n_reim;
+                                             ++reim) {
+                                            const int comp = PIdx::offset(
+                                                a, b,
+                                                (reim == 0) ? PIdx::Re
+                                                            : PIdx::Im);
+                                            const int particle_component_index =
+                                                particle_index_base + comp;
+
+                                            const int scat_off =
+                                                nunubar * n_scat_flav + comp;
+                                            amrex::Gpu::Atomic::AddNoRet(
+                                                &sarr(
+                                                    idx[0], idx[1], idx[2],
+                                                    GIdx::C_in_scat_iso_index(
+                                                        energy_bin, scat_off) -
+                                                        start_comp),
+                                                sx(i) * sy(j) * sz(k) *
+                                                    (1.0 /
+                                                     (4 * MathConst::pi)) *
+                                                    (4 * MathConst::pi /
+                                                     number_of_directions) *
+                                                    p.rdata(
+                                                        particle_component_index) *
+                                                    kappa_scat_iso_mono_inverse_cm);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -552,7 +721,7 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
 
     // Create an alias of the MultiFab so we only erase what the neutrinos set
     constexpr int start_comp = GIdx::N00_Re;
-    constexpr int num_grid_comps = GIdx::ncomp - start_comp;
+    constexpr int num_grid_comps = GIdx::ncomp_base - start_comp;
     MultiFab deposit_state(state, amrex::make_alias, start_comp,
                            num_grid_comps);
     deposit_state.setVal(0.0);
@@ -768,7 +937,7 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
     } else {
         // Deposit both ways and compare the field itself, before the time
         // integration amplifies any difference.
-        const int nc = GIdx::ncomp - GIdx::N00_Re;
+        const int nc = GIdx::ncomp() - GIdx::N00_Re;
         MultiFab ref(state.boxArray(), state.DistributionMap(), nc, 0);
         deposit_to_mesh_atomic(neutrinos, state, geom, parms);
         MultiFab::Copy(ref, state, GIdx::N00_Re, 0, nc, 0);
@@ -900,11 +1069,25 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             const Real Ye_pp = p.rdata(PIdx::Ye);
             const Real rho_pp = p.rdata(PIdx::rho_g_inv_ccm);  // g/ccm
 
+        // Isotropic in-scattering interpolated to the particle.
+        // Always declared/zeroed so the generated dfdt_fill can reference them.
+#include "generated_files/Evolve.cpp_C_in_scat_pp_declare"
             // phat = momentum direction (p/E), used for the flux contraction in the SI potential
             const amrex::Real phat[3] = {
                 p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
                 p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt),
                 p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
+
+            int energy_bin = 0;
+            if (parms->IMFP_method == 2) {
+                int* helperVarsInt_nulib =
+                    NuLib_tabulated_obj.get_helperVarsInt_nulib();
+                energy_bin = find_nulib_energy_bin(
+                    p.rdata(PIdx::pupt),
+                    NuLib_energies_obj.get_energy_bottom_nulib(),
+                    NuLib_energies_obj.get_energy_top_nulib(),
+                    NULIBVAR_INT(ngroup));
+            }
 
             for (int k = sz.first(); k <= sz.last(); ++k) {
                 for (int j = sy.first(); j <= sy.last(); ++j) {
@@ -955,21 +1138,30 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                             PhysConst::Mp * relativistic_correction;
                         V00_Re += matter_term;
                         V00_Rebar -= matter_term;
+
+                        // Interpolate C_in_scat for this particle's energy_bin
+                        // (0 for IMFP_method 0/1, NuLib group for method 2).
+                        {
+                            const int nubar = GIdx::n_c_in_scat_flavor;
+#include "generated_files/Evolve.cpp_interpolate_from_mesh_fill_scattering"
+                        }
                     }
                 }
             }
 
-            // Declare matrices to be used in quantum kinetic equation calculation
+            // Declare matrices used in the QKE: absorption, scattering brackets,
+            // chemical potentials, and equilibrium distributions. Scattering
+            // IMFP diagonals are unused here and passed as nullptr.
             Real IMFP_abs
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for nucleon absortion: diag( k_e , k_u , k_t )
             Real IMFP_absbar
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for nucleon absortion: diag( kbar_e , kbar_u , kbar_t )
-            Real IMFP_scat
+            Real IMFP_scat_brakets
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t )
-            Real IMFP_scatbar
+            Real IMFP_scatbar_brakets
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for scatteting: diag( kbar_e , kbar_u , kbar_t )
             Real f_eq
@@ -985,15 +1177,12 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Antineutrino chemical potential matrix: munu = diag ( munubar_e , munubar_x)
 
-            // The scattering opacities are interpolated/stored but not yet wired into the
-            // collision term (see the "... fix it ..." notes below); mark them reserved.
-            amrex::ignore_unused(IMFP_scat, IMFP_scatbar);
-
-            // Initialize matrices with zeros
             for (int i = 0; i < NUM_FLAVORS; ++i) {
                 for (int j = 0; j < NUM_FLAVORS; ++j) {
                     IMFP_abs[i][j] = 0.0;
                     IMFP_absbar[i][j] = 0.0;
+                    IMFP_scat_brakets[i][j] = 0.0;
+                    IMFP_scatbar_brakets[i][j] = 0.0;
                     f_eq[i][j] = 0.0;
                     f_eqbar[i][j] = 0.0;
                     munu[i][j] = 0.0;
@@ -1001,170 +1190,43 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 }
             }
 
-            // If opacity_method is 1, the code will use the inverse mean free paths in the input parameters to compute the collision term.
-            if (parms->IMFP_method == 0) {
-                // do nothing
-            } else if (parms->IMFP_method == 1) {
+            const int interpolate_absorption_opacity = 1;
+            const int interpolate_scattering_opacity = 0;
+            const int interpolate_scattering_opacity_brakets = 1;
+            const int interpolate_chemical_potentials = 1;
+
+            if (parms->attenuation_absorption_opacity > 0.0 ||
+                parms->attenuation_scattering_opacity > 0.0) {
+                fill_particle_opacities(
+                    parms, rho_pp, T_pp, Ye_pp, EOS_tabulated_obj,
+                    NuLib_tabulated_obj, energy_bin,
+                    interpolate_absorption_opacity,
+                    interpolate_scattering_opacity,
+                    interpolate_scattering_opacity_brakets,
+                    interpolate_chemical_potentials, IMFP_abs, IMFP_absbar,
+                    nullptr, nullptr, IMFP_scat_brakets, IMFP_scatbar_brakets,
+                    munu, munubar);
+
                 for (int i = 0; i < NUM_FLAVORS; ++i) {
-                    IMFP_abs[i][i] =
-                        parms->IMFP_abs
-                            [0]
-                            [i];  // 1/cm : Read absorption inverse mean free path from input parameters file.
-                    IMFP_absbar[i][i] =
-                        parms->IMFP_abs
-                            [1]
-                            [i];  // 1/cm : Read absorption inverse mean free path from input parameters file.
-                    munu[i][i] =
-                        parms->munu
-                            [0]
-                            [i];  // ergs : Read neutrino chemical potential from input parameters file.
-                    munubar[i][i] =
-                        parms->munu
-                            [1]
-                            [i];  // ergs : Read antineutrino chemical potential from input parameters file.
-                }
-            }
-            // If opacity_method is 2, the code interpolate inverse mean free paths from NuLib table and electron neutrino chemical potential from EoS table to compute the collision term.
-            else if (parms->IMFP_method == 2) {
-                // Assign temperature, electron fraction, and density at the particle's position to new variables for interpolation of chemical potentials and inverse mean free paths.
-                Real rho =
-                    rho_pp;  // Density of background matter at this particle's position g/cm^3
-                Real temperature =
-                    T_pp /
-                    (1e6 *
-                     CGSUnitsConst::
-                         eV);  // Temperature of background matter at this particle's position 0.05 //MeV
-                Real Ye =
-                    Ye_pp;  // Electron fraction of background matter at this particle's position
-
-                //-------------------- Values from EoS table ------------------------------
-                double mue_out,
-                    muhat_out;  // mue_out : Electron chemical potential. muhat_out : neutron minus proton chemical potential
-                int keyerr, anyerr;
-                EOS_tabulated_obj.get_mue_muhat(rho, temperature, Ye, mue_out,
-                                                muhat_out, keyerr, anyerr);
-                if (anyerr)
-                    AMREX_ASSERT(
-                        0);  //If there is an error in interpolation call, stop execution.
-
-//#define DEBUG_INTERPOLATION_TABLES
-#ifdef DEBUG_INTERPOLATION_TABLES
-                amrex::Print() << "(Evolve.cpp) mu_e interpolated = " << mue_out
-                               << std::endl;
-                amrex::Print()
-                    << "(Evolve.cpp) muhat interpolated = " << muhat_out
-                    << std::endl;
-#endif
-                // munu_val : electron neutrino chemical potential
-                const double munu_val =
-                    (mue_out - muhat_out) * 1e6 *
-                    CGSUnitsConst::eV;  //munu -> "mu_e" - "muhat"
-
-                munu[0][0] =
-                    munu_val;  // erg : Save neutrino chemical potential from EOS table in chemical potential matrix
-                munubar[0][0] =
-                    -1.0 *
-                    munu_val;  // erg : Save antineutrino chemical potential from EOS table in chemical potential matrix
-
-                //--------------------- Values from NuLib table ---------------------------
-                int* helperVarsInt_nulib =
-                    NuLib_tabulated_obj
-                        .get_helperVarsInt_nulib();  // used via NULIBVAR_INT
-                double* energy_bottom =
-                    NuLib_energies_obj.get_energy_bottom_nulib();
-                double* energy_top = NuLib_energies_obj.get_energy_top_nulib();
-
-                double neutrino_energy_erg =
-                    p.rdata(PIdx::pupt);  //locate energy bin using this.
-                double neutrino_energy_MeV =
-                    neutrino_energy_erg / (1e6 * CGSUnitsConst::eV);
-
-                //Decide which energy bin to use (i.e. determine 'idx_group')
-                int idx_group = -1;
-                for (int i = 0; i < NULIBVAR_INT(ngroup); i++) {
-                    if (neutrino_energy_MeV >= energy_bottom[i] &&
-                        neutrino_energy_MeV <= energy_top[i]) {
-                        idx_group = i;
-                        break;
+                    for (int j = 0; j < NUM_FLAVORS; ++j) {
+                        IMFP_abs[i][j] *= parms->attenuation_absorption_opacity;
+                        IMFP_absbar[i][j] *=
+                            parms->attenuation_absorption_opacity;
+                        IMFP_scat_brakets[i][j] *=
+                            parms->attenuation_scattering_opacity;
+                        IMFP_scatbar_brakets[i][j] *=
+                            parms->attenuation_scattering_opacity;
                     }
                 }
+            }
 
-                if (idx_group == -1)
-                    AMREX_ASSERT(0);  //abort if energy bin cannot be found.
-                //amrex::Print() << "Given neutrino energy = %f, selected bin index = %d\n", neutrino_energy_MeV, idx_group);
-
-                //idx_species = {0 for electron neutrino, 1 for electron antineutrino and 2 for all other heavier ones}
-                //electron neutrino: [0, 0]
-                int idx_species = 0;
-                double absorption_opacity, scattering_opacity;
-                NuLib_tabulated_obj.get_opacities(
-                    rho, temperature, Ye, absorption_opacity,
-                    scattering_opacity, keyerr, anyerr, idx_species, idx_group);
-                if (anyerr) AMREX_ASSERT(0);
-
-#ifdef DEBUG_INTERPOLATION_TABLES
-                amrex::Print()
-                    << "(Evolve.cpp) absorption_opacity[e] interpolated = "
-                    << absorption_opacity << std::endl;
-                amrex::Print()
-                    << "(Evolve.cpp) scattering_opacity[e] interpolated = "
-                    << scattering_opacity << std::endl;
-#endif
-
-                IMFP_abs[0][0] = absorption_opacity;
-                IMFP_scat[0][0] = scattering_opacity;
-
-                //electron antineutrino: [1, 0]
-                idx_species = 1;
-                NuLib_tabulated_obj.get_opacities(
-                    rho, temperature, Ye, absorption_opacity,
-                    scattering_opacity, keyerr, anyerr, idx_species, idx_group);
-                if (anyerr) AMREX_ASSERT(0);
-
-#ifdef DEBUG_INTERPOLATION_TABLES
-                amrex::Print()
-                    << "(Evolve.cpp) absorption_opacity[a] interpolated = "
-                    << absorption_opacity << std::endl;
-                amrex::Print()
-                    << "(Evolve.cpp) scattering_opacity[a] interpolated = "
-                    << scattering_opacity << std::endl;
-#endif
-
-                IMFP_absbar[0][0] = absorption_opacity;
-                IMFP_scatbar[0][0] = scattering_opacity;
-
-                //heavier ones: muon neutrino[0,1], muon antineutruino[1,1], tau neutrino[0,2], tau antineutrino[1,2]
-                idx_species = 2;
-                NuLib_tabulated_obj.get_opacities(
-                    rho, temperature, Ye, absorption_opacity,
-                    scattering_opacity, keyerr, anyerr, idx_species, idx_group);
-                if (anyerr) AMREX_ASSERT(0);
-
-#ifdef DEBUG_INTERPOLATION_TABLES
-                amrex::Print()
-                    << "(Evolve.cpp) absorption_opacity[x] interpolated = "
-                    << absorption_opacity << std::endl;
-                amrex::Print()
-                    << "(Evolve.cpp) scattering_opacity[x] interpolated = "
-                    << scattering_opacity << std::endl;
-#endif
-
-                for (int i = 1; i < NUM_FLAVORS;
-                     ++i) {  //0->neutrino or 1->antineutrino
-                    // for(int j=1; j<NUM_FLAVORS; j++){  //0->electron, 1->heavy(muon), 2->heavy(tau); all heavy same for current table
-                    IMFP_abs[i][i] = absorption_opacity;      // ... fix it ...
-                    IMFP_absbar[i][i] = absorption_opacity;   // ... fix it ...
-                    IMFP_scat[i][i] = scattering_opacity;     // ... fix it ...
-                    IMFP_scatbar[i][i] = scattering_opacity;  // ... fix it ...
-                    // }
-                }
-                //-----------------------------------------------------------------------
-            } else
-                AMREX_ASSERT_WITH_MESSAGE(
-                    false, "only available opacity_method is 0, 1 or 2");
-
-            // Compute equilibrium distribution functions and include Pauli blocking term if requested
-            if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
+            // Compute equilibrium distribution functions and include Pauli blocking term if requested.
+            // Keep the `>` comparison off the `if` that is immediately followed by
+            // `#if SET_EQUILIBRIUM == 1` — nvcc misparses that combination.
+            const bool do_absorption_eq =
+                (parms->IMFP_method == 1 || parms->IMFP_method == 2) &&
+                (parms->attenuation_absorption_opacity > Real(0.0));
+            if (do_absorption_eq) {
                 if (parms->set_equilibrium_distribution == 1) {
 #if SET_EQUILIBRIUM == 1
                     f_eq[0][0] = 8.0 *
@@ -1234,6 +1296,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                     }
                 }
             }
+
 // Compute the time derivative of \( N_{ab} \) using the Quantum Kinetic Equations (QKE).
 #include "generated_files/Evolve.cpp_dfdt_fill"
 

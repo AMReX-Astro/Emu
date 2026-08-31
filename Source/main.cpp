@@ -112,8 +112,38 @@ void evolve_flavor(const TestParams* parms) {
     for (int i = 0; i < AMREX_SPACEDIM; i++)
         AMREX_ASSERT(parms->ncell[i] >= ngrow[i]);
 
-    // We want 1 component (this is one real scalar field on the domain)
-    const int ncomp = GIdx::ncomp;
+    // Load particle-file metadata to validate number_of_directions and
+    // number_of_energies (also needed on restart, when InitParticles is
+    // skipped). These counts do not size the C_in_scat mesh block.
+    FlavoredNeutrinoContainer::ReadParticleFileHeaders(
+        parms->particle_data_filename);
+
+    if (parms->IMFP_method == 1) {
+        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+            FlavoredNeutrinoContainer::number_of_energies == 1,
+            "IMFP_method==1 requires number_of_energies == 1 in the particle "
+            "data file");
+    }
+
+    // HDF5 tables are required when IMFP_method is 2. Load them before
+    // allocating the mesh so C_in_scat can be sized by NuLib ngroup.
+    if (parms->IMFP_method == 2) {
+        amrex::Print() << "Reading EoS table... " << std::endl;
+        ReadEosTable(parms->nuceos_table_name);
+
+        amrex::Print() << "Reading NuLib table... " << std::endl;
+        ReadNuLibTable(parms->nulib_table_name);
+
+        using namespace nulib_private;
+        GIdx::number_of_c_in_scat_energies = NULIBVAR_INT(ngroup);
+        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+            GIdx::number_of_c_in_scat_energies > 0,
+            "NuLib table ngroup must be > 0 to size C_in_scat");
+    } else {
+        GIdx::number_of_c_in_scat_energies = 1;
+    }
+
+    const int ncomp = GIdx::ncomp();
 
     // Create a MultiFab to hold our grid state data and initialize to 0.0
     MultiFab state(ba, dm, ncomp, ngrow);
@@ -141,7 +171,7 @@ void evolve_flavor(const TestParams* parms) {
     // wall (e.g. the radial flux at an r=0 boundary). Outflow faces extrapolate
     // (zero-gradient) from the interior. Periodic faces are handled by
     // FillBoundary(geom.periodicity()) and left as int_dir here.
-    Vector<BCRec> grid_bcs(GIdx::ncomp);
+    Vector<BCRec> grid_bcs(ncomp);
     {
         // A component flips sign (reflect_odd) under a reflection across a face normal
         // to dimension d iff it carries an odd number of d-momentum factors: the matter
@@ -159,7 +189,7 @@ void evolve_flavor(const TestParams* parms) {
             {GIdx::Pxy00_Re, GIdx::Pyz00_Re},   // odd in y
             {GIdx::Pxz00_Re, GIdx::Pyz00_Re}};  // odd in z
 #endif
-        for (int n = 0; n < GIdx::ncomp; ++n) {
+        for (int n = 0; n < ncomp; ++n) {
             for (int d = 0; d < AMREX_SPACEDIM; ++d) {
                 bool odd_parity =
                     (n == vup[d]) || (n >= flux_start[d] &&
@@ -202,17 +232,6 @@ void evolve_flavor(const TestParams* parms) {
     // initialize the grid variable names
     GIdx::Initialize();
 
-    //We only need HDF5 tables if IMFP_method is 2.
-    if (parms->IMFP_method == 2) {
-        // read the EoS table
-        amrex::Print() << "Reading EoS table... " << std::endl;
-        ReadEosTable(parms->nuceos_table_name);
-
-        // read the NuLib table
-        amrex::Print() << "Reading NuLib table... " << std::endl;
-        ReadNuLibTable(parms->nulib_table_name);
-    }
-
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... " << std::endl;
 
@@ -226,6 +245,7 @@ void evolve_flavor(const TestParams* parms) {
 
     Real initial_time = 0.0;
     int initial_step = 0;
+
     if (parms->do_restart) {
         // get particle data from file
         RecoverParticles(parms->restart_dir, neutrinos_old, initial_time,

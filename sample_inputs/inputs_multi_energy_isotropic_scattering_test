@@ -1,74 +1,63 @@
-cfl_factor = 0.5
-flavor_cfl_factor = 3
-collision_cfl_factor = 10
+perturbation_type = 0
+perturbation_amplitude = 1e-6
 
 # attenuation parameters to time derivative of N due to hamiltonians
-attenuation_hamiltonians = 1
+attenuation_hamiltonians = 0
 attenuation_vacuum = 1.0
 attenuation_matter = 1.0
 attenuation_self_interaction = 1.0
 
-perturbation_type = 0
-perturbation_amplitude = 0
+collision_cfl_factor = 55
+cfl_factor = 0.5
+flavor_cfl_factor = 0
 
 integration.type = 1
-integration.rk.type = 5          # DormandPrince (0=User, 1=ForwardEuler, 2=Trapezoid, 3=SSPRK3, 4=RK4, 5=DormandPrince)
-integration.use_adaptive_time_step = 1
-integration.abs_tol = 1.0e-6
-integration.rel_tol = 1.0e-10
-integration.rk.safety_factor = 0.9
-integration.rk.min_factor = 0.1
-integration.rk.max_factor = 5.0
+integration.rk.type = 4          # DormandPrince (0=User, 1=ForwardEuler, 2=Trapezoid, 3=SSPRK3, 4=RK4, 5=DormandPrince)
+integration.use_adaptive_time_step = 0
 
 # Domain size in 3D index space
-ncell = (1, 1, 1)
-Lx = 1.0
-Ly = 1.0
-Lz = 1.0
+ncell = (2,2,2)
+Lx = 2.2e6 # cm
+Ly = 2.2e6 # cm
+Lz = 2.2e6 # cm
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
 particle_data_filename = "particle_input.dat"
 
 # Maximum size of each grid in the domain
-max_grid_size_x = 1
-max_grid_size_y = 1
-max_grid_size_z = 1
+max_grid_size_x = 2
+max_grid_size_y = 2
+max_grid_size_z = 2
 
 # Number of steps to run
-nsteps = 50
+nsteps = 1000
 
 # Minimum timestep (s)
-minimum_time_step = 1e-15
+minimum_time_step = 1e-6
 
 # Time step method
-time_step_method = 0
+time_step_method = 1 # 0 for adaptive time step, 1 for fixed time step with value minimum_time_step but RK4 has to be used.
 
 # Simulation end time
-end_time = 1.0
+end_time = 1e-3
 
 # Make FPE signal errors so we get a Backtrace
 amrex.fpe_trap_invalid=1
 
-# give background fluid conditions
-rho_g_ccm = 1346160134.709288
-T_MeV = 10
-Ye = 1
-# Adding constant background v for now
-vupx = 0
-vupy = 0
-vupz = 0.0
-
-
 # Write plotfiles
-write_plot_every = 1
+write_plot_every = 25
 
 # Write particle data in plotfiles
-write_plot_particles_every = 1
+write_plot_particles_every = 25
 
 # checkpointing
 do_restart = 0
 restart_dir = ""
+
+# deposition method --> 0: old slow method, 1: new fast method
+# scattering works only with method zero (for now)
+deposit_method = 0
 
 ###############################
 # NEUTRINO PHYSICS PARAMETERS #
@@ -76,17 +65,16 @@ restart_dir = ""
 # see first column of table 14.7 in http://pdg.lbl.gov/2019/reviews/rpp2019-rev-neutrino-mixing.pdf
 
 # mass state 1 mass in eV [NO/IO:-sqrt(7.39e-5)]
-mass1_eV = -0.008596511
+mass1_eV = 0 #-0.008596511
 
 # mass state 2 mass in eV (define at 0 arbitrarily because oscillations only sensitive to deltaM^2)
 mass2_eV = 0
 
 # mass state 3 mass in eV [NO:sqrt(2.449e-3) IO:-sqrt(2.509e-3)]
-# mass3_eV = 0.049487372
-mass3_eV = 0
+mass3_eV = 0.049487372
 
 # 1-2 mixing angle in degrees [NO/IO:33.82]
-theta12_degrees = 33.82
+theta12_degrees = 1e-6
 
 # 2-3 mixing angle in degrees [NO:8.61 IO:8.65]
 theta23_degrees = 8.61
@@ -106,12 +94,15 @@ deltaCP_degrees = 222
 #################
 # opacity stuff #
 #################
-IMFP_method = 0
+IMFP_method = 2
+attenuation_absorption_opacity = 0
+attenuation_scattering_opacity = 1
 
 #################
-# Background Ye, T and rho
+# Background Ye, T and rho. Adding constant v for now
 #################
-read_rho_T_Ye_from_table = 0
+read_rho_T_Ye_from_table = 1
+background_rho_Ye_T_table_name = "./rho_Ye_T.hdf5"
 
 #################
 # Blackhole
@@ -121,9 +112,21 @@ do_blackhole = 0
 #################
 # Boundary conditions
 #################
-bc_xlo = reflecting
-bc_xhi = reflecting
-bc_ylo = reflecting
-bc_yhi = reflecting
-bc_zlo = reflecting
-bc_zhi = reflecting
+bc_xlo = periodic
+bc_xhi = periodic
+bc_ylo = periodic
+bc_yhi = periodic
+bc_zlo = periodic
+bc_zhi = periodic
+
+#################
+# Tables
+#################
+
+# Tables in Jenkins
+nulib_table_name = "/NuLib/NuLib_SFHo.h5"
+nuceos_table_name = "/EOS/LS220_234r_136t_50y_analmu_20091212_SVNr26.h5"
+
+# Tables in erick's home directory in cassowary
+# nulib_table_name = "/home/erick/tables/NuLib_SFHo.h5"
+# nuceos_table_name = "/home/erick/tables/LS220.h5"
