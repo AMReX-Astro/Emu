@@ -29,7 +29,7 @@ max_grid_size_y = 5
 max_grid_size_z = 5
 
 # Number of steps to run
-nsteps = 5000
+nsteps = 500
 
 # Minimum timestep (s)
 minimum_time_step = 1e-15
