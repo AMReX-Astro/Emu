@@ -88,8 +88,11 @@ Gpu::ManagedVector<GpuArray<Real, PIdx::nattribs>> read_particle_data(
     // Save every particle's information in the array particle_data.
     while (std::getline(file, line)) {
         ss = std::stringstream(line);
-        // skip over the first four attributes (x,y,z,t)
-        for (int i = PIdx::pupx; i < PIdx::nattribs; i++)
+        // File columns: pupx, pupy, pupz, pupt, then N/flavor attributes.
+        // Skip time/x/y/z (indices 0-3) and hydro (rho, T, Ye), which are
+        // interpolated from the mesh rather than read from particle_input.dat.
+        for (int i = PIdx::pupx; i <= PIdx::pupt; ++i) ss >> temp_particle[i];
+        for (int i = PIdx::N00_Re; i < PIdx::nattribs; ++i)
             ss >> temp_particle[i];
         particle_data.push_back(temp_particle);
     }

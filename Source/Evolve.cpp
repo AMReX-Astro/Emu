@@ -365,6 +365,56 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
         });
 }
 
+void interpolate_hydro_to_particles(FlavoredNeutrinoContainer& neutrinos,
+                                    const MultiFab& state,
+                                    const Geometry& geom) {
+    const auto plo = geom.ProbLoArray();
+    const auto dxi = geom.InvCellSizeArray();
+
+    const int shape_factor_order_x =
+        geom.Domain().length(0) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_factor_order_y =
+        geom.Domain().length(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_factor_order_z =
+        geom.Domain().length(2) > 1 ? SHAPE_FACTOR_ORDER : 0;
+
+    amrex::MeshToParticle(
+        neutrinos, state, 0,
+        [=] AMREX_GPU_DEVICE(FlavoredNeutrinoContainer::PTDType const& ptd,
+                             const int p_index,
+                             amrex::Array4<const amrex::Real> const& sarr) {
+            FlavoredNeutrinoContainer::FNParticleView p{ptd, p_index};
+
+            const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
+            const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
+            const amrex::Real delta_z = (p.pos(2) - plo[2]) * dxi[2];
+
+            const ParticleInterpolator<SHAPE_FACTOR_ORDER> sx(
+                delta_x, shape_factor_order_x);
+            const ParticleInterpolator<SHAPE_FACTOR_ORDER> sy(
+                delta_y, shape_factor_order_y);
+            const ParticleInterpolator<SHAPE_FACTOR_ORDER> sz(
+                delta_z, shape_factor_order_z);
+
+            Real T_pp = 0;
+            Real Ye_pp = 0;
+            Real rho_pp = 0;
+            for (int k = sz.first(); k <= sz.last(); ++k) {
+                for (int j = sy.first(); j <= sy.last(); ++j) {
+                    for (int i = sx.first(); i <= sx.last(); ++i) {
+                        const amrex::Real vol = sx(i) * sy(j) * sz(k);
+                        T_pp += vol * sarr(i, j, k, GIdx::T);
+                        Ye_pp += vol * sarr(i, j, k, GIdx::Ye);
+                        rho_pp += vol * sarr(i, j, k, GIdx::rho);
+                    }
+                }
+            }
+            p.rdata(PIdx::T_erg) = T_pp;
+            p.rdata(PIdx::Ye) = Ye_pp;
+            p.rdata(PIdx::rho_g_inv_ccm) = rho_pp;
+        });
+}
+
 // Which directions a moment block is odd in under reflection. Bit d is set iff
 // block m carries an odd number of phat_d factors, in GIdx block order
 // N, Fx, Fy, Fz[, Pxx, Pxy, Pxz, Pyy, Pyz, Pzz]. A reflection across a face
@@ -813,6 +863,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                     p.rdata(PIdx::pupt) = 0;
                     // set the dVphase/dt values
                     p.rdata(PIdx::Vphase) = 0;
+                    // Hydro is a lookup, not a time-evolved field.
+                    p.rdata(PIdx::rho_g_inv_ccm) = 0;
+                    p.rdata(PIdx::T_erg) = 0;
+                    p.rdata(PIdx::Ye) = 0;
 
                     // Set the dN/dt and dNbar/dt values to zero
                     for (int comp = PIdx::N00_Re; comp < PIdx::TrHN; ++comp)
@@ -840,10 +894,11 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             const ParticleInterpolator<SHAPE_FACTOR_ORDER> sz(
                 delta_z, shape_factor_order_z);
 
-            // The following variables contains temperature, electron fraction, and density interpolated from grid quantities to particle positions
-            Real T_pp = 0;  // erg
-            Real Ye_pp = 0;
-            Real rho_pp = 0;  // g/ccm
+            // Background hydro interpolated onto this particle by
+            // interpolate_hydro_to_particles (copied here with copyParticles).
+            const Real T_pp = p.rdata(PIdx::T_erg);  // erg
+            const Real Ye_pp = p.rdata(PIdx::Ye);
+            const Real rho_pp = p.rdata(PIdx::rho_g_inv_ccm);  // g/ccm
 
             // phat = momentum direction (p/E), used for the flux contraction in the SI potential
             const amrex::Real phat[3] = {
@@ -900,11 +955,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                             PhysConst::Mp * relativistic_correction;
                         V00_Re += matter_term;
                         V00_Rebar -= matter_term;
-
-                        // Interpolate the background matter scalars to the particle position.
-                        T_pp += vol * sarr(i, j, k, GIdx::T);
-                        Ye_pp += vol * sarr(i, j, k, GIdx::Ye);
-                        rho_pp += vol * sarr(i, j, k, GIdx::rho);
                     }
                 }
             }
@@ -1204,6 +1254,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             p.rdata(PIdx::pupt) = 0;
             // set the dVphase/dt values
             p.rdata(PIdx::Vphase) = 0;
+            // Hydro is a lookup, not a time-evolved field.
+            p.rdata(PIdx::rho_g_inv_ccm) = 0;
+            p.rdata(PIdx::T_erg) = 0;
+            p.rdata(PIdx::Ye) = 0;
         });
 }
 
