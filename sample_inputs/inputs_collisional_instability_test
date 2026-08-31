@@ -7,9 +7,7 @@ attenuation_vacuum = 1.0
 attenuation_matter = 1.0
 attenuation_self_interaction = 1.0
 
-cfl_factor = 0.5
-flavor_cfl_factor = 0.5
-collision_cfl_factor = 1e-3
+cfl_factor = 0
 
 integration.type = 1
 integration.rk.type = 4          # DormandPrince (0=User, 1=ForwardEuler, 2=Trapezoid, 3=SSPRK3, 4=RK4, 5=DormandPrince)
@@ -40,9 +38,6 @@ nsteps = 3000
 
 # Minimum timestep (s)
 minimum_time_step = 2e-12
-
-# Time step method
-time_step_method = 1 # 0 for adaptive time step, 1 for fixed time step with value minimum_time_step but RK4 has to be used.
 
 # Simulation end time
 end_time = 6.0e-09
