@@ -306,7 +306,6 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
         [=] AMREX_GPU_DEVICE(FlavoredNeutrinoContainer::ConstPTDType const& ptd,
                              const int p_index,
                              amrex::Array4<amrex::Real> const& sarr) {
-
             FlavoredNeutrinoContainer::FNParticleConstView p{ptd, p_index};
 
             //==============================================================//
