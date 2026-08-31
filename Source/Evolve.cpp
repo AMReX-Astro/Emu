@@ -52,8 +52,8 @@ Real compute_dt(const Geometry& geom, const MultiFab& /*state*/,
     const auto dxi = geom.CellSizeArray();
 
     // dt = (min(dx,dy,dz)/c) * cfl_factor
-    Real dt = std::min({dxi[0], dxi[1], dxi[2]}) / PhysConst::c *
-             parms->cfl_factor;
+    Real dt =
+        std::min({dxi[0], dxi[1], dxi[2]}) / PhysConst::c * parms->cfl_factor;
 
     if (dt < parms->minimum_time_step) dt = parms->minimum_time_step;
 
