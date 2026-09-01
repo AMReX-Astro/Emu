@@ -175,11 +175,10 @@ pipeline {
 		stage('Fermi-Dirac Reflecting 1D Spherical'){ steps{
 				dir('Exec'){
 					sh 'python ../Scripts/initial_conditions/st9_empty_particles_multi_energy.py'
-					sh 'python ../Scripts/initial_conditions/nsm_constant_background_rho_Ye_T_writer_spherical.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fermi_dirac_test_reflecting_spherical'
 					sh 'python ../Scripts/data_reduction/write_particles_all_domain.py'
 					sh 'python ../Scripts/tests/fermi_dirac_test.py'
-					sh 'rm -rf plt* *pdf rho_Ye_T.hdf5'
+					sh 'rm -rf plt* *pdf'
 					}
 				}
 			}
