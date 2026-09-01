@@ -100,8 +100,10 @@ Do_Pauli_blocking = 0 # If 1, it will multiply the inverse mean free path by 1 /
 #################
 # Background Ye, T and rho. Adding constant v for now
 #################
-read_rho_T_Ye_from_table = 1
-background_rho_Ye_T_table_name = "./rho_Ye_T.hdf5"
+read_rho_T_Ye_from_table = 0
+rho_g_ccm = 1802418929.1457505
+Ye = 0.46005958
+T_MeV = 5.0246353
 
 #################
 # Blackhole
@@ -115,8 +117,12 @@ bc_xlo = reflecting
 bc_xhi = reflecting
 bc_ylo = reflecting
 bc_yhi = reflecting
-bc_zlo = reflecting
-bc_zhi = reflecting
+bc_zlo = periodic
+bc_zhi = periodic
+
+vupx = 0.0
+vupy = 0.0
+vupz = 0.0
 
 #################
 # Tables
