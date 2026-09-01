@@ -1,9 +1,10 @@
 #include "FlavoredNeutrinoContainer.H"
 #include "Constants.H"
+#include "Metric.H"
 
 using namespace amrex;
 
-void FlavoredNeutrinoContainer::SyncLocation(int type) {
+void FlavoredNeutrinoContainer::SyncLocation(int type, int coord_sys) {
     BL_PROFILE("FlavoredNeutrinoContainer::SyncLocation");
 
     AMREX_ASSERT(type == Sync::CoordinateToPosition ||
@@ -22,15 +23,49 @@ void FlavoredNeutrinoContainer::SyncLocation(int type) {
             FNParticleView p{ptd, i};
 
             if (type == Sync::CoordinateToPosition) {
-                // Copy integrated position to the particle position.
-                p.pos(0) = p.rdata(PIdx::x);
-                p.pos(1) = p.rdata(PIdx::y);
-                p.pos(2) = p.rdata(PIdx::z);
+                FourVec pos_mesh;
+
+                //matching integrated particle coordinate system to mesh coordinate system
+                if (coord_sys == 0) {
+                    CartesianMetric metric;
+                    pos_mesh = metric.pos_conv(p);
+                } else if (coord_sys == 1) {
+                    CylindricalMetric metric;
+                    pos_mesh = metric.pos_conv(p);
+                } else {
+                    SphericalMetric metric;
+                    pos_mesh = metric.pos_conv(p);
+                }
+
+                // Copy converted integrated position to the particle position.
+                p.pos(0) = pos_mesh[1];
+                p.pos(1) = pos_mesh[2];
+                p.pos(2) = pos_mesh[3];
+
             } else if (type == Sync::PositionToCoordinate) {
-                // Copy the reset particle position back to the integrated position.
+                // Copy the reset particle position back to the integrated position (in mesh coordinate system)
                 p.rdata(PIdx::x) = p.pos(0);
                 p.rdata(PIdx::y) = p.pos(1);
                 p.rdata(PIdx::z) = p.pos(2);
+
+                //turning integrated particle coordinate system back to cartesian
+
+                FourVec pos_int;
+
+                if (coord_sys == 0) {
+                    CartesianMetric metric;
+                    pos_int = metric.pos_conv_inv(p);
+                } else if (coord_sys == 1) {
+                    CylindricalMetric metric;
+                    pos_int = metric.pos_conv_inv(p);
+                } else {
+                    SphericalMetric metric;
+                    pos_int = metric.pos_conv_inv(p);
+                }
+
+                p.rdata(PIdx::x) = pos_int[1];
+                p.rdata(PIdx::y) = pos_int[2];
+                p.rdata(PIdx::z) = pos_int[3];
             }
         });
     }
@@ -76,7 +111,42 @@ void FlavoredNeutrinoContainer::ApplyBoundaryConditions(
                 if (mode == BoundaryCondition::reflecting ||
                     mode == BoundaryCondition::outflow) {
                     p.pos(d) = reflected_pos;
+
+                    if (parms->coord_sys == 0) {
+                        CartesianMetric metric;
+                        metric.coord_conv(p);
+                    } else if (parms->coord_sys == 1) {
+                        CylindricalMetric metric;
+                        metric.coord_conv(p);
+                    } else {
+                        SphericalMetric metric;
+                        metric.coord_conv(p);
+                    }
+
                     p.rdata(PIdx::pupx + d) = -p.rdata(PIdx::pupx + d);
+
+                    if (parms->coord_sys == 0) {
+                        CartesianMetric metric;
+                        metric.coord_conv_inv(p);
+                    } else if (parms->coord_sys == 1) {
+                        CylindricalMetric metric;
+                        metric.coord_conv_inv(p);
+                    } else {
+                        SphericalMetric metric;
+                        metric.coord_conv_inv(p);
+                    }
+
+                    // p.rdata(PIdx::pupx) = p.rdata(PIdx::pupx) + 0.05*p.rdata(PIdx::pupt);
+                    //p.rdata(PIdx::pupy) = p.rdata(PIdx::pupy) + 0.05*p.rdata(PIdx::pupt);
+                    //p.rdata(PIdx::pupz) = p.rdata(PIdx::pupz) + 0.05*p.rdata(PIdx::pupt);
+
+                    //amrex::Real pmag = std::sqrt(p.rdata(PIdx::pupx)*p.rdata(PIdx::pupx)
+                    //        + p.rdata(PIdx::pupy)*p.rdata(PIdx::pupy)
+                    //        + p.rdata(PIdx::pupz)*p.rdata(PIdx::pupz));
+                    //amrex::Real scale = p.rdata(PIdx::pupt) / pmag;
+                    //p.rdata(PIdx::pupx) *= scale;
+                    //p.rdata(PIdx::pupy) *= scale;
+                    //p.rdata(PIdx::pupz) *= scale;
 
                     // Outflow: zero the density matrix so the particle carries
                     // nothing back into the domain (no incoming flux).

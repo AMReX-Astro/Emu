@@ -35,9 +35,26 @@ void Euler(EParticle& p, Metric& metric, double dt, int steps) {
     }
 }
 
+void copy_particle(EParticle& dst, const EParticle& src) {
+    for (int c = 0; c < PIdx::nattribs; ++c) {
+        dst.rdata(c) = src.rdata(c);
+    }
+}
+
 int main() {
     //declaring and initializing the particle
-    EParticle p;
+
+    //creating a particle structure of arrays with nattribs attributes and 2 particles
+    amrex::ParticleReal soa[PIdx::nattribs][2] = {};
+
+    //ptd points to which place in memory holds the particular attribute for each particle
+    FlavoredNeutrinoContainer::PTDType ptd{};
+
+    for (int c = 0; c < PIdx::nattribs; ++c) {
+        ptd.m_rdata[c] = &soa[c][0];
+    }
+
+    EParticle p{ptd, 0};
 
     p.rdata(PIdx::time) = 0.0;
     p.rdata(PIdx::x) = 1.0;
@@ -51,9 +68,9 @@ int main() {
     p.rdata(PIdx::pupz) = 2.0;
 
     //duplicate initial particle
-    EParticle p1;
+    EParticle p1{ptd, 1};
 
-    p1 = p;
+    copy_particle(p1, p);
 
     //time step setup
     double t = 5;
@@ -84,6 +101,17 @@ int main() {
     assert(std::abs(p.rdata(PIdx::pupz) - 2.0) < tol);
     assert(std::abs(v - 32.0) < 1e-3);
 
+    //tetrad components at the final position (cartesian: must be unchanged)
+    const FourVec X1 = metric1.pos_conv(p);
+    const FourVec V1 = {p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),
+                        p.rdata(PIdx::pupy), p.rdata(PIdx::pupz)};
+    const FourVec Vt1 = metric1.tetrad_conv(V1, X1[1], X1[2], X1[3]);
+
+    assert(std::abs(Vt1[0] - 3.0) < tol);
+    assert(std::abs(Vt1[1] - 2.0) < tol);
+    assert(std::abs(Vt1[2] - 1.0) < tol);
+    assert(std::abs(Vt1[3] - 2.0) < tol);
+
     // Printing out final state values and volume
     std::cout << "final values in cartesian coordinates\n";
     std::cout << "time = " << p.rdata(PIdx::time) << "\n";
@@ -95,13 +123,17 @@ int main() {
     std::cout << "py   = " << p.rdata(PIdx::pupy) << "\n";
     std::cout << "pz   = " << p.rdata(PIdx::pupz) << "\n";
     std::cout << "v   = " << v << "\n";
+    std::cout << "pt_tetrad = " << Vt1[0] << "\n";
+    std::cout << "px_tetrad = " << Vt1[1] << "\n";
+    std::cout << "py_tetrad = " << Vt1[2] << "\n";
+    std::cout << "pz_tetrad = " << Vt1[3] << "\n";
 
     //Cylindrical test
     //******************
 
     CylindricalMetric metric2;
 
-    p = p1;
+    copy_particle(p, p1);
 
     Euler(p, metric2, dt, steps);  //Euler does the time integration
 
@@ -121,6 +153,17 @@ int main() {
     assert(std::abs(p.rdata(PIdx::pupz) - 2.0) < tol);
     assert(std::abs(v - 96.0) < 1e-3);
 
+    //tetrad components at the final position, native (s,phi,z)
+    const FourVec X2 = metric2.pos_conv(p);
+    const FourVec V2 = {p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),
+                        p.rdata(PIdx::pupy), p.rdata(PIdx::pupz)};
+    const FourVec Vt2 = metric2.tetrad_conv(V2, X2[1], X2[2], X2[3]);
+
+    assert(std::abs(Vt2[0] - 3.0) < tol);        //time untouched
+    assert(std::abs(Vt2[1] - 2.2274141) < tol);  //p_s
+    assert(std::abs(Vt2[2] + 0.1965365) < tol);  //p_phi
+    assert(std::abs(Vt2[3] - 2.0) < tol);        //p_z
+
     metric2.coord_conv(
         p);  //converting the 4-position and 4-momentum into cylindrical coordinates
 
@@ -135,6 +178,10 @@ int main() {
     std::cout << "py   = " << p.rdata(PIdx::pupy) << "\n";
     std::cout << "pz   = " << p.rdata(PIdx::pupz) << "\n";
     std::cout << "v   = " << v << "\n";
+    std::cout << "pt_tetrad   = " << Vt2[0] << "\n";
+    std::cout << "ps_tetrad   = " << Vt2[1] << "\n";
+    std::cout << "pphi_tetrad = " << Vt2[2] << "\n";
+    std::cout << "pz_tetrad   = " << Vt2[3] << "\n";
 
     metric2.coord_conv_inv(p);
 
@@ -143,7 +190,7 @@ int main() {
 
     SphericalMetric metric3;
 
-    p = p1;
+    copy_particle(p, p1);
 
     Euler(p, metric3, dt, steps);  //Euler does the time integration
 
@@ -161,6 +208,17 @@ int main() {
     assert(std::abs(p.rdata(PIdx::pupz) - 2.0) < tol);
     assert(std::abs(v - 114.2616) < 1e-3);
 
+    //tetrad components at the final position, native (r,theta,phi)
+    const FourVec X3 = metric3.pos_conv(p);
+    const FourVec V3 = {p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),
+                        p.rdata(PIdx::pupy), p.rdata(PIdx::pupz)};
+    const FourVec Vt3 = metric3.tetrad_conv(V3, X3[1], X3[2], X3[3]);
+
+    assert(std::abs(Vt3[0] - 3.0) < tol);        //time untouched
+    assert(std::abs(Vt3[1] - 2.9925280) < tol);  //p_r
+    assert(std::abs(Vt3[2] + 0.0784188) < tol);  //p_theta
+    assert(std::abs(Vt3[3] + 0.1965365) < tol);  //p_phi
+
     metric3.coord_conv(
         p);  //converting the 4-position and 4-momentum into spherical coordinates
 
@@ -175,6 +233,10 @@ int main() {
     std::cout << "py   = " << p.rdata(PIdx::pupy) << "\n";
     std::cout << "pz   = " << p.rdata(PIdx::pupz) << "\n";
     std::cout << "v   = " << v << "\n";
+    std::cout << "pt_tetrad     = " << Vt3[0] << "\n";
+    std::cout << "pr_tetrad     = " << Vt3[1] << "\n";
+    std::cout << "ptheta_tetrad = " << Vt3[2] << "\n";
+    std::cout << "pphi_tetrad   = " << Vt3[3] << "\n";
 
     metric3.coord_conv_inv(p);
 }

@@ -172,6 +172,29 @@ pipeline {
 			}
 		}
 
+		stage('Fermi-Dirac Reflecting 1D Spherical'){ steps{
+				dir('Exec'){
+					sh 'python ../Scripts/initial_conditions/st9_empty_particles_multi_energy.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fermi_dirac_test_reflecting_spherical'
+					sh 'python ../Scripts/data_reduction/write_particles_all_domain.py'
+					sh 'python ../Scripts/tests/fermi_dirac_test.py'
+					sh 'rm -rf plt* *pdf'
+					}
+				}
+			}
+
+		stage('Radiating sphere'){ steps{
+				dir('Exec'){
+					sh 'python ../Scripts/initial_conditions/st_radiating_sphere.py'
+					sh 'python ../Scripts/initial_conditions/radiating_sphere_background_writer.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_radiating_sphere_test'
+					sh 'python ../Scripts/data_reduction/convertToHDF5_split.py'
+					sh 'python ../Scripts/tests/radiating_sphere_test.py'
+					sh 'rm -rf plt* mesh_plt*.h5 rho_Ye_T.hdf5 reduced0D.dat'
+				}
+			}
+		}
+
 		stage('Metric test'){ steps{
 				dir('unit_test'){
 					sh 'make'

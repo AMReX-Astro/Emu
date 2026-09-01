@@ -8,3 +8,4 @@ Backtrace.*
 *.dat
 *.h5
 *.pdf
+*.hdf5

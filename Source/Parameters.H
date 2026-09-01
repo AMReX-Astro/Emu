@@ -16,7 +16,9 @@ enum { periodic = 0, reflecting = 1, outflow = 2 };
 //=========================================//
 // Structure of global parameter variables //
 //=========================================//
+
 struct TestParams : public amrex::Gpu::Managed {
+    int coord_sys;  // 0 = Cartesian, 1 = Cylindrical, 2 = Spherical
     IntVect ncell;  // Number of cells in the domain
     IntVect
         nppc;  // Number of points of particle emission per cell in each dimension
@@ -34,6 +36,7 @@ struct TestParams : public amrex::Gpu::Managed {
     Real vupx_in;  // X-component of velocity, cm/s
     Real vupy_in;  // Y-component, cm/s
     Real vupz_in;  // Z-component, cm/s
+
     Real cfl_factor, flavor_cfl_factor, collision_cfl_factor;
     bool do_restart;  // Flag to restart from a previous simulation
     std::string
@@ -118,6 +121,8 @@ struct TestParams : public amrex::Gpu::Managed {
 
     void Initialize() {
         ParmParse pp;
+        coord_sys = 0;
+        pp.query("coord_sys", coord_sys);
         pp.get("ncell", ncell);
         pp.get("Lx", Lx);
         pp.get("Ly", Ly);
