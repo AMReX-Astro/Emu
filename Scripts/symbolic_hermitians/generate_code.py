@@ -358,12 +358,17 @@ if __name__ == "__main__":
         N_eq.H = HermitianMatrix(args.N, "f_eq_{}{}_{}"+t).H * V_phase / (2*pi*hbar*c)**3
         code += declare(N_eq)
 
-        # Collision term C = {Gamma, N_eq - N}.
+        # Collision term C = {Gamma, N_eq - N} + C_in_scat - kappa_brakets ○ N.
+        # kappa_brakets is a real flavor matrix (IMFP array); multiply Re/Im of N
+        # by the same real kappa_ij (Hadamard product).
         Gamma = HermitianMatrix(args.N, "Gamma_{}{}_{}"+t)
         N     = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
         N_eq  = HermitianMatrix(args.N, "N_eq_{}{}_{}"+t)
+        C_scat = HermitianMatrix(args.N, "C_in_scat_pp_{}{}_{}"+t)
+        kappa = sympy.Matrix(args.N, args.N, lambda i, j: sympy.symbols("IMFP_scat"+t+"_brakets[{}][{}]".format(i, j), real=True))
         C = HermitianMatrix(args.N, "C_{}{}_{}"+t)
-        C.H = Gamma.H * (N_eq.H - N.H) + (N_eq.H - N.H) * Gamma.H
+        C.H = (Gamma.H * (N_eq.H - N.H) + (N_eq.H - N.H) * Gamma.H
+               + C_scat.H - kappa.multiply_elementwise(N.H))
         code += declare(C)
 
         # QKE right-hand side: dN/dt = c*C - (i/hbar)*attenuation*[H, N].
@@ -384,3 +389,44 @@ if __name__ == "__main__":
         code.append("p.rdata(PIdx::TrHN) += ("+sympy.cxxcode(sympy.simplify(TrHN))+");")
 
     write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_dfdt_fill"))
+
+    #=======================================#
+    # Evolve.cpp_C_in_scat_pp_declare #
+    #=======================================#
+    # Zero-initialized particle-local isotropic in-scattering Hermitian
+    # components (upper triangle, Re then Im, neutrinos then antineutrinos).
+    code = []
+    for t in tails:
+        names = HermitianMatrix(args.N, "C_in_scat_pp_{}{}_{}"+t).header()
+        for name in names:
+            code.append("Real {} = 0;".format(name))
+    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_C_in_scat_pp_declare"))
+
+    #=========================================#
+    # Evolve.cpp_interpolate_from_mesh_fill_scattering #
+    #=========================================#
+    # Interpolate isotropic in-scattering mesh coefficients onto the particle.
+    # For each independent Hermitian component (upper triangle, Re then Im):
+    #     C_in_scat_pp_{ij}_{Re/Im}{bar} += vol * sarr(..., C_in_scat_iso_index(...))
+    # Neutrinos use flavor_offset = PIdx::offset(...); antineutrinos add nubar.
+    code = []
+    for t in tails:
+        names = HermitianMatrix(args.N, "C_in_scat_pp_{}{}_{}"+t).header()
+        name_iter = iter(names)
+        for i in range(args.N):
+            for j in range(i, args.N):
+                reim_list = ["Re"] if i == j else ["Re", "Im"]
+                for reim in reim_list:
+                    name = next(name_iter)
+                    if i == j:
+                        offset = "PIdx::offset({}, {})".format(i, j)
+                    else:
+                        offset = "PIdx::offset({}, {}, PIdx::{})".format(i, j, reim)
+                    if t == "bar":
+                        offset = "nubar + " + offset
+                    code.append(
+                        "{} += vol * sarr(i, j, k, GIdx::C_in_scat_iso_index(energy_bin, {}));".format(
+                            name, offset)
+                    )
+    write_code(code, os.path.join(args.emu_home, "Source/generated_files", "Evolve.cpp_interpolate_from_mesh_fill_scattering"))
+

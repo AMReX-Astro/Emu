@@ -1,20 +1,39 @@
 '''
-Created by Erick Urquilla, Department of Physics and Astronomy, University of Tennessee, Knoxville.
-This script is used to create empty particles at the energy bin center of the Nulib table.
+Multi-energy isotropic scattering test — write particle_input.dat.
+
+Created by Erick Urquilla, Department of Physics and Astronomy,
+University of Tennessee, Knoxville.
+
+Same +x beam setup as the monochromatic test (st12), but now with 13
+energy bins taken from the NuLib table (the first five NuLib bins are
+dropped so the run is cheaper). Each bin has a single occupied beam
+along +x; other directions start empty. Phase-space volume uses each
+bin's NuLib lower/upper edges.
+
+Run from Exec/. Pair with the matching multi-energy isotropic-scattering
+inputs file when available.
 '''
 import numpy as np
 import sys
 import os
 importpath = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(importpath)
-sys.path.append(importpath+"/../data_analysis")
+sys.path.append(importpath+"/../data_reduction")
 from initial_condition_tools import uniform_sphere, write_particles
 import amrex_plot_tools as amrex
 
-# generation parameters
-# MUST MATCH THE INPUTS IN THE EMU INPUT FILE!
-nphi_equator = 16 # number of direction in equator
-NF = 3 # number of flavors
+NF = 3 # Number of flavors
+nphi_equator = 16 # number of direction in equator ---> theta = pi/2
+
+nu_e = 1e32 # 1/ccm
+nu_mu = 2e32 # 1/ccm
+nu_tau = 3e32 # 1/ccm
+nu_ebar = 4e32 # 1/ccm
+nu_mubar = 5e32 # 1/ccm
+nu_taubar = 6e32 # 1/ccm
+
+# Energy bin size
+energy_bin_size_MeV = 0.8339001570751987 # Energy in Mev
 
 '''
 # Energy bins from NuLib table (No cutted)
@@ -45,7 +64,7 @@ energies_bottom_erg = np.array(energies_bottom_Mev) * 1e6*amrex.eV # Energy in e
 energies_top_erg    = np.array(energies_top_Mev   ) * 1e6*amrex.eV # Energy in ergs
 
 # Generate the number of energy bins
-n_energies = len(energies_center_erg)
+n_energies = len(energies_center_Mev)
 
 # Get variable keys
 rkey, ikey = amrex.get_particle_keys(NF, ignore_pos=True)
@@ -70,6 +89,16 @@ for i, energy_bin in enumerate(energies_center_erg):
     particles[i , : , rkey["pupx"] : rkey["pupz"]+1 ] = energy_bin * phat
     particles[i , : , rkey["pupt"]                  ] = energy_bin
     particles[i , : , rkey["Vphase"]                ] = ( 4.0 * np.pi / n_directions ) * ( ( energies_top_erg[i] ** 3 - energies_bottom_erg[i] ** 3 ) / 3.0 )
+    
+    # Set values only for the direction where phat = [1, 0, 0]; others remain zero
+    for j, pdir in enumerate(phat):
+        if np.allclose(pdir, [1, 0, 0]):
+            particles[i, j, rkey["N00_Re"]    ] = nu_e
+            particles[i, j, rkey["N11_Re"]    ] = nu_mu
+            particles[i, j, rkey["N22_Re"]    ] = nu_tau
+            particles[i, j, rkey["N00_Rebar"] ] = nu_ebar
+            particles[i, j, rkey["N11_Rebar"] ] = nu_mubar
+            particles[i, j, rkey["N22_Rebar"] ] = nu_taubar
 
 # Reshape the particles array
 particles = particles.reshape(n_energies * n_directions, n_variables)

@@ -7,6 +7,7 @@
 #include <AMReX_REAL.H>
 #include <AMReX_Vector.H>
 #include <FlavoredNeutrinoContainer.H>
+#include "Constants.H"
 
 namespace GIdx {
 // x/y/z - direction of flux vector
@@ -22,8 +23,41 @@ enum {
     vupy,
     vupz,  // g/ccm, MeV, unitless, unitless (x3)
 #include "generated_files/Evolve.H_fill"
-    ncomp
+    ncomp_base,  // components always present besides C_in_scat
+    // Start of the isotropic in-scattering block. Runtime size is
+    // number_of_c_in_scat_energies * n_c_in_scat_per_energy. Per energy:
+    // neutrino Hermitian (PIdx::offset), then antineutrino.
+    C_in_scat_iso = ncomp_base
 };
+
+#if NUM_FLAVORS != 2 && NUM_FLAVORS != 3
+#error "NUM_FLAVORS must be 2 or 3 for isotropic scattering mesh coeffs"
+#endif
+
+// Hermitian storage per (nu or nubar) block: NF=2 -> 4, NF=3 -> 9.
+constexpr int n_c_in_scat_flavor = NUM_FLAVORS * NUM_FLAVORS;
+constexpr int n_c_in_scat_per_energy = 2 * n_c_in_scat_flavor;
+
+// Mesh C_in_scat energy-bin count: 1 for IMFP_method 0/1, NuLib ngroup
+// for IMFP_method 2. Independent of the particle-file number_of_energies.
+inline int number_of_c_in_scat_energies = 0;
+
+// Runtime mesh component count: base fields plus one C_in_scat Hermitian
+// pair (nu + nubar) per mesh energy bin.
+inline int ncomp() {
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        number_of_c_in_scat_energies > 0,
+        "GIdx::ncomp() requires number_of_c_in_scat_energies");
+    return ncomp_base + number_of_c_in_scat_energies * n_c_in_scat_per_energy;
+}
+
+// Mesh index of C_in_scat_iso_energy_{ie}_flavor_* for energy_0based and
+// flavor_offset in PIdx::offset order (nubar starts at n_c_in_scat_flavor).
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE int C_in_scat_iso_index(
+    int energy_0based, int flavor_offset) {
+    return C_in_scat_iso + energy_0based * n_c_in_scat_per_energy +
+           flavor_offset;
+}
 
 extern amrex::Vector<std::string> names;
 
@@ -62,5 +96,23 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
  */
 void empty_particles_inside_blackhole(FlavoredNeutrinoContainer& neutrinos,
                                       const TestParams* parms);
+
+// NuLib group index for a particle energy (erg). Aborts if no bin matches.
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE int find_nulib_energy_bin(
+    amrex::Real neutrino_energy_erg, const double* energy_bottom,
+    const double* energy_top, int ngroup) {
+    const double neutrino_energy_MeV =
+        neutrino_energy_erg / (1e6 * CGSUnitsConst::eV);
+    int idx_group = -1;
+    for (int i = 0; i < ngroup; ++i) {
+        if (neutrino_energy_MeV >= energy_bottom[i] &&
+            neutrino_energy_MeV <= energy_top[i]) {
+            idx_group = i;
+            break;
+        }
+    }
+    if (idx_group == -1) AMREX_ASSERT(0);
+    return idx_group;
+}
 
 #endif

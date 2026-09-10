@@ -1,6 +1,11 @@
 '''
-Created by Erick Urquilla, Department of Physics and Astronomy, University of Tennessee, Knoxville.
-This script is used to create the empty monoenergetic particles
+Monochromatic isotropic scattering test — write particle_input.dat.
+
+Created by Erick Urquilla, Department of Physics and Astronomy,
+University of Tennessee, Knoxville.
+
+Setup documentation (geometry, densities, opacities, expected behavior):
+  sample_inputs/inputs_monocromatic_isotropic_scattering_test
 '''
 import numpy as np
 import sys
@@ -14,10 +19,12 @@ import amrex_plot_tools as amrex
 NF = 3 # Number of flavors
 nphi_equator = 16 # number of direction in equator ---> theta = pi/2
 
-nu_e = 0.0 # 1/ccm
-nu_x = 0.0 # 1/ccm
-nu_ebar = 0.0 # 1/ccm
-nu_xbar = 0.0 # 1/ccm
+nu_e = 1e32 # 1/ccm
+nu_mu = 2e32 # 1/ccm
+nu_tau = 3e32 # 1/ccm
+nu_ebar = 4e32 # 1/ccm
+nu_mubar = 5e32 # 1/ccm
+nu_taubar = 6e32 # 1/ccm
 
 # Energy bin size
 energy_bin_size_MeV = 0.8339001570751987 # Energy in Mev
@@ -60,10 +67,16 @@ for i, energy_bin in enumerate(energies_center_erg):
     particles[i , : , rkey["pupx"] : rkey["pupz"]+1 ] = energy_bin * phat
     particles[i , : , rkey["pupt"]                  ] = energy_bin
     particles[i , : , rkey["Vphase"]                ] = ( 4.0 * np.pi / n_directions ) * ( ( energies_top_erg[i] ** 3 - energies_bottom_erg[i] ** 3 ) / 3.0 )
-    particles[i , : , rkey["N00_Re"]                ] = nu_e
-    particles[i , : , rkey["N11_Re"]                ] = nu_x
-    particles[i , : , rkey["N00_Rebar"]             ] = nu_ebar
-    particles[i , : , rkey["N11_Rebar"]             ] = nu_xbar
+    
+    # Set values only for the direction where phat = [1, 0, 0]; others remain zero
+    for j, pdir in enumerate(phat):
+        if np.allclose(pdir, [1, 0, 0]):
+            particles[i, j, rkey["N00_Re"]    ] = nu_e
+            particles[i, j, rkey["N11_Re"]    ] = nu_mu
+            particles[i, j, rkey["N22_Re"]    ] = nu_tau
+            particles[i, j, rkey["N00_Rebar"] ] = nu_ebar
+            particles[i, j, rkey["N11_Rebar"] ] = nu_mubar
+            particles[i, j, rkey["N22_Rebar"] ] = nu_taubar
 
 # Reshape the particles array
 particles = particles.reshape(n_energies * n_directions, n_variables)

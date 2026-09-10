@@ -1,0 +1,176 @@
+# =============================================================================
+# Monochromatic isotropic scattering test (EMU inputs)
+# =============================================================================
+#
+# Purpose
+# -------
+# Test the isotropic components of the scattering kernel. The case of study
+# is an initial monoenergetic beam along +x that isotropizes under constant
+# scattering opacities.
+#
+# Geometry / particles
+# --------------------
+# - Domain: ncell = (3,3,3), Lx = Ly = Lz = 3e4 cm
+#   (27 equal cells; cell volume = (1e4 cm)^3)
+# - Single energy beam (particle file from
+#   Scripts/initial_conditions/st12_monocromatic_isotropic_scattering_test.py)
+# - 92 direction particles per energy bin per cell
+#   (must match number_of_directions in the particle file header;
+#    rows = number_of_energies * number_of_directions)
+#
+# Initial number densities (1/ccm) in the +x beam direction only
+# -------------------------------------------------------------
+#   nu_e = 1e32, nu_mu = 2e32, nu_tau = 3e32
+#   nu_ebar = 4e32, nu_mubar = 5e32, nu_taubar = 6e32
+#
+# Expected behavior
+# -----------------
+# Isotropic scattering redistributes the beam over angle. Asymptotically,
+# each direction approaches n_initial / 92.
+#
+# Scattering opacities used for this test (1/cm)
+# ----------------------------------------------
+#   IMFP_scat0_cm = 5e-4,    IMFP_scat1_cm = 5.1e-4,    IMFP_scat2_cm = 5.2e-4
+#   IMFP_scat0bar_cm = 5.3e-4, IMFP_scat1bar_cm = 5.4e-4, IMFP_scat2bar_cm = 5.5e-4
+#
+# Related scripts
+# ---------------
+#   Scripts/initial_conditions/st12_monocromatic_isotropic_scattering_test.py
+#   Scripts/tests/coll_mono_isot_scat_test.py
+# =============================================================================
+
+perturbation_type = 0
+perturbation_amplitude = 0.0
+
+# attenuation parameters to time derivative of N due to hamiltonians
+attenuation_hamiltonians = 0.0
+attenuation_vacuum = 0.0
+attenuation_matter = 0.0
+attenuation_self_interaction = 0.0
+
+cfl_factor = 0.5
+flavor_cfl_factor = 0.5
+collision_cfl_factor = 1e-3
+
+integration.type = 1
+integration.rk.type = 4          # DormandPrince (0=User, 1=ForwardEuler, 2=Trapezoid, 3=SSPRK3, 4=RK4, 5=DormandPrince)
+integration.use_adaptive_time_step = 0
+
+# Domain size in 3D index space
+ncell = (3, 3, 3)
+Lx = 3e4 # cm
+Ly = 3e4 # cm
+Lz = 3e4 # cm
+
+# Number of particles per cell
+nppc  = (1, 1, 1)
+particle_data_filename = "particle_input.dat"
+
+# Maximum size of each grid in the domain
+max_grid_size_x = 1
+max_grid_size_y = 1
+max_grid_size_z = 1
+
+# Number of steps to run
+nsteps = 1000
+
+# Minimum timestep (s)
+minimum_time_step = 1e-9
+
+# Time step method
+time_step_method = 1 # 0 for adaptive time step, 1 for fixed time step with value minimum_time_step but RK4 has to be used.
+
+# Simulation end time
+end_time = 1e-6
+
+# Make FPE signal errors so we get a Backtrace
+amrex.fpe_trap_invalid=1
+
+# give background fluid conditions
+rho_g_ccm = 0
+T_MeV = 7.0
+Ye = 0
+# Adding constant background v for now
+vupx = 0.0
+vupy = 0.0
+vupz = 0.0
+
+# Write plotfiles
+write_plot_every = 10
+
+# Write particle data in plotfiles
+write_plot_particles_every = 10
+
+# checkpointing
+do_restart = 0
+restart_dir = ""
+
+# deposition method --> 0: old slow method, 1: new fast method
+# scattering works only with method zero (for now)
+deposit_method = 0
+
+###############################
+# NEUTRINO PHYSICS PARAMETERS #
+###############################
+# see first column of table 14.7 in http://pdg.lbl.gov/2019/reviews/rpp2019-rev-neutrino-mixing.pdf
+
+# mass state 1 mass in eV [NO/IO:-sqrt(7.39e-5)]
+mass1_eV = 0.04866 #-0.008596511
+
+# mass state 2 mass in eV (define at 0 arbitrarily because oscillations only sensitive to deltaM^2)
+mass2_eV = 0
+
+# mass state 3 mass in eV [NO:sqrt(2.449e-3) IO:-sqrt(2.509e-3)]
+mass3_eV = 0
+
+# 1-2 mixing angle in degrees [NO/IO:33.82]
+theta12_degrees = 1e-6
+
+# 2-3 mixing angle in degrees [NO:8.61 IO:8.65]
+theta23_degrees = 0
+
+# 1-3 mixing angle in degrees [NO:48.3 IO:48.6]
+theta13_degrees = 0
+
+# Majorana angle 1 in degrees
+alpha1_degrees = 0
+
+# Majorana angle 2 in degrees
+alpha2_degrees = 0
+
+# CP-violating phase in degrees [NO:222 IO:285]
+deltaCP_degrees = 0
+
+#################
+# opacity stuff #
+#################
+IMFP_method = 1
+attenuation_absorption_opacity = 0
+attenuation_scattering_opacity = 1
+
+IMFP_scat0_cm = 5e-4 # inv cm
+IMFP_scat1_cm = 5.1e-4 # inv cm
+IMFP_scat2_cm = 5.2e-4 # inv cm
+IMFP_scat0bar_cm = 5.3e-4 # inv cm
+IMFP_scat1bar_cm = 5.4e-4 # inv cm
+IMFP_scat2bar_cm = 5.5e-4 # inv cm
+
+#################
+# Background Ye, T and rho
+#################
+read_rho_T_Ye_from_table = 0
+
+#################
+# Blackhole
+#################
+do_blackhole = 0
+
+#################
+# Boundary conditions
+#################
+bc_xlo = periodic
+bc_xhi = periodic
+bc_ylo = periodic
+bc_yhi = periodic
+bc_zlo = periodic
+bc_zhi = periodic

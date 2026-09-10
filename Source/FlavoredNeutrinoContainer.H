@@ -138,10 +138,16 @@ class FlavoredNeutrinoContainer
 
    public:
     inline static Real Vvac_max;
+    inline static int number_of_directions;
+    inline static int number_of_energies;
 
     FlavoredNeutrinoContainer(const amrex::Geometry& a_geom,
                               const amrex::DistributionMapping& a_dmap,
                               const amrex::BoxArray& a_ba);
+
+    // Parse number_of_flavors / number_of_directions / number_of_energies
+    // from particle_data_filename. Safe to call on init and restart paths.
+    static void ReadParticleFileHeaders(const std::string& filename);
 
     void InitParticles(const TestParams* parms);
 

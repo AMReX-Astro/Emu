@@ -7,7 +7,9 @@ attenuation_vacuum = 1.0
 attenuation_matter = 1.0
 attenuation_self_interaction = 1.0
 
+collision_cfl_factor = 55
 cfl_factor = 0.5
+flavor_cfl_factor = 0
 
 integration.type = 1
 integration.rk.type = 4          # DormandPrince (0=User, 1=ForwardEuler, 2=Trapezoid, 3=SSPRK3, 4=RK4, 5=DormandPrince)
@@ -29,26 +31,33 @@ max_grid_size_y = 2
 max_grid_size_z = 2
 
 # Number of steps to run
-nsteps = 6000
+nsteps = 1000
 
 # Minimum timestep (s)
-minimum_time_step = 1e-15
+minimum_time_step = 1e-6
+
+# Time step method
+time_step_method = 1 # 0 for adaptive time step, 1 for fixed time step with value minimum_time_step but RK4 has to be used.
 
 # Simulation end time
-end_time = 5.0e9
+end_time = 1e-3
 
 # Make FPE signal errors so we get a Backtrace
 amrex.fpe_trap_invalid=1
 
 # Write plotfiles
-write_plot_every = 6000
+write_plot_every = 25
 
 # Write particle data in plotfiles
-write_plot_particles_every = 6000
+write_plot_particles_every = 25
 
 # checkpointing
 do_restart = 0
 restart_dir = ""
+
+# deposition method --> 0: old slow method, 1: new fast method
+# scattering works only with method zero (for now)
+deposit_method = 0
 
 ###############################
 # NEUTRINO PHYSICS PARAMETERS #
@@ -86,10 +95,8 @@ deltaCP_degrees = 222
 # opacity stuff #
 #################
 IMFP_method = 2
-attenuation_absorption_opacity = 1
-attenuation_scattering_opacity = 0
-Do_Pauli_blocking = 0 # If 1, it will multiply the inverse mean free path by 1 / (1 - f_eq); if 0, do nothing.
-set_equilibrium_distribution = 0
+attenuation_absorption_opacity = 0
+attenuation_scattering_opacity = 1
 
 #################
 # Background Ye, T and rho. Adding constant v for now
@@ -115,5 +122,11 @@ bc_zhi = periodic
 #################
 # Tables
 #################
+
+# Tables in Jenkins
 nulib_table_name = "/NuLib/NuLib_SFHo.h5"
 nuceos_table_name = "/EOS/LS220_234r_136t_50y_analmu_20091212_SVNr26.h5"
+
+# Tables in erick's home directory in cassowary
+# nulib_table_name = "/home/erick/tables/NuLib_SFHo.h5"
+# nuceos_table_name = "/home/erick/tables/LS220.h5"
