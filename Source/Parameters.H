@@ -34,12 +34,11 @@ struct TestParams : public amrex::Gpu::Managed {
     Real vupx_in;  // X-component of velocity, cm/s
     Real vupy_in;  // Y-component, cm/s
     Real vupz_in;  // Z-component, cm/s
-    Real cfl_factor, flavor_cfl_factor, collision_cfl_factor;
+    Real cfl_factor;
     bool do_restart;  // Flag to restart from a previous simulation
     std::string
         restart_dir;  // Directory path to restart from in case do_restart is true
     Real minimum_time_step;  // Minimum time step allowed in the simulation
-    int time_step_method;    // Time step method flag
 
     // 0 = never sort, 1 = SortParticlesByCell (plain
     // cell-major), 2 = SortParticlesForDeposition (ordering chosen by AMReX to
@@ -129,14 +128,11 @@ struct TestParams : public amrex::Gpu::Managed {
         pp.get("nsteps", nsteps);
         pp.get("end_time", end_time);
         pp.get("cfl_factor", cfl_factor);
-        pp.get("flavor_cfl_factor", flavor_cfl_factor);
-        pp.get("collision_cfl_factor", collision_cfl_factor);
         pp.get("write_plot_every", write_plot_every);
         pp.get("write_plot_particles_every", write_plot_particles_every);
         pp.get("do_restart", do_restart);
         pp.get("restart_dir", restart_dir);
         pp.get("minimum_time_step", minimum_time_step);
-        pp.get("time_step_method", time_step_method);
 
         // 0 = no sorting, 1 = SortParticlesByCell, 2 = SortParticlesForDeposition.
         // Defaults to 1: fastest in testing on V100

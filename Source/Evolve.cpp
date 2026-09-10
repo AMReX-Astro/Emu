@@ -28,172 +28,32 @@ void Initialize() {
 }  // namespace GIdx
 
 /**
- * @brief Computes the time step size for the simulation based on various CFL factors and conditions.
- *
- * This function calculates the time step size considering translation, flavor, and collision CFL factors.
- * It ensures that the time step is limited by the smallest of these factors to maintain stability.
+ * @brief Computes the time step size for the simulation from the global CFL
+ * condition based on the grid cell size.
  *
  * @param geom The geometry of the simulation domain.
- * @param state The state MultiFab containing the simulation data.
+ * @param state Unused; kept for call-site compatibility.
  * @param parms Pointer to the structure containing simulation parameters.
  *
  * @return The computed time step size.
- *
- * @note At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.
- * @note The function skips black hole regions if specified in the parameters.
- * @note The function performs a reduction operation to find the minimum time step across all cells and MPI ranks.
  */
-Real compute_dt(const Geometry& geom, const MultiFab& state,
+Real compute_dt(const Geometry& geom, const MultiFab& /*state*/,
                 const TestParams* parms) {
     BL_PROFILE("compute_dt()");
-    // If the time step method is 1, return the minimum time step
-    if (parms->time_step_method == 1) {
-        return parms->minimum_time_step;
-    }
 
+    AMREX_ASSERT_WITH_MESSAGE(parms->cfl_factor >= 0.0,
+                              "Error: cfl_factor must be non-negative.");
     AMREX_ASSERT_WITH_MESSAGE(
-        parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0 ||
-            parms->collision_cfl_factor > 0.0,
-        "Error: At least one of cfl_factor, flavor_cfl_factor, or "
-        "collision_cfl_factor must be greater than 0.0.");
-
-    // Initialize the maximum real value
-    const Real max_real = std::numeric_limits<Real>::max();
+        parms->cfl_factor == 0.0 || parms->minimum_time_step > 0.0,
+        "Error: minimum_time_step must be greater than zero when cfl_factor "
+        "is nonzero.");
 
     // Get the cell size array
     const auto dxi = geom.CellSizeArray();
-    Real dt_translation = 0.0;
-    if (parms->cfl_factor > 0.0) {
-        // Calculate the time step size based on the translation CFL factor
-        // dt = (min(dx,dy,dz)/c) * cfl_factor
-        dt_translation = std::min({dxi[0], dxi[1], dxi[2]}) / PhysConst::c *
-                         parms->cfl_factor;
-    }
 
-    Real dt_flavor = 0.0;
-
-    if (parms->flavor_cfl_factor > 0.0 && parms->collision_cfl_factor > 0.0) {
-        ReduceOps<ReduceOpMin, ReduceOpMin, ReduceOpMin> reduce_op;
-        ReduceData<Real, Real, Real> reduce_data(reduce_op);
-        using ReduceTuple = typename decltype(reduce_data)::Type;
-        for (MFIter mfi(state); mfi.isValid(); ++mfi) {
-            const Box& bx = mfi.validbox();
-            auto const& fab = state.array(mfi);
-            Real V_vac_max = FlavoredNeutrinoContainer::Vvac_max;
-            reduce_op.eval(
-                bx, reduce_data,
-                [=] AMREX_GPU_DEVICE(int i, int j, int k) -> ReduceTuple {
-                    // Skip cells inside the black hole
-                    if (parms->do_blackhole == 1) {
-                        // Calculate the cell size
-                        double cell_size_x = parms->Lx / parms->ncell[0];
-                        double cell_size_y = parms->Ly / parms->ncell[1];
-                        double cell_size_z = parms->Lz / parms->ncell[2];
-                        // Calculate the cell center coordinates
-                        double x_cell_center = (i + 0.5) * cell_size_x;
-                        double y_cell_center = (j + 0.5) * cell_size_y;
-                        double z_cell_center = (k + 0.5) * cell_size_z;
-                        // Calculate the distance from the black hole center
-                        Real distance_from_bh =
-                            sqrt(pow(x_cell_center - parms->bh_center_x, 2) +
-                                 pow(y_cell_center - parms->bh_center_y, 2) +
-                                 pow(z_cell_center - parms->bh_center_z, 2));
-
-                        // Check if the cell is inside the black hole
-                        if (distance_from_bh < parms->bh_radius) {
-                            return {max_real, max_real, max_real};
-                        }
-                    }
-
-                    // V_stupid = Max(N_ab,Nbar_ab, Ye*rho/Mp)*4.0*sqrt(2)*GF
-                    // V_adaptive id the magnitud of vector the following vector
-                    // |vec{H}| = | sqrt(2)*GF * ( (N_ab - Nbar_ab) + (F - Fbar) + Ye*rho/Mp ) |
-
-                    Real V_adaptive = 0, V_adaptive2 = 0, V_stupid = 0;
-#include "generated_files/Evolve.cpp_compute_dt_fill"
-
-                    V_adaptive += V_vac_max;
-                    V_stupid += V_vac_max;
-
-                    V_adaptive *= parms->attenuation_hamiltonians;
-                    V_stupid *= parms->attenuation_hamiltonians;
-
-                    Real dt_adaptive = max_real;
-                    Real dt_stupid = max_real;
-                    Real dt_absorption = max_real;
-
-                    // Ensure that the minimum trace is not zero
-                    if (std::abs(V_adaptive) > 0.0) {
-                        dt_adaptive = parms->flavor_cfl_factor *
-                                      (PhysConst::hbar / std::abs(V_adaptive));
-                        dt_stupid = parms->flavor_cfl_factor *
-                                    (PhysConst::hbar / std::abs(V_stupid));
-                    }
-
-                    return {dt_adaptive, dt_stupid, dt_absorption};
-                });
-        }
-
-        // extract the reduced values from the combined reduced data structure
-        auto rv = reduce_data.value();
-        Real min_dt_adaptive = amrex::get<0>(rv);
-        Real min_dt_stupid = amrex::get<1>(rv);
-        Real min_dt_absorption = amrex::get<2>(rv);
-
-        // reduce across MPI ranks
-        ParallelDescriptor::ReduceRealMin(min_dt_adaptive);
-        ParallelDescriptor::ReduceRealMin(min_dt_stupid);
-        ParallelDescriptor::ReduceRealMin(min_dt_absorption);
-
-        // define the dt associated with each method
-        Real dt_flavor_adaptive = max_real;
-        Real dt_flavor_stupid = max_real;
-        Real dt_flavor_absorption = max_real;  // Initialize with infinity
-
-        if (parms->IMFP_method == 1) {
-            // Use the IMFPs from the input file and find the maximum absorption IMFP
-            double max_IMFP_abs = std::numeric_limits<
-                double>::lowest();  // Initialize max to lowest possible value
-            for (int i = 0; i < 2; ++i) {
-                for (int j = 0; j < NUM_FLAVORS; ++j) {
-                    max_IMFP_abs =
-                        std::max(max_IMFP_abs, parms->IMFP_abs[i][j]);
-                }
-            }
-            // Calculate dt_flavor_absorption
-            dt_flavor_absorption = (1 / (PhysConst::c * max_IMFP_abs)) *
-                                   parms->collision_cfl_factor;
-        }
-        if (parms->attenuation_hamiltonians != 0) {
-            dt_flavor_adaptive = min_dt_adaptive;
-            dt_flavor_stupid = min_dt_stupid;
-        }
-
-        // pick the appropriate timestep
-        dt_flavor =
-            min(dt_flavor_stupid, dt_flavor_adaptive, dt_flavor_absorption);
-    }
-
-    if (dt_flavor < 0.0) {
-        amrex::Print() << "Error: NaN value detected in N or Nbar. Aborting..."
-                       << std::endl;
-        AMREX_ASSERT(0);
-    }
-
-    Real dt = 0.0;
-    if (dt_translation != 0.0 && dt_flavor != 0.0) {
-        dt = std::min(dt_translation, dt_flavor);
-    } else {
-        if (dt_translation != 0.0) {
-            dt = dt_translation;
-        } else if (dt_flavor != 0.0) {
-            dt = dt_flavor;
-        } else {
-            amrex::Error(
-                "Timestep selection failed, both dt_translation and dt_flavor "
-                "are zero. Try using both cfl_factor and flavor_cfl_factor.");
-        }
-    }
+    // dt = (min(dx,dy,dz)/c) * cfl_factor
+    Real dt =
+        std::min({dxi[0], dxi[1], dxi[2]}) / PhysConst::c * parms->cfl_factor;
 
     if (dt < parms->minimum_time_step) dt = parms->minimum_time_step;
 
@@ -207,7 +67,6 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
         PhysConst::c * dt <= std::min({dxi[0], dxi[1], dxi[2]}),
         "timestep lets particles drift more than one cell; reduce cfl_factor "
         "or minimum_time_step");
-    // printf("dt = %g, dt_flavor = %g, dt_translation = %g\n", dt, dt_flavor, dt_translation);
 
     return dt;
 }
