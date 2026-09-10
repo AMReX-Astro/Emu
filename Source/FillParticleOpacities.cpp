@@ -7,17 +7,18 @@ using namespace amrex;
 using namespace nulib_private;
 
 AMREX_GPU_HOST_DEVICE
-void fill_particle_opacities(
-    const TestParams* parms, amrex::Real rho_pp, amrex::Real T_pp,
-    amrex::Real Ye_pp, const EOS_tabulated& EOS_tabulated_obj,
-    const NuLib_tabulated& NuLib_tabulated_obj,
-    const NuLib_energies& NuLib_energies_obj, amrex::Real neutrino_energy_erg,
-    amrex::Real IMFP_abs[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real IMFP_absbar[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real IMFP_scat[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real IMFP_scatbar[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real munu[NUM_FLAVORS][NUM_FLAVORS],
-    amrex::Real munubar[NUM_FLAVORS][NUM_FLAVORS]) {
+void fill_particle_opacities(const TestParams* parms, amrex::Real rho_pp,
+                             amrex::Real T_pp, amrex::Real Ye_pp,
+                             const EOS_tabulated& EOS_tabulated_obj,
+                             const NuLib_tabulated& NuLib_tabulated_obj,
+                             const NuLib_energies& NuLib_energies_obj,
+                             amrex::Real neutrino_energy_erg,
+                             amrex::Real IMFP_abs[NUM_FLAVORS][NUM_FLAVORS],
+                             amrex::Real IMFP_absbar[NUM_FLAVORS][NUM_FLAVORS],
+                             amrex::Real IMFP_scat[NUM_FLAVORS][NUM_FLAVORS],
+                             amrex::Real IMFP_scatbar[NUM_FLAVORS][NUM_FLAVORS],
+                             amrex::Real munu[NUM_FLAVORS][NUM_FLAVORS],
+                             amrex::Real munubar[NUM_FLAVORS][NUM_FLAVORS]) {
     // If opacity_method is 1, the code will use the inverse mean free paths in the input parameters to compute the collision term.
     if (parms->IMFP_method == 0) {
         // do nothing
@@ -72,9 +73,8 @@ void fill_particle_opacities(
                        << muhat_out << std::endl;
 #endif
         // munu_val : electron neutrino chemical potential
-        const double munu_val =
-            (mue_out - muhat_out) * 1e6 *
-            CGSUnitsConst::eV;  //munu -> "mu_e" - "muhat"
+        const double munu_val = (mue_out - muhat_out) * 1e6 *
+                                CGSUnitsConst::eV;  //munu -> "mu_e" - "muhat"
 
         munu[0][0] =
             munu_val;  // erg : Save neutrino chemical potential from EOS table in chemical potential matrix
@@ -86,8 +86,7 @@ void fill_particle_opacities(
         int* helperVarsInt_nulib =
             NuLib_tabulated_obj
                 .get_helperVarsInt_nulib();  // used via NULIBVAR_INT
-        double* energy_bottom =
-            NuLib_energies_obj.get_energy_bottom_nulib();
+        double* energy_bottom = NuLib_energies_obj.get_energy_bottom_nulib();
         double* energy_top = NuLib_energies_obj.get_energy_top_nulib();
 
         double neutrino_energy_MeV =
@@ -118,12 +117,12 @@ void fill_particle_opacities(
         if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES
-        amrex::Print()
-            << "(FillParticleOpacities.cpp) absorption_opacity[e] interpolated = "
-            << absorption_opacity << std::endl;
-        amrex::Print()
-            << "(FillParticleOpacities.cpp) scattering_opacity[e] interpolated = "
-            << scattering_opacity << std::endl;
+        amrex::Print() << "(FillParticleOpacities.cpp) absorption_opacity[e] "
+                          "interpolated = "
+                       << absorption_opacity << std::endl;
+        amrex::Print() << "(FillParticleOpacities.cpp) scattering_opacity[e] "
+                          "interpolated = "
+                       << scattering_opacity << std::endl;
 #endif
 
         IMFP_abs[0][0] = absorption_opacity;
@@ -137,12 +136,12 @@ void fill_particle_opacities(
         if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES
-        amrex::Print()
-            << "(FillParticleOpacities.cpp) absorption_opacity[a] interpolated = "
-            << absorption_opacity << std::endl;
-        amrex::Print()
-            << "(FillParticleOpacities.cpp) scattering_opacity[a] interpolated = "
-            << scattering_opacity << std::endl;
+        amrex::Print() << "(FillParticleOpacities.cpp) absorption_opacity[a] "
+                          "interpolated = "
+                       << absorption_opacity << std::endl;
+        amrex::Print() << "(FillParticleOpacities.cpp) scattering_opacity[a] "
+                          "interpolated = "
+                       << scattering_opacity << std::endl;
 #endif
 
         IMFP_absbar[0][0] = absorption_opacity;
@@ -156,12 +155,12 @@ void fill_particle_opacities(
         if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES
-        amrex::Print()
-            << "(FillParticleOpacities.cpp) absorption_opacity[x] interpolated = "
-            << absorption_opacity << std::endl;
-        amrex::Print()
-            << "(FillParticleOpacities.cpp) scattering_opacity[x] interpolated = "
-            << scattering_opacity << std::endl;
+        amrex::Print() << "(FillParticleOpacities.cpp) absorption_opacity[x] "
+                          "interpolated = "
+                       << absorption_opacity << std::endl;
+        amrex::Print() << "(FillParticleOpacities.cpp) scattering_opacity[x] "
+                          "interpolated = "
+                       << scattering_opacity << std::endl;
 #endif
 
         for (int i = 1; i < NUM_FLAVORS;
