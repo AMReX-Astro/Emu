@@ -7,9 +7,9 @@
 #include "EosTable.H"
 #include "EosTableFunctions.H"
 
+#include "FillParticleOpacities.H"
 #include "NuLibTable.H"
 #include "NuLibTableFunctions.H"
-#include "FillParticleOpacities.H"
 
 using namespace amrex;
 
