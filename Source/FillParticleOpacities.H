@@ -1,7 +1,11 @@
 #ifndef FILL_PARTICLE_OPACITIES_H_
 #define FILL_PARTICLE_OPACITIES_H_
 
+#include <cstdio>
+#include <string>
+
 #include <AMReX_GpuQualifiers.H>
+#include <AMReX_ParmParse.H>
 
 #include "EosTableFunctions.H"
 #include "NuLibTableFunctions.H"
