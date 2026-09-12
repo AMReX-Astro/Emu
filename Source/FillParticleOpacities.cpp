@@ -28,30 +28,19 @@ void fill_particle_opacities(
             scat_diag[i] = parms->IMFP_scat[0][i];
             scatbar_diag[i] = parms->IMFP_scat[1][i];
             if (interpolate_absorption_opacity == 1) {
-                IMFP_abs[i][i] =
-                    parms->IMFP_abs
-                        [0]
-                        [i];  // 1/cm : Read absorption inverse mean free path from input parameters file.
-                IMFP_absbar[i][i] =
-                    parms->IMFP_abs
-                        [1]
-                        [i];  // 1/cm : Read absorption inverse mean free path from input parameters file.
+                // Read absorption inverse mean free path [1/cm] from input parameters file.
+                IMFP_abs[i][i] = parms->IMFP_abs[0][i];
+                IMFP_absbar[i][i] = parms->IMFP_abs[1][i];
             }
             if (interpolate_scattering_opacity == 1) {
-                IMFP_scat[i][i] = scat_diag
-                    [i];  // 1/cm : Read scattering inverse mean free path from input parameters file.
-                IMFP_scatbar[i][i] = scatbar_diag
-                    [i];  // 1/cm : Read scattering inverse mean free path from input parameters file.
+                // Read scattering inverse mean free path [1/cm] from input parameters file.
+                IMFP_scat[i][i] = scat_diag[i];
+                IMFP_scatbar[i][i] = scatbar_diag[i];
             }
             if (interpolate_chemical_potentials == 1) {
-                munu[i][i] =
-                    parms->munu
-                        [0]
-                        [i];  // ergs : Read neutrino chemical potential from input parameters file.
-                munubar[i][i] =
-                    parms->munu
-                        [1]
-                        [i];  // ergs : Read antineutrino chemical potential from input parameters file.
+                // Read neutrino and antineutrino chemical potential [ergs] from input parameters file.
+                munu[i][i] = parms->munu[0][i];
+                munubar[i][i] = parms->munu[1][i];
             }
         }
         if (interpolate_scattering_opacity_brakets == 1) {
@@ -68,27 +57,25 @@ void fill_particle_opacities(
     // If opacity_method is 2, the code interpolate inverse mean free paths from NuLib table and electron neutrino chemical potential from EoS table to compute the collision term.
     else if (parms->IMFP_method == 2) {
         // Assign temperature, electron fraction, and density at the particle's position to new variables for interpolation of chemical potentials and inverse mean free paths.
-        Real rho =
-            rho_pp;  // Density of background matter at this particle's position g/cm^3
-        Real temperature =
-            T_pp /
-            (1e6 *
-             CGSUnitsConst::
-                 eV);  // Temperature of background matter at this particle's position 0.05 //MeV
-        Real Ye =
-            Ye_pp;  // Electron fraction of background matter at this particle's position
+
+        // Density of background matter at this particle's position g/cm^3
+        Real rho = rho_pp;
+        // Temperature of background matter at this particle's position [MeV]
+        Real temperature = T_pp / (1e6 * CGSUnitsConst::eV);
+        // Electron fraction of background matter at this particle's position
+        Real Ye = Ye_pp;
 
         int keyerr, anyerr;
 
         //-------------------- Values from EoS table ------------------------------
         if (interpolate_chemical_potentials == 1) {
-            double mue_out,
-                muhat_out;  // mue_out : Electron chemical potential. muhat_out : neutron minus proton chemical potential
+            // mue_out : Electron chemical potential [ergs]
+            // muhat_out : Neutron minus proton chemical potential [ergs]
+            double mue_out, muhat_out;
             EOS_tabulated_obj.get_mue_muhat(rho, temperature, Ye, mue_out,
                                             muhat_out, keyerr, anyerr);
-            if (anyerr)
-                AMREX_ASSERT(
-                    0);  //If there is an error in interpolation call, stop execution.
+            // If there is an error in interpolation call, stop execution.
+            if (anyerr) AMREX_ASSERT(0);
 
 //#define DEBUG_INTERPOLATION_TABLES
 #ifdef DEBUG_INTERPOLATION_TABLES
@@ -98,16 +85,14 @@ void fill_particle_opacities(
                 << "(FillParticleOpacities.cpp) muhat interpolated = "
                 << muhat_out << std::endl;
 #endif
-            // munu_val : electron neutrino chemical potential
+            // munu_val : electron neutrino chemical potential [ergs]
+            // munu -> "mu_e" - "muhat" [ergs]
             const double munu_val =
-                (mue_out - muhat_out) * 1e6 *
-                CGSUnitsConst::eV;  //munu -> "mu_e" - "muhat"
+                (mue_out - muhat_out) * 1e6 * CGSUnitsConst::eV;
 
-            munu[0][0] =
-                munu_val;  // erg : Save neutrino chemical potential from EOS table in chemical potential matrix
-            munubar[0][0] =
-                -1.0 *
-                munu_val;  // erg : Save antineutrino chemical potential from EOS table in chemical potential matrix
+            // Save neutrino and antineutrino chemical potential from EOS table in chemical potential matrix [ergs]
+            munu[0][0] = munu_val;
+            munubar[0][0] = -1.0 * munu_val;
         }
 
         //--------------------- Values from NuLib table ---------------------------
@@ -181,9 +166,7 @@ void fill_particle_opacities(
                            << scattering_opacity << std::endl;
 #endif
 
-            for (int i = 1; i < NUM_FLAVORS;
-                 ++i) {  //0->neutrino or 1->antineutrino
-
+            for (int i = 1; i < NUM_FLAVORS; ++i) {
                 if (interpolate_absorption_opacity == 1) {
                     IMFP_abs[i][i] = absorption_opacity;
                     IMFP_absbar[i][i] = absorption_opacity;
