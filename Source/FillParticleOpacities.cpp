@@ -18,12 +18,12 @@ void fill_particle_opacities(
     amrex::Real (*IMFP_scat_brakets)[NUM_FLAVORS],
     amrex::Real (*IMFP_scatbar_brakets)[NUM_FLAVORS],
     amrex::Real (*munu)[NUM_FLAVORS], amrex::Real (*munubar)[NUM_FLAVORS]) {
+    Real scat_diag[NUM_FLAVORS];
+    Real scatbar_diag[NUM_FLAVORS];
     // If opacity_method is 1, the code will use the inverse mean free paths in the input parameters to compute the collision term.
     if (parms->IMFP_method == 0) {
         // do nothing
     } else if (parms->IMFP_method == 1) {
-        Real scat_diag[NUM_FLAVORS];
-        Real scatbar_diag[NUM_FLAVORS];
         for (int i = 0; i < NUM_FLAVORS; ++i) {
             scat_diag[i] = parms->IMFP_scat[0][i];
             scatbar_diag[i] = parms->IMFP_scat[1][i];
@@ -101,8 +101,6 @@ void fill_particle_opacities(
             interpolate_scattering_opacity_brakets == 1) {
             const int idx_group = energy_bin;
 
-            Real scat_diag[NUM_FLAVORS];
-            Real scatbar_diag[NUM_FLAVORS];
             for (int i = 0; i < NUM_FLAVORS; ++i) {
                 scat_diag[i] = 0.0;
                 scatbar_diag[i] = 0.0;
