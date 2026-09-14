@@ -9,3 +9,4 @@ Backtrace.*
 *.h5
 *.pdf
 *.hdf5
+run_logs/
