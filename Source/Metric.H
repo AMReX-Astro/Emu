@@ -129,10 +129,18 @@ class Metric {
 
         return rhs;
     }
-
+    
+    // Find the vokume of a cell
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual amrex::Real vol(
         amrex::Real x1_max, amrex::Real x1_min, amrex::Real x2_max,
         amrex::Real x2_min, amrex::Real x3_max, amrex::Real x3_min) const = 0;
+
+    // Minimum resolvable cell length, used for the translation CFL limit in compute_dt.
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual amrex::Real min_length(
+        const amrex::GpuArray<amrex::Real, 3>& dx,
+        const amrex::GpuArray<amrex::Real, 3>& plo,
+        const amrex::GpuArray<amrex::Real, 3>& p_hi,
+        const amrex::GpuArray<int, 3>& ncell) const = 0;
 };
 
 // child class- CartesianMetric
@@ -244,6 +252,16 @@ class CartesianMetric : public Metric {
             (x1_max - x1_min) * (x2_max - x2_min) * (x3_max - x3_min);
 
         return v;
+    }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real min_length(
+        const amrex::GpuArray<amrex::Real, 3>& dx,
+        const amrex::GpuArray<amrex::Real, 3>& plo,
+        const amrex::GpuArray<amrex::Real, 3>& p_hi,
+        const amrex::GpuArray<int, 3>& ncell) const override {
+        amrex::ignore_unused(plo, p_hi, ncell);
+        // Cartesian: (dx1,dx2,dx3) = (dx,dy,dz)
+        return std::min({dx[0], dx[1], dx[2]});
     }
 };
 
@@ -475,6 +493,18 @@ class CylindricalMetric : public Metric {
                               (x2_max - x2_min) * (x3_max - x3_min) / 2.0;
 
         return v;
+    }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real min_length(
+        const amrex::GpuArray<amrex::Real, 3>& dx,
+        const amrex::GpuArray<amrex::Real, 3>& plo,
+        const amrex::GpuArray<amrex::Real, 3>& p_hi,
+        const amrex::GpuArray<int, 3>& ncell) const override {
+        amrex::ignore_unused(p_hi, ncell);
+        //Cylindrical: (dx1,dx2,dx3) = (dr, r*dphi, dz)
+        // r_min = lowest_r + r_width/2 (ad hoc). To safe guard against lowest_r = 0
+        const amrex::Real r_min = plo[0] + dx[0] / 2;
+        return std::min({dx[0], r_min * dx[1], dx[2]});
     }
 };
 
@@ -748,6 +778,40 @@ class SphericalMetric : public Metric {
 
         return v;
     }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real min_length(
+        const amrex::GpuArray<amrex::Real, 3>& dx,
+        const amrex::GpuArray<amrex::Real, 3>& plo,
+        const amrex::GpuArray<amrex::Real, 3>& p_hi,
+        const amrex::GpuArray<int, 3>& ncell) const override {
+        //Spherical: (dx1,dx2,dx3) = (dr, r*dtheta, r*sin(theta)*dphi )
+        const amrex::Real theta_center = (plo[1] + p_hi[1]) / 2.0;
+        const amrex::Real sin_theta_center = std::sin(theta_center);
+        const amrex::Real r_min = plo[0] + dx[0] / 2;
+
+        //We start with the radial component
+        amrex::Real length = dx[0];
+
+        //If the theta and phi dimensions are more than 1 cell thick, then we use the following.
+        //This part requires further thought.
+        if (ncell[1] > 1) length = std::min(length, r_min * dx[1]);
+        if (ncell[2] > 1)
+            length = std::min(length, r_min * sin_theta_center * dx[2]);
+
+        return length;
+    }
 };
+
+// Selecting the Metric's subclass at compile time. 
+// COORD_SYS initialized in makefile.
+#if COORD_SYS == 0
+using ActiveMetric = CartesianMetric;
+#elif COORD_SYS == 1
+using ActiveMetric = CylindricalMetric;
+#elif COORD_SYS == 2
+using ActiveMetric = SphericalMetric;
+#else
+#error "COORD_SYS must be 0 (Cartesian), 1 (Cylindrical), or 2 (Spherical)"
+#endif
 
 #endif

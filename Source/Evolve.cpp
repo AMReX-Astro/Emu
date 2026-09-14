@@ -73,38 +73,11 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
     Real dt_translation = 0.0;
 
     if (parms->cfl_factor > 0.0) {
-        Real min_length;
-
-        if (parms->coord_sys == 0) {
-            // Cartesian: (dx1,dx2,dx3) = (dx,dy,dz)
-            min_length = std::min({dx[0], dx[1], dx[2]});
-        }
-
-        else if (parms->coord_sys == 1) {
-            //Cylindrical: (dx1,dx2,dx3) = (dr, r*dphi, dz)
-            // r_min = lowest_r + r_width/2 (ad hoc) . To safe guard against lowest_r = 0
-            Real r_min = plo[0] + dx[0] / 2;
-            min_length = std::min({dx[0], r_min * dx[1], dx[2]});
-        }
-
-        else {
-            //Spherical: (dx1,dx2,dx3) = (dr, r*dtheta, r*sin(theta)*dphi )
-            //The spehrical part might require rethinking
-            Real theta_center = (plo[1] + p_hi[1]) / 2.0;
-            Real sin_theta_center = std::sin(theta_center);
-
-            Real r_min = plo[0] + dx[0] / 2;
-
-            //We start with the radial component
-            min_length = dx[0];
-
-            //If the theta and phi dimensions are more than 1 cell thick, then we use the following min_lengths
-            if (geom.Domain().length(1) > 1)
-                min_length = std::min(min_length, r_min * dx[1]);
-            if (geom.Domain().length(2) > 1)
-                min_length =
-                    std::min(min_length, r_min * sin_theta_center * dx[2]);
-        }
+        const amrex::GpuArray<int, 3> ncell = {geom.Domain().length(0),
+                                               geom.Domain().length(1),
+                                               geom.Domain().length(2)};
+        ActiveMetric metric;                                       
+        const Real min_length = metric.min_length(dx, plo, p_hi, ncell);
 
         // Calculate the time step size based on the translation CFL factor
 
@@ -315,22 +288,14 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                                    p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
 
             // For curvilinear coordinates, we convert phat to curvilinear components projected on a local orthonormal tetrad for each particle
-            if (parms->coord_sys != 0) {
-                const FourVec ph_old = {1.0, phat[0], phat[1], phat[2]};
-                FourVec ph_new{};
-                if (parms->coord_sys == 1) {
-                    CylindricalMetric m;
-                    ph_new =
-                        m.tetrad_conv(ph_old, p.pos(0), p.pos(1), p.pos(2));
-                } else {
-                    SphericalMetric m;
-                    ph_new =
-                        m.tetrad_conv(ph_old, p.pos(0), p.pos(1), p.pos(2));
-                }
-                phat[0] = ph_new[1];
-                phat[1] = ph_new[2];
-                phat[2] = ph_new[3];
-            }
+
+            const FourVec ph_old = {1.0, phat[0], phat[1], phat[2]};
+            ActiveMetric m;
+            const FourVec ph_new =
+                m.tetrad_conv(ph_old, p.pos(0), p.pos(1), p.pos(2));
+            phat[0] = ph_new[1];
+            phat[1] = ph_new[2];
+            phat[2] = ph_new[3];
 
             amrex::Real moment_factor[NUM_MOMENTS == 3 ? 10 : 4];
             moment_factor[0] = 1.0;      // N
@@ -373,20 +338,9 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                         const amrex::Real x3_hi = plo[2] + (k + 1) / dxi[2];
 
                         //calculating cell volume
-                        amrex::Real V_cell;
-                        if (parms->coord_sys == 0) {
-                            CartesianMetric m;
-                            V_cell =
-                                m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
-                        } else if (parms->coord_sys == 1) {
-                            CylindricalMetric m;
-                            V_cell =
-                                m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
-                        } else {
-                            SphericalMetric m;
-                            V_cell =
-                                m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
-                        }
+                        ActiveMetric m;
+                        const amrex::Real V_cell =
+                            m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
 
                         const amrex::Real inv_cell_volume = 1.0 / V_cell;
 
@@ -920,22 +874,15 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                                    p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
 
             // For curvilinear coordinates, we convert phat to curvilinear components projected on a local orthonormal tetrad for each particle
-            if (parms->coord_sys != 0) {
-                const FourVec ph_old = {1.0, phat[0], phat[1], phat[2]};
-                FourVec ph_new{};
-                if (parms->coord_sys == 1) {
-                    CylindricalMetric m;
-                    ph_new =
-                        m.tetrad_conv(ph_old, p.pos(0), p.pos(1), p.pos(2));
-                } else {
-                    SphericalMetric m;
-                    ph_new =
-                        m.tetrad_conv(ph_old, p.pos(0), p.pos(1), p.pos(2));
-                }
-                phat[0] = ph_new[1];
-                phat[1] = ph_new[2];
-                phat[2] = ph_new[3];
-            }
+            
+            const FourVec ph_old = {1.0, phat[0], phat[1], phat[2]};
+            ActiveMetric m;
+            const FourVec ph_new =
+                m.tetrad_conv(ph_old, p.pos(0), p.pos(1), p.pos(2));
+            phat[0] = ph_new[1];
+            phat[1] = ph_new[2];
+            phat[2] = ph_new[3];
+            
 
             for (int k = sz.first(); k <= sz.last(); ++k) {
                 for (int j = sy.first(); j <= sy.last(); ++j) {

@@ -159,8 +159,6 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
     const auto plo = Geom(lev).ProbLoArray();
     const auto& a_bounds = Geom(lev).ProbDomain();
 
-    const int coord_sys = parms->coord_sys;
-
     const int nlocs_per_cell =
         AMREX_D_TERM(parms->nppc[0], *parms->nppc[1], *parms->nppc[2]);
 
@@ -283,17 +281,9 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
                 const Real x3_hi = plo[2] + (k + 1) * dx[2];
 
                 //calculating cell volume
-                amrex::Real V_cell;
-                if (coord_sys == 0) {
-                    CartesianMetric m;
-                    V_cell = m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
-                } else if (coord_sys == 1) {
-                    CylindricalMetric m;
-                    V_cell = m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
-                } else {
-                    SphericalMetric m;
-                    V_cell = m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
-                }
+                ActiveMetric m;
+                const amrex::Real V_cell =
+                    m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
 
                 const Real scale_fac = V_cell / nlocs_per_cell;
 

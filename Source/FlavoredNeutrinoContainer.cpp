@@ -4,7 +4,7 @@
 
 using namespace amrex;
 
-void FlavoredNeutrinoContainer::SyncLocation(int type, int coord_sys) {
+void FlavoredNeutrinoContainer::SyncLocation(int type) {
     BL_PROFILE("FlavoredNeutrinoContainer::SyncLocation");
 
     AMREX_ASSERT(type == Sync::CoordinateToPosition ||
@@ -23,45 +23,24 @@ void FlavoredNeutrinoContainer::SyncLocation(int type, int coord_sys) {
             FNParticleView p{ptd, i};
 
             if (type == Sync::CoordinateToPosition) {
-                FourVec pos_mesh;
+                //turning particle coordinates from cartesian to mesh cordinate system
+                ActiveMetric metric;
+                FourVec pos_mesh = metric.pos_conv(p);
 
-                //matching integrated particle coordinate system to mesh coordinate system
-                if (coord_sys == 0) {
-                    CartesianMetric metric;
-                    pos_mesh = metric.pos_conv(p);
-                } else if (coord_sys == 1) {
-                    CylindricalMetric metric;
-                    pos_mesh = metric.pos_conv(p);
-                } else {
-                    SphericalMetric metric;
-                    pos_mesh = metric.pos_conv(p);
-                }
-
-                // Copy converted integrated position to the particle position.
+                //Copy converted particle coordinates into mesh position variables
                 p.pos(0) = pos_mesh[1];
                 p.pos(1) = pos_mesh[2];
                 p.pos(2) = pos_mesh[3];
 
             } else if (type == Sync::PositionToCoordinate) {
-                // Copy the reset particle position back to the integrated position (in mesh coordinate system)
+                //Copy the reset mesh position variables back to the particle coordinates
                 p.rdata(PIdx::x) = p.pos(0);
                 p.rdata(PIdx::y) = p.pos(1);
                 p.rdata(PIdx::z) = p.pos(2);
 
-                //turning integrated particle coordinate system back to cartesian
-
-                FourVec pos_int;
-
-                if (coord_sys == 0) {
-                    CartesianMetric metric;
-                    pos_int = metric.pos_conv_inv(p);
-                } else if (coord_sys == 1) {
-                    CylindricalMetric metric;
-                    pos_int = metric.pos_conv_inv(p);
-                } else {
-                    SphericalMetric metric;
-                    pos_int = metric.pos_conv_inv(p);
-                }
+                //turning particle coordinate system back to cartesian
+                ActiveMetric metric;
+                FourVec pos_int = metric.pos_conv_inv(p);
 
                 p.rdata(PIdx::x) = pos_int[1];
                 p.rdata(PIdx::y) = pos_int[2];
@@ -112,29 +91,12 @@ void FlavoredNeutrinoContainer::ApplyBoundaryConditions(
                     mode == BoundaryCondition::outflow) {
                     p.pos(d) = reflected_pos;
 
-                    if (parms->coord_sys == 0) {
-                        CartesianMetric metric;
-                        metric.coord_conv(p);
-                    } else if (parms->coord_sys == 1) {
-                        CylindricalMetric metric;
-                        metric.coord_conv(p);
-                    } else {
-                        SphericalMetric metric;
-                        metric.coord_conv(p);
-                    }
+                    ActiveMetric metric;
+                    metric.coord_conv(p);
 
                     p.rdata(PIdx::pupx + d) = -p.rdata(PIdx::pupx + d);
 
-                    if (parms->coord_sys == 0) {
-                        CartesianMetric metric;
-                        metric.coord_conv_inv(p);
-                    } else if (parms->coord_sys == 1) {
-                        CylindricalMetric metric;
-                        metric.coord_conv_inv(p);
-                    } else {
-                        SphericalMetric metric;
-                        metric.coord_conv_inv(p);
-                    }
+                    metric.coord_conv_inv(p);
 
                     // p.rdata(PIdx::pupx) = p.rdata(PIdx::pupx) + 0.05*p.rdata(PIdx::pupt);
                     //p.rdata(PIdx::pupy) = p.rdata(PIdx::pupy) + 0.05*p.rdata(PIdx::pupt);
