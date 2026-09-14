@@ -174,6 +174,7 @@ pipeline {
 
 		stage('Fermi-Dirac Reflecting 1D Spherical'){ steps{
 				dir('Exec'){
+					sh 'make realclean; make generate NUM_FLAVORS=3 COORD_SYS=2; make -j NUM_FLAVORS=3 COORD_SYS=2'
 					sh 'python ../Scripts/initial_conditions/st9_empty_particles_multi_energy.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fermi_dirac_test_reflecting_spherical'
 					sh 'python ../Scripts/data_reduction/write_particles_all_domain.py'
