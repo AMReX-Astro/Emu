@@ -340,7 +340,7 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                         //calculating cell volume
                         ActiveMetric m;
                         const amrex::Real V_cell =
-                            m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
+                            m.vol(x1_lo, x1_hi, x2_lo, x2_hi, x3_lo, x3_hi);
 
                         const amrex::Real inv_cell_volume = 1.0 / V_cell;
 

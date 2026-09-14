@@ -283,7 +283,7 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
                 //calculating cell volume
                 ActiveMetric m;
                 const amrex::Real V_cell =
-                    m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
+                    m.vol(x1_lo, x1_hi, x2_lo, x2_hi, x3_lo, x3_hi);
 
                 const Real scale_fac = V_cell / nlocs_per_cell;
 

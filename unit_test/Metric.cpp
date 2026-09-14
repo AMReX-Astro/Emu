@@ -85,8 +85,8 @@ int main() {
 
     Euler(p, metric1, dt, steps);  //Euler does the time integration
 
-    // calculating volume. Syntax: vol(xmax,xmin,ymax,ymin,zmax,zmin).
-    v = metric1.vol(4, 2, 3, -1, 5, 1);
+    // calculating volume. Syntax: vol(xmin,xmax,ymin,ymax,zmin,zmax).
+    v = metric1.vol(2, 4, -1, 3, 1, 5);
 
     double tol = 1e-12;  //setting tolerance for assert
 
@@ -137,8 +137,8 @@ int main() {
 
     Euler(p, metric2, dt, steps);  //Euler does the time integration
 
-    // calculating volume. Syntax: vol(xmax,xmin,ymax,ymin,zmax,zmin).
-    v = metric2.vol(4, 2, 3, -1, 5, 1);
+    // calculating volume. Syntax: vol(xmin,xmax,ymin,ymax,zmin,zmax).
+    v = metric2.vol(2, 4, -1, 3, 1, 5);
 
     tol = 1e-2;  //setting tolerance for assert
 
@@ -194,8 +194,8 @@ int main() {
 
     Euler(p, metric3, dt, steps);  //Euler does the time integration
 
-    // calculating volume. Syntax: vol(xmax,xmin,ymax,ymin,zmax,zmin).
-    v = metric3.vol(4, 2, 3, -1, 5, 1);
+    // calculating volume. Syntax: vol(xmin,xmax,ymin,ymax,zmin,zmax).
+    v = metric3.vol(2, 4, -1, 3, 1, 5);
 
     //asserting the correct final result
     assert(std::abs(p.rdata(PIdx::time) - 5.0) < tol);

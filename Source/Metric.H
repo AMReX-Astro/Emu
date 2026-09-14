@@ -132,8 +132,8 @@ class Metric {
     
     // Find the vokume of a cell
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual amrex::Real vol(
-        amrex::Real x1_max, amrex::Real x1_min, amrex::Real x2_max,
-        amrex::Real x2_min, amrex::Real x3_max, amrex::Real x3_min) const = 0;
+        amrex::Real x1_min, amrex::Real x1_max, amrex::Real x2_min,
+        amrex::Real x2_max, amrex::Real x3_min, amrex::Real x3_max) const = 0;
 
     // Minimum resolvable cell length, used for the translation CFL limit in compute_dt.
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual amrex::Real min_length(
@@ -245,9 +245,9 @@ class CartesianMetric : public Metric {
     }
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real vol(
-        amrex::Real x1_max, amrex::Real x1_min, amrex::Real x2_max,
-        amrex::Real x2_min, amrex::Real x3_max,
-        amrex::Real x3_min) const override {
+        amrex::Real x1_min, amrex::Real x1_max, amrex::Real x2_min,
+        amrex::Real x2_max, amrex::Real x3_min,
+        amrex::Real x3_max) const override {
         const amrex::Real v =
             (x1_max - x1_min) * (x2_max - x2_min) * (x3_max - x3_min);
 
@@ -486,9 +486,9 @@ class CylindricalMetric : public Metric {
     }
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real vol(
-        amrex::Real x1_max, amrex::Real x1_min, amrex::Real x2_max,
-        amrex::Real x2_min, amrex::Real x3_max,
-        amrex::Real x3_min) const override {
+        amrex::Real x1_min, amrex::Real x1_max, amrex::Real x2_min,
+        amrex::Real x2_max, amrex::Real x3_min,
+        amrex::Real x3_max) const override {
         const amrex::Real v = (x1_max * x1_max - x1_min * x1_min) *
                               (x2_max - x2_min) * (x3_max - x3_min) / 2.0;
 
@@ -769,9 +769,9 @@ class SphericalMetric : public Metric {
     }
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real vol(
-        amrex::Real x1_max, amrex::Real x1_min, amrex::Real x2_max,
-        amrex::Real x2_min, amrex::Real x3_max,
-        amrex::Real x3_min) const override {
+        amrex::Real x1_min, amrex::Real x1_max, amrex::Real x2_min,
+        amrex::Real x2_max, amrex::Real x3_min,
+        amrex::Real x3_max) const override {
         const amrex::Real v = (std::pow(x1_max, 3.0) - std::pow(x1_min, 3.0)) *
                               (std::cos(x2_min) - std::cos(x2_max)) *
                               (x3_max - x3_min) / 3.0;
