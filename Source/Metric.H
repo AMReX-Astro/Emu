@@ -129,7 +129,7 @@ class Metric {
 
         return rhs;
     }
-    
+
     // Find the vokume of a cell
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual amrex::Real vol(
         amrex::Real x1_min, amrex::Real x1_max, amrex::Real x2_min,
@@ -802,7 +802,7 @@ class SphericalMetric : public Metric {
     }
 };
 
-// Selecting the Metric's subclass at compile time. 
+// Selecting the Metric's subclass at compile time.
 // COORD_SYS initialized in makefile.
 #if COORD_SYS == 0
 using ActiveMetric = CartesianMetric;

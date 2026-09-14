@@ -55,8 +55,6 @@ static void sort_particles(FlavoredNeutrinoContainer& neutrinos,
 }
 
 void evolve_flavor(const TestParams* parms) {
-    
-
     // Per-face boundary conditions are read into parms->boundary_condition,
     // indexed as 2*dim+side (side 0=lo, 1=hi).
     // AMReX periodicity is a per-axis property, so an axis is periodic only when
@@ -542,7 +540,6 @@ void evolve_flavor(const TestParams* parms) {
     amrex::Print() << "Average number of particles advanced per microsecond = "
                    << std::fixed << std::setprecision(3) << run_fom
                    << std::endl;
-
 }
 
 int main(int argc, char* argv[]) {

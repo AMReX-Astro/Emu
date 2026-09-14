@@ -76,7 +76,7 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
         const amrex::GpuArray<int, 3> ncell = {geom.Domain().length(0),
                                                geom.Domain().length(1),
                                                geom.Domain().length(2)};
-        ActiveMetric metric;                                       
+        ActiveMetric metric;
         const Real min_length = metric.min_length(dx, plo, p_hi, ncell);
 
         // Calculate the time step size based on the translation CFL factor
@@ -874,7 +874,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                                    p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
 
             // For curvilinear coordinates, we convert phat to curvilinear components projected on a local orthonormal tetrad for each particle
-            
+
             const FourVec ph_old = {1.0, phat[0], phat[1], phat[2]};
             ActiveMetric m;
             const FourVec ph_new =
@@ -882,7 +882,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             phat[0] = ph_new[1];
             phat[1] = ph_new[2];
             phat[2] = ph_new[3];
-            
 
             for (int k = sz.first(); k <= sz.last(); ++k) {
                 for (int j = sy.first(); j <= sy.last(); ++j) {
