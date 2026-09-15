@@ -98,18 +98,6 @@ void FlavoredNeutrinoContainer::ApplyBoundaryConditions(
 
                     metric.coord_conv_inv(p);
 
-                    // p.rdata(PIdx::pupx) = p.rdata(PIdx::pupx) + 0.05*p.rdata(PIdx::pupt);
-                    //p.rdata(PIdx::pupy) = p.rdata(PIdx::pupy) + 0.05*p.rdata(PIdx::pupt);
-                    //p.rdata(PIdx::pupz) = p.rdata(PIdx::pupz) + 0.05*p.rdata(PIdx::pupt);
-
-                    //amrex::Real pmag = std::sqrt(p.rdata(PIdx::pupx)*p.rdata(PIdx::pupx)
-                    //        + p.rdata(PIdx::pupy)*p.rdata(PIdx::pupy)
-                    //        + p.rdata(PIdx::pupz)*p.rdata(PIdx::pupz));
-                    //amrex::Real scale = p.rdata(PIdx::pupt) / pmag;
-                    //p.rdata(PIdx::pupx) *= scale;
-                    //p.rdata(PIdx::pupy) *= scale;
-                    //p.rdata(PIdx::pupz) *= scale;
-
                     // Outflow: zero the density matrix so the particle carries
                     // nothing back into the domain (no incoming flux).
                     if (mode == BoundaryCondition::outflow) {
