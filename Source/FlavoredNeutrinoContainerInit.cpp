@@ -156,7 +156,8 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
 
     const int lev = 0;
     const auto dx = Geom(lev).CellSizeArray();
-    const auto plo = Geom(lev).ProbLoArray();
+    const auto dxi = Geom(lev).InvCellSizeArray();
+    const auto p_lo = Geom(lev).ProbLoArray();
     const auto& a_bounds = Geom(lev).ProbDomain();
 
     const int nlocs_per_cell =
@@ -195,9 +196,9 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
 
                     get_position_unit_cell(r, parms->nppc, i_part);
 
-                    Real x = plo[0] + (i + r[0]) * dx[0];
-                    Real y = plo[1] + (j + r[1]) * dx[1];
-                    Real z = plo[2] + (k + r[2]) * dx[2];
+                    Real x = p_lo[0] + (i + r[0]) * dx[0];
+                    Real y = p_lo[1] + (j + r[1]) * dx[1];
+                    Real z = p_lo[2] + (k + r[2]) * dx[2];
 
                     if (x >= a_bounds.hi(0) || x < a_bounds.lo(0) ||
                         y >= a_bounds.hi(1) || y < a_bounds.lo(1) ||
@@ -273,25 +274,22 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
                 Real r[3];
 
                 // getting the upper and lower bounds of the cell
-                const Real x1_lo = plo[0] + i * dx[0];
-                const Real x1_hi = plo[0] + (i + 1) * dx[0];
-                const Real x2_lo = plo[1] + j * dx[1];
-                const Real x2_hi = plo[1] + (j + 1) * dx[1];
-                const Real x3_lo = plo[2] + k * dx[2];
-                const Real x3_hi = plo[2] + (k + 1) * dx[2];
+                amrex::GpuArray<amrex::Real, 3> cell_lo{}, cell_hi{};
+                cell_bounds(i, j, k, p_lo, dxi, cell_lo, cell_hi);
 
                 //calculating cell volume
                 ActiveMetric m;
                 const amrex::Real V_cell =
-                    m.vol(x1_lo, x1_hi, x2_lo, x2_hi, x3_lo, x3_hi);
+                    m.vol(cell_lo[0], cell_hi[0], cell_lo[1], cell_hi[1],
+                          cell_lo[2], cell_hi[2]);
 
                 const Real scale_fac = V_cell / nlocs_per_cell;
 
                 get_position_unit_cell(r, parms->nppc, i_loc);
 
-                Real x = plo[0] + (i + r[0]) * dx[0];
-                Real y = plo[1] + (j + r[1]) * dx[1];
-                Real z = plo[2] + (k + r[2]) * dx[2];
+                Real x = p_lo[0] + (i + r[0]) * dx[0];
+                Real y = p_lo[1] + (j + r[1]) * dx[1];
+                Real z = p_lo[2] + (k + r[2]) * dx[2];
 
                 if (x >= a_bounds.hi(0) || x < a_bounds.lo(0) ||
                     y >= a_bounds.hi(1) || y < a_bounds.lo(1) ||

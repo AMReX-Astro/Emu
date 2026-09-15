@@ -24,6 +24,16 @@ using GeodesicArray =
 // A handle to one particle's attributes in the tile's SoA storage.
 using EParticle = FlavoredNeutrinoContainer::FNParticleView;
 
+// upper and lower bounds of cell (i,j,k)
+AMREX_GPU_DEVICE AMREX_GPU_HOST inline void cell_bounds(
+    int i, int j, int k, const amrex::GpuArray<amrex::Real, 3>& p_lo,
+    const amrex::GpuArray<amrex::Real, 3>& dxi,
+    amrex::GpuArray<amrex::Real, 3>& lo, amrex::GpuArray<amrex::Real, 3>& hi) {
+    lo = {p_lo[0] + i / dxi[0], p_lo[1] + j / dxi[1], p_lo[2] + k / dxi[2]};
+    hi = {p_lo[0] + (i + 1) / dxi[0], p_lo[1] + (j + 1) / dxi[1],
+          p_lo[2] + (k + 1) / dxi[2]};
+}
+
 //abstract base class- Metric
 
 class Metric {
@@ -138,7 +148,7 @@ class Metric {
     // Minimum resolvable cell length, used for the translation CFL limit in compute_dt.
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual amrex::Real min_length(
         const amrex::GpuArray<amrex::Real, 3>& dx,
-        const amrex::GpuArray<amrex::Real, 3>& plo,
+        const amrex::GpuArray<amrex::Real, 3>& p_lo,
         const amrex::GpuArray<amrex::Real, 3>& p_hi,
         const amrex::GpuArray<int, 3>& ncell) const = 0;
 };
@@ -256,10 +266,10 @@ class CartesianMetric : public Metric {
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real min_length(
         const amrex::GpuArray<amrex::Real, 3>& dx,
-        const amrex::GpuArray<amrex::Real, 3>& plo,
+        const amrex::GpuArray<amrex::Real, 3>& p_lo,
         const amrex::GpuArray<amrex::Real, 3>& p_hi,
         const amrex::GpuArray<int, 3>& ncell) const override {
-        amrex::ignore_unused(plo, p_hi, ncell);
+        amrex::ignore_unused(p_lo, p_hi, ncell);
         // Cartesian: (dx1,dx2,dx3) = (dx,dy,dz)
         return std::min({dx[0], dx[1], dx[2]});
     }
@@ -497,13 +507,13 @@ class CylindricalMetric : public Metric {
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real min_length(
         const amrex::GpuArray<amrex::Real, 3>& dx,
-        const amrex::GpuArray<amrex::Real, 3>& plo,
+        const amrex::GpuArray<amrex::Real, 3>& p_lo,
         const amrex::GpuArray<amrex::Real, 3>& p_hi,
         const amrex::GpuArray<int, 3>& ncell) const override {
         amrex::ignore_unused(p_hi, ncell);
         //Cylindrical: (dx1,dx2,dx3) = (dr, r*dphi, dz)
         // r_min = lowest_r + r_width/2 (ad hoc). To safe guard against lowest_r = 0
-        const amrex::Real r_min = plo[0] + dx[0] / 2;
+        const amrex::Real r_min = p_lo[0] + dx[0] / 2;
         return std::min({dx[0], r_min * dx[1], dx[2]});
     }
 };
@@ -781,13 +791,13 @@ class SphericalMetric : public Metric {
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real min_length(
         const amrex::GpuArray<amrex::Real, 3>& dx,
-        const amrex::GpuArray<amrex::Real, 3>& plo,
+        const amrex::GpuArray<amrex::Real, 3>& p_lo,
         const amrex::GpuArray<amrex::Real, 3>& p_hi,
         const amrex::GpuArray<int, 3>& ncell) const override {
         //Spherical: (dx1,dx2,dx3) = (dr, r*dtheta, r*sin(theta)*dphi )
-        const amrex::Real theta_center = (plo[1] + p_hi[1]) / 2.0;
+        const amrex::Real theta_center = (p_lo[1] + p_hi[1]) / 2.0;
         const amrex::Real sin_theta_center = std::sin(theta_center);
-        const amrex::Real r_min = plo[0] + dx[0] / 2;
+        const amrex::Real r_min = p_lo[0] + dx[0] / 2;
 
         //We start with the radial component
         amrex::Real length = dx[0];

@@ -66,7 +66,7 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
     // Get the cell size array
     const auto dx = geom.CellSizeArray();
     // Getting the lower bounds of the domain
-    const auto plo = geom.ProbLoArray();
+    const auto p_lo = geom.ProbLoArray();
     // Getting the upper bounds of the domain
     const auto p_hi = geom.ProbHiArray();
 
@@ -77,7 +77,7 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
                                                geom.Domain().length(1),
                                                geom.Domain().length(2)};
         ActiveMetric metric;
-        const Real min_length = metric.min_length(dx, plo, p_hi, ncell);
+        const Real min_length = metric.min_length(dx, p_lo, p_hi, ncell);
 
         // Calculate the time step size based on the translation CFL factor
 
@@ -224,7 +224,7 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                                    MultiFab& state, const Geometry& geom,
                                    const TestParams* parms) {
     BL_PROFILE("deposit_to_mesh_atomic()");
-    const auto plo = geom.ProbLoArray();
+    const auto p_lo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
 
     // Create an alias of the MultiFab so ParticleToMesh only erases the quantities
@@ -269,9 +269,9 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                              const int p_index,
                              amrex::Array4<amrex::Real> const& sarr) {
             FlavoredNeutrinoContainer::FNParticleConstView p{ptd, p_index};
-            const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
-            const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
-            const amrex::Real delta_z = (p.pos(2) - plo[2]) * dxi[2];
+            const amrex::Real delta_x = (p.pos(0) - p_lo[0]) * dxi[0];
+            const amrex::Real delta_y = (p.pos(1) - p_lo[1]) * dxi[1];
+            const amrex::Real delta_z = (p.pos(2) - p_lo[2]) * dxi[2];
 
             const ParticleInterpolator<SHAPE_FACTOR_ORDER> sx(
                 delta_x, shape_factor_order_x);
@@ -330,17 +330,13 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                 for (int j = sy.first(); j <= sy.last(); ++j) {
                     for (int i = sx.first(); i <= sx.last(); ++i) {
                         // getting the upper and lower bounds of the cell
-                        const amrex::Real x1_lo = plo[0] + i / dxi[0];
-                        const amrex::Real x1_hi = plo[0] + (i + 1) / dxi[0];
-                        const amrex::Real x2_lo = plo[1] + j / dxi[1];
-                        const amrex::Real x2_hi = plo[1] + (j + 1) / dxi[1];
-                        const amrex::Real x3_lo = plo[2] + k / dxi[2];
-                        const amrex::Real x3_hi = plo[2] + (k + 1) / dxi[2];
+                        amrex::GpuArray<amrex::Real, 3> lo{}, hi{};
+                        cell_bounds(i, j, k, p_lo, dxi, lo, hi);
 
                         //calculating cell volume
                         ActiveMetric m;
                         const amrex::Real V_cell =
-                            m.vol(x1_lo, x1_hi, x2_lo, x2_hi, x3_lo, x3_hi);
+                            m.vol(lo[0], hi[0], lo[1], hi[1], lo[2], hi[2]);
 
                         const amrex::Real inv_cell_volume = 1.0 / V_cell;
 
@@ -523,7 +519,7 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
         "deposit_method=1 expects particle_sort_method=1 (sort by cell)");
 
     // Get the cell volume, spacing, and domain size
-    const auto plo = geom.ProbLoArray();
+    const auto p_lo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
     const Real inv_cell_volume = dxi[0] * dxi[1] * dxi[2];
     const Box& domain = geom.Domain();
@@ -588,7 +584,7 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                     const FlavoredNeutrinoContainer::ConstPTDType& tile_data,
                     int index) noexcept -> unsigned int {
                     const amrex::IntVect cell = amrex::getParticleCell(
-                        tile_data, index, plo, dxi, domain);
+                        tile_data, index, p_lo, dxi, domain);
                     const int local_i = cell[0] - box_lo.x;
                     const int local_j = cell[1] - box_lo.y;
                     const int local_k = cell[2] - box_lo.z;
@@ -619,14 +615,14 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                 FlavoredNeutrinoContainer::FNParticleConstView p{ptd, p_index};
 
                 const amrex::IntVect home_cell =
-                    amrex::getParticleCell(ptd, p_index, plo, dxi, domain);
+                    amrex::getParticleCell(ptd, p_index, p_lo, dxi, domain);
 
                 const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_i(
-                    (p.pos(0) - plo[0]) * dxi[0], shape_order_i);
+                    (p.pos(0) - p_lo[0]) * dxi[0], shape_order_i);
                 const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_j(
-                    (p.pos(1) - plo[1]) * dxi[1], shape_order_j);
+                    (p.pos(1) - p_lo[1]) * dxi[1], shape_order_j);
                 const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_k(
-                    (p.pos(2) - plo[2]) * dxi[2], shape_order_k);
+                    (p.pos(2) - p_lo[2]) * dxi[2], shape_order_k);
 
                 ParticleGeometry& particle_geometry = geometry[sorted_index];
 
@@ -773,7 +769,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                                const MultiFab& state, const Geometry& geom,
                                const TestParams* parms) {
     BL_PROFILE("interpolate_rhs_from_mesh()");
-    const auto plo = geom.ProbLoArray();
+    const auto p_lo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
 
     const int shape_factor_order_x =
@@ -852,9 +848,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 
 #include "generated_files/Evolve.cpp_Vvac_fill"
 
-            const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
-            const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
-            const amrex::Real delta_z = (p.pos(2) - plo[2]) * dxi[2];
+            const amrex::Real delta_x = (p.pos(0) - p_lo[0]) * dxi[0];
+            const amrex::Real delta_y = (p.pos(1) - p_lo[1]) * dxi[1];
+            const amrex::Real delta_z = (p.pos(2) - p_lo[2]) * dxi[2];
 
             const ParticleInterpolator<SHAPE_FACTOR_ORDER> sx(
                 delta_x, shape_factor_order_x);
