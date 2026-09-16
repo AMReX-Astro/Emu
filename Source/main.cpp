@@ -246,6 +246,11 @@ void evolve_flavor(const TestParams* parms) {
     //  and we can skip calling Redistribute() after copying the particles)
     neutrinos_new.copyParticles(neutrinos_old, true);
 
+    // Interpolate background rho, T, Ye onto particle attributes before the
+    // initial deposit so NuLib/EoS opacity interpolation sees hydro, and so
+    // the initial plotfile and first RHS copy have hydro on the particles.
+    interpolate_hydro_to_particles(neutrinos_old, state, geom);
+
     // Deposit particles to grid
     deposit_to_mesh(neutrinos_old, state, geom, parms);
 
@@ -268,6 +273,16 @@ void evolve_flavor(const TestParams* parms) {
                           Real /* time */) {
         /* Evaluate the neutrino distribution matrix RHS */
         BL_PROFILE("Emu::RHS()");
+
+        // Step 0: Publish this stage's integrated coordinates as the particle
+        // positions, so the deposit and interpolation see where the particles
+        // actually are at this stage rather than at the start of the step.
+        // This is a per-particle field copy: it reorders nothing, so the RK
+        // stage containers stay index-aligned.
+        neutrinos.SyncLocation(Sync::CoordinateToPosition);
+
+        // Interpolate background hydro (rho, T, Ye) onto particles
+        interpolate_hydro_to_particles(neutrinos, state, geom);
 
         // Step 1: Deposit Particle Data to Mesh & fill domain boundaries/ghost cells
         deposit_to_mesh(neutrinos, state, geom, parms);

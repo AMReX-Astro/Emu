@@ -119,7 +119,7 @@ if __name__ == "__main__":
     #========================================================#
     # FlavoredNeutrinoContainerInit.H_particle_varnames_fill #
     #========================================================#
-    code_string = 'attribute_names = {"time", "x", "y", "z", "pupx", "pupy", "pupz", "pupt", '
+    code_string = 'attribute_names = {"time", "x", "y", "z", "pupx", "pupy", "pupz", "pupt", "rho_g_inv_ccm", "T_erg", "Ye", '
     code = ['"{}"'.format(c) for c in code]
     code_string = code_string + ", ".join(code) + "};"
     code = [code_string]

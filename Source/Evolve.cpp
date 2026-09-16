@@ -7,6 +7,7 @@
 #include "EosTable.H"
 #include "EosTableFunctions.H"
 
+#include "FillParticleOpacities.H"
 #include "NuLibTable.H"
 
 #include "Metric.H"
@@ -31,37 +32,25 @@ void Initialize() {
 }  // namespace GIdx
 
 /**
- * @brief Computes the time step size for the simulation based on various CFL factors and conditions.
- *
- * This function calculates the time step size considering translation, flavor, and collision CFL factors.
- * It ensures that the time step is limited by the smallest of these factors to maintain stability.
+ * @brief Computes the time step size for the simulation from the global CFL
+ * condition based on the grid cell size.
  *
  * @param geom The geometry of the simulation domain.
- * @param state The state MultiFab containing the simulation data.
+ * @param state Unused; kept for call-site compatibility.
  * @param parms Pointer to the structure containing simulation parameters.
  *
  * @return The computed time step size.
- *
- * @note At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.
- * @note The function skips black hole regions if specified in the parameters.
- * @note The function performs a reduction operation to find the minimum time step across all cells and MPI ranks.
  */
-Real compute_dt(const Geometry& geom, const MultiFab& state,
+Real compute_dt(const Geometry& geom, const MultiFab& /*state*/,
                 const TestParams* parms) {
     BL_PROFILE("compute_dt()");
-    // If the time step method is 1, return the minimum time step
-    if (parms->time_step_method == 1) {
-        return parms->minimum_time_step;
-    }
 
+    AMREX_ASSERT_WITH_MESSAGE(parms->cfl_factor >= 0.0,
+                              "Error: cfl_factor must be non-negative.");
     AMREX_ASSERT_WITH_MESSAGE(
-        parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0 ||
-            parms->collision_cfl_factor > 0.0,
-        "Error: At least one of cfl_factor, flavor_cfl_factor, or "
-        "collision_cfl_factor must be greater than 0.0.");
-
-    // Initialize the maximum real value
-    const Real max_real = std::numeric_limits<Real>::max();
+        parms->cfl_factor == 0.0 || parms->minimum_time_step > 0.0,
+        "Error: minimum_time_step must be greater than zero when cfl_factor "
+        "is nonzero.");
 
     // Get the cell size array
     const auto dx = geom.CellSizeArray();
@@ -70,148 +59,34 @@ Real compute_dt(const Geometry& geom, const MultiFab& state,
     // Getting the upper bounds of the domain
     const auto p_hi = geom.ProbHiArray();
 
-    Real dt_translation = 0.0;
+    Real min_length = std::numeric_limits<Real>::max();
+    Real dt = 0.0;
 
     if (parms->cfl_factor > 0.0) {
         const amrex::GpuArray<int, 3> ncell = {geom.Domain().length(0),
                                                geom.Domain().length(1),
                                                geom.Domain().length(2)};
         ActiveMetric metric;
-        const Real min_length = metric.min_length(dx, p_lo, p_hi, ncell);
+        min_length = metric.min_length(dx, p_lo, p_hi, ncell);
 
         // Calculate the time step size based on the translation CFL factor
 
         // dt = (min(dx1,dx2,dx3)/c) * cfl_factor
-        dt_translation = min_length / PhysConst::c * parms->cfl_factor;
-    }
-
-    Real dt_flavor = 0.0;
-
-    if (parms->flavor_cfl_factor > 0.0 && parms->collision_cfl_factor > 0.0) {
-        ReduceOps<ReduceOpMin, ReduceOpMin, ReduceOpMin> reduce_op;
-        ReduceData<Real, Real, Real> reduce_data(reduce_op);
-        using ReduceTuple = typename decltype(reduce_data)::Type;
-        for (MFIter mfi(state); mfi.isValid(); ++mfi) {
-            const Box& bx = mfi.validbox();
-            auto const& fab = state.array(mfi);
-            Real V_vac_max = FlavoredNeutrinoContainer::Vvac_max;
-            reduce_op.eval(
-                bx, reduce_data,
-                [=] AMREX_GPU_DEVICE(int i, int j, int k) -> ReduceTuple {
-                    // Skip cells inside the black hole
-                    if (parms->do_blackhole == 1) {
-                        // Calculate the cell size
-                        double cell_size_x = parms->Lx / parms->ncell[0];
-                        double cell_size_y = parms->Ly / parms->ncell[1];
-                        double cell_size_z = parms->Lz / parms->ncell[2];
-                        // Calculate the cell center coordinates
-                        double x_cell_center = (i + 0.5) * cell_size_x;
-                        double y_cell_center = (j + 0.5) * cell_size_y;
-                        double z_cell_center = (k + 0.5) * cell_size_z;
-                        // Calculate the distance from the black hole center
-                        Real distance_from_bh =
-                            sqrt(pow(x_cell_center - parms->bh_center_x, 2) +
-                                 pow(y_cell_center - parms->bh_center_y, 2) +
-                                 pow(z_cell_center - parms->bh_center_z, 2));
-
-                        // Check if the cell is inside the black hole
-                        if (distance_from_bh < parms->bh_radius) {
-                            return {max_real, max_real, max_real};
-                        }
-                    }
-
-                    // V_stupid = Max(N_ab,Nbar_ab, Ye*rho/Mp)*4.0*sqrt(2)*GF
-                    // V_adaptive id the magnitud of vector the following vector
-                    // |vec{H}| = | sqrt(2)*GF * ( (N_ab - Nbar_ab) + (F - Fbar) + Ye*rho/Mp ) |
-
-                    Real V_adaptive = 0, V_adaptive2 = 0, V_stupid = 0;
-#include "generated_files/Evolve.cpp_compute_dt_fill"
-
-                    V_adaptive += V_vac_max;
-                    V_stupid += V_vac_max;
-
-                    V_adaptive *= parms->attenuation_hamiltonians;
-                    V_stupid *= parms->attenuation_hamiltonians;
-
-                    Real dt_adaptive = max_real;
-                    Real dt_stupid = max_real;
-                    Real dt_absorption = max_real;
-
-                    // Ensure that the minimum trace is not zero
-                    if (std::abs(V_adaptive) > 0.0) {
-                        dt_adaptive = parms->flavor_cfl_factor *
-                                      (PhysConst::hbar / std::abs(V_adaptive));
-                        dt_stupid = parms->flavor_cfl_factor *
-                                    (PhysConst::hbar / std::abs(V_stupid));
-                    }
-
-                    return {dt_adaptive, dt_stupid, dt_absorption};
-                });
-        }
-
-        // extract the reduced values from the combined reduced data structure
-        auto rv = reduce_data.value();
-        Real min_dt_adaptive = amrex::get<0>(rv);
-        Real min_dt_stupid = amrex::get<1>(rv);
-        Real min_dt_absorption = amrex::get<2>(rv);
-
-        // reduce across MPI ranks
-        ParallelDescriptor::ReduceRealMin(min_dt_adaptive);
-        ParallelDescriptor::ReduceRealMin(min_dt_stupid);
-        ParallelDescriptor::ReduceRealMin(min_dt_absorption);
-
-        // define the dt associated with each method
-        Real dt_flavor_adaptive = max_real;
-        Real dt_flavor_stupid = max_real;
-        Real dt_flavor_absorption = max_real;  // Initialize with infinity
-
-        if (parms->IMFP_method == 1) {
-            // Use the IMFPs from the input file and find the maximum absorption IMFP
-            double max_IMFP_abs = std::numeric_limits<
-                double>::lowest();  // Initialize max to lowest possible value
-            for (int i = 0; i < 2; ++i) {
-                for (int j = 0; j < NUM_FLAVORS; ++j) {
-                    max_IMFP_abs =
-                        std::max(max_IMFP_abs, parms->IMFP_abs[i][j]);
-                }
-            }
-            // Calculate dt_flavor_absorption
-            dt_flavor_absorption = (1 / (PhysConst::c * max_IMFP_abs)) *
-                                   parms->collision_cfl_factor;
-        }
-        if (parms->attenuation_hamiltonians != 0) {
-            dt_flavor_adaptive = min_dt_adaptive;
-            dt_flavor_stupid = min_dt_stupid;
-        }
-
-        // pick the appropriate timestep
-        dt_flavor =
-            min(dt_flavor_stupid, dt_flavor_adaptive, dt_flavor_absorption);
-    }
-
-    if (dt_flavor < 0.0) {
-        amrex::Print() << "Error: NaN value detected in N or Nbar. Aborting..."
-                       << std::endl;
-        AMREX_ASSERT(0);
-    }
-
-    Real dt = 0.0;
-    if (dt_translation != 0.0 && dt_flavor != 0.0) {
-        dt = std::min(dt_translation, dt_flavor);
-    } else {
-        if (dt_translation != 0.0) {
-            dt = dt_translation;
-        } else if (dt_flavor != 0.0) {
-            dt = dt_flavor;
-        } else {
-            amrex::Error(
-                "Timestep selection failed, both dt_translation and dt_flavor "
-                "are zero. Try using both cfl_factor and flavor_cfl_factor.");
-        }
+        dt = min_length / PhysConst::c * parms->cfl_factor;
     }
 
     if (dt < parms->minimum_time_step) dt = parms->minimum_time_step;
-    // printf("dt = %g, dt_flavor = %g, dt_translation = %g\n", dt, dt_flavor, dt_translation);
+
+    // Particle positions are synchronized at every RK stage, so a particle may
+    // sit outside its box's valid region during the step. The deposition bins
+    // one ghost layer and the grid carries ngrow = 1 + stencil_radius, which
+    // allows exactly one cell of drift -- so a particle must not travel more
+    // than one cell per step. This bounds cfl_factor and minimum_time_step
+    // together, since either can set dt.
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        PhysConst::c * dt <= min_length,
+        "timestep lets particles drift more than one cell; reduce cfl_factor "
+        "or minimum_time_step");
 
     return dt;
 }
@@ -386,6 +261,56 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                     }
                 }
             }
+        });
+}
+
+void interpolate_hydro_to_particles(FlavoredNeutrinoContainer& neutrinos,
+                                    const MultiFab& state,
+                                    const Geometry& geom) {
+    const auto plo = geom.ProbLoArray();
+    const auto dxi = geom.InvCellSizeArray();
+
+    const int shape_factor_order_x =
+        geom.Domain().length(0) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_factor_order_y =
+        geom.Domain().length(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_factor_order_z =
+        geom.Domain().length(2) > 1 ? SHAPE_FACTOR_ORDER : 0;
+
+    amrex::MeshToParticle(
+        neutrinos, state, 0,
+        [=] AMREX_GPU_DEVICE(FlavoredNeutrinoContainer::PTDType const& ptd,
+                             const int p_index,
+                             amrex::Array4<const amrex::Real> const& sarr) {
+            FlavoredNeutrinoContainer::FNParticleView p{ptd, p_index};
+
+            const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
+            const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
+            const amrex::Real delta_z = (p.pos(2) - plo[2]) * dxi[2];
+
+            const ParticleInterpolator<SHAPE_FACTOR_ORDER> sx(
+                delta_x, shape_factor_order_x);
+            const ParticleInterpolator<SHAPE_FACTOR_ORDER> sy(
+                delta_y, shape_factor_order_y);
+            const ParticleInterpolator<SHAPE_FACTOR_ORDER> sz(
+                delta_z, shape_factor_order_z);
+
+            Real T_pp = 0;
+            Real Ye_pp = 0;
+            Real rho_pp = 0;
+            for (int k = sz.first(); k <= sz.last(); ++k) {
+                for (int j = sy.first(); j <= sy.last(); ++j) {
+                    for (int i = sx.first(); i <= sx.last(); ++i) {
+                        const amrex::Real vol = sx(i) * sy(j) * sz(k);
+                        T_pp += vol * sarr(i, j, k, GIdx::T);
+                        Ye_pp += vol * sarr(i, j, k, GIdx::Ye);
+                        rho_pp += vol * sarr(i, j, k, GIdx::rho);
+                    }
+                }
+            }
+            p.rdata(PIdx::T_erg) = T_pp;
+            p.rdata(PIdx::Ye) = Ye_pp;
+            p.rdata(PIdx::rho_g_inv_ccm) = rho_pp;
         });
 }
 
@@ -567,7 +492,12 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
         if (num_particles == 0) continue;
         const auto& ptd = tile.getConstParticleTileData();
 
-        const Box& box = pti.validbox();
+        // Grow by one cell: positions are synchronized every RK stage, so a
+        // particle can have drifted out of its valid box since the last
+        // Redistribute. Binning that layer gives it a bin and a thread, and its
+        // stencil then reaches at most ngrow cells out, where SumBoundary picks
+        // it up. Without this the deposit would be silently dropped.
+        const Box box = amrex::grow(pti.validbox(), 1);
         const auto box_lo = amrex::lbound(box);
         const auto box_len = amrex::length(box);
         const int num_cells = box_len.x * box_len.y * box_len.z;
@@ -832,6 +762,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                     p.rdata(PIdx::pupt) = 0;
                     // set the dVphase/dt values
                     p.rdata(PIdx::Vphase) = 0;
+                    // Hydro is a lookup, not a time-evolved field.
+                    p.rdata(PIdx::rho_g_inv_ccm) = 0;
+                    p.rdata(PIdx::T_erg) = 0;
+                    p.rdata(PIdx::Ye) = 0;
 
                     // Set the dN/dt and dNbar/dt values to zero
                     for (int comp = PIdx::N00_Re; comp < PIdx::TrHN; ++comp)
@@ -859,10 +793,11 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             const ParticleInterpolator<SHAPE_FACTOR_ORDER> sz(
                 delta_z, shape_factor_order_z);
 
-            // The following variables contains temperature, electron fraction, and density interpolated from grid quantities to particle positions
-            Real T_pp = 0;  // erg
-            Real Ye_pp = 0;
-            Real rho_pp = 0;  // g/ccm
+            // Background hydro interpolated onto this particle by
+            // interpolate_hydro_to_particles (copied here with copyParticles).
+            const Real T_pp = p.rdata(PIdx::T_erg);  // erg
+            const Real Ye_pp = p.rdata(PIdx::Ye);
+            const Real rho_pp = p.rdata(PIdx::rho_g_inv_ccm);  // g/ccm
 
             // phat = momentum direction (p/E), used for the flux contraction in the SI potential
             amrex::Real phat[3] = {p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
@@ -928,11 +863,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                             PhysConst::Mp * relativistic_correction;
                         V00_Re += matter_term;
                         V00_Rebar -= matter_term;
-
-                        // Interpolate the background matter scalars to the particle position.
-                        T_pp += vol * sarr(i, j, k, GIdx::T);
-                        Ye_pp += vol * sarr(i, j, k, GIdx::Ye);
-                        rho_pp += vol * sarr(i, j, k, GIdx::rho);
                     }
                 }
             }
@@ -979,167 +909,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 }
             }
 
-            // If opacity_method is 1, the code will use the inverse mean free paths in the input parameters to compute the collision term.
-            if (parms->IMFP_method == 0) {
-                // do nothing
-            } else if (parms->IMFP_method == 1) {
-                for (int i = 0; i < NUM_FLAVORS; ++i) {
-                    IMFP_abs[i][i] =
-                        parms->IMFP_abs
-                            [0]
-                            [i];  // 1/cm : Read absorption inverse mean free path from input parameters file.
-                    IMFP_absbar[i][i] =
-                        parms->IMFP_abs
-                            [1]
-                            [i];  // 1/cm : Read absorption inverse mean free path from input parameters file.
-                    munu[i][i] =
-                        parms->munu
-                            [0]
-                            [i];  // ergs : Read neutrino chemical potential from input parameters file.
-                    munubar[i][i] =
-                        parms->munu
-                            [1]
-                            [i];  // ergs : Read antineutrino chemical potential from input parameters file.
-                }
-            }
-            // If opacity_method is 2, the code interpolate inverse mean free paths from NuLib table and electron neutrino chemical potential from EoS table to compute the collision term.
-            else if (parms->IMFP_method == 2) {
-                // Assign temperature, electron fraction, and density at the particle's position to new variables for interpolation of chemical potentials and inverse mean free paths.
-                Real rho =
-                    rho_pp;  // Density of background matter at this particle's position g/cm^3
-                Real temperature =
-                    T_pp /
-                    (1e6 *
-                     CGSUnitsConst::
-                         eV);  // Temperature of background matter at this particle's position 0.05 //MeV
-                Real Ye =
-                    Ye_pp;  // Electron fraction of background matter at this particle's position
-
-                //-------------------- Values from EoS table ------------------------------
-                double mue_out,
-                    muhat_out;  // mue_out : Electron chemical potential. muhat_out : neutron minus proton chemical potential
-                int keyerr, anyerr;
-                EOS_tabulated_obj.get_mue_muhat(rho, temperature, Ye, mue_out,
-                                                muhat_out, keyerr, anyerr);
-                if (anyerr)
-                    AMREX_ASSERT(
-                        0);  //If there is an error in interpolation call, stop execution.
-
-//#define DEBUG_INTERPOLATION_TABLES
-#ifdef DEBUG_INTERPOLATION_TABLES
-                amrex::Print() << "(Evolve.cpp) mu_e interpolated = " << mue_out
-                               << std::endl;
-                amrex::Print()
-                    << "(Evolve.cpp) muhat interpolated = " << muhat_out
-                    << std::endl;
-#endif
-                // munu_val : electron neutrino chemical potential
-                const double munu_val =
-                    (mue_out - muhat_out) * 1e6 *
-                    CGSUnitsConst::eV;  //munu -> "mu_e" - "muhat"
-
-                munu[0][0] =
-                    munu_val;  // erg : Save neutrino chemical potential from EOS table in chemical potential matrix
-                munubar[0][0] =
-                    -1.0 *
-                    munu_val;  // erg : Save antineutrino chemical potential from EOS table in chemical potential matrix
-
-                //--------------------- Values from NuLib table ---------------------------
-                int* helperVarsInt_nulib =
-                    NuLib_tabulated_obj
-                        .get_helperVarsInt_nulib();  // used via NULIBVAR_INT
-                double* energy_bottom =
-                    NuLib_energies_obj.get_energy_bottom_nulib();
-                double* energy_top = NuLib_energies_obj.get_energy_top_nulib();
-
-                double neutrino_energy_erg =
-                    p.rdata(PIdx::pupt);  //locate energy bin using this.
-                double neutrino_energy_MeV =
-                    neutrino_energy_erg / (1e6 * CGSUnitsConst::eV);
-
-                //Decide which energy bin to use (i.e. determine 'idx_group')
-                int idx_group = -1;
-                for (int i = 0; i < NULIBVAR_INT(ngroup); i++) {
-                    if (neutrino_energy_MeV >= energy_bottom[i] &&
-                        neutrino_energy_MeV <= energy_top[i]) {
-                        idx_group = i;
-                        break;
-                    }
-                }
-
-                if (idx_group == -1)
-                    AMREX_ASSERT(0);  //abort if energy bin cannot be found.
-                //amrex::Print() << "Given neutrino energy = %f, selected bin index = %d\n", neutrino_energy_MeV, idx_group);
-
-                //idx_species = {0 for electron neutrino, 1 for electron antineutrino and 2 for all other heavier ones}
-                //electron neutrino: [0, 0]
-                int idx_species = 0;
-                double absorption_opacity, scattering_opacity;
-                NuLib_tabulated_obj.get_opacities(
-                    rho, temperature, Ye, absorption_opacity,
-                    scattering_opacity, keyerr, anyerr, idx_species, idx_group);
-                if (anyerr) AMREX_ASSERT(0);
-
-#ifdef DEBUG_INTERPOLATION_TABLES
-                amrex::Print()
-                    << "(Evolve.cpp) absorption_opacity[e] interpolated = "
-                    << absorption_opacity << std::endl;
-                amrex::Print()
-                    << "(Evolve.cpp) scattering_opacity[e] interpolated = "
-                    << scattering_opacity << std::endl;
-#endif
-
-                IMFP_abs[0][0] = absorption_opacity;
-                IMFP_scat[0][0] = scattering_opacity;
-
-                //electron antineutrino: [1, 0]
-                idx_species = 1;
-                NuLib_tabulated_obj.get_opacities(
-                    rho, temperature, Ye, absorption_opacity,
-                    scattering_opacity, keyerr, anyerr, idx_species, idx_group);
-                if (anyerr) AMREX_ASSERT(0);
-
-#ifdef DEBUG_INTERPOLATION_TABLES
-                amrex::Print()
-                    << "(Evolve.cpp) absorption_opacity[a] interpolated = "
-                    << absorption_opacity << std::endl;
-                amrex::Print()
-                    << "(Evolve.cpp) scattering_opacity[a] interpolated = "
-                    << scattering_opacity << std::endl;
-#endif
-
-                IMFP_absbar[0][0] = absorption_opacity;
-                IMFP_scatbar[0][0] = scattering_opacity;
-
-                //heavier ones: muon neutrino[0,1], muon antineutruino[1,1], tau neutrino[0,2], tau antineutrino[1,2]
-                idx_species = 2;
-                NuLib_tabulated_obj.get_opacities(
-                    rho, temperature, Ye, absorption_opacity,
-                    scattering_opacity, keyerr, anyerr, idx_species, idx_group);
-                if (anyerr) AMREX_ASSERT(0);
-
-#ifdef DEBUG_INTERPOLATION_TABLES
-                amrex::Print()
-                    << "(Evolve.cpp) absorption_opacity[x] interpolated = "
-                    << absorption_opacity << std::endl;
-                amrex::Print()
-                    << "(Evolve.cpp) scattering_opacity[x] interpolated = "
-                    << scattering_opacity << std::endl;
-#endif
-
-                for (int i = 1; i < NUM_FLAVORS;
-                     ++i) {  //0->neutrino or 1->antineutrino
-                    // for(int j=1; j<NUM_FLAVORS; j++){  //0->electron, 1->heavy(muon), 2->heavy(tau); all heavy same for current table
-                    IMFP_abs[i][i] = absorption_opacity;      // ... fix it ...
-                    IMFP_absbar[i][i] = absorption_opacity;   // ... fix it ...
-                    IMFP_scat[i][i] = scattering_opacity;     // ... fix it ...
-                    IMFP_scatbar[i][i] = scattering_opacity;  // ... fix it ...
-                    // }
-                }
-                //-----------------------------------------------------------------------
-            } else
-                AMREX_ASSERT_WITH_MESSAGE(
-                    false, "only available opacity_method is 0, 1 or 2");
+            fill_particle_opacities(
+                parms, rho_pp, T_pp, Ye_pp, EOS_tabulated_obj,
+                NuLib_tabulated_obj, NuLib_energies_obj, p.rdata(PIdx::pupt),
+                IMFP_abs, IMFP_absbar, IMFP_scat, IMFP_scatbar, munu, munubar);
 
             // Compute equilibrium distribution functions and include Pauli blocking term if requested
             if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
@@ -1233,6 +1006,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             p.rdata(PIdx::pupz) = geodesic_rhs[7];
 
             p.rdata(PIdx::Vphase) = 0;
+            // Hydro is a lookup, not a time-evolved field.
+            p.rdata(PIdx::rho_g_inv_ccm) = 0;
+            p.rdata(PIdx::T_erg) = 0;
+            p.rdata(PIdx::Ye) = 0;
         });
 }
 
