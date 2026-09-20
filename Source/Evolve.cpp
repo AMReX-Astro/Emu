@@ -9,6 +9,9 @@
 
 #include "FillParticleOpacities.H"
 #include "NuLibTable.H"
+
+#include "Metric.H"
+
 #include "NuLibTableFunctions.H"
 
 using namespace amrex;
@@ -50,11 +53,27 @@ Real compute_dt(const Geometry& geom, const MultiFab& /*state*/,
         "is nonzero.");
 
     // Get the cell size array
-    const auto dxi = geom.CellSizeArray();
+    const auto dx = geom.CellSizeArray();
+    // Getting the lower bounds of the domain
+    const auto p_lo = geom.ProbLoArray();
+    // Getting the upper bounds of the domain
+    const auto p_hi = geom.ProbHiArray();
 
-    // dt = (min(dx,dy,dz)/c) * cfl_factor
-    Real dt =
-        std::min({dxi[0], dxi[1], dxi[2]}) / PhysConst::c * parms->cfl_factor;
+    Real min_length = std::numeric_limits<Real>::max();
+    Real dt = 0.0;
+
+    if (parms->cfl_factor > 0.0) {
+        const amrex::GpuArray<int, 3> ncell = {geom.Domain().length(0),
+                                               geom.Domain().length(1),
+                                               geom.Domain().length(2)};
+        ActiveMetric metric;
+        min_length = metric.min_length(dx, p_lo, p_hi, ncell);
+
+        // Calculate the time step size based on the translation CFL factor
+
+        // dt = (min(dx1,dx2,dx3)/c) * cfl_factor
+        dt = min_length / PhysConst::c * parms->cfl_factor;
+    }
 
     if (dt < parms->minimum_time_step) dt = parms->minimum_time_step;
 
@@ -65,7 +84,7 @@ Real compute_dt(const Geometry& geom, const MultiFab& /*state*/,
     // than one cell per step. This bounds cfl_factor and minimum_time_step
     // together, since either can set dt.
     AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
-        PhysConst::c * dt <= std::min({dxi[0], dxi[1], dxi[2]}),
+        PhysConst::c * dt <= min_length,
         "timestep lets particles drift more than one cell; reduce cfl_factor "
         "or minimum_time_step");
 
@@ -80,9 +99,8 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                                    MultiFab& state, const Geometry& geom,
                                    const TestParams* parms) {
     BL_PROFILE("deposit_to_mesh_atomic()");
-    const auto plo = geom.ProbLoArray();
+    const auto p_lo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
-    const Real inv_cell_volume = dxi[0] * dxi[1] * dxi[2];
 
     // Create an alias of the MultiFab so ParticleToMesh only erases the quantities
     // that will be set by the neutrinos.
@@ -126,9 +144,9 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                              const int p_index,
                              amrex::Array4<amrex::Real> const& sarr) {
             FlavoredNeutrinoContainer::FNParticleConstView p{ptd, p_index};
-            const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
-            const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
-            const amrex::Real delta_z = (p.pos(2) - plo[2]) * dxi[2];
+            const amrex::Real delta_x = (p.pos(0) - p_lo[0]) * dxi[0];
+            const amrex::Real delta_y = (p.pos(1) - p_lo[1]) * dxi[1];
+            const amrex::Real delta_z = (p.pos(2) - p_lo[2]) * dxi[2];
 
             const ParticleInterpolator<SHAPE_FACTOR_ORDER> sx(
                 delta_x, shape_factor_order_x);
@@ -140,10 +158,20 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
             // Momentum-direction factors (phat = p/E) multiplying the deposited N,
             // one per grid moment block in GIdx block order:
             // N, Fx, Fy, Fz[, Pxx, Pxy, Pxz, Pyy, Pyz, Pzz].
-            const amrex::Real phat[3] = {
-                p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
-                p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt),
-                p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
+            amrex::Real phat[3] = {p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
+                                   p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt),
+                                   p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
+
+            // For curvilinear coordinates, we convert phat to curvilinear components projected on a local orthonormal tetrad for each particle
+
+            const FourVec ph_old = {1.0, phat[0], phat[1], phat[2]};
+            ActiveMetric m;
+            const FourVec ph_new =
+                m.tetrad_conv(ph_old, p.pos(0), p.pos(1), p.pos(2));
+            phat[0] = ph_new[1];
+            phat[1] = ph_new[2];
+            phat[2] = ph_new[3];
+
             amrex::Real moment_factor[NUM_MOMENTS == 3 ? 10 : 4];
             moment_factor[0] = 1.0;      // N
             moment_factor[1] = phat[0];  // Fx
@@ -176,6 +204,17 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
             for (int k = sz.first(); k <= sz.last(); ++k) {
                 for (int j = sy.first(); j <= sy.last(); ++j) {
                     for (int i = sx.first(); i <= sx.last(); ++i) {
+                        // getting the upper and lower bounds of the cell
+                        amrex::GpuArray<amrex::Real, 3> lo{}, hi{};
+                        cell_bounds(i, j, k, p_lo, dxi, lo, hi);
+
+                        //calculating cell volume
+                        ActiveMetric m;
+                        const amrex::Real V_cell =
+                            m.vol(lo[0], hi[0], lo[1], hi[1], lo[2], hi[2]);
+
+                        const amrex::Real inv_cell_volume = 1.0 / V_cell;
+
                         const amrex::Real vol =
                             sx(i) * sy(j) * sz(k) * inv_cell_volume;
 
@@ -405,7 +444,7 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
         "deposit_method=1 expects particle_sort_method=1 (sort by cell)");
 
     // Get the cell volume, spacing, and domain size
-    const auto plo = geom.ProbLoArray();
+    const auto p_lo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
     const Real inv_cell_volume = dxi[0] * dxi[1] * dxi[2];
     const Box& domain = geom.Domain();
@@ -475,7 +514,7 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                     const FlavoredNeutrinoContainer::ConstPTDType& tile_data,
                     int index) noexcept -> unsigned int {
                     const amrex::IntVect cell = amrex::getParticleCell(
-                        tile_data, index, plo, dxi, domain);
+                        tile_data, index, p_lo, dxi, domain);
                     const int local_i = cell[0] - box_lo.x;
                     const int local_j = cell[1] - box_lo.y;
                     const int local_k = cell[2] - box_lo.z;
@@ -506,14 +545,14 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                 FlavoredNeutrinoContainer::FNParticleConstView p{ptd, p_index};
 
                 const amrex::IntVect home_cell =
-                    amrex::getParticleCell(ptd, p_index, plo, dxi, domain);
+                    amrex::getParticleCell(ptd, p_index, p_lo, dxi, domain);
 
                 const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_i(
-                    (p.pos(0) - plo[0]) * dxi[0], shape_order_i);
+                    (p.pos(0) - p_lo[0]) * dxi[0], shape_order_i);
                 const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_j(
-                    (p.pos(1) - plo[1]) * dxi[1], shape_order_j);
+                    (p.pos(1) - p_lo[1]) * dxi[1], shape_order_j);
                 const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_k(
-                    (p.pos(2) - plo[2]) * dxi[2], shape_order_k);
+                    (p.pos(2) - p_lo[2]) * dxi[2], shape_order_k);
 
                 ParticleGeometry& particle_geometry = geometry[sorted_index];
 
@@ -660,7 +699,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                                const MultiFab& state, const Geometry& geom,
                                const TestParams* parms) {
     BL_PROFILE("interpolate_rhs_from_mesh()");
-    const auto plo = geom.ProbLoArray();
+    const auto p_lo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
 
     const int shape_factor_order_x =
@@ -743,9 +782,9 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 
 #include "generated_files/Evolve.cpp_Vvac_fill"
 
-            const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
-            const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
-            const amrex::Real delta_z = (p.pos(2) - plo[2]) * dxi[2];
+            const amrex::Real delta_x = (p.pos(0) - p_lo[0]) * dxi[0];
+            const amrex::Real delta_y = (p.pos(1) - p_lo[1]) * dxi[1];
+            const amrex::Real delta_z = (p.pos(2) - p_lo[2]) * dxi[2];
 
             const ParticleInterpolator<SHAPE_FACTOR_ORDER> sx(
                 delta_x, shape_factor_order_x);
@@ -761,10 +800,19 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             const Real rho_pp = p.rdata(PIdx::rho_g_inv_ccm);  // g/ccm
 
             // phat = momentum direction (p/E), used for the flux contraction in the SI potential
-            const amrex::Real phat[3] = {
-                p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
-                p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt),
-                p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
+            amrex::Real phat[3] = {p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
+                                   p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt),
+                                   p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
+
+            // For curvilinear coordinates, we convert phat to curvilinear components projected on a local orthonormal tetrad for each particle
+
+            const FourVec ph_old = {1.0, phat[0], phat[1], phat[2]};
+            ActiveMetric m;
+            const FourVec ph_new =
+                m.tetrad_conv(ph_old, p.pos(0), p.pos(1), p.pos(2));
+            phat[0] = ph_new[1];
+            phat[1] = ph_new[2];
+            phat[2] = ph_new[3];
 
             for (int k = sz.first(); k <= sz.last(); ++k) {
                 for (int j = sy.first(); j <= sy.last(); ++j) {
@@ -940,22 +988,23 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 // Compute the time derivative of \( N_{ab} \) using the Quantum Kinetic Equations (QKE).
 #include "generated_files/Evolve.cpp_dfdt_fill"
 
+            //getting the rhs of the geodesic equations in cartesian coordinate system
+
+            CartesianMetric metric;
+
+            GeodesicArray geodesic_rhs = metric.geodesic_rhs(p);
+
             // set the dx/dt values
-            p.rdata(PIdx::x) =
-                p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt) * PhysConst::c;
-            p.rdata(PIdx::y) =
-                p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt) * PhysConst::c;
-            p.rdata(PIdx::z) =
-                p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt) * PhysConst::c;
-            // set the dt/dt = 1. Neutrinos move at one second per second
-            p.rdata(PIdx::time) = 1.0;
-            // set the d(pE)/dt values
-            p.rdata(PIdx::pupx) = 0;
-            p.rdata(PIdx::pupy) = 0;
-            p.rdata(PIdx::pupz) = 0;
-            // set the dE/dt values
-            p.rdata(PIdx::pupt) = 0;
-            // set the dVphase/dt values
+            p.rdata(PIdx::time) = geodesic_rhs[0];
+            p.rdata(PIdx::x) = geodesic_rhs[1] * PhysConst::c;
+            p.rdata(PIdx::y) = geodesic_rhs[2] * PhysConst::c;
+            p.rdata(PIdx::z) = geodesic_rhs[3] * PhysConst::c;
+            // set the d(p)/dt values
+            p.rdata(PIdx::pupt) = geodesic_rhs[4];
+            p.rdata(PIdx::pupx) = geodesic_rhs[5];
+            p.rdata(PIdx::pupy) = geodesic_rhs[6];
+            p.rdata(PIdx::pupz) = geodesic_rhs[7];
+
             p.rdata(PIdx::Vphase) = 0;
             // Hydro is a lookup, not a time-evolved field.
             p.rdata(PIdx::rho_g_inv_ccm) = 0;

@@ -49,3 +49,4 @@ metric/main3d.gnu.DEBUG.MPI.ex
 amrex/
 *~
 unit_test/main3d.gnu.DEBUG.MPI.ex
+tables/

@@ -16,6 +16,7 @@ enum { periodic = 0, reflecting = 1, outflow = 2 };
 //=========================================//
 // Structure of global parameter variables //
 //=========================================//
+
 struct TestParams : public amrex::Gpu::Managed {
     IntVect ncell;  // Number of cells in the domain
     IntVect
@@ -34,7 +35,9 @@ struct TestParams : public amrex::Gpu::Managed {
     Real vupx_in;  // X-component of velocity, cm/s
     Real vupy_in;  // Y-component, cm/s
     Real vupz_in;  // Z-component, cm/s
+
     Real cfl_factor;
+
     bool do_restart;  // Flag to restart from a previous simulation
     std::string
         restart_dir;  // Directory path to restart from in case do_restart is true

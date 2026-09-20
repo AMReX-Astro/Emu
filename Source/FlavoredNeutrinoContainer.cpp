@@ -1,5 +1,6 @@
 #include "FlavoredNeutrinoContainer.H"
 #include "Constants.H"
+#include "Metric.H"
 
 using namespace amrex;
 
@@ -22,15 +23,28 @@ void FlavoredNeutrinoContainer::SyncLocation(int type) {
             FNParticleView p{ptd, i};
 
             if (type == Sync::CoordinateToPosition) {
-                // Copy integrated position to the particle position.
-                p.pos(0) = p.rdata(PIdx::x);
-                p.pos(1) = p.rdata(PIdx::y);
-                p.pos(2) = p.rdata(PIdx::z);
+                //turning particle coordinates from cartesian to mesh cordinate system
+                ActiveMetric metric;
+                FourVec pos_mesh = metric.pos_conv(p);
+
+                //Copy converted particle coordinates into mesh position variables
+                p.pos(0) = pos_mesh[1];
+                p.pos(1) = pos_mesh[2];
+                p.pos(2) = pos_mesh[3];
+
             } else if (type == Sync::PositionToCoordinate) {
-                // Copy the reset particle position back to the integrated position.
+                //Copy the reset mesh position variables back to the particle coordinates
                 p.rdata(PIdx::x) = p.pos(0);
                 p.rdata(PIdx::y) = p.pos(1);
                 p.rdata(PIdx::z) = p.pos(2);
+
+                //turning particle coordinate system back to cartesian
+                ActiveMetric metric;
+                FourVec pos_int = metric.pos_conv_inv(p);
+
+                p.rdata(PIdx::x) = pos_int[1];
+                p.rdata(PIdx::y) = pos_int[2];
+                p.rdata(PIdx::z) = pos_int[3];
             }
         });
     }
@@ -76,7 +90,13 @@ void FlavoredNeutrinoContainer::ApplyBoundaryConditions(
                 if (mode == BoundaryCondition::reflecting ||
                     mode == BoundaryCondition::outflow) {
                     p.pos(d) = reflected_pos;
+
+                    ActiveMetric metric;
+                    metric.coord_conv(p);
+
                     p.rdata(PIdx::pupx + d) = -p.rdata(PIdx::pupx + d);
+
+                    metric.coord_conv_inv(p);
 
                     // Outflow: zero the density matrix so the particle carries
                     // nothing back into the domain (no incoming flux).
