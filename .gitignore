@@ -50,3 +50,4 @@ amrex/
 *~
 unit_test/main3d.gnu.DEBUG.MPI.ex
 schwarzschild/christoffel_cart.py
+tables/

@@ -1,38 +1,49 @@
 perturbation_type = 0
 perturbation_amplitude = 1e-6
 
+#Spherical coordinate system
+coord_sys = 2
+
+#deposit_to_mesh method
+deposit_method = 0
+
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 0
 attenuation_vacuum = 1.0
 attenuation_matter = 1.0
 attenuation_self_interaction = 1.0
 
+collision_cfl_factor = 55
 cfl_factor = 0.5
+flavor_cfl_factor = 0
 
 integration.type = 1
 integration.rk.type = 4          # DormandPrince (0=User, 1=ForwardEuler, 2=Trapezoid, 3=SSPRK3, 4=RK4, 5=DormandPrince)
 integration.use_adaptive_time_step = 0
 
 # Domain size in 3D index space
-ncell = (2,2,2)
+ncell = (500,1,1)
 Lx = 2.2e6 # cm
-Ly = 2.2e6 # cm
-Lz = 2.2e6 # cm
+Ly = 3.141592653589793 # radians (theta: 0 to pi)
+Lz = 6.283185307179586 # radians (phi: 0 to 2pi)
 
 # Number of particles per cell
 nppc  = (1, 1, 1)
 particle_data_filename = "particle_input.dat"
 
 # Maximum size of each grid in the domain
-max_grid_size_x = 2
-max_grid_size_y = 2
-max_grid_size_z = 2
+max_grid_size_x = 125
+max_grid_size_y = 1
+max_grid_size_z = 1
 
 # Number of steps to run
-nsteps = 6000
+nsteps = 8500
 
 # Minimum timestep (s)
 minimum_time_step = 1e-15
+
+# Time step method
+time_step_method = 0
 
 # Simulation end time
 end_time = 5.0e9
@@ -41,10 +52,10 @@ end_time = 5.0e9
 amrex.fpe_trap_invalid=1
 
 # Write plotfiles
-write_plot_every = 6000
+write_plot_every = 100
 
 # Write particle data in plotfiles
-write_plot_particles_every = 6000
+write_plot_particles_every = 500
 
 # checkpointing
 do_restart = 0
@@ -104,11 +115,11 @@ do_blackhole = 0
 # Boundary conditions
 #################
 bc_xlo = reflecting
-bc_xhi = reflecting
+bc_xhi = outflow
 bc_ylo = reflecting
 bc_yhi = reflecting
-bc_zlo = reflecting
-bc_zhi = reflecting
+bc_zlo = periodic
+bc_zhi = periodic
 
 #################
 # Tables

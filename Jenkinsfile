@@ -117,7 +117,7 @@ pipeline {
 					sh 'make realclean; make generate NUM_FLAVORS=2; make -j NUM_FLAVORS=2'
 					sh 'python ../Scripts/initial_conditions/st11_periodic_empty_bc.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_outflow_bh_test'
-					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
+					sh 'python ../Scripts/data_reduction/write_particles_all_domain.py'
 					sh 'python ../Scripts/tests/bc_empty_init_test.py'
 					archiveArtifacts artifacts: '*.pdf'
 					sh 'rm -rf plt* *pdf'
@@ -151,9 +151,9 @@ pipeline {
 		stage('Fermi-Dirac test'){ steps{
 				dir('Exec'){
 					sh 'python ../Scripts/initial_conditions/st9_empty_particles_multi_energy.py'
-					sh 'python ../Scripts/collisions/nsm_constant_background_rho_Ye_T_writer.py'
+					sh 'python ../Scripts/initial_conditions/nsm_constant_background_rho_Ye_T_writer.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fermi_dirac_test'
-					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
+					sh 'python ../Scripts/data_reduction/write_particles_all_domain.py'
 					sh 'python ../Scripts/tests/fermi_dirac_test.py'
 					sh 'rm -rf plt* *pdf rho_Ye_T.hdf5'
 				}
@@ -163,11 +163,35 @@ pipeline {
 		stage('Fermi-Dirac Reflecting'){ steps{
 				dir('Exec'){
 					sh 'python ../Scripts/initial_conditions/st9_empty_particles_multi_energy.py'
-					sh 'python ../Scripts/collisions/nsm_constant_background_rho_Ye_T_writer.py'
+					sh 'python ../Scripts/initial_conditions/nsm_constant_background_rho_Ye_T_writer.py'
 					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fermi_dirac_test_reflecting'
-					sh 'python ../Scripts/collisions/writeparticleinfohdf5.py'
+					sh 'python ../Scripts/data_reduction/write_particles_all_domain.py'
 					sh 'python ../Scripts/tests/fermi_dirac_test.py'
 					sh 'rm -rf plt* *pdf rho_Ye_T.hdf5'
+				}
+			}
+		}
+
+		stage('Fermi-Dirac Reflecting 1D Spherical'){ steps{
+				dir('Exec'){
+					sh 'make realclean; make generate NUM_FLAVORS=3 COORD_SYS=2; make -j NUM_FLAVORS=3 COORD_SYS=2'
+					sh 'python ../Scripts/initial_conditions/st9_empty_particles_multi_energy.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_fermi_dirac_test_reflecting_spherical'
+					sh 'python ../Scripts/data_reduction/write_particles_all_domain.py'
+					sh 'python ../Scripts/tests/fermi_dirac_test.py'
+					sh 'rm -rf plt* *pdf'
+					}
+				}
+			}
+
+		stage('Radiating sphere'){ steps{
+				dir('Exec'){
+					sh 'python ../Scripts/initial_conditions/st_radiating_sphere.py'
+					sh 'python ../Scripts/initial_conditions/radiating_sphere_background_writer.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_radiating_sphere_test'
+					sh 'python ../Scripts/data_reduction/convertToHDF5_split.py'
+					sh 'python ../Scripts/tests/radiating_sphere_test.py'
+					sh 'rm -rf plt* mesh_plt*.h5 rho_Ye_T.hdf5 reduced0D.dat'
 				}
 			}
 		}

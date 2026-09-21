@@ -24,6 +24,7 @@ if not os.path.exists(hf_path):
 
 def get_particle_keys(NF, ignore_pos=False, xp_only=False):
     assert(NF==2 or NF==3)
+    generated = [line.strip().rstrip(',') for line in open(hf_path) if line.strip() and not line.strip().startswith('#')]
     real_quantities =   [   "pos_x",
                             "pos_y",
                             "pos_z",
@@ -35,11 +36,16 @@ def get_particle_keys(NF, ignore_pos=False, xp_only=False):
                             "pupy",
                             "pupz",
                             "pupt",
-                            *[line.strip().rstrip(',') for line in open(hf_path) if line.strip() and not line.strip().startswith('#')]
+                            "rho_g_inv_ccm",
+                            "T_erg",
+                            "Ye",
+                            *generated
                         ]
 
     if xp_only: real_quantities = real_quantities[:11]
-    if ignore_pos: real_quantities = real_quantities[7:]
+    if ignore_pos:
+        # particle_input.dat: pup then generated N, no hydro
+        real_quantities = ["pupx", "pupy", "pupz", "pupt"] + generated
     
     rkey = {}
     for i, rlabel in enumerate(real_quantities):

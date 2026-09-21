@@ -99,25 +99,18 @@ struct ParticleInterpolator {
         shape_functions[2] = 0.5_rt * (0.5_rt + offset) * (0.5_rt + offset);
     }
 
+    // Index of the cell containing the particle. This must agree with
+    // amrex::getParticleCell
     AMREX_GPU_DEVICE AMREX_FORCE_INLINE int nearest_cell_center_index(
         Real delta) const noexcept {
-        // we need to check (delta-0.5) because delta is measured
-        // from xlo, the lo edge of the domain. However, the cell
-        // center at index 0 is offset from xlo by +0.5.
-        const Real dstar = delta - 0.5_rt < 0.0_rt ? delta - 1.0_rt : delta;
-        return static_cast<int>(dstar);
+        return static_cast<int>(std::floor(delta));
     }
 
+    // Particle offset from that cell's center, in [-0.5, 0.5). delta is measured
+    // from xlo, the lo edge of the domain, and the cell center is at +0.5.
     AMREX_GPU_DEVICE AMREX_FORCE_INLINE Real
     nearest_cell_center_offset(Real delta) const noexcept {
-        // first, convert particle position to fraction of the nearest cell
-        const Real fraction = delta - static_cast<int>(delta);
-
-        // get the particle offset from the nearest cell center
-        const Real offset =
-            delta <= 0.0_rt ? fraction + 0.5_rt : fraction - 0.5_rt;
-
-        return offset;
+        return delta - std::floor(delta) - 0.5_rt;
     }
 
     int first_cell, last_cell;

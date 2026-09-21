@@ -7,6 +7,7 @@
 #include "EosTable.H"
 #include "EosTableFunctions.H"
 
+#include "FillParticleOpacities.H"
 #include "NuLibTable.H"
 
 #include "Metric.H"
@@ -31,211 +32,73 @@ void Initialize() {
 }  // namespace GIdx
 
 /**
- * @brief Computes the time step size for the simulation based on various CFL factors and conditions.
- *
- * This function calculates the time step size considering translation, flavor, and collision CFL factors.
- * It ensures that the time step is limited by the smallest of these factors to maintain stability.
+ * @brief Computes the time step size for the simulation from the global CFL
+ * condition based on the grid cell size.
  *
  * @param geom The geometry of the simulation domain.
- * @param state The state MultiFab containing the simulation data.
+ * @param state Unused; kept for call-site compatibility.
  * @param parms Pointer to the structure containing simulation parameters.
  *
  * @return The computed time step size.
- *
- * @note At least one of cfl_factor, flavor_cfl_factor, or collision_cfl_factor must be greater than 0.0.
- * @note The function skips black hole regions if specified in the parameters.
- * @note The function performs a reduction operation to find the minimum time step across all cells and MPI ranks.
  */
-Real compute_dt(const Geometry& geom, const MultiFab& state,
+Real compute_dt(const Geometry& geom, const MultiFab& /*state*/,
                 const TestParams* parms) {
-    // If the time step method is 1, return the minimum time step
-    if (parms->time_step_method == 1) {
-        return parms->minimum_time_step;
-    }
+    BL_PROFILE("compute_dt()");
 
+    AMREX_ASSERT_WITH_MESSAGE(parms->cfl_factor >= 0.0,
+                              "Error: cfl_factor must be non-negative.");
     AMREX_ASSERT_WITH_MESSAGE(
-        parms->cfl_factor > 0.0 || parms->flavor_cfl_factor > 0.0 ||
-            parms->collision_cfl_factor > 0.0,
-        "Error: At least one of cfl_factor, flavor_cfl_factor, or "
-        "collision_cfl_factor must be greater than 0.0.");
-
-    // Initialize the maximum real value
-    const Real max_real = std::numeric_limits<Real>::max();
+        parms->cfl_factor == 0.0 || parms->minimum_time_step > 0.0,
+        "Error: minimum_time_step must be greater than zero when cfl_factor "
+        "is nonzero.");
 
     // Get the cell size array
-    const auto dxi = geom.CellSizeArray();
+    const auto dx = geom.CellSizeArray();
     // Getting the lower bounds of the domain
     const auto p_lo = geom.ProbLoArray();
     // Getting the upper bounds of the domain
     const auto p_hi = geom.ProbHiArray();
 
-    Real dt_translation = 0.0;
+    Real min_length = std::numeric_limits<Real>::max();
+    Real dt = 0.0;
 
     if (parms->cfl_factor > 0.0) {
-        Real min_length;
-
-        if (parms->coord_sys == 0) {
-            // Cartesian: (dx1,dx2,dx3) = (dx,dy,dz)
-            min_length = std::min({dxi[0], dxi[1], dxi[2]});
-        }
-
-        else if (parms->coord_sys == 1) {
-            //Cylindrical: (dx1,dx2,dx3) = (dr, r*dphi, dz)
-            // r_min = lowest_r + r_width/4 (ad hoc) . To safe guard against lowest_r = 0
-            Real r_min = p_lo[0] + dxi[0] / 2;
-            min_length = std::min({dxi[0], r_min * dxi[1], dxi[2]});
-        }
-
-        else {
-            //Spherical: (dx1,dx2,dx3) = (dr, r*dtheta, r*sin(theta)*dphi )
-            //The spehrical part might require rethinking
-            Real sin_theta_min =
-                std::min({std::sin(p_lo[1]), std::sin(p_hi[1])});
-            Real r_min = p_lo[0] + dxi[0] / 4;
-            min_length = std::min(
-                {dxi[0], r_min * dxi[1], r_min * sin_theta_min * dxi[2]});
-        }
+        const amrex::GpuArray<int, 3> ncell = {geom.Domain().length(0),
+                                               geom.Domain().length(1),
+                                               geom.Domain().length(2)};
+        ActiveMetric metric;
+        min_length = metric.min_length(dx, p_lo, p_hi, ncell);
 
         // Calculate the time step size based on the translation CFL factor
 
         // dt = (min(dx1,dx2,dx3)/c) * cfl_factor
-        dt_translation = min_length / PhysConst::c * parms->cfl_factor;
-    }
-
-    Real dt_flavor = 0.0;
-
-    if (parms->flavor_cfl_factor > 0.0 && parms->collision_cfl_factor > 0.0) {
-        ReduceOps<ReduceOpMin, ReduceOpMin, ReduceOpMin> reduce_op;
-        ReduceData<Real, Real, Real> reduce_data(reduce_op);
-        using ReduceTuple = typename decltype(reduce_data)::Type;
-        for (MFIter mfi(state); mfi.isValid(); ++mfi) {
-            const Box& bx = mfi.validbox();
-            auto const& fab = state.array(mfi);
-            Real V_vac_max = FlavoredNeutrinoContainer::Vvac_max;
-            reduce_op.eval(
-                bx, reduce_data,
-                [=] AMREX_GPU_DEVICE(int i, int j, int k) -> ReduceTuple {
-                    // Skip cells inside the black hole
-                    if (parms->do_blackhole == 1) {
-                        // Calculate the cell size
-                        double cell_size_x = parms->Lx / parms->ncell[0];
-                        double cell_size_y = parms->Ly / parms->ncell[1];
-                        double cell_size_z = parms->Lz / parms->ncell[2];
-                        // Calculate the cell center coordinates
-                        double x_cell_center = (i + 0.5) * cell_size_x;
-                        double y_cell_center = (j + 0.5) * cell_size_y;
-                        double z_cell_center = (k + 0.5) * cell_size_z;
-                        // Calculate the distance from the black hole center
-                        Real distance_from_bh =
-                            sqrt(pow(x_cell_center - parms->bh_center_x, 2) +
-                                 pow(y_cell_center - parms->bh_center_y, 2) +
-                                 pow(z_cell_center - parms->bh_center_z, 2));
-
-                        // Check if the cell is inside the black hole
-                        if (distance_from_bh < parms->bh_radius) {
-                            return {max_real, max_real, max_real};
-                        }
-                    }
-
-                    // V_stupid = Max(N_ab,Nbar_ab, Ye*rho/Mp)*4.0*sqrt(2)*GF
-                    // V_adaptive id the magnitud of vector the following vector
-                    // |vec{H}| = | sqrt(2)*GF * ( (N_ab - Nbar_ab) + (F - Fbar) + Ye*rho/Mp ) |
-
-                    Real V_adaptive = 0, V_adaptive2 = 0, V_stupid = 0;
-#include "generated_files/Evolve.cpp_compute_dt_fill"
-
-                    V_adaptive += V_vac_max;
-                    V_stupid += V_vac_max;
-
-                    V_adaptive *= parms->attenuation_hamiltonians;
-                    V_stupid *= parms->attenuation_hamiltonians;
-
-                    Real dt_adaptive = max_real;
-                    Real dt_stupid = max_real;
-                    Real dt_absorption = max_real;
-
-                    // Ensure that the minimum trace is not zero
-                    if (std::abs(V_adaptive) > 0.0) {
-                        dt_adaptive = parms->flavor_cfl_factor *
-                                      (PhysConst::hbar / std::abs(V_adaptive));
-                        dt_stupid = parms->flavor_cfl_factor *
-                                    (PhysConst::hbar / std::abs(V_stupid));
-                    }
-
-                    return {dt_adaptive, dt_stupid, dt_absorption};
-                });
-        }
-
-        // extract the reduced values from the combined reduced data structure
-        auto rv = reduce_data.value();
-        Real min_dt_adaptive = amrex::get<0>(rv);
-        Real min_dt_stupid = amrex::get<1>(rv);
-        Real min_dt_absorption = amrex::get<2>(rv);
-
-        // reduce across MPI ranks
-        ParallelDescriptor::ReduceRealMin(min_dt_adaptive);
-        ParallelDescriptor::ReduceRealMin(min_dt_stupid);
-        ParallelDescriptor::ReduceRealMin(min_dt_absorption);
-
-        // define the dt associated with each method
-        Real dt_flavor_adaptive = max_real;
-        Real dt_flavor_stupid = max_real;
-        Real dt_flavor_absorption = max_real;  // Initialize with infinity
-
-        if (parms->IMFP_method == 1) {
-            // Use the IMFPs from the input file and find the maximum absorption IMFP
-            double max_IMFP_abs = std::numeric_limits<
-                double>::lowest();  // Initialize max to lowest possible value
-            for (int i = 0; i < 2; ++i) {
-                for (int j = 0; j < NUM_FLAVORS; ++j) {
-                    max_IMFP_abs =
-                        std::max(max_IMFP_abs, parms->IMFP_abs[i][j]);
-                }
-            }
-            // Calculate dt_flavor_absorption
-            dt_flavor_absorption = (1 / (PhysConst::c * max_IMFP_abs)) *
-                                   parms->collision_cfl_factor;
-        }
-        if (parms->attenuation_hamiltonians != 0) {
-            dt_flavor_adaptive = min_dt_adaptive;
-            dt_flavor_stupid = min_dt_stupid;
-        }
-
-        // pick the appropriate timestep
-        dt_flavor =
-            min(dt_flavor_stupid, dt_flavor_adaptive, dt_flavor_absorption);
-    }
-
-    if (dt_flavor < 0.0) {
-        amrex::Print() << "Error: NaN value detected in N or Nbar. Aborting..."
-                       << std::endl;
-        AMREX_ASSERT(0);
-    }
-
-    Real dt = 0.0;
-    if (dt_translation != 0.0 && dt_flavor != 0.0) {
-        dt = std::min(dt_translation, dt_flavor);
-    } else {
-        if (dt_translation != 0.0) {
-            dt = dt_translation;
-        } else if (dt_flavor != 0.0) {
-            dt = dt_flavor;
-        } else {
-            amrex::Error(
-                "Timestep selection failed, both dt_translation and dt_flavor "
-                "are zero. Try using both cfl_factor and flavor_cfl_factor.");
-        }
+        dt = min_length / PhysConst::c * parms->cfl_factor;
     }
 
     if (dt < parms->minimum_time_step) dt = parms->minimum_time_step;
-    // printf("dt = %g, dt_flavor = %g, dt_translation = %g\n", dt, dt_flavor, dt_translation);
+
+    // Particle positions are synchronized at every RK stage, so a particle may
+    // sit outside its box's valid region during the step. The deposition bins
+    // one ghost layer and the grid carries ngrow = 1 + stencil_radius, which
+    // allows exactly one cell of drift -- so a particle must not travel more
+    // than one cell per step. This bounds cfl_factor and minimum_time_step
+    // together, since either can set dt.
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        PhysConst::c * dt <= min_length,
+        "timestep lets particles drift more than one cell; reduce cfl_factor "
+        "or minimum_time_step");
 
     return dt;
 }
 
-void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
-                     MultiFab& state, const Geometry& geom,
-                     const TestParams* parms) {
+// Original deposition: amrex::ParticleToMesh runs one thread per particle, and
+// every particle atomically adds into all (SHAPE_FACTOR_ORDER+1)^3 stencil cells
+// for each grid component. Kept as the reference implementation for
+// deposit_method 0 and for the A/B comparison in deposit_method 2.
+static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
+                                   MultiFab& state, const Geometry& geom,
+                                   const TestParams* parms) {
+    BL_PROFILE("deposit_to_mesh_atomic()");
     const auto p_lo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
 
@@ -274,8 +137,13 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
 
     amrex::ParticleToMesh(
         neutrinos, deposit_state, 0,
-        [=] AMREX_GPU_DEVICE(const FlavoredNeutrinoContainer::ParticleType& p,
+        // Taking (tile data, index) rather than a particle struct lets the
+        // attribute reads come straight from the SoA arrays; FNParticleConstView
+        // restores the p.rdata()/p.pos() interface the body below uses.
+        [=] AMREX_GPU_DEVICE(FlavoredNeutrinoContainer::ConstPTDType const& ptd,
+                             const int p_index,
                              amrex::Array4<amrex::Real> const& sarr) {
+            FlavoredNeutrinoContainer::FNParticleConstView p{ptd, p_index};
             const amrex::Real delta_x = (p.pos(0) - p_lo[0]) * dxi[0];
             const amrex::Real delta_y = (p.pos(1) - p_lo[1]) * dxi[1];
             const amrex::Real delta_z = (p.pos(2) - p_lo[2]) * dxi[2];
@@ -290,10 +158,20 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
             // Momentum-direction factors (phat = p/E) multiplying the deposited N,
             // one per grid moment block in GIdx block order:
             // N, Fx, Fy, Fz[, Pxx, Pxy, Pxz, Pyy, Pyz, Pzz].
-            const amrex::Real phat[3] = {
-                p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
-                p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt),
-                p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
+            amrex::Real phat[3] = {p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
+                                   p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt),
+                                   p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
+
+            // For curvilinear coordinates, we convert phat to curvilinear components projected on a local orthonormal tetrad for each particle
+
+            const FourVec ph_old = {1.0, phat[0], phat[1], phat[2]};
+            ActiveMetric m;
+            const FourVec ph_new =
+                m.tetrad_conv(ph_old, p.pos(0), p.pos(1), p.pos(2));
+            phat[0] = ph_new[1];
+            phat[1] = ph_new[2];
+            phat[2] = ph_new[3];
+
             amrex::Real moment_factor[NUM_MOMENTS == 3 ? 10 : 4];
             moment_factor[0] = 1.0;      // N
             moment_factor[1] = phat[0];  // Fx
@@ -327,28 +205,13 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
                 for (int j = sy.first(); j <= sy.last(); ++j) {
                     for (int i = sx.first(); i <= sx.last(); ++i) {
                         // getting the upper and lower bounds of the cell
-                        const amrex::Real x1_lo = p_lo[0] + i / dxi[0];
-                        const amrex::Real x1_hi = p_lo[0] + (i + 1) / dxi[0];
-                        const amrex::Real x2_lo = p_lo[1] + j / dxi[1];
-                        const amrex::Real x2_hi = p_lo[1] + (j + 1) / dxi[1];
-                        const amrex::Real x3_lo = p_lo[2] + k / dxi[2];
-                        const amrex::Real x3_hi = p_lo[2] + (k + 1) / dxi[2];
+                        amrex::GpuArray<amrex::Real, 3> lo{}, hi{};
+                        cell_bounds(i, j, k, p_lo, dxi, lo, hi);
 
                         //calculating cell volume
-                        amrex::Real V_cell;
-                        if (parms->coord_sys == 0) {
-                            CartesianMetric m;
-                            V_cell =
-                                m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
-                        } else if (parms->coord_sys == 1) {
-                            CylindricalMetric m;
-                            V_cell =
-                                m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
-                        } else {
-                            SphericalMetric m;
-                            V_cell =
-                                m.vol(x1_hi, x1_lo, x2_hi, x2_lo, x3_hi, x3_lo);
-                        }
+                        ActiveMetric m;
+                        const amrex::Real V_cell =
+                            m.vol(lo[0], hi[0], lo[1], hi[1], lo[2], hi[2]);
 
                         const amrex::Real inv_cell_volume = 1.0 / V_cell;
 
@@ -401,9 +264,441 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
         });
 }
 
+void interpolate_hydro_to_particles(FlavoredNeutrinoContainer& neutrinos,
+                                    const MultiFab& state,
+                                    const Geometry& geom) {
+    const auto plo = geom.ProbLoArray();
+    const auto dxi = geom.InvCellSizeArray();
+
+    const int shape_factor_order_x =
+        geom.Domain().length(0) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_factor_order_y =
+        geom.Domain().length(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_factor_order_z =
+        geom.Domain().length(2) > 1 ? SHAPE_FACTOR_ORDER : 0;
+
+    amrex::MeshToParticle(
+        neutrinos, state, 0,
+        [=] AMREX_GPU_DEVICE(FlavoredNeutrinoContainer::PTDType const& ptd,
+                             const int p_index,
+                             amrex::Array4<const amrex::Real> const& sarr) {
+            FlavoredNeutrinoContainer::FNParticleView p{ptd, p_index};
+
+            const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
+            const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
+            const amrex::Real delta_z = (p.pos(2) - plo[2]) * dxi[2];
+
+            const ParticleInterpolator<SHAPE_FACTOR_ORDER> sx(
+                delta_x, shape_factor_order_x);
+            const ParticleInterpolator<SHAPE_FACTOR_ORDER> sy(
+                delta_y, shape_factor_order_y);
+            const ParticleInterpolator<SHAPE_FACTOR_ORDER> sz(
+                delta_z, shape_factor_order_z);
+
+            Real T_pp = 0;
+            Real Ye_pp = 0;
+            Real rho_pp = 0;
+            for (int k = sz.first(); k <= sz.last(); ++k) {
+                for (int j = sy.first(); j <= sy.last(); ++j) {
+                    for (int i = sx.first(); i <= sx.last(); ++i) {
+                        const amrex::Real vol = sx(i) * sy(j) * sz(k);
+                        T_pp += vol * sarr(i, j, k, GIdx::T);
+                        Ye_pp += vol * sarr(i, j, k, GIdx::Ye);
+                        rho_pp += vol * sarr(i, j, k, GIdx::rho);
+                    }
+                }
+            }
+            p.rdata(PIdx::T_erg) = T_pp;
+            p.rdata(PIdx::Ye) = Ye_pp;
+            p.rdata(PIdx::rho_g_inv_ccm) = rho_pp;
+        });
+}
+
+// Which directions a moment block is odd in under reflection. Bit d is set iff
+// block m carries an odd number of phat_d factors, in GIdx block order
+// N, Fx, Fy, Fz[, Pxx, Pxy, Pxz, Pyy, Pyz, Pzz]. A reflection across a face
+// Each moment's weight is a product of at most two phat components: N is 1, F_d
+// is phat[d], and P_ab is phat[a]*phat[b]. Rather than store all of these per
+// particle, store phat itself and form the product in the deposition loop -- one
+// multiply, against 7 fewer doubles per particle at NUM_MOMENTS=3.
+struct MomentDirections {
+    int a, b;  // index into phat; -1 contributes a factor of 1
+};
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE constexpr MomentDirections
+moment_phat_directions(int moment) {
+    return (moment == 1)   ? MomentDirections{0, -1}    // Fx
+           : (moment == 2) ? MomentDirections{1, -1}    // Fy
+           : (moment == 3) ? MomentDirections{2, -1}    // Fz
+           : (moment == 4) ? MomentDirections{0, 0}     // Pxx
+           : (moment == 5) ? MomentDirections{0, 1}     // Pxy
+           : (moment == 6) ? MomentDirections{0, 2}     // Pxz
+           : (moment == 7) ? MomentDirections{1, 1}     // Pyy
+           : (moment == 8) ? MomentDirections{1, 2}     // Pyz
+           : (moment == 9) ? MomentDirections{2, 2}     // Pzz
+                           : MomentDirections{-1, -1};  // N
+}
+
+// normal to d negates phat_d, so a moment flips sign iff d appears an odd
+// number of times among the phat factors that build it.
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE constexpr bool moment_flips(int moment,
+                                                                     int d) {
+    const MomentDirections dirs = moment_phat_directions(moment);
+    return (dirs.a == d) ^ (dirs.b == d);
+}
+
+static_assert(!moment_flips(0, 0), "N is a scalar");
+static_assert(moment_flips(1, 0) && !moment_flips(1, 1), "Fx flips only in x");
+static_assert(!moment_flips(4, 0), "Pxx has two x factors, which cancel");
+static_assert(moment_flips(5, 0) && moment_flips(5, 1) && !moment_flips(5, 2),
+              "Pxy flips in x and in y, but not in z");
+
+// Accumulators for one grid component's deposition stencil, zeroed on
+// construction. Declare these inside the component loop: they are written 27x
+// per particle, and giving them the enclosing StencilCache's lifetime demotes
+// them from registers to the thread's stack frame (+27 doubles) for ~2.5%.
+template <int Width>
+struct StencilSums {
+    amrex::Real value[Width][Width][Width];
+
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE StencilSums() {
+        for (int sk = 0; sk < Width; ++sk)
+            for (int sj = 0; sj < Width; ++sj)
+                for (int si = 0; si < Width; ++si) value[sk][sj][si] = 0.0;
+    }
+};
+
+// Add every nonzero accumulator into the grid, resolving each stencil offset's
+// destination and reflection sign on the fly. These were once precomputed per
+// cell and reused by every grid component; now that a thread owns a single
+// component there is nothing to reuse, and a stored table would cost 432 bytes
+// of per-thread scratch for one use. Resolving inline also means only this
+// thread's own moment is tested for a sign flip, rather than all of them.
+template <int Width, typename Array4Type>
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE void flush_stencil(
+    StencilSums<Width> sums, const Array4Type& fabarr, int grid_comp,
+    int moment, int home_i, int home_j, int home_k,
+    const amrex::GpuArray<int, 3>& domain_lo,
+    const amrex::GpuArray<int, 3>& domain_hi,
+    const amrex::GpuArray<int, 3>& reflect_lo,
+    const amrex::GpuArray<int, 3>& reflect_hi) {
+    for (int sk = 0; sk < Width; ++sk) {
+        for (int sj = 0; sj < Width; ++sj) {
+            for (int si = 0; si < Width; ++si) {
+                const amrex::Real value = sums.value[sk][sj][si];
+                if (value == 0.0) continue;
+
+                // Fold offsets that land outside a reflecting face back into
+                // the domain, flipping the sign once per reflected direction
+                // this moment is odd in.
+                int ijk[3] = {home_i + si - 1, home_j + sj - 1,
+                              home_k + sk - 1};
+                bool flip = false;
+                for (int d = 0; d < 3; ++d) {
+                    if (reflect_lo[d] && ijk[d] < domain_lo[d]) {
+                        ijk[d] = 2 * domain_lo[d] - 1 - ijk[d];
+                        flip ^= moment_flips(moment, d);
+                    } else if (reflect_hi[d] && ijk[d] > domain_hi[d]) {
+                        ijk[d] = 2 * domain_hi[d] + 1 - ijk[d];
+                        flip ^= moment_flips(moment, d);
+                    }
+                }
+
+                amrex::HostDevice::Atomic::Add(
+                    &fabarr(ijk[0], ijk[1], ijk[2], grid_comp),
+                    flip ? -value : value);
+            }
+        }
+    }
+}
+
+// Width of the deposition stencil in each direction.
+static_assert(SHAPE_FACTOR_ORDER <= 2,
+              "ParticleInterpolator implements orders 0-2 only");
+constexpr int stencil_width = 3;
+
+// One particle's precomputed geometry: the shape factors rebased onto the
+// particle's home cell plus the unit momentum direction every moment weight is
+// built from. AoS is correct format here so the deposition
+// loop streams a particle's whole slice in a single burst
+struct ParticleGeometry {
+    amrex::Real shape[3][stencil_width];  // [x/y/z][stencil offset]
+    amrex::Real phat[3];                  // momentum direction, |phat| = 1
+};
+
+static_assert(sizeof(ParticleGeometry) == 12 * sizeof(amrex::Real),
+              "ParticleGeometry must stay padding-free and sector-aligned");
+
+// Cell-parallel deposition: one thread per source cell, walking the grid
+// components one at a time and keeping a single accumulator per stencil
+// destination. Atomics then land once per (cell, destination, component)
+// instead of once per (particle, destination, component), amortizing them over
+// the particles in a cell.
+static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
+                                 MultiFab& state, const Geometry& geom,
+                                 const TestParams* parms) {
+    BL_PROFILE("deposit_to_mesh_cell()");
+
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        parms->particle_sort_method == 1,
+        "deposit_method=1 expects particle_sort_method=1 (sort by cell)");
+
+    // Get the cell volume, spacing, and domain size
+    const auto p_lo = geom.ProbLoArray();
+    const auto dxi = geom.InvCellSizeArray();
+    const Real inv_cell_volume = dxi[0] * dxi[1] * dxi[2];
+    const Box& domain = geom.Domain();
+
+    // Create an alias of the MultiFab so we only erase what the neutrinos set
+    constexpr int start_comp = GIdx::N00_Re;
+    constexpr int num_grid_comps = GIdx::ncomp - start_comp;
+    MultiFab deposit_state(state, amrex::make_alias, start_comp,
+                           num_grid_comps);
+    deposit_state.setVal(0.0);
+
+    // Set actual shape factor order to 0 in any unit-length direction
+    const int shape_order_i =
+        geom.Domain().length(0) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_order_j =
+        geom.Domain().length(1) > 1 ? SHAPE_FACTOR_ORDER : 0;
+    const int shape_order_k =
+        geom.Domain().length(2) > 1 ? SHAPE_FACTOR_ORDER : 0;
+
+    // get boundary information
+    const amrex::GpuArray<int, 3> domain_lo{
+        domain.smallEnd(0), domain.smallEnd(1), domain.smallEnd(2)};
+    const amrex::GpuArray<int, 3> domain_hi{domain.bigEnd(0), domain.bigEnd(1),
+                                            domain.bigEnd(2)};
+    const amrex::GpuArray<int, 3> reflect_lo{
+        parms->boundary_condition[0] == BoundaryCondition::reflecting,
+        parms->boundary_condition[2] == BoundaryCondition::reflecting,
+        parms->boundary_condition[4] == BoundaryCondition::reflecting};
+    const amrex::GpuArray<int, 3> reflect_hi{
+        parms->boundary_condition[1] == BoundaryCondition::reflecting,
+        parms->boundary_condition[3] == BoundaryCondition::reflecting,
+        parms->boundary_condition[5] == BoundaryCondition::reflecting};
+
+    // precompute compile-time scalars
+    constexpr int num_moments = NUM_MOMENTS == 3 ? 10 : 4;
+    constexpr int comps_per_block = PIdx::N00_Rebar - PIdx::N00_Re;
+    // The flat component loop below decomposes grid_comp on this layout.
+    static_assert(num_grid_comps == num_moments * 2 * comps_per_block,
+                  "grid components are laid out as [moment][nu/nubar][flavor]");
+
+    using ParIter = typename FlavoredNeutrinoContainer::ParConstIterType;
+    for (ParIter pti(neutrinos, 0); pti.isValid(); ++pti) {
+        const auto& tile = pti.GetParticleTile();
+        const int num_particles = tile.numParticles();
+        if (num_particles == 0) continue;
+        const auto& ptd = tile.getConstParticleTileData();
+
+        // Grow by one cell: positions are synchronized every RK stage, so a
+        // particle can have drifted out of its valid box since the last
+        // Redistribute. Binning that layer gives it a bin and a thread, and its
+        // stencil then reaches at most ngrow cells out, where SumBoundary picks
+        // it up. Without this the deposit would be silently dropped.
+        const Box box = amrex::grow(pti.validbox(), 1);
+        const auto box_lo = amrex::lbound(box);
+        const auto box_len = amrex::length(box);
+        const int num_cells = box_len.x * box_len.y * box_len.z;
+
+        // DenseBins records the particle index boundaries that divide
+        // particles into different grid cells. The lambda returns the
+        // linearized cell index for each particle
+        amrex::DenseBins<FlavoredNeutrinoContainer::ConstPTDType> bins;
+        {
+            BL_PROFILE("deposit_to_mesh_cell::bin");
+            bins.build(
+                num_particles, ptd, num_cells,
+                [=] AMREX_GPU_DEVICE(
+                    const FlavoredNeutrinoContainer::ConstPTDType& tile_data,
+                    int index) noexcept -> unsigned int {
+                    const amrex::IntVect cell = amrex::getParticleCell(
+                        tile_data, index, p_lo, dxi, domain);
+                    const int local_i = cell[0] - box_lo.x;
+                    const int local_j = cell[1] - box_lo.y;
+                    const int local_k = cell[2] - box_lo.z;
+                    AMREX_ASSERT(local_i >= 0 && local_i < box_len.x &&
+                                 local_j >= 0 && local_j < box_len.y &&
+                                 local_k >= 0 && local_k < box_len.z);
+                    return static_cast<unsigned int>(
+                        (local_k * box_len.y + local_j) * box_len.x + local_i);
+                });
+        }
+
+        const auto* bin_offsets = bins.offsetsPtr();
+        const auto* bin_order = bins.permutationPtr();
+
+        // Per-particle geometry, built once and reused by every component, and
+        // stored in bin order so the component loop streams it contiguously.
+        // Shape factors are rebased onto the particle's own cell -- entry j is
+        // the weight for cell (home + j - 1), zero outside the stencil -- which
+        // keeps the accumulation loop branch-free. inv_cell_volume is folded in.
+        amrex::Gpu::DeviceVector<ParticleGeometry> geometry_storage(
+            num_particles);
+        ParticleGeometry* geometry = geometry_storage.dataPtr();
+        {
+            BL_PROFILE("deposit_to_mesh_cell::precompute");
+            amrex::ParallelFor(num_particles, [=] AMREX_GPU_DEVICE(
+                                                  int sorted_index) {
+                const int p_index = bin_order[sorted_index];
+                FlavoredNeutrinoContainer::FNParticleConstView p{ptd, p_index};
+
+                const amrex::IntVect home_cell =
+                    amrex::getParticleCell(ptd, p_index, p_lo, dxi, domain);
+
+                const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_i(
+                    (p.pos(0) - p_lo[0]) * dxi[0], shape_order_i);
+                const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_j(
+                    (p.pos(1) - p_lo[1]) * dxi[1], shape_order_j);
+                const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_k(
+                    (p.pos(2) - p_lo[2]) * dxi[2], shape_order_k);
+
+                ParticleGeometry& particle_geometry = geometry[sorted_index];
+
+                for (int s = 0; s < stencil_width; ++s) {
+                    const int cell_i = home_cell[0] + s - 1;
+                    const int cell_j = home_cell[1] + s - 1;
+                    const int cell_k = home_cell[2] + s - 1;
+                    const int index_i = cell_i - shape_i.first();
+                    const int index_j = cell_j - shape_j.first();
+                    const int index_k = cell_k - shape_k.first();
+                    particle_geometry.shape[0][s] =
+                        (index_i >= 0 && index_i <= shape_order_i)
+                            ? shape_i(cell_i) * inv_cell_volume
+                            : 0.0;
+                    particle_geometry.shape[1][s] =
+                        (index_j >= 0 && index_j <= shape_order_j)
+                            ? shape_j(cell_j)
+                            : 0.0;
+                    particle_geometry.shape[2][s] =
+                        (index_k >= 0 && index_k <= shape_order_k)
+                            ? shape_k(cell_k)
+                            : 0.0;
+                }
+
+                const amrex::Real inv_pupt = 1.0 / p.rdata(PIdx::pupt);
+                particle_geometry.phat[0] = p.rdata(PIdx::pupx) * inv_pupt;
+                particle_geometry.phat[1] = p.rdata(PIdx::pupy) * inv_pupt;
+                particle_geometry.phat[2] = p.rdata(PIdx::pupz) * inv_pupt;
+            });
+        }
+
+        auto fabarr = deposit_state[pti].array();
+
+        BL_PROFILE_VAR("deposit_to_mesh_cell::gather", blp_gather);
+        // One thread per (cell, grid component), component on the fast axis so
+        // that the lanes of a warp are different components of the same cell
+        const int num_cell_comps = num_cells * num_grid_comps;
+        amrex::ParallelFor(num_cell_comps, [=] AMREX_GPU_DEVICE(int task) {
+            const int cell_index = task / num_grid_comps;
+            const int grid_comp = task - cell_index * num_grid_comps;
+
+            const int particle_begin = bin_offsets[cell_index];
+            const int particle_end = bin_offsets[cell_index + 1];
+            if (particle_begin == particle_end) return;
+
+            const int home_i = box_lo.x + (cell_index % box_len.x);
+            const int home_j =
+                box_lo.y + ((cell_index / box_len.x) % box_len.y);
+            const int home_k =
+                box_lo.z + (cell_index / (box_len.x * box_len.y));
+
+            const int block = grid_comp / comps_per_block;
+            const int flavor_comp = grid_comp - block * comps_per_block;
+            const int moment = block / 2;
+            const MomentDirections phat_dirs = moment_phat_directions(moment);
+            const int nunubar = block - 2 * moment;
+            const int particle_component_index =
+                PIdx::N00_Re + nunubar * comps_per_block + flavor_comp;
+
+            StencilSums<stencil_width> sums;
+
+            for (int sorted_index = particle_begin; sorted_index < particle_end;
+                 ++sorted_index) {
+                const ParticleGeometry& particle_geometry =
+                    geometry[sorted_index];
+
+                const amrex::Real moment_factor =
+                    (phat_dirs.a < 0 ? 1.0
+                                     : particle_geometry.phat[phat_dirs.a]) *
+                    (phat_dirs.b < 0 ? 1.0
+                                     : particle_geometry.phat[phat_dirs.b]);
+                const amrex::Real value =
+                    moment_factor *
+                    ptd.rdata(
+                        particle_component_index)[bin_order[sorted_index]];
+
+                for (int sk = 0; sk < stencil_width; ++sk) {
+                    const amrex::Real weight_k = particle_geometry.shape[2][sk];
+                    for (int sj = 0; sj < stencil_width; ++sj) {
+                        const amrex::Real weight_jk =
+                            weight_k * particle_geometry.shape[1][sj];
+                        for (int si = 0; si < stencil_width; ++si) {
+                            sums.value[sk][sj][si] +=
+                                weight_jk * particle_geometry.shape[0][si] *
+                                value;
+                        }
+                    }
+                }
+            }
+
+            flush_stencil(sums, fabarr, grid_comp, moment, home_i, home_j,
+                          home_k, domain_lo, domain_hi, reflect_lo, reflect_hi);
+        });
+        BL_PROFILE_VAR_STOP(blp_gather);
+
+        // Sync to prevent work on another box from overwriting the
+        // DenesBins and geometry storage before the kernels finish using them.
+        amrex::Gpu::streamSynchronize();
+    }
+
+    deposit_state.SumBoundary(geom.periodicity());
+}
+
+void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
+                     MultiFab& state, const Geometry& geom,
+                     const TestParams* parms) {
+    BL_PROFILE("deposit_to_mesh()");
+    if (parms->deposit_method == 0) {
+        deposit_to_mesh_atomic(neutrinos, state, geom, parms);
+    } else if (parms->deposit_method == 1) {
+        deposit_to_mesh_cell(neutrinos, state, geom, parms);
+    } else {
+        // Deposit both ways and compare the field itself, before the time
+        // integration amplifies any difference.
+        const int nc = GIdx::ncomp - GIdx::N00_Re;
+        MultiFab ref(state.boxArray(), state.DistributionMap(), nc, 0);
+        deposit_to_mesh_atomic(neutrinos, state, geom, parms);
+        MultiFab::Copy(ref, state, GIdx::N00_Re, 0, nc, 0);
+
+        deposit_to_mesh_cell(neutrinos, state, geom, parms);
+        MultiFab cur(state.boxArray(), state.DistributionMap(), nc, 0);
+        MultiFab::Copy(cur, state, GIdx::N00_Re, 0, nc, 0);
+        MultiFab::Subtract(cur, ref, 0, 0, nc, 0);
+
+        int nbad = 0;
+        for (int c = 0; c < nc; ++c) {
+            const Real dn = cur.norm0(c);
+            const Real rn = ref.norm0(c);
+            if (dn > 1.0e-11 * std::max(rn, 1.0e-100)) {
+                if (nbad < 6)
+                    amrex::Print()
+                        << "  DEPOSIT MISMATCH comp " << c
+                        << "  norm0(diff)=" << dn << "  norm0(ref)=" << rn
+                        << "  rel=" << dn / std::max(rn, 1.0e-100) << "\n";
+                ++nbad;
+            }
+        }
+        amrex::Print() << "  deposit compare: " << (nc - nbad) << "/" << nc
+                       << " components match\n";
+    }
+}
+
 void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                                const MultiFab& state, const Geometry& geom,
                                const TestParams* parms) {
+    BL_PROFILE("interpolate_rhs_from_mesh()");
     const auto p_lo = geom.ProbLoArray();
     const auto dxi = geom.InvCellSizeArray();
 
@@ -429,8 +724,12 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 
     amrex::MeshToParticle(
         neutrinos_rhs, state, 0,
-        [=] AMREX_GPU_DEVICE(FlavoredNeutrinoContainer::ParticleType & p,
+        // pass particle tile and index so attribute reads come straight from the SoA arrays
+        [=] AMREX_GPU_DEVICE(FlavoredNeutrinoContainer::PTDType const& ptd,
+                             const int p_index,
                              amrex::Array4<const amrex::Real> const& sarr) {
+            FlavoredNeutrinoContainer::FNParticleView p{ptd, p_index};
+
             // store the particle positions for use later
             const Real x = p.rdata(PIdx::x);
             const Real y = p.rdata(PIdx::y);
@@ -463,6 +762,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                     p.rdata(PIdx::pupt) = 0;
                     // set the dVphase/dt values
                     p.rdata(PIdx::Vphase) = 0;
+                    // Hydro is a lookup, not a time-evolved field.
+                    p.rdata(PIdx::rho_g_inv_ccm) = 0;
+                    p.rdata(PIdx::T_erg) = 0;
+                    p.rdata(PIdx::Ye) = 0;
 
                     // Set the dN/dt and dNbar/dt values to zero
                     for (int comp = PIdx::N00_Re; comp < PIdx::TrHN; ++comp)
@@ -471,6 +774,11 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                     return;
                 }
             }
+
+            // Shared by every component of the vacuum Hamiltonian below: the
+            // stored M2 numerator only needs scaling by c^4 / (2E).
+            const amrex::Real Vvac_fac =
+                PhysConst::c4 / (2. * p.rdata(PIdx::pupt));
 
 #include "generated_files/Evolve.cpp_Vvac_fill"
 
@@ -485,21 +793,34 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             const ParticleInterpolator<SHAPE_FACTOR_ORDER> sz(
                 delta_z, shape_factor_order_z);
 
-            // The following variables contains temperature, electron fraction, and density interpolated from grid quantities to particle positions
-            Real T_pp = 0;  // erg
-            Real Ye_pp = 0;
-            Real rho_pp = 0;  // g/ccm
+            // Background hydro interpolated onto this particle by
+            // interpolate_hydro_to_particles (copied here with copyParticles).
+            const Real T_pp = p.rdata(PIdx::T_erg);  // erg
+            const Real Ye_pp = p.rdata(PIdx::Ye);
+            const Real rho_pp = p.rdata(PIdx::rho_g_inv_ccm);  // g/ccm
 
             // phat = momentum direction (p/E), used for the flux contraction in the SI potential
-            const amrex::Real phat[3] = {
-                p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
-                p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt),
-                p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
+            amrex::Real phat[3] = {p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
+                                   p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt),
+                                   p.rdata(PIdx::pupz) / p.rdata(PIdx::pupt)};
+
+            // For curvilinear coordinates, we convert phat to curvilinear components projected on a local orthonormal tetrad for each particle
+
+            const FourVec ph_old = {1.0, phat[0], phat[1], phat[2]};
+            ActiveMetric m;
+            const FourVec ph_new =
+                m.tetrad_conv(ph_old, p.pos(0), p.pos(1), p.pos(2));
+            phat[0] = ph_new[1];
+            phat[1] = ph_new[2];
+            phat[2] = ph_new[3];
 
             for (int k = sz.first(); k <= sz.last(); ++k) {
                 for (int j = sy.first(); j <= sy.last(); ++j) {
                     for (int i = sx.first(); i <= sx.last(); ++i) {
                         const amrex::Real vol = sx(i) * sy(j) * sz(k);
+
+                        // Prefactor shared by every component
+                        const amrex::Real Vfac = sqrt(2.) * PhysConst::GF * vol;
 
                         // Minus the Minkowski contraction of the number-density four-current
                         // (N, Fx, Fy, Fz) with the four-momentum direction phat = (1, phatx,
@@ -542,11 +863,6 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                             PhysConst::Mp * relativistic_correction;
                         V00_Re += matter_term;
                         V00_Rebar -= matter_term;
-
-                        // Interpolate the background matter scalars to the particle position.
-                        T_pp += vol * sarr(i, j, k, GIdx::T);
-                        Ye_pp += vol * sarr(i, j, k, GIdx::Ye);
-                        rho_pp += vol * sarr(i, j, k, GIdx::rho);
                     }
                 }
             }
@@ -593,167 +909,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 }
             }
 
-            // If opacity_method is 1, the code will use the inverse mean free paths in the input parameters to compute the collision term.
-            if (parms->IMFP_method == 0) {
-                // do nothing
-            } else if (parms->IMFP_method == 1) {
-                for (int i = 0; i < NUM_FLAVORS; ++i) {
-                    IMFP_abs[i][i] =
-                        parms->IMFP_abs
-                            [0]
-                            [i];  // 1/cm : Read absorption inverse mean free path from input parameters file.
-                    IMFP_absbar[i][i] =
-                        parms->IMFP_abs
-                            [1]
-                            [i];  // 1/cm : Read absorption inverse mean free path from input parameters file.
-                    munu[i][i] =
-                        parms->munu
-                            [0]
-                            [i];  // ergs : Read neutrino chemical potential from input parameters file.
-                    munubar[i][i] =
-                        parms->munu
-                            [1]
-                            [i];  // ergs : Read antineutrino chemical potential from input parameters file.
-                }
-            }
-            // If opacity_method is 2, the code interpolate inverse mean free paths from NuLib table and electron neutrino chemical potential from EoS table to compute the collision term.
-            else if (parms->IMFP_method == 2) {
-                // Assign temperature, electron fraction, and density at the particle's position to new variables for interpolation of chemical potentials and inverse mean free paths.
-                Real rho =
-                    rho_pp;  // Density of background matter at this particle's position g/cm^3
-                Real temperature =
-                    T_pp /
-                    (1e6 *
-                     CGSUnitsConst::
-                         eV);  // Temperature of background matter at this particle's position 0.05 //MeV
-                Real Ye =
-                    Ye_pp;  // Electron fraction of background matter at this particle's position
-
-                //-------------------- Values from EoS table ------------------------------
-                double mue_out,
-                    muhat_out;  // mue_out : Electron chemical potential. muhat_out : neutron minus proton chemical potential
-                int keyerr, anyerr;
-                EOS_tabulated_obj.get_mue_muhat(rho, temperature, Ye, mue_out,
-                                                muhat_out, keyerr, anyerr);
-                if (anyerr)
-                    AMREX_ASSERT(
-                        0);  //If there is an error in interpolation call, stop execution.
-
-//#define DEBUG_INTERPOLATION_TABLES
-#ifdef DEBUG_INTERPOLATION_TABLES
-                amrex::Print() << "(Evolve.cpp) mu_e interpolated = " << mue_out
-                               << std::endl;
-                amrex::Print()
-                    << "(Evolve.cpp) muhat interpolated = " << muhat_out
-                    << std::endl;
-#endif
-                // munu_val : electron neutrino chemical potential
-                const double munu_val =
-                    (mue_out - muhat_out) * 1e6 *
-                    CGSUnitsConst::eV;  //munu -> "mu_e" - "muhat"
-
-                munu[0][0] =
-                    munu_val;  // erg : Save neutrino chemical potential from EOS table in chemical potential matrix
-                munubar[0][0] =
-                    -1.0 *
-                    munu_val;  // erg : Save antineutrino chemical potential from EOS table in chemical potential matrix
-
-                //--------------------- Values from NuLib table ---------------------------
-                int* helperVarsInt_nulib =
-                    NuLib_tabulated_obj
-                        .get_helperVarsInt_nulib();  // used via NULIBVAR_INT
-                double* energy_bottom =
-                    NuLib_energies_obj.get_energy_bottom_nulib();
-                double* energy_top = NuLib_energies_obj.get_energy_top_nulib();
-
-                double neutrino_energy_erg =
-                    p.rdata(PIdx::pupt);  //locate energy bin using this.
-                double neutrino_energy_MeV =
-                    neutrino_energy_erg / (1e6 * CGSUnitsConst::eV);
-
-                //Decide which energy bin to use (i.e. determine 'idx_group')
-                int idx_group = -1;
-                for (int i = 0; i < NULIBVAR_INT(ngroup); i++) {
-                    if (neutrino_energy_MeV >= energy_bottom[i] &&
-                        neutrino_energy_MeV <= energy_top[i]) {
-                        idx_group = i;
-                        break;
-                    }
-                }
-
-                if (idx_group == -1)
-                    AMREX_ASSERT(0);  //abort if energy bin cannot be found.
-                //amrex::Print() << "Given neutrino energy = %f, selected bin index = %d\n", neutrino_energy_MeV, idx_group);
-
-                //idx_species = {0 for electron neutrino, 1 for electron antineutrino and 2 for all other heavier ones}
-                //electron neutrino: [0, 0]
-                int idx_species = 0;
-                double absorption_opacity, scattering_opacity;
-                NuLib_tabulated_obj.get_opacities(
-                    rho, temperature, Ye, absorption_opacity,
-                    scattering_opacity, keyerr, anyerr, idx_species, idx_group);
-                if (anyerr) AMREX_ASSERT(0);
-
-#ifdef DEBUG_INTERPOLATION_TABLES
-                amrex::Print()
-                    << "(Evolve.cpp) absorption_opacity[e] interpolated = "
-                    << absorption_opacity << std::endl;
-                amrex::Print()
-                    << "(Evolve.cpp) scattering_opacity[e] interpolated = "
-                    << scattering_opacity << std::endl;
-#endif
-
-                IMFP_abs[0][0] = absorption_opacity;
-                IMFP_scat[0][0] = scattering_opacity;
-
-                //electron antineutrino: [1, 0]
-                idx_species = 1;
-                NuLib_tabulated_obj.get_opacities(
-                    rho, temperature, Ye, absorption_opacity,
-                    scattering_opacity, keyerr, anyerr, idx_species, idx_group);
-                if (anyerr) AMREX_ASSERT(0);
-
-#ifdef DEBUG_INTERPOLATION_TABLES
-                amrex::Print()
-                    << "(Evolve.cpp) absorption_opacity[a] interpolated = "
-                    << absorption_opacity << std::endl;
-                amrex::Print()
-                    << "(Evolve.cpp) scattering_opacity[a] interpolated = "
-                    << scattering_opacity << std::endl;
-#endif
-
-                IMFP_absbar[0][0] = absorption_opacity;
-                IMFP_scatbar[0][0] = scattering_opacity;
-
-                //heavier ones: muon neutrino[0,1], muon antineutruino[1,1], tau neutrino[0,2], tau antineutrino[1,2]
-                idx_species = 2;
-                NuLib_tabulated_obj.get_opacities(
-                    rho, temperature, Ye, absorption_opacity,
-                    scattering_opacity, keyerr, anyerr, idx_species, idx_group);
-                if (anyerr) AMREX_ASSERT(0);
-
-#ifdef DEBUG_INTERPOLATION_TABLES
-                amrex::Print()
-                    << "(Evolve.cpp) absorption_opacity[x] interpolated = "
-                    << absorption_opacity << std::endl;
-                amrex::Print()
-                    << "(Evolve.cpp) scattering_opacity[x] interpolated = "
-                    << scattering_opacity << std::endl;
-#endif
-
-                for (int i = 1; i < NUM_FLAVORS;
-                     ++i) {  //0->neutrino or 1->antineutrino
-                    // for(int j=1; j<NUM_FLAVORS; j++){  //0->electron, 1->heavy(muon), 2->heavy(tau); all heavy same for current table
-                    IMFP_abs[i][i] = absorption_opacity;      // ... fix it ...
-                    IMFP_absbar[i][i] = absorption_opacity;   // ... fix it ...
-                    IMFP_scat[i][i] = scattering_opacity;     // ... fix it ...
-                    IMFP_scatbar[i][i] = scattering_opacity;  // ... fix it ...
-                    // }
-                }
-                //-----------------------------------------------------------------------
-            } else
-                AMREX_ASSERT_WITH_MESSAGE(
-                    false, "only available opacity_method is 0, 1 or 2");
+            fill_particle_opacities(
+                parms, rho_pp, T_pp, Ye_pp, EOS_tabulated_obj,
+                NuLib_tabulated_obj, NuLib_energies_obj, p.rdata(PIdx::pupt),
+                IMFP_abs, IMFP_absbar, IMFP_scat, IMFP_scatbar, munu, munubar);
 
             // Compute equilibrium distribution functions and include Pauli blocking term if requested
             if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {
@@ -847,6 +1006,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             p.rdata(PIdx::pupz) = geodesic_rhs[7];
 
             p.rdata(PIdx::Vphase) = 0;
+            // Hydro is a lookup, not a time-evolved field.
+            p.rdata(PIdx::rho_g_inv_ccm) = 0;
+            p.rdata(PIdx::T_erg) = 0;
+            p.rdata(PIdx::Ye) = 0;
         });
 }
 
@@ -869,11 +1032,10 @@ void empty_particles_inside_blackhole(FlavoredNeutrinoContainer& neutrinos,
     const int lev = 0;
     for (FNParIter pti(neutrinos, lev); pti.isValid(); ++pti) {
         const int np = pti.numParticles();
-        FlavoredNeutrinoContainer::ParticleType* pstruct =
-            &(pti.GetArrayOfStructs()[0]);
+        auto ptd = pti.GetParticleTile().getParticleTileData();
 
         amrex::ParallelFor(np, [=] AMREX_GPU_DEVICE(int i) {
-            FlavoredNeutrinoContainer::ParticleType& p = pstruct[i];
+            FlavoredNeutrinoContainer::FNParticleView p{ptd, i};
 
             // Compute particle distance from black hole center
             double particle_distance_from_bh_center = sqrt(
