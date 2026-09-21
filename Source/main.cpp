@@ -325,7 +325,7 @@ void evolve_flavor(const TestParams* parms) {
 
         // Update the new time particle locations in the domain with their
         // integrated coordinates.
-        neutrinos.SyncLocation(Sync::CoordinateToPosition, parms->coord_sys);
+        neutrinos.SyncLocation(Sync::CoordinateToPosition);
 
         // Apply reflecting/outflow boundary conditions to particles that crossed
         // a non-periodic face: fold the position back into the domain and flip the
@@ -344,7 +344,7 @@ void evolve_flavor(const TestParams* parms) {
 
         // Update the integrated coordinates with the new particle locations
         // since Redistribute() applies periodic boundary conditions.
-        neutrinos.SyncLocation(Sync::PositionToCoordinate, parms->coord_sys);
+        neutrinos.SyncLocation(Sync::PositionToCoordinate);
 
         rd.WriteReducedData0D(geom, state, neutrinos, time, step + 1,
                               integrator.get_previous_time_step(),
