@@ -4,7 +4,7 @@
 
 using namespace amrex;
 
-void FlavoredNeutrinoContainer::SyncLocation(int type, int coord_sys) {
+void FlavoredNeutrinoContainer::SyncLocation(int type) {
     BL_PROFILE("FlavoredNeutrinoContainer::SyncLocation");
 
     AMREX_ASSERT(type == Sync::CoordinateToPosition ||
