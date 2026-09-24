@@ -57,6 +57,12 @@ class Schwarzschild {
         const amrex::Real r = p.rdata(PIdx::x);
         const amrex::Real theta = p.rdata(PIdx::y);
         const amrex::Real f = 1.0 - 2.0 * M_ / r;
+        const amrex::Real invf = 1.0 / f;
+        const amrex::Real r2 = r * r;
+        const amrex::Real invr2 = 1.0 / r2;
+        const amrex::Real sintheta = std::sin(theta);
+        const amrex::Real costheta = std::cos(theta);
+        const amrex::Real tantheta = std::tan(theta);
 
         Christoffel Gamma{};
         for (int alpha = 0; alpha < 4; ++alpha) {
@@ -67,19 +73,19 @@ class Schwarzschild {
             }
         }
 
-        Gamma[1][0][0] = M_ * std::pow(r, -2) * f;
-        Gamma[0][0][1] = M_ * std::pow(r, -2) / f;
-        Gamma[0][1][0] = M_ * std::pow(r, -2) / f;
-        Gamma[1][1][1] = -M_ * std::pow(r, -2) / f;
+        Gamma[1][0][0] = M_ * invr2 * f;
+        Gamma[0][0][1] = M_ * invr2 * invf;
+        Gamma[0][1][0] = M_ * invr2 * invf;
+        Gamma[1][1][1] = -M_ * invr2 * invf;
         Gamma[1][2][2] = -r * f;
-        Gamma[1][3][3] = -r * f * std::sin(theta) * std::sin(theta);
+        Gamma[1][3][3] = -r * f * sintheta * sintheta;
         Gamma[2][1][2] = 1.0 / r;
         Gamma[2][2][1] = 1.0 / r;
-        Gamma[2][3][3] = -std::sin(theta) * std::cos(theta);
+        Gamma[2][3][3] = -sintheta * costheta;
         Gamma[3][1][3] = 1.0 / r;
         Gamma[3][3][1] = 1.0 / r;
-        Gamma[3][2][3] = 1.0 / std::tan(theta);
-        Gamma[3][3][2] = 1.0 / std::tan(theta);
+        Gamma[3][2][3] = 1.0 / tantheta;
+        Gamma[3][3][2] = 1.0 / tantheta;
 
         return Gamma;
     }
@@ -190,17 +196,22 @@ class SchwSphericalMetric : public SphericalMetric {
     jacobian_inv_dr(const EParticle& p) const {
         const amrex::Real theta = p.rdata(PIdx::y);
         const amrex::Real phi = p.rdata(PIdx::z);
+        const amrex::Real sintheta = std::sin(theta);
+        const amrex::Real costheta = std::cos(theta);
+        const amrex::Real sinphi = std::sin(phi);
+        const amrex::Real cosphi = std::cos(phi);
+
 
         Mat4 J{};
         for (int mu = 0; mu < 4; mu++) {
             for (int nu = 0; nu < 4; nu++) J[mu][nu] = 0.0;
         }
 
-        J[1][2] = std::cos(theta) * std::cos(phi);
-        J[1][3] = -std::sin(theta) * std::sin(phi);
-        J[2][2] = std::cos(theta) * std::sin(phi);
-        J[2][3] = std::sin(theta) * std::cos(phi);
-        J[3][2] = -std::sin(theta);
+        J[1][2] = costheta * cosphi;
+        J[1][3] = -sintheta * sinphi;
+        J[2][2] = costheta * sinphi;
+        J[2][3] = sintheta * cosphi;
+        J[3][2] = -sintheta;
 
         return J;
     }
@@ -210,20 +221,24 @@ class SchwSphericalMetric : public SphericalMetric {
         const amrex::Real r = p.rdata(PIdx::x);
         const amrex::Real theta = p.rdata(PIdx::y);
         const amrex::Real phi = p.rdata(PIdx::z);
+        const amrex::Real sintheta = std::sin(theta);
+        const amrex::Real costheta = std::cos(theta);
+        const amrex::Real sinphi = std::sin(phi);
+        const amrex::Real cosphi = std::cos(phi);
 
         Mat4 J{};
         for (int mu = 0; mu < 4; mu++) {
             for (int nu = 0; nu < 4; nu++) J[mu][nu] = 0.0;
         }
 
-        J[1][1] = std::cos(theta) * std::cos(phi);
-        J[1][2] = -r * std::sin(theta) * std::cos(phi);
-        J[1][3] = -r * std::cos(theta) * std::sin(phi);
-        J[2][1] = std::cos(theta) * std::sin(phi);
-        J[2][2] = -r * std::sin(theta) * std::sin(phi);
-        J[2][3] = r * std::cos(theta) * std::cos(phi);
-        J[3][1] = -std::sin(theta);
-        J[3][2] = -r * std::cos(theta);
+        J[1][1] = costheta * cosphi;
+        J[1][2] = -r * sintheta * cosphi;
+        J[1][3] = -r * costheta * sinphi;
+        J[2][1] = costheta * sinphi;
+        J[2][2] = -r * sintheta * sinphi;
+        J[2][3] = r * costheta * cosphi;
+        J[3][1] = -sintheta;
+        J[3][2] = -r * costheta;
 
         return J;
     }
@@ -233,18 +248,22 @@ class SchwSphericalMetric : public SphericalMetric {
         const amrex::Real r = p.rdata(PIdx::x);
         const amrex::Real theta = p.rdata(PIdx::y);
         const amrex::Real phi = p.rdata(PIdx::z);
+        const amrex::Real sintheta = std::sin(theta);
+        const amrex::Real sinphi = std::sin(phi);
+        const amrex::Real cosphi = std::cos(phi);
+        const amrex::Real costheta = std::cos(theta);
 
         Mat4 J{};
         for (int mu = 0; mu < 4; mu++) {
             for (int nu = 0; nu < 4; nu++) J[mu][nu] = 0.0;
         }
 
-        J[1][1] = -std::sin(theta) * std::sin(phi);
-        J[1][2] = -r * std::cos(theta) * std::sin(phi);
-        J[1][3] = -r * std::sin(theta) * std::cos(phi);
-        J[2][1] = std::sin(theta) * std::cos(phi);
-        J[2][2] = r * std::cos(theta) * std::cos(phi);
-        J[2][3] = -r * std::sin(theta) * std::sin(phi);
+        J[1][1] = -sintheta * sinphi;
+        J[1][2] = -r * costheta * sinphi;
+        J[1][3] = -r * sintheta * cosphi;
+        J[2][1] = sintheta * cosphi;
+        J[2][2] = r * costheta * cosphi;
+        J[2][3] = -r * sintheta * sinphi;
 
         return J;
     }
@@ -308,17 +327,17 @@ class SchwCartesianMetric : public CartesianMetric {
     AMREX_GPU_DEVICE AMREX_GPU_HOST SchwCartesianMetric(amrex::Real M = 1.0)
         : m_schw_(M) {}
 
-    // NOTE: gmunu/detg/christoffel assume p is already in spherical polar.
+    // NOTE: gmunu assumes p is already in spherical polar.
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
     gmunu(const EParticle& p) const override {
         return m_schw_.gmunu(p);
     }
-
+    // NOTE: christoffel assumes p is already in spherical polar.
     AMREX_GPU_DEVICE AMREX_GPU_HOST Christoffel
     christoffel(const EParticle& p) const override {
         return m_schw_.christoffel(p);
     }
-
+    // NOTE: detg assumes p is already in spherical polar.
     // Trivial override to satisfy Metric::detg's pure virtual (EParticle-
     // based). The real cell-center detg used for flux/density corrections
     // is the RealVect overload below.
