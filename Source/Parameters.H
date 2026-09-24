@@ -18,6 +18,7 @@ enum { periodic = 0, reflecting = 1, outflow = 2 };
 //=========================================//
 
 struct TestParams : public amrex::Gpu::Managed {
+    int coord_sys;  // 0 = Cartesian, 1 = Cylindrical, 2 = Spherical
     IntVect ncell;  // Number of cells in the domain
     IntVect
         nppc;  // Number of points of particle emission per cell in each dimension
@@ -120,6 +121,8 @@ struct TestParams : public amrex::Gpu::Managed {
 
     void Initialize() {
         ParmParse pp;
+        coord_sys = 0;
+        pp.query("coord_sys", coord_sys);
         pp.get("ncell", ncell);
         pp.get("Lx", Lx);
         pp.get("Ly", Ly);
