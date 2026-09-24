@@ -1,7 +1,6 @@
-AMREX_HOME ?= ../submodules/amrex
+AMREX_HOME ?= ../../submodules/amrex
 
 DEBUG	= FALSE
-DEBUG	= TRUE
 
 DIM	= 3
 
@@ -13,8 +12,9 @@ USE_PARTICLES = TRUE
 
 DEFINES += -DNUM_FLAVORS=2
 
-INCLUDE_LOCATIONS += ../Source
+INCLUDE_LOCATIONS += ../../Source
 INCLUDE_LOCATIONS += .
+VPATH_LOCATIONS   += ../../Source
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 

@@ -9,7 +9,13 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
-#include "Schwarzschild.H"
+#include "../../Source/Schwarzschild.H"
+#include "../../submodules/AMReX/Src/Base/AMReX_Geometry.H"
+#include "../../submodules/AMReX/Src/Base/AMReX_BoxArray.H"
+#include "../../submodules/AMReX/Src/Base/AMReX_DistributionMapping.H"
+#include "../../submodules/AMReX/Src/Base/AMReX_ParallelDescriptor.H"
+#include "../../submodules/AMReX/Src/Base/AMReX.H"
+
 // #include <fstream>
 
 // std::string filename = "light_ring_phi_values.txt";
@@ -80,7 +86,9 @@ void RK4(EParticle& p, SchwSphericalMetric& metric, double dt, int steps) {
     // outfile.close();
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    amrex::Initialize(argc, argv);
+    {
     // Black hole mass in geometric units (G = c = 1)
     const double M = 1.0;
     // Photon sphere radius
@@ -95,7 +103,30 @@ int main() {
     // Converting to Cartesian at (r=3, theta=pi/2, phi=0):
     //   p^x = 0,  p^y = r p^phi = 3,  p^z = 0
 
-    EParticle p;
+    // EParticle is now a view into a real FlavoredNeutrinoContainer's SoA
+    // storage (Source/FlavoredNeutrinoContainer.H), so it needs an actual
+    // one-particle container behind it. Minimal single-cell domain, just
+    // large enough to host that one particle/tile.
+    const amrex::Box domain(amrex::IntVect(0, 0, 0), amrex::IntVect(0, 0, 0));
+    const amrex::BoxArray ba(domain);
+    const amrex::RealBox real_box({-10.0, -10.0, -10.0}, {10.0, 10.0, 10.0});
+    const int is_periodic[AMREX_SPACEDIM] = {0, 0, 0};
+    const amrex::Geometry geom(domain, &real_box, amrex::CoordSys::cartesian,
+        is_periodic);   
+    const amrex::DistributionMapping dm(ba);
+    FlavoredNeutrinoContainer neutrinos(geom, dm, ba);
+    // Add one particle by hand, mirroring the low-level tile-write pattern
+    // FlavoredNeutrinoContainer::InitParticles uses (FlavoredNeutrinoContainerInit.cpp).
+    auto& particle_tile = neutrinos.GetParticles(0)[std::make_pair(0, 0)];
+    particle_tile.resize(1);
+    const auto new_pid = FlavoredNeutrinoContainer::ParticleType::NextID();
+    FlavoredNeutrinoContainer::ParticleType::NextID(new_pid + 1);
+    auto ptd = particle_tile.getParticleTileData();
+    EParticle p{ptd, 0};
+    p.id() = new_pid;
+    p.cpu() = amrex::ParallelDescriptor::MyProc();
+
+    
     p.rdata(PIdx::time) = 0.0;
     p.rdata(PIdx::x) = r0;
     p.rdata(PIdx::y) = 0.0;
@@ -152,5 +183,7 @@ int main() {
     std::cout << "L        = " << L_final << "  (expected " << L0 << ")\n";
     std::cout << "All assertions passed with tolerance " << tol << ". \n";
 
+    }
+    amrex::Finalize();
     return 0;
 }

@@ -3,9 +3,8 @@
 // while still allowing the caller to use their native coordinate system (Cartesian, Cylindrical, or Spherical).
 // Assumes black hole mass M, and uses geometric units (G=c=1)
 
-#ifndef SCHW_METRIC_MODIFIED_H_
-#define SCHW_METRIC_MODIFIED_H_
-
+#ifndef SCHWARZSCHILD_H
+#define SCHWARZSCHILD_H
 #include <AMReX.H>
 #include <AMReX_REAL.H>
 #include <AMReX_RealVect.H>
@@ -21,7 +20,6 @@ using Mat4 = amrex::GpuArray<amrex::GpuArray<amrex::Real, 4>, 4>;
 using Christoffel =
     amrex::GpuArray<amrex::GpuArray<amrex::GpuArray<amrex::Real, 4>, 4>, 4>;
 using GeodesicArray = amrex::GpuArray<amrex::Real, 8>;
-using EParticle = FlavoredNeutrinoContainer::ParticleType;
 
 // Expects spherical-polar coordinates (r, theta, phi) already stored in p.rdata(PIdx::x/y/z), and
 // 4-momentum components already rotated into the spherical-polar basis.
