@@ -890,19 +890,13 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 energy_bin = idx_group;
             }
 
-            const int interpolate_absorption_opacity = 1;
-            const int interpolate_scattering_opacity =
-                (parms->IMFP_method == 2) ? 1 : 0;
-            const int interpolate_scattering_opacity_brakets = 0;
-            const int interpolate_chemical_potentials = 0;
+            fill_absorption_opacity(parms, rho_pp, T_pp, Ye_pp,
+                                    NuLib_tabulated_obj, energy_bin, IMFP_abs,
+                                    IMFP_absbar);
 
-            fill_particle_opacities(
-                parms, rho_pp, T_pp, Ye_pp, EOS_tabulated_obj,
-                NuLib_tabulated_obj, energy_bin, interpolate_absorption_opacity,
-                interpolate_scattering_opacity,
-                interpolate_scattering_opacity_brakets,
-                interpolate_chemical_potentials, IMFP_abs, IMFP_absbar,
-                IMFP_scat, IMFP_scatbar, nullptr, nullptr, nullptr, nullptr);
+            fill_scattering_opacity(parms, rho_pp, T_pp, Ye_pp,
+                                        NuLib_tabulated_obj, energy_bin,
+                                        IMFP_scat, IMFP_scatbar);
 
             fill_chemical_potentials(parms, rho_pp, T_pp, Ye_pp,
                                      EOS_tabulated_obj, munu, munubar);
