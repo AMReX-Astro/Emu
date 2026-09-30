@@ -7,7 +7,7 @@
 #include "EosTable.H"
 #include "EosTableFunctions.H"
 
-#include "FillParticleOpacities.H"
+#include "Fill_quantities_from_tables.H"
 #include "NuLibTable.H"
 
 #include "Metric.H"
@@ -909,10 +909,45 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 }
             }
 
-            fill_particle_opacities(
-                parms, rho_pp, T_pp, Ye_pp, EOS_tabulated_obj,
-                NuLib_tabulated_obj, NuLib_energies_obj, p.rdata(PIdx::pupt),
-                IMFP_abs, IMFP_absbar, IMFP_scat, IMFP_scatbar, munu, munubar);
+            int energy_bin = 0;
+            if (parms->IMFP_method == 2) {
+                int* helperVarsInt_nulib =
+                    NuLib_tabulated_obj
+                        .get_helperVarsInt_nulib();  // used via NULIBVAR_INT
+                double* energy_bottom =
+                    NuLib_energies_obj.get_energy_bottom_nulib();
+                double* energy_top = NuLib_energies_obj.get_energy_top_nulib();
+
+                double neutrino_energy_erg =
+                    p.rdata(PIdx::pupt);  //locate energy bin using this.
+                double neutrino_energy_MeV =
+                    neutrino_energy_erg / (1e6 * CGSUnitsConst::eV);
+
+                //Decide which energy bin to use (i.e. determine 'idx_group')
+                int idx_group = -1;
+                for (int i = 0; i < NULIBVAR_INT(ngroup); i++) {
+                    if (neutrino_energy_MeV >= energy_bottom[i] &&
+                        neutrino_energy_MeV <= energy_top[i]) {
+                        idx_group = i;
+                        break;
+                    }
+                }
+
+                if (idx_group == -1)
+                    AMREX_ASSERT(0);  //abort if energy bin cannot be found.
+                energy_bin = idx_group;
+            }
+
+            fill_absorption_opacity(parms, rho_pp, T_pp, Ye_pp,
+                                    NuLib_tabulated_obj, energy_bin, IMFP_abs,
+                                    IMFP_absbar);
+
+            fill_scattering_opacity(parms, rho_pp, T_pp, Ye_pp,
+                                    NuLib_tabulated_obj, energy_bin, IMFP_scat,
+                                    IMFP_scatbar);
+
+            fill_chemical_potentials(parms, rho_pp, T_pp, Ye_pp,
+                                     EOS_tabulated_obj, munu, munubar);
 
             // Compute equilibrium distribution functions and include Pauli blocking term if requested
             if (parms->IMFP_method == 1 || parms->IMFP_method == 2) {

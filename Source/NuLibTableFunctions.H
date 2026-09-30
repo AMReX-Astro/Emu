@@ -32,24 +32,41 @@ struct NuLib_tabulated {
         return helperVarsInt_nulib;
     };  //get_helperVarsInt_nulib
 
-    //--------------- get opacaties ---------------------------------------------
-    AMREX_GPU_DEVICE AMREX_GPU_HOST void get_opacities(
+    //--------------- get absorption opacity ---------------------------------------------
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void get_absorption_opacity(
         double rho, double temperature, double Ye, double &absorption_opacity,
-        double &scattering_opacity, int &keyerr, int &anyerr,
-        const int idx_species, const int idx_group) const {
-        nulib_opacities(rho, temperature, Ye, absorption_opacity,
-                        scattering_opacity, keyerr, anyerr, alltables_nulib,
-                        logrho_nulib, logtemp_nulib, yes_nulib,
-                        helperVarsReal_nulib, helperVarsInt_nulib, idx_species,
-                        idx_group);
+        int &keyerr, int &anyerr, const int idx_species,
+        const int idx_group) const {
+        nulib_absorption_opacity(rho, temperature, Ye, absorption_opacity,
+                                 keyerr, anyerr, alltables_nulib, logrho_nulib,
+                                 logtemp_nulib, yes_nulib, helperVarsReal_nulib,
+                                 helperVarsInt_nulib, idx_species, idx_group);
         return;
 
         /*Actual steps:
         (1) check bounds
         (2) get interp spots
-        (3) do interpolation to get absorption and scattering opacity
+        (3) do interpolation to get absorption opacity
         */
-    };  //get_opacities
+    };  //get_absorption_opacity
+
+    //--------------- get scattering opacity ---------------------------------------------
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void get_scattering_opacity(
+        double rho, double temperature, double Ye, double &scattering_opacity,
+        int &keyerr, int &anyerr, const int idx_species,
+        const int idx_group) const {
+        nulib_scattering_opacity(rho, temperature, Ye, scattering_opacity,
+                                 keyerr, anyerr, alltables_nulib, logrho_nulib,
+                                 logtemp_nulib, yes_nulib, helperVarsReal_nulib,
+                                 helperVarsInt_nulib, idx_species, idx_group);
+        return;
+
+        /*Actual steps:
+        (1) check bounds
+        (2) get interp spots
+        (3) do interpolation to get scattering opacity
+        */
+    };  //get_scattering_opacity
 
 };  //struct NuLib_tabulated
 
