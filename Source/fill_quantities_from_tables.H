@@ -1,5 +1,5 @@
-#ifndef FILL_PARTICLE_OPACITIES_H_
-#define FILL_PARTICLE_OPACITIES_H_
+#ifndef FILL_QUANTITIES_FROM_TABLES_H_
+#define FILL_QUANTITIES_FROM_TABLES_H_
 
 #include <cstdio>
 #include <string>
@@ -47,4 +47,4 @@ void fill_particle_opacities(
     amrex::Real (*IMFP_scatbar_brakets)[NUM_FLAVORS],
     amrex::Real (*munu)[NUM_FLAVORS], amrex::Real (*munubar)[NUM_FLAVORS]);
 
-#endif
+#endif  // FILL_QUANTITIES_FROM_TABLES_H_

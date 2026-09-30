@@ -3,7 +3,7 @@ CEXE_sources += DataReducer.cpp
 CEXE_sources += IO.cpp
 CEXE_sources += FlavoredNeutrinoContainerInit.cpp
 CEXE_sources += Evolve.cpp
-CEXE_sources += FillParticleOpacities.cpp
+CEXE_sources += fill_quantities_from_tables.cpp
 CEXE_sources += FlavoredNeutrinoContainer.cpp
 CEXE_sources += ReadEosTable.cpp
 CEXE_sources += ReadNuLibTable.cpp
@@ -11,7 +11,7 @@ CEXE_sources += ReadInput_RhoTempYe.cpp
 CEXE_sources += ReadHDF5RhoYeT.cpp
 
 CEXE_headers += Evolve.H
-CEXE_headers += FillParticleOpacities.H
+CEXE_headers += fill_quantities_from_tables.H
 CEXE_headers += FlavoredNeutrinoContainer.H
 CEXE_headers += Constants.H
 CEXE_headers += Particles.H
