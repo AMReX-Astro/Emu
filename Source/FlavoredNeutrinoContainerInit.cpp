@@ -163,6 +163,8 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
     const auto p_lo = Geom(lev).ProbLoArray();
     const auto& a_bounds = Geom(lev).ProbDomain();
 
+    const int coord_sys = parms->coord_sys;
+
     const int nlocs_per_cell =
         AMREX_D_TERM(parms->nppc[0], *parms->nppc[1], *parms->nppc[2]);
 
