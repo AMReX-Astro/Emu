@@ -197,4 +197,100 @@ static inline AMREX_GPU_DEVICE AMREX_GPU_HOST void nulib_opacities(
     return;
 }  //nulib_opacities
 
+//Interpolate absorption opacity only (rho, temperature, Ye). Table variable iv = 0.
+static inline AMREX_GPU_DEVICE AMREX_GPU_HOST void nulib_absorption_opacity(
+    const double rho, const double temperature, const double Ye,
+    double &absorption_opacity, int &keyerr, int &anyerr,
+    double *alltables_nulib, double *logrho_nulib, double *logtemp_nulib,
+    double *yes_nulib, double *helperVarsReal_nulib, int *helperVarsInt_nulib,
+    const int idx_species, const int idx_group) {
+    using namespace nulib_private;
+
+    int anyerr_ = 0;
+    // check if we are fine
+    int keyerr_ = checkbounds_nulib(rho, temperature, Ye, helperVarsReal_nulib);
+    if (keyerr_ != 0) anyerr_ = 1;
+
+    keyerr = keyerr_;
+    anyerr = anyerr_;
+    // Abort if there is any error in checkbounds.
+    // This should never happen and the program should abort with
+    // a fatal error anyway. No point in doing any further EOS calculations.
+    if (anyerr_) {
+        printf("Error in checkbounds::%s::%d::%s, keyerr = %d\n", __FILE__,
+               __LINE__, __func__, keyerr);
+        printf(" rho = %.5e, temperature = %.5e, Ye = %.6f \n", rho,
+               temperature, Ye);
+        return;
+    }
+
+    int idx[8];
+    double delx, dely, delz;
+    const double lrho = log(rho);
+    const double ltemp = log(temperature);
+
+    get_interp_spots_nulib(lrho, ltemp, Ye, delx, dely, delz, idx, logrho_nulib,
+                           logtemp_nulib, yes_nulib, helperVarsReal_nulib,
+                           helperVarsInt_nulib, idx_species, idx_group);
+
+    double absorption_opacity_;
+    {
+        const int iv = 0;
+        nuc_eos_C_linterp_one_nulib(idx, delx, dely, delz, absorption_opacity_,
+                                    iv, alltables_nulib, helperVarsReal_nulib);
+    }
+
+    absorption_opacity = absorption_opacity_;
+
+    return;
+}  //nulib_absorption_opacity
+
+//Interpolate scattering opacity only (rho, temperature, Ye). Table variable iv = 1.
+static inline AMREX_GPU_DEVICE AMREX_GPU_HOST void nulib_scattering_opacity(
+    const double rho, const double temperature, const double Ye,
+    double &scattering_opacity, int &keyerr, int &anyerr,
+    double *alltables_nulib, double *logrho_nulib, double *logtemp_nulib,
+    double *yes_nulib, double *helperVarsReal_nulib, int *helperVarsInt_nulib,
+    const int idx_species, const int idx_group) {
+    using namespace nulib_private;
+
+    int anyerr_ = 0;
+    // check if we are fine
+    int keyerr_ = checkbounds_nulib(rho, temperature, Ye, helperVarsReal_nulib);
+    if (keyerr_ != 0) anyerr_ = 1;
+
+    keyerr = keyerr_;
+    anyerr = anyerr_;
+    // Abort if there is any error in checkbounds.
+    // This should never happen and the program should abort with
+    // a fatal error anyway. No point in doing any further EOS calculations.
+    if (anyerr_) {
+        printf("Error in checkbounds::%s::%d::%s, keyerr = %d\n", __FILE__,
+               __LINE__, __func__, keyerr);
+        printf(" rho = %.5e, temperature = %.5e, Ye = %.6f \n", rho,
+               temperature, Ye);
+        return;
+    }
+
+    int idx[8];
+    double delx, dely, delz;
+    const double lrho = log(rho);
+    const double ltemp = log(temperature);
+
+    get_interp_spots_nulib(lrho, ltemp, Ye, delx, dely, delz, idx, logrho_nulib,
+                           logtemp_nulib, yes_nulib, helperVarsReal_nulib,
+                           helperVarsInt_nulib, idx_species, idx_group);
+
+    double scattering_opacity_;
+    {
+        const int iv = 1;
+        nuc_eos_C_linterp_one_nulib(idx, delx, dely, delz, scattering_opacity_,
+                                    iv, alltables_nulib, helperVarsReal_nulib);
+    }
+
+    scattering_opacity = scattering_opacity_;
+
+    return;
+}  //nulib_scattering_opacity
+
 #endif  //NULIBTABLEHELPERS_HXX
