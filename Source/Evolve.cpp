@@ -7,7 +7,7 @@
 #include "EosTable.H"
 #include "EosTableFunctions.H"
 
-#include "fill_quantities_from_tables.H"
+#include "Fill_quantities_from_tables.H"
 #include "NuLibTable.H"
 #include "NuLibTableFunctions.H"
 

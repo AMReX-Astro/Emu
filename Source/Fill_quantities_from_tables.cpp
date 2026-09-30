@@ -1,4 +1,4 @@
-#include "fill_quantities_from_tables.H"
+#include "Fill_quantities_from_tables.H"
 
 #include "Constants.H"
 
@@ -79,10 +79,10 @@ void fill_particle_opacities(
 
 //#define DEBUG_INTERPOLATION_TABLES
 #ifdef DEBUG_INTERPOLATION_TABLES
-            amrex::Print() << "(fill_quantities_from_tables.cpp) mu_e interpolated = "
+            amrex::Print() << "(Fill_quantities_from_tables.cpp) mu_e interpolated = "
                            << mue_out << std::endl;
             amrex::Print()
-                << "(fill_quantities_from_tables.cpp) muhat interpolated = "
+                << "(Fill_quantities_from_tables.cpp) muhat interpolated = "
                 << muhat_out << std::endl;
 #endif
             // munu_val : electron neutrino chemical potential [ergs]
@@ -116,10 +116,10 @@ void fill_particle_opacities(
             if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES
-            amrex::Print() << "(fill_quantities_from_tables.cpp) "
+            amrex::Print() << "(Fill_quantities_from_tables.cpp) "
                               "absorption_opacity[e] interpolated = "
                            << absorption_opacity << std::endl;
-            amrex::Print() << "(fill_quantities_from_tables.cpp) "
+            amrex::Print() << "(Fill_quantities_from_tables.cpp) "
                               "scattering_opacity[e] interpolated = "
                            << scattering_opacity << std::endl;
 #endif
@@ -136,10 +136,10 @@ void fill_particle_opacities(
             if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES
-            amrex::Print() << "(fill_quantities_from_tables.cpp) "
+            amrex::Print() << "(Fill_quantities_from_tables.cpp) "
                               "absorption_opacity[a] interpolated = "
                            << absorption_opacity << std::endl;
-            amrex::Print() << "(fill_quantities_from_tables.cpp) "
+            amrex::Print() << "(Fill_quantities_from_tables.cpp) "
                               "scattering_opacity[a] interpolated = "
                            << scattering_opacity << std::endl;
 #endif
@@ -156,10 +156,10 @@ void fill_particle_opacities(
             if (anyerr) AMREX_ASSERT(0);
 
 #ifdef DEBUG_INTERPOLATION_TABLES
-            amrex::Print() << "(fill_quantities_from_tables.cpp) "
+            amrex::Print() << "(Fill_quantities_from_tables.cpp) "
                               "absorption_opacity[x] interpolated = "
                            << absorption_opacity << std::endl;
-            amrex::Print() << "(fill_quantities_from_tables.cpp) "
+            amrex::Print() << "(Fill_quantities_from_tables.cpp) "
                               "scattering_opacity[x] interpolated = "
                            << scattering_opacity << std::endl;
 #endif
