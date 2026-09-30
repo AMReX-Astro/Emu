@@ -195,3 +195,58 @@ void fill_particle_opacities(
         AMREX_ASSERT_WITH_MESSAGE(false,
                                   "only available opacity_method is 0, 1 or 2");
 }
+
+AMREX_GPU_HOST_DEVICE
+void fill_chemical_potentials(
+    const TestParams* parms, amrex::Real rho_pp, amrex::Real T_pp,
+    amrex::Real Ye_pp, const EOS_tabulated& EOS_tabulated_obj,
+    amrex::Real (*munu)[NUM_FLAVORS], amrex::Real (*munubar)[NUM_FLAVORS]) {
+    // If opacity_method is 1, the code will use the chemical potentials in the input parameters to compute the collision term.
+    if (parms->IMFP_method == 0) {
+        // do nothing
+    } else if (parms->IMFP_method == 1) {
+        for (int i = 0; i < NUM_FLAVORS; ++i) {
+            // Read neutrino and antineutrino chemical potential [ergs] from input parameters file.
+            munu[i][i] = parms->munu[0][i];
+            munubar[i][i] = parms->munu[1][i];
+        }
+    }
+    // If opacity_method is 2, the code interpolates the electron neutrino chemical potential from the EoS table to compute the collision term.
+    else if (parms->IMFP_method == 2) {
+        // Density of background matter at this particle's position g/cm^3
+        Real rho = rho_pp;
+        // Temperature of background matter at this particle's position [MeV]
+        Real temperature = T_pp / (1e6 * CGSUnitsConst::eV);
+        // Electron fraction of background matter at this particle's position
+        Real Ye = Ye_pp;
+
+        int keyerr, anyerr;
+
+        // mue_out : Electron chemical potential [ergs]
+        // muhat_out : Neutron minus proton chemical potential [ergs]
+        double mue_out, muhat_out;
+        EOS_tabulated_obj.get_mue_muhat(rho, temperature, Ye, mue_out,
+                                        muhat_out, keyerr, anyerr);
+        // If there is an error in interpolation call, stop execution.
+        if (anyerr) AMREX_ASSERT(0);
+
+//#define DEBUG_INTERPOLATION_TABLES
+#ifdef DEBUG_INTERPOLATION_TABLES
+        amrex::Print() << "(Fill_quantities_from_tables.cpp) mu_e interpolated = "
+                       << mue_out << std::endl;
+        amrex::Print()
+            << "(Fill_quantities_from_tables.cpp) muhat interpolated = "
+            << muhat_out << std::endl;
+#endif
+        // munu_val : electron neutrino chemical potential [ergs]
+        // munu -> "mu_e" - "muhat" [ergs]
+        const double munu_val =
+            (mue_out - muhat_out) * 1e6 * CGSUnitsConst::eV;
+
+        // Save neutrino and antineutrino chemical potential from EOS table in chemical potential matrix [ergs]
+        munu[0][0] = munu_val;
+        munubar[0][0] = -1.0 * munu_val;
+    } else
+        AMREX_ASSERT_WITH_MESSAGE(false,
+                                  "only available opacity_method is 0, 1 or 2");
+}

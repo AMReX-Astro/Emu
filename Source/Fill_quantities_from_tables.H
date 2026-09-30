@@ -47,4 +47,17 @@ void fill_particle_opacities(
     amrex::Real (*IMFP_scatbar_brakets)[NUM_FLAVORS],
     amrex::Real (*munu)[NUM_FLAVORS], amrex::Real (*munubar)[NUM_FLAVORS]);
 
+/**
+ * @brief Fill neutrino and antineutrino chemical potentials according to
+ *        IMFP_method (0: none, 1: constant input, 2: EoS interpolation).
+ *
+ * Matrices are assumed to be zero-initialized by the caller.
+ * Callable from the MeshToParticle device kernel.
+ */
+AMREX_GPU_HOST_DEVICE
+void fill_chemical_potentials(
+    const TestParams* parms, amrex::Real rho_pp, amrex::Real T_pp,
+    amrex::Real Ye_pp, const EOS_tabulated& EOS_tabulated_obj,
+    amrex::Real (*munu)[NUM_FLAVORS], amrex::Real (*munubar)[NUM_FLAVORS]);
+
 #endif  // FILL_QUANTITIES_FROM_TABLES_H_
