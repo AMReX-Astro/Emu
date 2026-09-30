@@ -21,10 +21,11 @@
  * Callable from the MeshToParticle device kernel.
  */
 AMREX_GPU_HOST_DEVICE
-void fill_chemical_potentials(
-    const TestParams* parms, amrex::Real rho_pp, amrex::Real T_pp,
-    amrex::Real Ye_pp, const EOS_tabulated& EOS_tabulated_obj,
-    amrex::Real (*munu)[NUM_FLAVORS], amrex::Real (*munubar)[NUM_FLAVORS]);
+void fill_chemical_potentials(const TestParams* parms, amrex::Real rho_pp,
+                              amrex::Real T_pp, amrex::Real Ye_pp,
+                              const EOS_tabulated& EOS_tabulated_obj,
+                              amrex::Real (*munu)[NUM_FLAVORS],
+                              amrex::Real (*munubar)[NUM_FLAVORS]);
 
 /**
  * @brief Fill absorption inverse mean free paths according to IMFP_method
@@ -35,11 +36,12 @@ void fill_chemical_potentials(
  * Callable from the MeshToParticle device kernel.
  */
 AMREX_GPU_HOST_DEVICE
-void fill_absorption_opacity(
-    const TestParams* parms, amrex::Real rho_pp, amrex::Real T_pp,
-    amrex::Real Ye_pp, const NuLib_tabulated& NuLib_tabulated_obj,
-    int energy_bin, amrex::Real (*IMFP_abs)[NUM_FLAVORS],
-    amrex::Real (*IMFP_absbar)[NUM_FLAVORS]);
+void fill_absorption_opacity(const TestParams* parms, amrex::Real rho_pp,
+                             amrex::Real T_pp, amrex::Real Ye_pp,
+                             const NuLib_tabulated& NuLib_tabulated_obj,
+                             int energy_bin,
+                             amrex::Real (*IMFP_abs)[NUM_FLAVORS],
+                             amrex::Real (*IMFP_absbar)[NUM_FLAVORS]);
 
 /**
  * @brief Fill scattering inverse mean free path diagonals according to
@@ -50,10 +52,11 @@ void fill_absorption_opacity(
  * Callable from the MeshToParticle device kernel.
  */
 AMREX_GPU_HOST_DEVICE
-void fill_scattering_opacity(
-    const TestParams* parms, amrex::Real rho_pp, amrex::Real T_pp,
-    amrex::Real Ye_pp, const NuLib_tabulated& NuLib_tabulated_obj,
-    int energy_bin, amrex::Real (*IMFP_scat)[NUM_FLAVORS],
-    amrex::Real (*IMFP_scatbar)[NUM_FLAVORS]);
+void fill_scattering_opacity(const TestParams* parms, amrex::Real rho_pp,
+                             amrex::Real T_pp, amrex::Real Ye_pp,
+                             const NuLib_tabulated& NuLib_tabulated_obj,
+                             int energy_bin,
+                             amrex::Real (*IMFP_scat)[NUM_FLAVORS],
+                             amrex::Real (*IMFP_scatbar)[NUM_FLAVORS]);
 
 #endif  // FILL_QUANTITIES_FROM_TABLES_H_

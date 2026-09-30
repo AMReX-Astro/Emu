@@ -895,8 +895,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                                     IMFP_absbar);
 
             fill_scattering_opacity(parms, rho_pp, T_pp, Ye_pp,
-                                        NuLib_tabulated_obj, energy_bin,
-                                        IMFP_scat, IMFP_scatbar);
+                                    NuLib_tabulated_obj, energy_bin, IMFP_scat,
+                                    IMFP_scatbar);
 
             fill_chemical_potentials(parms, rho_pp, T_pp, Ye_pp,
                                      EOS_tabulated_obj, munu, munubar);

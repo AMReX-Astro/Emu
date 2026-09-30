@@ -5,10 +5,11 @@
 using namespace amrex;
 
 AMREX_GPU_HOST_DEVICE
-void fill_chemical_potentials(
-    const TestParams* parms, amrex::Real rho_pp, amrex::Real T_pp,
-    amrex::Real Ye_pp, const EOS_tabulated& EOS_tabulated_obj,
-    amrex::Real (*munu)[NUM_FLAVORS], amrex::Real (*munubar)[NUM_FLAVORS]) {
+void fill_chemical_potentials(const TestParams* parms, amrex::Real rho_pp,
+                              amrex::Real T_pp, amrex::Real Ye_pp,
+                              const EOS_tabulated& EOS_tabulated_obj,
+                              amrex::Real (*munu)[NUM_FLAVORS],
+                              amrex::Real (*munubar)[NUM_FLAVORS]) {
     // If opacity_method is 1, the code will use the chemical potentials in the input parameters to compute the collision term.
     if (parms->IMFP_method == 0) {
         // do nothing
@@ -40,16 +41,16 @@ void fill_chemical_potentials(
 
 //#define DEBUG_INTERPOLATION_TABLES
 #ifdef DEBUG_INTERPOLATION_TABLES
-        amrex::Print() << "(Fill_quantities_from_tables.cpp) mu_e interpolated = "
-                       << mue_out << std::endl;
+        amrex::Print()
+            << "(Fill_quantities_from_tables.cpp) mu_e interpolated = "
+            << mue_out << std::endl;
         amrex::Print()
             << "(Fill_quantities_from_tables.cpp) muhat interpolated = "
             << muhat_out << std::endl;
 #endif
         // munu_val : electron neutrino chemical potential [ergs]
         // munu -> "mu_e" - "muhat" [ergs]
-        const double munu_val =
-            (mue_out - muhat_out) * 1e6 * CGSUnitsConst::eV;
+        const double munu_val = (mue_out - muhat_out) * 1e6 * CGSUnitsConst::eV;
 
         // Save neutrino and antineutrino chemical potential from EOS table in chemical potential matrix [ergs]
         munu[0][0] = munu_val;
@@ -60,11 +61,12 @@ void fill_chemical_potentials(
 }
 
 AMREX_GPU_HOST_DEVICE
-void fill_absorption_opacity(
-    const TestParams* parms, amrex::Real rho_pp, amrex::Real T_pp,
-    amrex::Real Ye_pp, const NuLib_tabulated& NuLib_tabulated_obj,
-    int energy_bin, amrex::Real (*IMFP_abs)[NUM_FLAVORS],
-    amrex::Real (*IMFP_absbar)[NUM_FLAVORS]) {
+void fill_absorption_opacity(const TestParams* parms, amrex::Real rho_pp,
+                             amrex::Real T_pp, amrex::Real Ye_pp,
+                             const NuLib_tabulated& NuLib_tabulated_obj,
+                             int energy_bin,
+                             amrex::Real (*IMFP_abs)[NUM_FLAVORS],
+                             amrex::Real (*IMFP_absbar)[NUM_FLAVORS]) {
     // If opacity_method is 1, the code will use the inverse mean free paths in the input parameters to compute the collision term.
     if (parms->IMFP_method == 0) {
         // do nothing
@@ -142,11 +144,12 @@ void fill_absorption_opacity(
 }
 
 AMREX_GPU_HOST_DEVICE
-void fill_scattering_opacity(
-    const TestParams* parms, amrex::Real rho_pp, amrex::Real T_pp,
-    amrex::Real Ye_pp, const NuLib_tabulated& NuLib_tabulated_obj,
-    int energy_bin, amrex::Real (*IMFP_scat)[NUM_FLAVORS],
-    amrex::Real (*IMFP_scatbar)[NUM_FLAVORS]) {
+void fill_scattering_opacity(const TestParams* parms, amrex::Real rho_pp,
+                             amrex::Real T_pp, amrex::Real Ye_pp,
+                             const NuLib_tabulated& NuLib_tabulated_obj,
+                             int energy_bin,
+                             amrex::Real (*IMFP_scat)[NUM_FLAVORS],
+                             amrex::Real (*IMFP_scatbar)[NUM_FLAVORS]) {
     // If opacity_method is 1, the code will use the inverse mean free paths in the input parameters to compute the collision term.
     if (parms->IMFP_method == 0) {
         // do nothing
