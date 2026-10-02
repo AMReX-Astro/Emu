@@ -227,21 +227,21 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                 NuLib_tabulated_obj, energy_bin, IMFP_scat,
                 IMFP_scatbar);
 
-                // Scale interpolated IMFPs by the input attenuation factors.
-                for (int i = 0; i < NUM_FLAVORS; ++i) {
-                    for (int j = 0; j < NUM_FLAVORS; ++j) {
-                        IMFP_scat[i][j] *=
-                            parms->attenuation_scattering_opacity;
-                        IMFP_scatbar[i][j] *=
-                            parms->attenuation_scattering_opacity;
-                    }
+            // Scale interpolated IMFPs by the input attenuation factors.
+            for (int i = 0; i < NUM_FLAVORS; ++i) {
+                for (int j = 0; j < NUM_FLAVORS; ++j) {
+                    IMFP_scat[i][j] *=
+                        parms->attenuation_scattering_opacity;
+                    IMFP_scatbar[i][j] *=
+                        parms->attenuation_scattering_opacity;
                 }
             }
+
             //==============================================================//
 
-            const amrex::Real delta_x = (p.pos(0) - plo[0]) * dxi[0];
-            const amrex::Real delta_y = (p.pos(1) - plo[1]) * dxi[1];
-            const amrex::Real delta_z = (p.pos(2) - plo[2]) * dxi[2];
+            const amrex::Real delta_x = (p.pos(0) - p_lo[0]) * dxi[0];
+            const amrex::Real delta_y = (p.pos(1) - p_lo[1]) * dxi[1];
+            const amrex::Real delta_z = (p.pos(2) - p_lo[2]) * dxi[2];
 
             const ParticleInterpolator<SHAPE_FACTOR_ORDER> sx(
                 delta_x, shape_factor_order_x);
@@ -417,7 +417,8 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                     }
                 }
             }
-        });
+        }
+    );
 }
 
 void interpolate_hydro_to_particles(FlavoredNeutrinoContainer& neutrinos,
@@ -1053,6 +1054,12 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             Real IMFP_absbar
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for nucleon absortion: diag( kbar_e , kbar_u , kbar_t )
+            Real IMFP_scat
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t )
+            Real IMFP_scatbar
+                [NUM_FLAVORS]
+                [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for scatteting: diag( kbar_e , kbar_u , kbar_t )
             Real IMFP_scat_brakets
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t )
@@ -1076,6 +1083,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                 for (int j = 0; j < NUM_FLAVORS; ++j) {
                     IMFP_abs[i][j] = 0.0;
                     IMFP_absbar[i][j] = 0.0;
+                    IMFP_scat[i][j] = 0.0;
+                    IMFP_scatbar[i][j] = 0.0;
                     IMFP_scat_brakets[i][j] = 0.0;
                     IMFP_scatbar_brakets[i][j] = 0.0;
                     f_eq[i][j] = 0.0;
