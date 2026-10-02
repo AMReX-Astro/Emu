@@ -215,7 +215,7 @@ void DataReducer::WriteReducedData0D(const amrex::Geometry& geom,
                                      const amrex::Real scaled_error) {
     BL_PROFILE("DataReducer::WriteReducedData0D()");
     // get index volume of the domain
-    int ncells = geom.Domain().volume();
+    amrex::Long ncells = geom.Domain().volume();
 
     //==================================//
     // Do reductions over the particles //

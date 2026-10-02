@@ -108,7 +108,7 @@ void ReadNuLibTable(const std::string nulib_table_name) {
 
     AMREX_ASSERT(
         nspecies_ ==
-        2);  //For now, the code only works when NuLib table has (e,a,x) values.
+        3);  //For now, the code only works when NuLib table has (e,a,x) values.
 
     printf(
         "(ReadNuLibTable.cpp) nrho = %d, ntemp = %d, nye = %d, nspecies=%d, "

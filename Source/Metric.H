@@ -21,8 +21,18 @@ using Christoffel =
 using GeodesicArray =
     amrex::GpuArray<amrex::Real, 8>;  //for 4-position and then 4-momentum
 
-// A standalone particle struct with access to SoA data
-using EParticle = FlavoredNeutrinoContainer::SuperParticleType;
+// A handle to one particle's attributes in the tile's SoA storage.
+using EParticle = FlavoredNeutrinoContainer::FNParticleView;
+
+// upper and lower bounds of cell (i,j,k)
+AMREX_GPU_DEVICE AMREX_GPU_HOST inline void cell_bounds(
+    int i, int j, int k, const amrex::GpuArray<amrex::Real, 3>& p_lo,
+    const amrex::GpuArray<amrex::Real, 3>& dxi,
+    amrex::GpuArray<amrex::Real, 3>& lo, amrex::GpuArray<amrex::Real, 3>& hi) {
+    lo = {p_lo[0] + i / dxi[0], p_lo[1] + j / dxi[1], p_lo[2] + k / dxi[2]};
+    hi = {p_lo[0] + (i + 1) / dxi[0], p_lo[1] + (j + 1) / dxi[1],
+          p_lo[2] + (k + 1) / dxi[2]};
+}
 
 //abstract base class- Metric
 
@@ -33,28 +43,47 @@ class Metric {
     //static amrex::Real detg(const amrex::RealVect& x);
 
     //convert 4-postion and 4-momentum from cartesian to chosen coordinate
-    virtual void coord_conv(EParticle& p) const = 0;
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual void coord_conv(
+        EParticle& p) const = 0;
+
+    //returns converted coordinates ( cartesian to curvilieanr ). Does not alter particle values
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual FourVec pos_conv(
+        EParticle& p) const = 0;
 
     //convert 4-postion and 4-momentum from chosen coordinate to cartesian
-    virtual void coord_conv_inv(EParticle& p) const = 0;
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual void coord_conv_inv(
+        EParticle& p) const = 0;
 
-    //Jacobian needed for the forward conversion
-    virtual Mat4 jacobian(const EParticle& p) const = 0;
+    //returns converted coordinates ( curvilinear to cartesian ). Does not alter particle values
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual FourVec pos_conv_inv(
+        EParticle& p) const = 0;
 
-    //Jacobian for the inverse conversion
-    virtual Mat4 jacobian_inv(const EParticle& p) const = 0;
+    //Jacobian needed for the forward conversion. Called with converted p.
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Mat4 jacobian(
+        const EParticle& p) const = 0;
+
+    //Jacobian for the inverse conversion. called with converted p.
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Mat4 jacobian_inv(
+        const EParticle& p) const = 0;
+
+    //Rotate a cartesian 4-vector into the local orthonormal (tetrad) basis at
+    //mesh coordinates (x1,x2,x3): V^{a_hat} = R[a][j] * V^j.
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual FourVec tetrad_conv(
+        const FourVec& V, amrex::Real x1, amrex::Real x2,
+        amrex::Real x3) const = 0;
 
     //The metric
-    virtual Mat4 gmunu(const EParticle& p) const = 0;
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Mat4 gmunu(
+        const EParticle& p) const = 0;
 
     //det of the metric
-    virtual amrex::Real detg(const EParticle& p) const = 0;
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual amrex::Real detg(
+        const EParticle& p) const = 0;
 
     //dot product of two 4-vectors
-    amrex::Real dot(const FourVec& a, const FourVec& b,
-                    const EParticle& p) const
-
-    {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real dot(const FourVec& a,
+                                                    const FourVec& b,
+                                                    const EParticle& p) const {
         const Mat4 g = gmunu(p);
         amrex::Real s = 0.0;
         for (int mu = 0; mu < 4; ++mu) {
@@ -66,10 +95,12 @@ class Metric {
     }
 
     //function to get the Christoffel symbols
-    virtual Christoffel christoffel(const EParticle& p) const = 0;
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Christoffel christoffel(
+        const EParticle& p) const = 0;
 
     //rhs of the geodesic equations
-    GeodesicArray geodesic_rhs(EParticle& p) const {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST GeodesicArray
+    geodesic_rhs(EParticle& p) const {
         coord_conv(p);
 
         const Christoffel Gamma = christoffel(p);
@@ -81,12 +112,16 @@ class Metric {
 
         };
 
+        const amrex::Real lapse = 1.0;
+
+        const amrex::Real denom = lapse * Y[4];  // -p.u= lapse*p^t
+
         GeodesicArray
             rhs{};  //first 4 components will store the postion equations rhs and the last 4 componenets will store momentum geoodesic equation rhs
 
         for (int mu = 0; mu < 4;
              mu++) {  //looping over the position geodesic equations
-            rhs[mu] = Y[4 + mu] / Y[4];
+            rhs[mu] = Y[4 + mu] / denom;
         }
 
         // writing the momentum geodesic equations
@@ -95,7 +130,7 @@ class Metric {
             for (int alpha = 0; alpha < 4; ++alpha) {
                 for (int beta = 0; beta < 4; ++beta) {
                     rhs[4 + mu] -= Gamma[mu][alpha][beta] * Y[4 + alpha] *
-                                   Y[4 + beta] / Y[4];
+                                   Y[4 + beta] / denom;
                 }
             }
         }
@@ -105,24 +140,47 @@ class Metric {
         return rhs;
     }
 
-    virtual amrex::Real vol(amrex::Real x1_max, amrex::Real x1_min,
-                            amrex::Real x2_max, amrex::Real x2_min,
-                            amrex::Real x3_max, amrex::Real x3_min) const = 0;
+    // Find the vokume of a cell
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual amrex::Real vol(
+        amrex::Real x1_min, amrex::Real x1_max, amrex::Real x2_min,
+        amrex::Real x2_max, amrex::Real x3_min, amrex::Real x3_max) const = 0;
+
+    // Minimum resolvable cell length, used for the translation CFL limit in compute_dt.
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual amrex::Real min_length(
+        const amrex::GpuArray<amrex::Real, 3>& dx,
+        const amrex::GpuArray<amrex::Real, 3>& p_lo,
+        const amrex::GpuArray<amrex::Real, 3>& p_hi,
+        const amrex::GpuArray<int, 3>& ncell) const = 0;
 };
 
 // child class- CartesianMetric
 
 class CartesianMetric : public Metric {
    public:
-    void coord_conv(EParticle& p) const override {}
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv(
+        EParticle& p) const override {}
 
-    void coord_conv_inv(EParticle& p) const override {
-        p.pos(0) = p.rdata(PIdx::x);
-        p.pos(1) = p.rdata(PIdx::y);
-        p.pos(2) = p.rdata(PIdx::z);
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec
+    pos_conv(EParticle& p) const override {
+        FourVec pos_new = {p.rdata(PIdx::time), p.rdata(PIdx::x),
+                           p.rdata(PIdx::y), p.rdata(PIdx::z)};
+
+        return pos_new;
     }
 
-    Mat4 jacobian(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv_inv(
+        EParticle& p) const override {}
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec
+    pos_conv_inv(EParticle& p) const override {
+        FourVec pos_new = {p.rdata(PIdx::time), p.rdata(PIdx::x),
+                           p.rdata(PIdx::y), p.rdata(PIdx::z)};
+
+        return pos_new;
+    }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
+    jacobian(const EParticle& p) const override {
         Mat4 J{};
 
         for (int mu = 0; mu < 4; mu++) {
@@ -139,7 +197,8 @@ class CartesianMetric : public Metric {
         return J;
     }
 
-    Mat4 jacobian_inv(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
+    jacobian_inv(const EParticle& p) const override {
         Mat4 J{};
 
         for (int mu = 0; mu < 4; mu++) {
@@ -156,7 +215,14 @@ class CartesianMetric : public Metric {
         return J;
     }
 
-    Mat4 gmunu(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec
+    tetrad_conv(const FourVec& V, amrex::Real x1, amrex::Real x2,
+                amrex::Real x3) const override {
+        return V;
+    }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
+    gmunu(const EParticle& p) const override {
         Mat4 g{};
         for (int mu = 0; mu < 4; ++mu) {
             for (int nu = 0; nu < 4; ++nu) g[mu][nu] = 0.0;
@@ -168,9 +234,13 @@ class CartesianMetric : public Metric {
         return g;
     }
 
-    amrex::Real detg(const EParticle& p) const override { return -1.0; }
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
+        const EParticle& p) const override {
+        return -1.0;
+    }
 
-    Christoffel christoffel(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Christoffel
+    christoffel(const EParticle& p) const override {
         Christoffel Gamma{};
 
         for (int alpha = 0; alpha < 4; ++alpha) {
@@ -184,13 +254,24 @@ class CartesianMetric : public Metric {
         return Gamma;
     }
 
-    amrex::Real vol(amrex::Real x1_max, amrex::Real x1_min, amrex::Real x2_max,
-                    amrex::Real x2_min, amrex::Real x3_max,
-                    amrex::Real x3_min) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real vol(
+        amrex::Real x1_min, amrex::Real x1_max, amrex::Real x2_min,
+        amrex::Real x2_max, amrex::Real x3_min,
+        amrex::Real x3_max) const override {
         const amrex::Real v =
             (x1_max - x1_min) * (x2_max - x2_min) * (x3_max - x3_min);
 
         return v;
+    }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real min_length(
+        const amrex::GpuArray<amrex::Real, 3>& dx,
+        const amrex::GpuArray<amrex::Real, 3>& p_lo,
+        const amrex::GpuArray<amrex::Real, 3>& p_hi,
+        const amrex::GpuArray<int, 3>& ncell) const override {
+        amrex::ignore_unused(p_lo, p_hi, ncell);
+        // Cartesian: (dx1,dx2,dx3) = (dx,dy,dz)
+        return std::min({dx[0], dx[1], dx[2]});
     }
 };
 
@@ -198,7 +279,8 @@ class CartesianMetric : public Metric {
 
 class CylindricalMetric : public Metric {
    public:
-    void coord_conv(EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv(
+        EParticle& p) const override {
         const amrex::Real x1 = p.rdata(PIdx::x);
         const amrex::Real x2 = p.rdata(PIdx::y);
         //position coord conversion
@@ -229,7 +311,22 @@ class CylindricalMetric : public Metric {
         p.rdata(PIdx::pupz) = p_new[3];
     }
 
-    void coord_conv_inv(EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec
+    pos_conv(EParticle& p) const override {
+        const amrex::Real x1 = p.rdata(PIdx::x);
+        const amrex::Real x2 = p.rdata(PIdx::y);
+        //position coord conversion
+        const amrex::Real r =
+            std::sqrt(x1 * x1 + x2 * x2);            // r= sqrt(x^2 + y^2)
+        const amrex::Real phi = std::atan2(x2, x1);  // phi= arctan(y/x)
+
+        FourVec pos_new = {p.rdata(PIdx::time), r, phi, p.rdata(PIdx::z)};
+
+        return pos_new;
+    }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv_inv(
+        EParticle& p) const override {
         //momentum coord inverse conversersion
         const Mat4 J = jacobian_inv(p);
 
@@ -259,13 +356,24 @@ class CylindricalMetric : public Metric {
 
         p.rdata(PIdx::x) = x;
         p.rdata(PIdx::y) = y;
-
-        p.pos(0) = p.rdata(PIdx::x);
-        p.pos(1) = p.rdata(PIdx::y);
-        p.pos(2) = p.rdata(PIdx::z);
     }
 
-    Mat4 jacobian(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec
+    pos_conv_inv(EParticle& p) const override {
+        const amrex::Real x1 = p.rdata(PIdx::x);
+        const amrex::Real x2 = p.rdata(PIdx::y);
+
+        //position coord inverse conversion
+        const amrex::Real x = x1 * std::cos(x2);  //x=r*cos(phi)
+        const amrex::Real y = x1 * std::sin(x2);  //y=r*sin(phi)
+
+        FourVec pos_old = {p.rdata(PIdx::time), x, y, p.rdata(PIdx::z)};
+
+        return pos_old;
+    }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
+    jacobian(const EParticle& p) const override {
         const amrex::Real x1 = p.rdata(PIdx::x);
         const amrex::Real x2 = p.rdata(PIdx::y);
 
@@ -287,7 +395,8 @@ class CylindricalMetric : public Metric {
         return J;
     }
 
-    Mat4 jacobian_inv(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
+    jacobian_inv(const EParticle& p) const override {
         const amrex::Real x1 = p.rdata(PIdx::x);
         const amrex::Real x2 = p.rdata(PIdx::y);
 
@@ -309,7 +418,37 @@ class CylindricalMetric : public Metric {
         return J;
     }
 
-    Mat4 gmunu(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec
+    tetrad_conv(const FourVec& V, amrex::Real x1, amrex::Real x2,
+                amrex::Real x3) const override {
+        Mat4 R{};
+
+        for (int mu = 0; mu < 4; mu++) {
+            for (int nu = 0; nu < 4; nu++) {
+                R[mu][nu] = 0.0;
+            }
+        }
+
+        R[0][0] = 1.0;
+        R[1][1] = std::cos(x2);   //cos(phi)
+        R[1][2] = std::sin(x2);   //sin(phi)
+        R[2][1] = -std::sin(x2);  //-sin(phi)
+        R[2][2] = std::cos(x2);   //cos(phi)
+        R[3][3] = 1.0;
+
+        FourVec V_new{};
+
+        for (int mu = 0; mu < 4; mu++) {
+            for (int nu = 0; nu < 4; nu++) {
+                V_new[mu] += R[mu][nu] * V[nu];
+            }
+        }
+
+        return V_new;
+    }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
+    gmunu(const EParticle& p) const override {
         const amrex::Real x = p.rdata(PIdx::x);
         const amrex::Real y = p.rdata(PIdx::y);
         const amrex::Real r = std::sqrt(x * x + y * y);
@@ -325,7 +464,8 @@ class CylindricalMetric : public Metric {
         return g;
     }
 
-    amrex::Real detg(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
+        const EParticle& p) const override {
         const amrex::Real x = p.rdata(PIdx::x);
         const amrex::Real y = p.rdata(PIdx::y);
         const amrex::Real r = std::sqrt(x * x + y * y);
@@ -333,7 +473,8 @@ class CylindricalMetric : public Metric {
         return -(r * r);
     }
 
-    Christoffel christoffel(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Christoffel
+    christoffel(const EParticle& p) const override {
         const amrex::Real r = p.rdata(PIdx::x);
 
         Christoffel Gamma{};
@@ -354,13 +495,26 @@ class CylindricalMetric : public Metric {
         return Gamma;
     }
 
-    amrex::Real vol(amrex::Real x1_max, amrex::Real x1_min, amrex::Real x2_max,
-                    amrex::Real x2_min, amrex::Real x3_max,
-                    amrex::Real x3_min) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real vol(
+        amrex::Real x1_min, amrex::Real x1_max, amrex::Real x2_min,
+        amrex::Real x2_max, amrex::Real x3_min,
+        amrex::Real x3_max) const override {
         const amrex::Real v = (x1_max * x1_max - x1_min * x1_min) *
                               (x2_max - x2_min) * (x3_max - x3_min) / 2.0;
 
         return v;
+    }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real min_length(
+        const amrex::GpuArray<amrex::Real, 3>& dx,
+        const amrex::GpuArray<amrex::Real, 3>& p_lo,
+        const amrex::GpuArray<amrex::Real, 3>& p_hi,
+        const amrex::GpuArray<int, 3>& ncell) const override {
+        amrex::ignore_unused(p_hi, ncell);
+        //Cylindrical: (dx1,dx2,dx3) = (dr, r*dphi, dz)
+        // r_min = lowest_r + r_width/2 (ad hoc). To safe guard against lowest_r = 0
+        const amrex::Real r_min = p_lo[0] + dx[0] / 2;
+        return std::min({dx[0], r_min * dx[1], dx[2]});
     }
 };
 
@@ -368,7 +522,8 @@ class CylindricalMetric : public Metric {
 
 class SphericalMetric : public Metric {
    public:
-    void coord_conv(EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv(
+        EParticle& p) const override {
         const amrex::Real x1 = p.rdata(PIdx::x);
         const amrex::Real x2 = p.rdata(PIdx::y);
         const amrex::Real x3 = p.rdata(PIdx::z);
@@ -403,7 +558,24 @@ class SphericalMetric : public Metric {
         p.rdata(PIdx::pupz) = p_new[3];
     }
 
-    void coord_conv_inv(EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec
+    pos_conv(EParticle& p) const override {
+        const amrex::Real x1 = p.rdata(PIdx::x);
+        const amrex::Real x2 = p.rdata(PIdx::y);
+        const amrex::Real x3 = p.rdata(PIdx::z);
+
+        const amrex::Real r =
+            std::sqrt(x1 * x1 + x2 * x2 + x3 * x3);  // r= sqrt(x^2 + y^2 + z^2)
+        const amrex::Real theta = std::acos(x3 / r);  //theta= arccos(z/r)
+        const amrex::Real phi = std::atan2(x2, x1);   // phi= arctan(y/x)
+
+        FourVec pos_new = {p.rdata(PIdx::time), r, theta, phi};
+
+        return pos_new;
+    }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void coord_conv_inv(
+        EParticle& p) const override {
         //momentum coord inverse conversersion
         const Mat4 J = jacobian_inv(p);
 
@@ -437,13 +609,28 @@ class SphericalMetric : public Metric {
         p.rdata(PIdx::x) = x;
         p.rdata(PIdx::y) = y;
         p.rdata(PIdx::z) = z;
-
-        p.pos(0) = p.rdata(PIdx::x);
-        p.pos(1) = p.rdata(PIdx::y);
-        p.pos(2) = p.rdata(PIdx::z);
     }
 
-    Mat4 jacobian(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec
+    pos_conv_inv(EParticle& p) const override {
+        const amrex::Real x1 = p.rdata(PIdx::x);
+        const amrex::Real x2 = p.rdata(PIdx::y);
+        const amrex::Real x3 = p.rdata(PIdx::z);
+
+        //position coord inverse conversion
+        const amrex::Real x =
+            x1 * std::sin(x2) * std::cos(x3);  //x=r*sin(theta)*cos(phi)
+        const amrex::Real y =
+            x1 * std::sin(x2) * std::sin(x3);     //y=r*sin(theta)*sin(phi)
+        const amrex::Real z = x1 * std::cos(x2);  //z=r*cos(theta)
+
+        FourVec pos_old = {p.rdata(PIdx::time), x, y, z};
+
+        return pos_old;
+    }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
+    jacobian(const EParticle& p) const override {
         const amrex::Real x1 = p.rdata(PIdx::x);
         const amrex::Real x2 = p.rdata(PIdx::y);
         const amrex::Real x3 = p.rdata(PIdx::z);
@@ -471,7 +658,8 @@ class SphericalMetric : public Metric {
         return J;
     }
 
-    Mat4 jacobian_inv(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
+    jacobian_inv(const EParticle& p) const override {
         const amrex::Real x1 = p.rdata(PIdx::x);
         const amrex::Real x2 = p.rdata(PIdx::y);
         const amrex::Real x3 = p.rdata(PIdx::z);
@@ -497,7 +685,42 @@ class SphericalMetric : public Metric {
         return J;
     }
 
-    Mat4 gmunu(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST FourVec
+    tetrad_conv(const FourVec& V, amrex::Real x1, amrex::Real x2,
+                amrex::Real x3) const override {
+        Mat4 R{};
+
+        for (int mu = 0; mu < 4; mu++) {
+            for (int nu = 0; nu < 4; nu++) {
+                R[mu][nu] = 0.0;
+            }
+        }
+
+        R[0][0] = 1.0;
+        R[1][1] = std::sin(x2) * std::cos(x3);  //sin(theta)cos(phi)  -> r_hat
+        R[1][2] = std::sin(x2) * std::sin(x3);  //sin(theta)sin(phi)
+        R[1][3] = std::cos(x2);                 //cos(theta)
+        R[2][1] =
+            std::cos(x2) * std::cos(x3);  //cos(theta)cos(phi)  -> theta_hat
+        R[2][2] = std::cos(x2) * std::sin(x3);  //cos(theta)sin(phi)
+        R[2][3] = -std::sin(x2);                //-sin(theta)
+        R[3][1] = -std::sin(x3);                //-sin(phi)           -> phi_hat
+        R[3][2] = std::cos(x3);                 //cos(phi)
+        R[3][3] = 0.0;                          //
+
+        FourVec V_new{};
+
+        for (int mu = 0; mu < 4; mu++) {
+            for (int nu = 0; nu < 4; nu++) {
+                V_new[mu] += R[mu][nu] * V[nu];
+            }
+        }
+
+        return V_new;
+    }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
+    gmunu(const EParticle& p) const override {
         const amrex::Real x = p.rdata(PIdx::x);
         const amrex::Real y = p.rdata(PIdx::y);
         const amrex::Real z = p.rdata(PIdx::z);
@@ -515,7 +738,8 @@ class SphericalMetric : public Metric {
         return g;
     }
 
-    amrex::Real detg(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
+        const EParticle& p) const override {
         const amrex::Real x = p.rdata(PIdx::x);
         const amrex::Real y = p.rdata(PIdx::y);
         const amrex::Real z = p.rdata(PIdx::z);
@@ -525,7 +749,8 @@ class SphericalMetric : public Metric {
         return -std::pow(r, 4) * std::sin(theta) * std::sin(theta);
     }
 
-    Christoffel christoffel(const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST Christoffel
+    christoffel(const EParticle& p) const override {
         const amrex::Real r = p.rdata(PIdx::x);
         const amrex::Real theta = p.rdata(PIdx::y);
 
@@ -553,15 +778,50 @@ class SphericalMetric : public Metric {
         return Gamma;
     }
 
-    amrex::Real vol(amrex::Real x1_max, amrex::Real x1_min, amrex::Real x2_max,
-                    amrex::Real x2_min, amrex::Real x3_max,
-                    amrex::Real x3_min) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real vol(
+        amrex::Real x1_min, amrex::Real x1_max, amrex::Real x2_min,
+        amrex::Real x2_max, amrex::Real x3_min,
+        amrex::Real x3_max) const override {
         const amrex::Real v = (std::pow(x1_max, 3.0) - std::pow(x1_min, 3.0)) *
                               (std::cos(x2_min) - std::cos(x2_max)) *
                               (x3_max - x3_min) / 3.0;
 
         return v;
     }
+
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real min_length(
+        const amrex::GpuArray<amrex::Real, 3>& dx,
+        const amrex::GpuArray<amrex::Real, 3>& p_lo,
+        const amrex::GpuArray<amrex::Real, 3>& p_hi,
+        const amrex::GpuArray<int, 3>& ncell) const override {
+        //Spherical: (dx1,dx2,dx3) = (dr, r*dtheta, r*sin(theta)*dphi )
+        const amrex::Real theta_center = (p_lo[1] + p_hi[1]) / 2.0;
+        const amrex::Real sin_theta_center = std::sin(theta_center);
+        const amrex::Real r_min = p_lo[0] + dx[0] / 2;
+
+        //We start with the radial component
+        amrex::Real length = dx[0];
+
+        //If the theta and phi dimensions are more than 1 cell thick, then we use the following.
+        //This part requires further thought.
+        if (ncell[1] > 1) length = std::min(length, r_min * dx[1]);
+        if (ncell[2] > 1)
+            length = std::min(length, r_min * sin_theta_center * dx[2]);
+
+        return length;
+    }
 };
+
+// Selecting the Metric's subclass at compile time.
+// COORD_SYS initialized in makefile.
+#if COORD_SYS == 0
+using ActiveMetric = CartesianMetric;
+#elif COORD_SYS == 1
+using ActiveMetric = CylindricalMetric;
+#elif COORD_SYS == 2
+using ActiveMetric = SphericalMetric;
+#else
+#error "COORD_SYS must be 0 (Cartesian), 1 (Cylindrical), or 2 (Spherical)"
+#endif
 
 #endif

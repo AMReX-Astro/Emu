@@ -1,6 +1,5 @@
 AMREX_HOME ?= ../submodules/amrex
 
-DEBUG	= FALSE
 DEBUG	= TRUE
 
 DIM	= 3

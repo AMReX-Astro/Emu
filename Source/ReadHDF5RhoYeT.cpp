@@ -115,12 +115,12 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T) {
     READ_BCAST_EOS_HDF5("ncellsx", &ncellx_, H5T_NATIVE_INT, H5S_ALL, 1);
     READ_BCAST_EOS_HDF5("ncellsy", &ncelly_, H5T_NATIVE_INT, H5S_ALL, 1);
     READ_BCAST_EOS_HDF5("ncellsz", &ncellz_, H5T_NATIVE_INT, H5S_ALL, 1);
-    READ_BCAST_EOS_HDF5("xmin_cm", &xmin_, H5T_NATIVE_DOUBLE, H5S_ALL, 1);
-    READ_BCAST_EOS_HDF5("ymin_cm", &ymin_, H5T_NATIVE_DOUBLE, H5S_ALL, 1);
-    READ_BCAST_EOS_HDF5("zmin_cm", &zmin_, H5T_NATIVE_DOUBLE, H5S_ALL, 1);
-    READ_BCAST_EOS_HDF5("xmax_cm", &xmax_, H5T_NATIVE_DOUBLE, H5S_ALL, 1);
-    READ_BCAST_EOS_HDF5("ymax_cm", &ymax_, H5T_NATIVE_DOUBLE, H5S_ALL, 1);
-    READ_BCAST_EOS_HDF5("zmax_cm", &zmax_, H5T_NATIVE_DOUBLE, H5S_ALL, 1);
+    READ_BCAST_EOS_HDF5("xmin", &xmin_, H5T_NATIVE_DOUBLE, H5S_ALL, 1);
+    READ_BCAST_EOS_HDF5("ymin", &ymin_, H5T_NATIVE_DOUBLE, H5S_ALL, 1);
+    READ_BCAST_EOS_HDF5("zmin", &zmin_, H5T_NATIVE_DOUBLE, H5S_ALL, 1);
+    READ_BCAST_EOS_HDF5("xmax", &xmax_, H5T_NATIVE_DOUBLE, H5S_ALL, 1);
+    READ_BCAST_EOS_HDF5("ymax", &ymax_, H5T_NATIVE_DOUBLE, H5S_ALL, 1);
+    READ_BCAST_EOS_HDF5("zmax", &zmax_, H5T_NATIVE_DOUBLE, H5S_ALL, 1);
 
     printf("(ReadHDF5RhoYeT.cpp) ncellx_ = %d, ncelly_ = %d, ncellz_ = %d\n",
            ncellx_, ncelly_, ncellz_);

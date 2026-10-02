@@ -18,6 +18,7 @@
 
 #include <ctime>
 #include <iostream>
+#include <memory>
 
 #include <AMReX.H>
 #include <AMReX_BCRec.H>

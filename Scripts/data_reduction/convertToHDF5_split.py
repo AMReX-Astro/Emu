@@ -27,8 +27,10 @@ import shutil
 ########
 # misc #
 ########
-fluid_vars = ["N","Fx","Fy","Fz"]
-# fluid_vars = ["N","Fx","Fy","Fz","Pxx","Pxy","Pxz","Pyy","Pyz","Pzz"] # Use this line to write the pressure moment in the H5 file.
+# Moments always present. The pressure block exists only in NUM_MOMENTS=3 builds,
+# so it is appended per-plotfile below, based on what the data actually contains.
+fluid_vars_base = ["N","Fx","Fy","Fz"]
+pressure_vars   = ["Pxx","Pxy","Pxz","Pyy","Pyz","Pzz"]
 nunubar = ["","bar"]
 
 def convert_to_HDF5(sim_directory, DELETE_ALL_BUT_LAST_RESTART=False):
@@ -74,6 +76,12 @@ def convert_to_HDF5(sim_directory, DELETE_ALL_BUT_LAST_RESTART=False):
         allData["Nz"] = eds.Nz
         allData["t(s)"] = eds.ds.current_time
         allData["it"] = int(d.split('plt')[-1])
+
+        # Detect whether this plotfile came from a NUM_MOMENTS=3 build.
+        available = [f for ftype, f in eds.ds.field_list]
+        has_P = "Pxx00_Re" in available
+        fluid_vars = fluid_vars_base + (pressure_vars if has_P else [])
+        print("  moments found: " + ("N, F, P" if has_P else "N, F only"))
 
         varlist = []
         for v in fluid_vars:

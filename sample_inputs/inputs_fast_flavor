@@ -1,6 +1,4 @@
 cfl_factor = 0.5
-flavor_cfl_factor = 1
-collision_cfl_factor = 1
 
 # attenuation parameters to time derivative of N due to hamiltonians
 attenuation_hamiltonians = 1
@@ -40,9 +38,6 @@ nsteps = 50
 
 # Minimum timestep (s)
 minimum_time_step = 1e-15
-
-# Time step method
-time_step_method = 0
 
 # Simulation end time
 end_time = 1.0
