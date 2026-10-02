@@ -48,7 +48,7 @@ attenuation_vacuum = 0.0
 attenuation_matter = 0.0
 attenuation_self_interaction = 0.0
 
-cfl_factor = 0.5
+cfl_factor = 1e-30
 flavor_cfl_factor = 0.5
 collision_cfl_factor = 1e-3
 
