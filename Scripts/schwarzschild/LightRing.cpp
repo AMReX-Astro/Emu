@@ -8,7 +8,9 @@
 
 #include <cassert>
 #include <cmath>
+#include <fstream>
 #include <iostream>
+#include <string>
 #include "../../Source/Schwarzschild.H"
 #include "../../submodules/AMReX/Src/Base/AMReX_Geometry.H"
 #include "../../submodules/AMReX/Src/Base/AMReX_BoxArray.H"
@@ -16,10 +18,8 @@
 #include "../../submodules/AMReX/Src/Base/AMReX_ParallelDescriptor.H"
 #include "../../submodules/AMReX/Src/Base/AMReX.H"
 
-// #include <fstream>
-
-// std::string filename = "light_ring_phi_values.txt";
-// std::ofstream outfile(filename, std::ios::app);
+std::string filename = "light_ring_results.csv";
+std::ofstream outfile(filename);
 
 // Classic 4th-order Runge-Kutta, adapted from the integrator I wrote
 // in PHYS 643 Project 1. Apply RK4 method to the Geodesic_Array
@@ -56,34 +56,53 @@ void setState(EParticle& p, const GeodesicArray& Y) {
     p.rdata(PIdx::pupz) = Y[7];
 }
 
-void RK4(EParticle& p, SchwSphericalMetric& metric, double dt, int steps) {
+// Returns the total azimuthal angle swept (unwrapped), used to count orbits.
+double RK4(EParticle& p, SchwSphericalMetric& metric, double dt, int steps) {
     auto rhs = [&](const GeodesicArray& Y) -> GeodesicArray {
         EParticle tmp = p;
         setState(tmp, Y);
         return metric.geodesic_rhs(tmp);
     };
+ 
+    if(!outfile.is_open()) {
+         std::cerr << "Error opening file: " << filename << std::endl;
+         return 0.0;
+    }
 
+    
+    outfile << std::setprecision(17) << "lambda,t,x,y,z,pt,px,py,pz\n";
+    auto writeRow = [&](double lambda, const GeodesicArray& Y) {
+        outfile << lambda;
+        for (int k = 0; k < 8; k++) outfile << "," << Y[k];
+        outfile << "\n";
+    };
+    writeRow(0.0, getState(p));
+ 
+    // Track phi = atan2(y, x), unwrapping the jump at +/-pi
+    double phi_prev = std::atan2(p.rdata(PIdx::y), p.rdata(PIdx::x));
+    double phi_total = 0.0;
+ 
     for (int i = 0; i < steps; i++) {
         GeodesicArray Y = getState(p);
-
+ 
         GeodesicArray k1 = rhs(Y);
         GeodesicArray k2 = rhs(Y + 0.5 * dt * k1);
         GeodesicArray k3 = rhs(Y + 0.5 * dt * k2);
         GeodesicArray k4 = rhs(Y + dt * k3);
-
+ 
         Y = Y + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4);
         setState(p, Y);
-        // for debugging; checked phi values at each step
-        // if(!outfile.is_open()) {
-        //     std::cerr << "Error opening file: " << filename << std::endl;
-        //     return;
-        // }
-        // outfile << "Step " << i + 1 << "/" << steps << ": "
-        //         << ", phi (deg) = " << std::atan2(p.rdata(PIdx::y),
-        //                                     p.rdata(PIdx::x))*(180.0/M_PI) << "\n";
+        writeRow((i + 1) * dt, Y);
+ 
+        const double phi_now = std::atan2(Y[2], Y[1]);
+        double dphi = phi_now - phi_prev;
+        if (dphi > M_PI) dphi -= 2.0 * M_PI;
+        if (dphi < -M_PI) dphi += 2.0 * M_PI;
+        phi_total += dphi;
+        phi_prev = phi_now;
     }
-    // file output used for debugging to check phi values
-    // outfile.close();
+    outfile.close();
+    return phi_total;
 }
 
 int main(int argc, char* argv[]) {
@@ -147,10 +166,18 @@ int main(int argc, char* argv[]) {
     const double dt = t_total / steps;
 
     // file output used for debugging to check phi values
-    // std::ofstream outfile("light_ring_phi_values.txt", std::ios::app);
+    std::ofstream outfile("light_ring_results.csv", std::ios::app);
 
     SchwSphericalMetric metric(M);
-    RK4(p, metric, dt, steps);
+
+    // Expected rates for the orbit check. geodesic_rhs divides by lapse * p^t,
+    // so the integration variable s obeys dt/ds = 1/lapse (static-observer
+    // proper time), and dphi/ds = p^phi / (lapse * p^t).
+    const double lapse0 = std::sqrt(1.0 - 2.0 * M / r0);
+    const double pphi0 = p.rdata(PIdx::pupy) / r0;   // p^phi at phi = 0
+    const double dtds = 1.0; 
+    const double dphids = pphi0 / p.rdata(PIdx::pupt);
+    const double phi_total = RK4(p, metric, dt, steps);
 
     // After integration the particle is back in Cartesian coordinates.
     const double x = p.rdata(PIdx::x);
@@ -182,7 +209,14 @@ int main(int argc, char* argv[]) {
     std::cout << "E        = " << E_final << "  (expected " << E0 << ")\n";
     std::cout << "L        = " << L_final << "  (expected " << L0 << ")\n";
     std::cout << "All assertions passed with tolerance " << tol << ". \n";
-
+    // Orbit count: on the circular orbit dphi/ds and dt/ds are constant,
+    // so the expected totals are just rate * s_total (s_total = t_total here).
+    const double two_pi = 2.0 * M_PI;
+    std::cout << "\nOrbit check\n";
+    std::cout << "phi swept     = " << phi_total << " rad  (expected "
+              << dphids * t_total << ")\n";
+    std::cout << "orbits        = " << phi_total / two_pi << "  (expected "
+              << dphids * t_total / two_pi ;
     }
     amrex::Finalize();
     return 0;

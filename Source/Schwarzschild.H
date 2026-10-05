@@ -108,7 +108,7 @@ class Schwarzschild {
         // Lapse for Schwarzschild spacetime (static, non-rotating) from Baumgarte and Shapiro, Table 2.1
         // line 107 true in any coordinate system or frame: dlambda/dt = = (1/n_a*p^a), where n_a = lapse*(-1,0,0,0) 1/(-p_t) = 1/(lapse*p^t)
         const amrex::Real lapse = std::sqrt(1.0 - 2.0 * M_ / r);
-        const amrex::Real denom = lapse * Y[4];
+        const amrex::Real denom = Y[4];
 
         GeodesicArray rhs{};
 
