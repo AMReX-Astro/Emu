@@ -224,16 +224,14 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
 
             // Interpolate scattering opacity from NuLib table
             fill_scattering_opacity(parms, rho_pp, T_pp, Ye_pp,
-                NuLib_tabulated_obj, energy_bin, IMFP_scat,
-                IMFP_scatbar);
+                                    NuLib_tabulated_obj, energy_bin, IMFP_scat,
+                                    IMFP_scatbar);
 
             // Scale interpolated IMFPs by the input attenuation factors.
             for (int i = 0; i < NUM_FLAVORS; ++i) {
                 for (int j = 0; j < NUM_FLAVORS; ++j) {
-                    IMFP_scat[i][j] *=
-                        parms->attenuation_scattering_opacity;
-                    IMFP_scatbar[i][j] *=
-                        parms->attenuation_scattering_opacity;
+                    IMFP_scat[i][j] *= parms->attenuation_scattering_opacity;
+                    IMFP_scatbar[i][j] *= parms->attenuation_scattering_opacity;
                 }
             }
 
@@ -417,8 +415,7 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                     }
                 }
             }
-        }
-    );
+        });
 }
 
 void interpolate_hydro_to_particles(FlavoredNeutrinoContainer& neutrinos,
@@ -1096,16 +1093,15 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 
             if (parms->attenuation_absorption_opacity > 0.0 ||
                 parms->attenuation_scattering_opacity > 0.0) {
-                
                 // Interpolate absorption opacity from NuLib table
                 fill_absorption_opacity(parms, rho_pp, T_pp, Ye_pp,
-                                        NuLib_tabulated_obj, energy_bin, IMFP_abs,
-                                        IMFP_absbar);
+                                        NuLib_tabulated_obj, energy_bin,
+                                        IMFP_abs, IMFP_absbar);
 
                 // Interpolate scattering opacity from NuLib table
                 fill_scattering_opacity(parms, rho_pp, T_pp, Ye_pp,
-                                        NuLib_tabulated_obj, energy_bin, IMFP_scat,
-                                        IMFP_scatbar);
+                                        NuLib_tabulated_obj, energy_bin,
+                                        IMFP_scat, IMFP_scatbar);
 
                 // Compute scattering brackets opacity
                 fill_scattering_brackets_opacity(IMFP_scat, IMFP_scatbar,
@@ -1124,7 +1120,7 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                     }
                 }
             }
-    
+
             fill_chemical_potentials(parms, rho_pp, T_pp, Ye_pp,
                                      EOS_tabulated_obj, munu, munubar);
 
