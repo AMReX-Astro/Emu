@@ -56,10 +56,20 @@ def grid_sphere(nphi):
     return np.array(xyz)
 
 
-def write_particles(p, NF, filename):
+def write_particles(p, NF, filename, n_directions, n_energies):
+    """Write particle_input.dat with metadata headers then data rows.
+
+    Header block (matches FlavoredNeutrinoContainer::ReadParticleFileHeaders):
+      number_of_flavors = <int>
+      number_of_directions = <int>
+      number_of_energies = <int>
+    Then optional column-name row (if present as the first row of p) and
+    numeric data. Data row count must equal n_directions * n_energies.
+    """
     with open(filename, "w") as f:
-        # write the number of flavors
-        f.write(str(NF)+"\n")
+        f.write("number_of_flavors = " + str(NF) + "\n")
+        f.write("number_of_directions = " + str(n_directions) + "\n")
+        f.write("number_of_energies = " + str(n_energies) + "\n")
 
         for i in range(len(p)):
             for j in range(len(p[i])):

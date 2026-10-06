@@ -217,6 +217,11 @@ void evolve_flavor(const TestParams* parms) {
     // Initialize particles on the domain
     amrex::Print() << "Initializing particles... " << std::endl;
 
+    // Parse number_of_flavors / number_of_directions / number_of_energies from
+    // the particle file so they are set on both the init and restart paths.
+    FlavoredNeutrinoContainer::ReadParticleFileHeaders(
+        parms->particle_data_filename);
+
     // We store old-time and new-time data
     FlavoredNeutrinoContainer neutrinos_old(geom, dm, ba);
     FlavoredNeutrinoContainer neutrinos_new(geom, dm, ba);
