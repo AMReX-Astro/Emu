@@ -111,10 +111,9 @@ class Metric {
             p.rdata(PIdx::pupy), p.rdata(PIdx::pupz)
 
         };
-
-        const amrex::Real lapse = 1.0;
-
-        const amrex::Real denom = lapse * Y[4];  // -p.u= lapse*p^t
+        // dx/lambda * (dt/dlambda)^-1 = p^t. dt/dlambda = p^t
+        // we integrate in Emu over coordinate time, not proper time at specific locations
+        const amrex::Real denom = Y[4];
 
         GeodesicArray
             rhs{};  //first 4 components will store the postion equations rhs and the last 4 componenets will store momentum geoodesic equation rhs
@@ -140,7 +139,7 @@ class Metric {
         return rhs;
     }
 
-    // Find the vokume of a cell
+    // Find the volume of a cell
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual amrex::Real vol(
         amrex::Real x1_min, amrex::Real x1_max, amrex::Real x2_min,
         amrex::Real x2_max, amrex::Real x3_min, amrex::Real x3_max) const = 0;

@@ -22,8 +22,8 @@ using Christoffel =
     amrex::GpuArray<amrex::GpuArray<amrex::GpuArray<amrex::Real, 4>, 4>, 4>;
 using GeodesicArray = amrex::GpuArray<amrex::Real, 8>;
 
-// Schwarzschild spacetime in spherical-polar coordinates. 
-// all methods assume the input particle is already in spherical polar coordinates (r, theta, phi) 
+// Schwarzschild spacetime in spherical-polar coordinates.
+// all methods assume the input particle is already in spherical polar coordinates (r, theta, phi)
 // and that the 4-momentum is also in spherical polar coordinates.
 // Conversions to and from other frames live in the Schw*Metric classes below.
 class Schwarzschild {
@@ -50,6 +50,7 @@ class Schwarzschild {
 
     // sqrt(-g) at spherical-polar (r, theta). Static (no M-dependence).
     // Each Schw*Metric converts its native mesh coordinates to (r, theta) before calling.
+    // - , + , + , + signature, so sqrt(-g) = r^2 sin(theta)
     AMREX_GPU_DEVICE AMREX_GPU_HOST static amrex::Real sqrt_g(
         amrex::Real r, amrex::Real theta) {
         const amrex::Real sintheta = std::sin(theta);
@@ -95,12 +96,10 @@ class Schwarzschild {
         return Gamma;
     }
 
-    // rhs of the geodesic equation, evaluated entirely in spherical-polar coordinates. 
+    // rhs of the geodesic equation, evaluated entirely in spherical-polar coordinates.
     // expects the spherical-polar 4-momentum when this is called.
     AMREX_GPU_DEVICE AMREX_GPU_HOST GeodesicArray
     geodesic_rhs_spherical(const EParticle& p) const {
-        const amrex::Real r = p.rdata(PIdx::x);
-
         const Christoffel Gamma = christoffel(p);
 
         GeodesicArray Y{p.rdata(PIdx::time), p.rdata(PIdx::x),
@@ -108,11 +107,8 @@ class Schwarzschild {
                         p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),
                         p.rdata(PIdx::pupy), p.rdata(PIdx::pupz)};
 
-        // RK/Euler integrate coordiate time; must parameterize by coordinate time for consistency with how implementation will happen in Emu
-        // Lapse for Schwarzschild spacetime (static, non-rotating) from Baumgarte and Shapiro, Table 2.1
-        // line 107 true in any coordinate system or frame: dlambda/dt = = (1/n_a*p^a), where n_a = lapse*(-1,0,0,0) 1/(-p_t) = 1/(lapse*p^t)
-        // is line 118 wrong or right?
-        const amrex::Real lapse = std::sqrt(1.0 - 2.0 * M_ / r);
+        // dx/lambda * (dt/dlambda)^-1 = p^t. dt/dlambda = p^t
+        // we integrate in Emu over coordinate time, not proper time at specific locations
         const amrex::Real denom = Y[4];
 
         GeodesicArray rhs{};
@@ -133,17 +129,13 @@ class Schwarzschild {
 
         return rhs;
     }
-
-   private:
-    amrex::Real M_;
 };
 
 // Flat-space geometry of the spherical-polar -> Cartesian map, used by the
 // kept out of Schwarzschild so that class only ever sees spherical-polar quantities.
-// Schw*Metric classes to turn a spherical-polar geodesic rhs into Cartesian components. 
+// Schw*Metric classes to turn a spherical-polar geodesic rhs into Cartesian components.
 
 struct SphericalToCartesian {
-
     // Converts a spherical-polar geodesic rhs (d/dlambda) of
     // (t, r, theta, phi, p^t, p^r, p^theta, p^phi)) into a Cartesian-frame.
     // d/dlambda needs an extra term, because
@@ -154,7 +146,7 @@ struct SphericalToCartesian {
     //            + (d(jacobian_inv)/dr * dr/dlambda
     //            + d(jacobian_inv)/dtheta * dtheta/dlambda
     //            + d(jacobian_inv)/dphi * dphi/dlambda)^i_mu * p^mu_sph
-    // p holds (r, theta, phi) and the spherical-polar 4-momentum; 
+    // p holds (r, theta, phi) and the spherical-polar 4-momentum;
     // Jinv is SphericalMetric::jacobian_inv(p).
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST static GeodesicArray rhs_to_cartesian(
@@ -195,7 +187,6 @@ struct SphericalToCartesian {
     }
 
    private:
-
     // d(jacobian_inv)/dr, /dtheta, /dphi -- partial derivatives of
     // SphericalMetric::jacobian_inv (Spherical -> Cartesian) for the
     // d/dlambda conversion of the geodesic equation.
@@ -285,7 +276,7 @@ struct SphericalToCartesian {
 // geodesic_rhs always takes Cartesian p: it converts p to spherical polar
 // (SphericalMetric's conversion), evaluates Schwarzschild::
 // geodesic_rhs_spherical, converts the rhs to Cartesian components with
-// SphericalToCartesian::rhs_to_cartesian (depends on lambda in two ways), 
+// SphericalToCartesian::rhs_to_cartesian (depends on lambda in two ways),
 // then converts p back so it is Cartesian on return.
 
 // Schwarzschild spacetime metric in spherical-polar coordinates.
@@ -316,11 +307,11 @@ class SchwSphericalMetric : public SphericalMetric {
     // Required by Metric's pure virtual. p holds a Cartesian position (the
     // same convention as Metric.H's detg overrides); pos_conv maps it to this
     // class's mesh coordinates and sqrt_g does the rest.
-    // Recommendation to modify Metric.H to have a default implementation of detg that calls pos_conv and sqrt_g, 
+    // Recommendation to modify Metric.H to have a default implementation of detg that calls pos_conv and sqrt_g,
     // so that this override is not needed in every derived class.
     AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
         const EParticle& p) const override {
-        EParticle q = p;  
+        EParticle q = p;
         const FourVec grid_pos = pos_conv(q);
         return sqrt_g(amrex::RealVect(grid_pos[1], grid_pos[2], grid_pos[3]));
     }
@@ -331,8 +322,8 @@ class SchwSphericalMetric : public SphericalMetric {
     geodesic_rhs(EParticle& p) const {
         coord_conv(p);
         const GeodesicArray rhs_sph = m_schw_.geodesic_rhs_spherical(p);
-        const GeodesicArray rhs = SphericalToCartesian::rhs_to_cartesian(
-            p, jacobian_inv(p), rhs_sph);
+        const GeodesicArray rhs =
+            SphericalToCartesian::rhs_to_cartesian(p, jacobian_inv(p), rhs_sph);
         coord_conv_inv(p);
         return rhs;
     }
@@ -374,7 +365,7 @@ class SchwCartesianMetric : public CartesianMetric {
     // Required by Metric's pure virtual. p holds a Cartesian position (the
     // same convention as Metric.H's detg overrides); pos_conv maps it to this
     // class's mesh coordinates and sqrt_g does the rest.
-    // Recommendation to modify Metric.H to have a default implementation of detg that calls pos_conv and sqrt_g, 
+    // Recommendation to modify Metric.H to have a default implementation of detg that calls pos_conv and sqrt_g,
     // so that this override is not needed in every derived class.
     AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
         const EParticle& p) const override {
@@ -436,11 +427,11 @@ class SchwCylindricalMetric : public CylindricalMetric {
     // Override required by Metric's pure virtual. p holds a Cartesian position (the
     // same convention as Metric.H's detg overrides); pos_conv maps it to this
     // class's mesh coordinates and sqrt_g does the rest.
-    // Recommendation to modify Metric.H to have a default implementation of detg that calls pos_conv and sqrt_g, 
+    // Recommendation to modify Metric.H to have a default implementation of detg that calls pos_conv and sqrt_g,
     // so that this override is not needed in every derived class.
     AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
         const EParticle& p) const override {
-        EParticle q = p; 
+        EParticle q = p;
         const FourVec grid_pos = pos_conv(q);
         return sqrt_g(amrex::RealVect(grid_pos[1], grid_pos[2], grid_pos[3]));
     }
