@@ -96,39 +96,8 @@ class Schwarzschild {
         return Gamma;
     }
 
-    // rhs of the geodesic equation, evaluated entirely in spherical-polar coordinates.
-    // expects the spherical-polar 4-momentum when this is called.
-    AMREX_GPU_DEVICE AMREX_GPU_HOST GeodesicArray
-    geodesic_rhs_spherical(const EParticle& p) const {
-        const Christoffel Gamma = christoffel(p);
-
-        GeodesicArray Y{p.rdata(PIdx::time), p.rdata(PIdx::x),
-                        p.rdata(PIdx::y),    p.rdata(PIdx::z),
-                        p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),
-                        p.rdata(PIdx::pupy), p.rdata(PIdx::pupz)};
-
-        // dx/lambda * (dt/dlambda)^-1 = p^t. dt/dlambda = p^t
-        // we integrate in Emu over coordinate time, not proper time at specific locations
-        const amrex::Real denom = Y[4];
-
-        GeodesicArray rhs{};
-
-        for (int mu = 0; mu < 4; mu++) {
-            rhs[mu] = Y[4 + mu] / denom;
-        }
-
-        for (int mu = 0; mu < 4; ++mu) {
-            rhs[4 + mu] = 0.0;
-            for (int alpha = 0; alpha < 4; ++alpha) {
-                for (int beta = 0; beta < 4; ++beta) {
-                    rhs[4 + mu] -= Gamma[mu][alpha][beta] * Y[4 + alpha] *
-                                   Y[4 + beta] / denom;
-                }
-            }
-        }
-
-        return rhs;
-    }
+   private:
+    amrex::Real M_;
 };
 
 // Flat-space geometry of the spherical-polar -> Cartesian map, used by the
@@ -274,8 +243,8 @@ struct SphericalToCartesian {
 // sqrt_g in each Schw*Metric class takes a point in the class's native mesh coordinates and converts
 // it to spherical polar before calling Schwarzschild::sqrt_g.
 // geodesic_rhs always takes Cartesian p: it converts p to spherical polar
-// (SphericalMetric's conversion), evaluates Schwarzschild::
-// geodesic_rhs_spherical, converts the rhs to Cartesian components with
+// (SphericalMetric's conversion), evaluates Metric::geodesic_rhs_from with
+// Schwarzschild::christoffel, converts the rhs to Cartesian components with
 // SphericalToCartesian::rhs_to_cartesian (depends on lambda in two ways),
 // then converts p back so it is Cartesian on return.
 
@@ -316,12 +285,16 @@ class SchwSphericalMetric : public SphericalMetric {
         return sqrt_g(amrex::RealVect(grid_pos[1], grid_pos[2], grid_pos[3]));
     }
 
-    // Hides the base implementation; p is Cartesian on entry and on return.
+    // Corodinate conversion now split out of Metric.H's geodesic_rhs
+    // p is Cartesian on entry and on return.
     // The conversions and jacobian_inv are inherited from SphericalMetric.
     AMREX_GPU_DEVICE AMREX_GPU_HOST GeodesicArray
     geodesic_rhs(EParticle& p) const {
         coord_conv(p);
-        const GeodesicArray rhs_sph = m_schw_.geodesic_rhs_spherical(p);
+        // in spherical
+        const GeodesicArray rhs_sph =
+            geodesic_rhs_from(p, m_schw_.christoffel(p));
+        // convert to Cartesian
         const GeodesicArray rhs =
             SphericalToCartesian::rhs_to_cartesian(p, jacobian_inv(p), rhs_sph);
         coord_conv_inv(p);
@@ -381,7 +354,10 @@ class SchwCartesianMetric : public CartesianMetric {
     geodesic_rhs(EParticle& p) const {
         const SphericalMetric sph;
         sph.coord_conv(p);
-        const GeodesicArray rhs_sph = m_schw_.geodesic_rhs_spherical(p);
+        // in spherical
+        const GeodesicArray rhs_sph =
+            geodesic_rhs_from(p, m_schw_.christoffel(p));
+        // convert to Cartesian
         const GeodesicArray rhs = SphericalToCartesian::rhs_to_cartesian(
             p, sph.jacobian_inv(p), rhs_sph);
         sph.coord_conv_inv(p);
@@ -443,7 +419,10 @@ class SchwCylindricalMetric : public CylindricalMetric {
     geodesic_rhs(EParticle& p) const {
         const SphericalMetric sph;
         sph.coord_conv(p);
-        const GeodesicArray rhs_sph = m_schw_.geodesic_rhs_spherical(p);
+        // in sperical
+        const GeodesicArray rhs_sph =
+            geodesic_rhs_from(p, m_schw_.christoffel(p));
+        // convert to Cartesian
         const GeodesicArray rhs = SphericalToCartesian::rhs_to_cartesian(
             p, sph.jacobian_inv(p), rhs_sph);
         sph.coord_conv_inv(p);
