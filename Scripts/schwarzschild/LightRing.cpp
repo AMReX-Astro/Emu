@@ -6,17 +6,17 @@
 //   L = x p^y - y p^x        (angular momentum about z, equals r^2 p^phi in the
 //                              equatorial plane)
 
+#include <AMReX.H>
+#include <AMReX_BoxArray.H>
+#include <AMReX_DistributionMapping.H>
+#include <AMReX_Geometry.H>
+#include <AMReX_ParallelDescriptor.H>
 #include <cassert>
 #include <cmath>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include "../../Source/Schwarzschild.H"
-#include <AMReX_Geometry.H>
-#include <AMReX_BoxArray.H>
-#include <AMReX_DistributionMapping.H>
-#include <AMReX_ParallelDescriptor.H>
-#include <AMReX.H>
 
 std::string filename = "./light_ring_results.csv";
 std::ofstream outfile(filename);
@@ -63,13 +63,12 @@ double RK4(EParticle& p, SchwSphericalMetric& metric, double dt, int steps) {
         setState(tmp, Y);
         return metric.geodesic_rhs(tmp);
     };
- 
-    if(!outfile.is_open()) {
-         std::cerr << "Error opening file: " << filename << std::endl;
-         return 0.0;
+
+    if (!outfile.is_open()) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return 0.0;
     }
 
-    
     outfile << std::setprecision(17) << "lambda,t,x,y,z,pt,px,py,pz\n";
     auto writeRow = [&](double lambda, const GeodesicArray& Y) {
         outfile << lambda;
@@ -77,23 +76,23 @@ double RK4(EParticle& p, SchwSphericalMetric& metric, double dt, int steps) {
         outfile << "\n";
     };
     writeRow(0.0, getState(p));
- 
+
     // Track phi = atan2(y, x), unwrapping the jump at +/-pi
     double phi_prev = std::atan2(p.rdata(PIdx::y), p.rdata(PIdx::x));
     double phi_total = 0.0;
- 
+
     for (int i = 0; i < steps; i++) {
         GeodesicArray Y = getState(p);
- 
+
         GeodesicArray k1 = rhs(Y);
         GeodesicArray k2 = rhs(Y + 0.5 * dt * k1);
         GeodesicArray k3 = rhs(Y + 0.5 * dt * k2);
         GeodesicArray k4 = rhs(Y + dt * k3);
- 
+
         Y = Y + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4);
         setState(p, Y);
         writeRow((i + 1) * dt, Y);
- 
+
         const double phi_now = std::atan2(Y[2], Y[1]);
         double dphi = phi_now - phi_prev;
         if (dphi > M_PI) dphi -= 2.0 * M_PI;
@@ -108,105 +107,106 @@ double RK4(EParticle& p, SchwSphericalMetric& metric, double dt, int steps) {
 int main(int argc, char* argv[]) {
     amrex::Initialize(argc, argv);
     {
-    // Black hole mass in geometric units (G = c = 1)
-    const double M = 1.0;
-    // Photon sphere radius
-    const double r0 = 3.0 * M;
+        // Black hole mass in geometric units (G = c = 1)
+        const double M = 1.0;
+        // Photon sphere radius
+        const double r0 = 3.0 * M;
 
-    // Initial conditions for a circular null geodesic at r = 3M, theta = pi/2.
-    // In spherical: p^r = 0, p^theta = 0, p^phi = 1.
-    // For a null particle (photon) at r = 3M:
-    //   g_tt (p^t)^2 + g_phiphi (p^phi)^2 = 0
-    //   -(1/3)(p^t)^2 + 9 = 0  =>  p^t = 3 sqrt(3)
-    //
-    // Converting to Cartesian at (r=3, theta=pi/2, phi=0):
-    //   p^x = 0,  p^y = r p^phi = 3,  p^z = 0
+        // Initial conditions for a circular null geodesic at r = 3M, theta = pi/2.
+        // In spherical: p^r = 0, p^theta = 0, p^phi = 1.
+        // For a null particle (photon) at r = 3M:
+        //   g_tt (p^t)^2 + g_phiphi (p^phi)^2 = 0
+        //   -(1/3)(p^t)^2 + 9 = 0  =>  p^t = 3 sqrt(3)
+        //
+        // Converting to Cartesian at (r=3, theta=pi/2, phi=0):
+        //   p^x = 0,  p^y = r p^phi = 3,  p^z = 0
 
-    // EParticle is now a view into a real FlavoredNeutrinoContainer's SoA
-    // storage (Source/FlavoredNeutrinoContainer.H), so it needs an actual
-    // one-particle container behind it. Minimal single-cell domain, just
-    // large enough to host that one particle/tile.
-    const amrex::Box domain(amrex::IntVect(0, 0, 0), amrex::IntVect(0, 0, 0));
-    const amrex::BoxArray ba(domain);
-    const amrex::RealBox real_box({-10.0, -10.0, -10.0}, {10.0, 10.0, 10.0});
-    const int is_periodic[AMREX_SPACEDIM] = {0, 0, 0};
-    const amrex::Geometry geom(domain, &real_box, amrex::CoordSys::cartesian,
-        is_periodic);   
-    const amrex::DistributionMapping dm(ba);
-    FlavoredNeutrinoContainer neutrinos(geom, dm, ba);
-    // Add one particle by hand, mirroring the low-level tile-write pattern
-    // FlavoredNeutrinoContainer::InitParticles uses (FlavoredNeutrinoContainerInit.cpp).
-    auto& particle_tile = neutrinos.GetParticles(0)[std::make_pair(0, 0)];
-    particle_tile.resize(1);
-    const auto new_pid = FlavoredNeutrinoContainer::ParticleType::NextID();
-    FlavoredNeutrinoContainer::ParticleType::NextID(new_pid + 1);
-    auto ptd = particle_tile.getParticleTileData();
-    EParticle p{ptd, 0};
-    p.id() = new_pid;
-    p.cpu() = amrex::ParallelDescriptor::MyProc();
+        // EParticle is now a view into a real FlavoredNeutrinoContainer's SoA
+        // storage (Source/FlavoredNeutrinoContainer.H), so it needs an actual
+        // one-particle container behind it. Minimal single-cell domain, just
+        // large enough to host that one particle/tile.
+        const amrex::Box domain(amrex::IntVect(0, 0, 0),
+                                amrex::IntVect(0, 0, 0));
+        const amrex::BoxArray ba(domain);
+        const amrex::RealBox real_box({-10.0, -10.0, -10.0},
+                                      {10.0, 10.0, 10.0});
+        const int is_periodic[AMREX_SPACEDIM] = {0, 0, 0};
+        const amrex::Geometry geom(domain, &real_box,
+                                   amrex::CoordSys::cartesian, is_periodic);
+        const amrex::DistributionMapping dm(ba);
+        FlavoredNeutrinoContainer neutrinos(geom, dm, ba);
+        // Add one particle by hand, mirroring the low-level tile-write pattern
+        // FlavoredNeutrinoContainer::InitParticles uses (FlavoredNeutrinoContainerInit.cpp).
+        auto& particle_tile = neutrinos.GetParticles(0)[std::make_pair(0, 0)];
+        particle_tile.resize(1);
+        const auto new_pid = FlavoredNeutrinoContainer::ParticleType::NextID();
+        FlavoredNeutrinoContainer::ParticleType::NextID(new_pid + 1);
+        auto ptd = particle_tile.getParticleTileData();
+        EParticle p{ptd, 0};
+        p.id() = new_pid;
+        p.cpu() = amrex::ParallelDescriptor::MyProc();
 
-    
-    p.rdata(PIdx::time) = 0.0;
-    p.rdata(PIdx::x) = r0;
-    p.rdata(PIdx::y) = 0.0;
-    p.rdata(PIdx::z) = 0.0;
-    p.rdata(PIdx::pupt) = 3.0 * std::sqrt(3.0);
-    p.rdata(PIdx::pupx) = 0.0;
-    p.rdata(PIdx::pupy) = r0;
-    p.rdata(PIdx::pupz) = 0.0;
+        p.rdata(PIdx::time) = 0.0;
+        p.rdata(PIdx::x) = r0;
+        p.rdata(PIdx::y) = 0.0;
+        p.rdata(PIdx::z) = 0.0;
+        p.rdata(PIdx::pupt) = 3.0 * std::sqrt(3.0);
+        p.rdata(PIdx::pupx) = 0.0;
+        p.rdata(PIdx::pupy) = r0;
+        p.rdata(PIdx::pupz) = 0.0;
 
-    // Conserved quantities at t = 0.
-    const double E0 = (1.0 - 2.0 * M / r0) * p.rdata(PIdx::pupt);
-    const double L0 = p.rdata(PIdx::x) * p.rdata(PIdx::pupy) -
-                      p.rdata(PIdx::y) * p.rdata(PIdx::pupx);
+        // Conserved quantities at t = 0.
+        const double E0 = (1.0 - 2.0 * M / r0) * p.rdata(PIdx::pupt);
+        const double L0 = p.rdata(PIdx::x) * p.rdata(PIdx::pupy) -
+                          p.rdata(PIdx::y) * p.rdata(PIdx::pupx);
 
-    // t_total is long to ensure that at least one complete orbit is made
-    const double t_total = 100.0;
-    const int steps = 100000;
-    const double dt = t_total / steps;
+        // t_total is long to ensure that at least one complete orbit is made
+        const double t_total = 100.0;
+        const int steps = 100000;
+        const double dt = t_total / steps;
 
-    // file output used for debugging to check phi values
-    std::ofstream outfile("./light_ring_results.csv", std::ios::app);
+        // file output used for debugging to check phi values
+        std::ofstream outfile("./light_ring_results.csv", std::ios::app);
 
-    SchwSphericalMetric metric(M);
+        SchwSphericalMetric metric(M);
 
-    // Expected rates for the orbit check. geodesic_rhs divides by p^t,
-    const double pphi0 = p.rdata(PIdx::pupy) / r0;   // p^phi at phi = 0
-    const double dtds = 1.0; 
-    const double dphids = pphi0 / p.rdata(PIdx::pupt);
-    const double phi_total = RK4(p, metric, dt, steps);
+        // Expected rates for the orbit check. geodesic_rhs divides by p^t,
+        const double pphi0 = p.rdata(PIdx::pupy) / r0;  // p^phi at phi = 0
+        const double dtds = 1.0;
+        const double dphids = pphi0 / p.rdata(PIdx::pupt);
+        const double phi_total = RK4(p, metric, dt, steps);
 
-    // After integration the particle is back in Cartesian coordinates.
-    const double x = p.rdata(PIdx::x);
-    const double y = p.rdata(PIdx::y);
-    const double z = p.rdata(PIdx::z);
-    const double pt = p.rdata(PIdx::pupt);
-    const double px = p.rdata(PIdx::pupx);
-    const double py = p.rdata(PIdx::pupy);
-    const double pz = p.rdata(PIdx::pupz);
+        // After integration the particle is back in Cartesian coordinates.
+        const double x = p.rdata(PIdx::x);
+        const double y = p.rdata(PIdx::y);
+        const double z = p.rdata(PIdx::z);
+        const double pt = p.rdata(PIdx::pupt);
+        const double px = p.rdata(PIdx::pupx);
+        const double py = p.rdata(PIdx::pupy);
+        const double pz = p.rdata(PIdx::pupz);
 
-    const double r_final = std::sqrt(x * x + y * y + z * z);
-    const double E_final = (1.0 - 2.0 * M / r_final) * pt;
-    const double L_final = x * py - y * px;
+        const double r_final = std::sqrt(x * x + y * y + z * z);
+        const double E_final = (1.0 - 2.0 * M / r_final) * pt;
+        const double L_final = x * py - y * px;
 
-    const double tol = 1e-12;
+        const double tol = 1e-12;
 
-    assert(std::abs(r_final - r0) < tol);
-    assert(std::abs(z) < tol);
-    assert(std::abs(pz) < tol);
-    assert(std::abs(pt - 3.0 * std::sqrt(3.0)) < tol);
-    assert(std::abs(E_final - E0) < tol);
-    assert(std::abs(L_final - L0) < tol);
+        assert(std::abs(r_final - r0) < tol);
+        assert(std::abs(z) < tol);
+        assert(std::abs(pz) < tol);
+        assert(std::abs(pt - 3.0 * std::sqrt(3.0)) < tol);
+        assert(std::abs(E_final - E0) < tol);
+        assert(std::abs(L_final - L0) < tol);
 
-    std::cout << "Schwarzschild light ring test (r = 3M, theta = pi/2)\n";
-    std::cout << "r        = " << r_final << "  (expected " << r0 << ")\n";
-    std::cout << "z        = " << z << "  (expected 0)\n";
-    std::cout << "p^t      = " << pt << "  (expected " << 3.0 * std::sqrt(3.0)
-              << ")\n";
-    std::cout << "E        = " << E_final << "  (expected " << E0 << ")\n";
-    std::cout << "L        = " << L_final << "  (expected " << L0 << ")\n";
-    std::cout << "All assertions passed with tolerance " << tol << ". \n";
-    amrex::Finalize();
-    return 0;
+        std::cout << "Schwarzschild light ring test (r = 3M, theta = pi/2)\n";
+        std::cout << "r        = " << r_final << "  (expected " << r0 << ")\n";
+        std::cout << "z        = " << z << "  (expected 0)\n";
+        std::cout << "p^t      = " << pt << "  (expected "
+                  << 3.0 * std::sqrt(3.0) << ")\n";
+        std::cout << "E        = " << E_final << "  (expected " << E0 << ")\n";
+        std::cout << "L        = " << L_final << "  (expected " << L0 << ")\n";
+        std::cout << "All assertions passed with tolerance " << tol << ". \n";
+        amrex::Finalize();
+        return 0;
     }
 }

@@ -110,13 +110,13 @@ class Metric {
         return rhs;
     }
 
-    // rhs calculated from christoffel symbols, particle positions 
+    // rhs calculated from christoffel symbols, particle positions
     // using the geodesic equations in whatever coordinates p and Gamma are
     // already expressed in (no coordinate conversion is done here). Static so
     // that derived metrics which evaluate Gamma in a frame other than their
     // native one (e.g. Schwarzschild.H) can reuse the same equations.
-    AMREX_GPU_DEVICE AMREX_GPU_HOST static GeodesicArray
-    geodesic_rhs_from(const EParticle& p, const Christoffel& Gamma) {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST static GeodesicArray geodesic_rhs_from(
+        const EParticle& p, const Christoffel& Gamma) {
         GeodesicArray Y{
             p.rdata(PIdx::time), p.rdata(PIdx::x),    p.rdata(PIdx::y),
             p.rdata(PIdx::z),    p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),
@@ -125,7 +125,7 @@ class Metric {
         };
         // dx/lambda * (dt/dlambda)^-1 = p^t. dt/dlambda = p^t
         // we integrate in Emu over coordinate time, not proper time at specific locations
-        const amrex::Real denom = Y[4];  
+        const amrex::Real denom = Y[4];
 
         GeodesicArray
             rhs{};  //first 4 components will store the postion equations rhs and the last 4 componenets will store momentum geoodesic equation rhs

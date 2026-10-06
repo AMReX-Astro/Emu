@@ -64,7 +64,7 @@ class Schwarzschild {
         const amrex::Real theta = p.rdata(PIdx::y);
         const amrex::Real f = 1.0 - 2.0 * M_ / r;
         const amrex::Real invf = 1.0 / f;
-        const amrex::Real invr2 = 1.0 / (r*r);
+        const amrex::Real invr2 = 1.0 / (r * r);
         const amrex::Real sintheta = std::sin(theta);
         const amrex::Real costheta = std::cos(theta);
         const amrex::Real tantheta = std::tan(theta);
