@@ -18,7 +18,7 @@
 #include <AMReX_ParallelDescriptor.H>
 #include <AMReX.H>
 
-std::string filename = "light_ring_results.csv";
+std::string filename = "./light_ring_results.csv";
 std::ofstream outfile(filename);
 
 // Classic 4th-order Runge-Kutta, adapted from the integrator I wrote
@@ -166,14 +166,11 @@ int main(int argc, char* argv[]) {
     const double dt = t_total / steps;
 
     // file output used for debugging to check phi values
-    std::ofstream outfile("light_ring_results.csv", std::ios::app);
+    std::ofstream outfile("./light_ring_results.csv", std::ios::app);
 
     SchwSphericalMetric metric(M);
 
-    // Expected rates for the orbit check. geodesic_rhs divides by lapse * p^t,
-    // so the integration variable s obeys dt/ds = 1/lapse (static-observer
-    // proper time), and dphi/ds = p^phi / (lapse * p^t).
-    const double lapse0 = std::sqrt(1.0 - 2.0 * M / r0);
+    // Expected rates for the orbit check. geodesic_rhs divides by p^t,
     const double pphi0 = p.rdata(PIdx::pupy) / r0;   // p^phi at phi = 0
     const double dtds = 1.0; 
     const double dphids = pphi0 / p.rdata(PIdx::pupt);
@@ -209,15 +206,7 @@ int main(int argc, char* argv[]) {
     std::cout << "E        = " << E_final << "  (expected " << E0 << ")\n";
     std::cout << "L        = " << L_final << "  (expected " << L0 << ")\n";
     std::cout << "All assertions passed with tolerance " << tol << ". \n";
-    // Orbit count: on the circular orbit dphi/ds and dt/ds are constant,
-    // so the expected totals are just rate * s_total (s_total = t_total here).
-    const double two_pi = 2.0 * M_PI;
-    std::cout << "\nOrbit check\n";
-    std::cout << "phi swept     = " << phi_total << " rad  (expected "
-              << dphids * t_total << ")\n";
-    std::cout << "orbits        = " << phi_total / two_pi << "  (expected "
-              << dphids * t_total / two_pi ;
-    }
     amrex::Finalize();
     return 0;
+    }
 }

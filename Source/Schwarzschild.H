@@ -64,8 +64,7 @@ class Schwarzschild {
         const amrex::Real theta = p.rdata(PIdx::y);
         const amrex::Real f = 1.0 - 2.0 * M_ / r;
         const amrex::Real invf = 1.0 / f;
-        const amrex::Real r2 = r * r;
-        const amrex::Real invr2 = 1.0 / r2;
+        const amrex::Real invr2 = 1.0 / (r*r);
         const amrex::Real sintheta = std::sin(theta);
         const amrex::Real costheta = std::cos(theta);
         const amrex::Real tantheta = std::tan(theta);
@@ -240,8 +239,11 @@ struct SphericalToCartesian {
 // frame (the base class). coord_conv/coord_conv_inv/jacobian/jacobian_inv/
 // pos_conv/pos_conv_inv/vol are inherited unchanged from that base, so any
 // caller other than geodesic_rhs sees the base's native behavior.
-// sqrt_g in each Schw*Metric class takes a point in the class's native mesh coordinates and converts
-// it to spherical polar before calling Schwarzschild::sqrt_g.
+// sqrt_g in each Schw*Metric class takes a point in the class's native mesh
+// coordinates (e.g. a cell center) and returns sqrt(-g) in that chart.
+// vol is inherited: the base's exact integral of sqrt(-g) between the cell
+// edges is already the Schwarzschild cell volume, since g_tt g_rr = -1 makes
+// sqrt(-g) equal to its flat-space value in every chart.
 // geodesic_rhs always takes Cartesian p: it converts p to spherical polar
 // (SphericalMetric's conversion), evaluates Metric::geodesic_rhs_from with
 // Schwarzschild::christoffel, converts the rhs to Cartesian components with
@@ -269,20 +271,10 @@ class SchwSphericalMetric : public SphericalMetric {
     // sqrt(-g) at a point in this class's mesh coordinates
     // (r, theta, phi), e.g. a grid cell center.
     AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real sqrt_g(
-        const amrex::RealVect& pos_mesh) const {
-        return Schwarzschild::sqrt_g(pos_mesh[0], pos_mesh[1]);
-    }
-
-    // Required by Metric's pure virtual. p holds a Cartesian position (the
-    // same convention as Metric.H's detg overrides); pos_conv maps it to this
-    // class's mesh coordinates and sqrt_g does the rest.
-    // Recommendation to modify Metric.H to have a default implementation of detg that calls pos_conv and sqrt_g,
-    // so that this override is not needed in every derived class.
-    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
-        const EParticle& p) const override {
-        EParticle q = p;
-        const FourVec grid_pos = pos_conv(q);
-        return sqrt_g(amrex::RealVect(grid_pos[1], grid_pos[2], grid_pos[3]));
+        const amrex::RealVect& pos_mesh) const override {
+        const amrex::Real r = pos_mesh[0];
+        const amrex::Real theta = pos_mesh[1];
+        return Schwarzschild::sqrt_g(r, theta);
     }
 
     // Corodinate conversion now split out of Metric.H's geodesic_rhs
@@ -324,27 +316,13 @@ class SchwCartesianMetric : public CartesianMetric {
     }
 
     // sqrt(-g) at a point in the mesh coordinates (x, y, z),
-    // e.g. a grid cell center. Converted to (r, theta)
+    // e.g. a grid cell center. In Schwarzschild coordinates g_tt g_rr = -1,
+    // so sqrt(-g) in the Cartesian chart is the flat value, 1.
+    // (Schwarzschild::sqrt_g gives the spherical-chart value, r^2 sin(theta),
+    // which would double count the Jacobian against dx dy dz.)
     AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real sqrt_g(
-        const amrex::RealVect& pos_mesh) const {
-        const amrex::Real x = pos_mesh[0];
-        const amrex::Real y = pos_mesh[1];
-        const amrex::Real z = pos_mesh[2];
-        const amrex::Real r = std::sqrt(x * x + y * y + z * z);
-        const amrex::Real theta = std::acos(z / r);
-        return Schwarzschild::sqrt_g(r, theta);
-    }
-
-    // Required by Metric's pure virtual. p holds a Cartesian position (the
-    // same convention as Metric.H's detg overrides); pos_conv maps it to this
-    // class's mesh coordinates and sqrt_g does the rest.
-    // Recommendation to modify Metric.H to have a default implementation of detg that calls pos_conv and sqrt_g,
-    // so that this override is not needed in every derived class.
-    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
-        const EParticle& p) const override {
-        EParticle q = p;  // view of the same particle; pos_conv only reads it
-        const FourVec grid_pos = pos_conv(q);
-        return sqrt_g(amrex::RealVect(grid_pos[1], grid_pos[2], grid_pos[3]));
+        const amrex::RealVect& /*pos_mesh*/) const override {
+        return 1.0;
     }
 
     // Hides the base implementation; p is Cartesian on entry and on return.
@@ -390,26 +368,14 @@ class SchwCylindricalMetric : public CylindricalMetric {
     }
 
     // sqrt(-g) at a point in this class's mesh coordinates
-    // (rho, phi, z), e.g. a grid cell center. Converted to (r, theta)
+    // (rho, phi, z), e.g. a grid cell center. In Schwarzschild coordinates
+    // g_tt g_rr = -1, so sqrt(-g) in the cylindrical chart is the flat value, rho.
+    // (Schwarzschild::sqrt_g gives the spherical-chart value, r^2 sin(theta),
+    // which would double count the Jacobian against drho dphi dz.)
     AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real sqrt_g(
-        const amrex::RealVect& pos_mesh) const {
+        const amrex::RealVect& pos_mesh) const override {
         const amrex::Real rho = pos_mesh[0];
-        const amrex::Real z = pos_mesh[2];
-        const amrex::Real r = std::sqrt(rho * rho + z * z);
-        const amrex::Real theta = std::acos(z / r);
-        return Schwarzschild::sqrt_g(r, theta);
-    }
-
-    // Override required by Metric's pure virtual. p holds a Cartesian position (the
-    // same convention as Metric.H's detg overrides); pos_conv maps it to this
-    // class's mesh coordinates and sqrt_g does the rest.
-    // Recommendation to modify Metric.H to have a default implementation of detg that calls pos_conv and sqrt_g,
-    // so that this override is not needed in every derived class.
-    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
-        const EParticle& p) const override {
-        EParticle q = p;
-        const FourVec grid_pos = pos_conv(q);
-        return sqrt_g(amrex::RealVect(grid_pos[1], grid_pos[2], grid_pos[3]));
+        return rho;
     }
 
     // Hides the base implementation; p is Cartesian on entry and on return.

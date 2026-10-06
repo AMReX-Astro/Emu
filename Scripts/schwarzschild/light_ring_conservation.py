@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 M = 1.0
-fname = "Scripts/schwarzschild/light_ring_results.csv"
+fname = "./light_ring_results.csv"
 lam, t, x, y, z, pt, px, py, pz = np.loadtxt(fname, delimiter=",", skiprows=1).T
 
 r = np.sqrt(x**2 + y**2 + z**2)
@@ -33,5 +33,5 @@ ax.grid(True, color=GRID, lw=0.8)
 ax.set_title(rf"Exact orbit: $r$, $E$, $L$ held near machine precision for {orbits:.1f} orbits",
              color=INK, loc="left")
 ax.legend(frameon=False, fontsize=11, ncol=3, loc="upper left")
-fig.savefig("Scripts/schwarzschild/light_ring_conservation.png", dpi=150, bbox_inches="tight")
+fig.savefig("./light_ring_conservation.png", dpi=150, bbox_inches="tight")
 print(f"orbits = {orbits:.6f}; saved light_ring_conservation.png")
