@@ -12,11 +12,11 @@
 #include <iostream>
 #include <string>
 #include "../../Source/Schwarzschild.H"
-#include "../../submodules/AMReX/Src/Base/AMReX_Geometry.H"
-#include "../../submodules/AMReX/Src/Base/AMReX_BoxArray.H"
-#include "../../submodules/AMReX/Src/Base/AMReX_DistributionMapping.H"
-#include "../../submodules/AMReX/Src/Base/AMReX_ParallelDescriptor.H"
-#include "../../submodules/AMReX/Src/Base/AMReX.H"
+#include <AMReX_Geometry.H>
+#include <AMReX_BoxArray.H>
+#include <AMReX_DistributionMapping.H>
+#include <AMReX_ParallelDescriptor.H>
+#include <AMReX.H>
 
 std::string filename = "light_ring_results.csv";
 std::ofstream outfile(filename);
