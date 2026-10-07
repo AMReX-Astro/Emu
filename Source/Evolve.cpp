@@ -311,6 +311,9 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                         const amrex::Real vol =
                             sx(i) * sy(j) * sz(k) * inv_cell_volume;
 
+                        const amrex::Real dOmega =
+                            4 * MathConst::pi / number_of_directions;
+
                         // Fold stencil cells that land outside a reflecting face back into
                         // the mirror-image interior cell, recording which directions were
                         // reflected so the per-moment parity sign can be applied below.
@@ -402,8 +405,7 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                                                 sx(i) * sy(j) * sz(k) *
                                                     (1.0 /
                                                      (4 * MathConst::pi)) *
-                                                    (4 * MathConst::pi /
-                                                     number_of_directions) *
+                                                    dOmega *
                                                     p.rdata(
                                                         particle_component_index) *
                                                     kappa_scat_iso_mono_inverse_cm);
