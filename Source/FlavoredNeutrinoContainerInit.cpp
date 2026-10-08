@@ -70,6 +70,11 @@ Gpu::ManagedVector<GpuArray<Real, PIdx::nattribs>> read_particle_data(
             << std::endl;
     AMREX_ASSERT(NF_in == NUM_FLAVORS);
 
+    // Skip the second and third header lines
+    // (number_of_directions and number_of_energies)
+    std::getline(file, line);
+    std::getline(file, line);
+
     // Skip the second row if it contains the header (assume it's only present if the first line after flavors is not numeric)
     // Peek at the next line without advancing the stream position
     std::streampos pos = file.tellg();

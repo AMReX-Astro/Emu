@@ -79,4 +79,4 @@ header = np.array(list(rkey.keys()), dtype=object)
 particles_with_header = np.vstack([header, particles])
 
 # Write particles initial condition file
-write_particles(particles_with_header, "number_of_flavors = "+str(NF), "particle_input.dat")
+write_particles(particles_with_header, NF, "particle_input.dat", n_directions, n_energies)
