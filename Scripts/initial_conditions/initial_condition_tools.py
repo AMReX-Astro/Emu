@@ -69,8 +69,8 @@ def write_particles(p, NF, filename, n_directions, n_energies):
     """
     with open(filename, "w") as f:
         f.write("number_of_flavors = " + str(NF) + "\n")
-        f.write("number_of_directions = " + str(n_directions) + "\n")
-        f.write("number_of_energies = " + str(n_energies) + "\n")
+        f.write("number_of_directions_at_init = " + str(n_directions) + "\n")
+        f.write("number_of_energies_at_init = " + str(n_energies) + "\n")
 
         for i in range(len(p)):
             for j in range(len(p[i])):
