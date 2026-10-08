@@ -113,19 +113,6 @@ void evolve_flavor(const TestParams* parms) {
     for (int i = 0; i < AMREX_SPACEDIM; i++)
         AMREX_ASSERT(parms->ncell[i] >= ngrow[i]);
 
-    // Load particle-file metadata to validate number_of_directions and
-    // number_of_energies (also needed on restart, when InitParticles is
-    // skipped). These counts do not size the C_in_scat mesh block.
-    FlavoredNeutrinoContainer::ReadParticleFileHeaders(
-        parms->particle_data_filename);
-
-    if (parms->IMFP_method == 1) {
-        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
-            FlavoredNeutrinoContainer::number_of_energies == 1,
-            "IMFP_method==1 requires number_of_energies == 1 in the particle "
-            "data file");
-    }
-
     // HDF5 tables are required when IMFP_method is 2. Load them before
     // allocating the mesh so C_in_scat can be sized by NuLib ngroup.
     if (parms->IMFP_method == 2) {

@@ -45,21 +45,42 @@ int parse_first_int_from_line(const std::string& line) {
 // Particle distribution in momentum space //
 //=========================================//
 /**
- * @brief Parse particle_input.dat metadata headers and set static members.
+ * @brief Reads the input file containing the initial conditions of the particles.
  *
- * Expected header block (blank lines allowed between entries):
- *   number_of_flavors = <int>
- *   number_of_directions = <int>
- *   number_of_energies = <int>
- * Then a column-name row and particle data rows (handled by read_particle_data).
+ * This function reads the particle data from a file generated using the input Python scripts
+ * in the directory "Scripts/initial_conditions/---.py" and stores the momentum, energy, and flavor
+ * occupation matrices for neutrinos and antineutrinos. The file is expected to follow a specific
+ * format, with three metadata header lines (number_of_flavors first; the remaining two are
+ * skipped), an optional column-name row, then particle data in each subsequent line in the
+ * following order (2-flavor case): E*phatx, E*phaty, E*phatz, E,
+ * N00_Re, N01_Re, N01_Im, N11_Re, N00_Rebar, N01_Rebar, N01_Imbar, N11_Rebar, TrHN, Vphase.
+ * This can be generalized to the 3-flavor case.
+ *
+ * @param filename The name of the input file containing the particle data.
+ *
+ * @return A managed vector of GpuArray containing the particle information.
+ * Each GpuArray stores particle attributes: E*phatx, E*phaty, E*phatz, E,
+ * N00_Re, N01_Re, N01_Im, N11_Re, N00_Rebar, N01_Rebar, N01_Imbar, N11_Rebar,
+ * TrHN, Vphase.
+ *
+ * @note The file should contain the number of neutrino flavors in the first header,
+ * which must match the value that Emu was compiled with.
  */
-void FlavoredNeutrinoContainer::ReadParticleFileHeaders(
-    const std::string& filename) {
+Gpu::ManagedVector<GpuArray<Real, PIdx::nattribs>> read_particle_data(
+    std::string filename) {
+    Gpu::ManagedVector<GpuArray<Real, PIdx::nattribs>> particle_data;
+
     std::ifstream file(filename);
     if (!file.is_open())
         amrex::Abort("Could not open particle data file: " + filename);
 
     std::string line;
+    std::stringstream ss;
+
+    GpuArray<Real, PIdx::nattribs> temp_particle;
+    for (int i = 0; i < PIdx::nattribs; i++) temp_particle[i] = 0;
+
+    // First header line: number_of_flavors, which must match NUM_FLAVORS.
     if (!getline_nonempty(file, line))
         amrex::Abort("particle data file is empty: " + filename);
     const int NF_in = parse_first_int_from_line(line);
@@ -73,73 +94,8 @@ void FlavoredNeutrinoContainer::ReadParticleFileHeaders(
             "NUM_FLAVORS");
     }
 
-    if (!getline_nonempty(file, line))
-        amrex::Abort(
-            "particle data file missing number_of_directions header: " +
-            filename);
-    number_of_directions = parse_first_int_from_line(line);
-
-    if (!getline_nonempty(file, line))
-        amrex::Abort("particle data file missing number_of_energies header: " +
-                     filename);
-    number_of_energies = parse_first_int_from_line(line);
-
-    if (number_of_directions <= 0 || number_of_energies <= 0)
-        amrex::Abort(
-            "number_of_directions and number_of_energies in particle data "
-            "file must both be > 0 (got directions=" +
-            std::to_string(number_of_directions) +
-            ", energies=" + std::to_string(number_of_energies) + ")");
-
-    amrex::Print() << "Particle file headers: number_of_flavors = "
-                   << NUM_FLAVORS
-                   << ", number_of_directions = " << number_of_directions
-                   << ", number_of_energies = " << number_of_energies
-                   << std::endl;
-}
-
-/**
- * @brief Reads the input file containing the initial conditions of the particles.
- *
- * This function reads the particle data from a file generated using the input Python scripts
- * in the directory "Scripts/initial_conditions/---.py" and stores the momentum, energy, and flavor
- * occupation matrices for neutrinos and antineutrinos. The file is expected to follow a specific
- * format, with metadata headers (number_of_flavors, number_of_directions, number_of_energies),
- * an optional column-name row, then particle data in each subsequent line in the following
- * order (2-flavor case): E*phatx, E*phaty, E*phatz, E,
- * N00_Re, N01_Re, N01_Im, N11_Re, N00_Rebar, N01_Rebar, N01_Imbar, N11_Rebar, TrHN, Vphase.
- * This can be generalized to the 3-flavor case.
- *
- * @param filename The name of the input file containing the particle data.
- *
- * @return A managed vector of GpuArray containing the particle information.
- * Each GpuArray stores particle attributes: E*phatx, E*phaty, E*phatz, E,
- * N00_Re, N01_Re, N01_Im, N11_Re, N00_Rebar, N01_Rebar, N01_Imbar, N11_Rebar,
- * TrHN, Vphase.
- *
- * @note The file should contain the number of neutrino flavors in the first header,
- * which must match the value that Emu was compiled with. Data row count must equal
- * number_of_directions * number_of_energies.
- */
-Gpu::ManagedVector<GpuArray<Real, PIdx::nattribs>> read_particle_data(
-    std::string filename) {
-    // Ensure headers are parsed and static members are set (also used on restart).
-    FlavoredNeutrinoContainer::ReadParticleFileHeaders(filename);
-
-    Gpu::ManagedVector<GpuArray<Real, PIdx::nattribs>> particle_data;
-
-    std::ifstream file(filename);
-    if (!file.is_open())
-        amrex::Abort("Could not open particle data file: " + filename);
-
-    std::string line;
-    std::stringstream ss;
-
-    GpuArray<Real, PIdx::nattribs> temp_particle;
-    for (int i = 0; i < PIdx::nattribs; i++) temp_particle[i] = 0;
-
-    // Skip the three metadata header lines (blank lines ignored).
-    for (int i = 0; i < 3; ++i) {
+    // Skip the remaining two metadata header lines (blank lines ignored).
+    for (int i = 0; i < 2; ++i) {
         if (!getline_nonempty(file, line))
             amrex::Abort(
                 "particle data file ended while reading metadata headers: " +
@@ -166,19 +122,6 @@ Gpu::ManagedVector<GpuArray<Real, PIdx::nattribs>> read_particle_data(
         for (int i = PIdx::N00_Re; i < PIdx::nattribs; ++i)
             ss >> temp_particle[i];
         particle_data.push_back(temp_particle);
-    }
-
-    const int expected_rows = FlavoredNeutrinoContainer::number_of_directions *
-                              FlavoredNeutrinoContainer::number_of_energies;
-    const int num_data_rows = static_cast<int>(particle_data.size());
-    if (num_data_rows != expected_rows) {
-        amrex::Abort(
-            "particle data file row count (" + std::to_string(num_data_rows) +
-            ") does not equal number_of_directions * number_of_energies (" +
-            std::to_string(FlavoredNeutrinoContainer::number_of_directions) +
-            " * " +
-            std::to_string(FlavoredNeutrinoContainer::number_of_energies) +
-            " = " + std::to_string(expected_rows) + ")");
     }
 
     return particle_data;
@@ -255,9 +198,9 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
     auto* particle_data_p = particle_data.dataPtr();
 
     // determine the number of directions per location
-    // Note: particle_input.dat rows = number_of_energies * number_of_directions
+    // Note: each particle_input.dat row is one momentum-space particle
     // (flavors are columns; cells/spatial nppc points are replicated below,
-    // not in the file). Validated inside read_particle_data against headers.
+    // not in the file).
     int ndirs_per_loc = particle_data.size();
     amrex::Print() << "Using " << ndirs_per_loc << " directions." << std::endl;
 

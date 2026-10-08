@@ -129,8 +129,6 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
 
     // Create an alias of the MultiFab so ParticleToMesh only erases the quantities
     // that will be set by the neutrinos, including the C_in_scat block.
-    const int number_of_directions =
-        FlavoredNeutrinoContainer::number_of_directions;
     int start_comp = GIdx::N00_Re;
     int num_comps = GIdx::ncomp() - start_comp;
     MultiFab deposit_state(state, amrex::make_alias, start_comp, num_comps);

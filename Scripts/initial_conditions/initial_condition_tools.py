@@ -59,7 +59,8 @@ def grid_sphere(nphi):
 def write_particles(p, NF, filename, n_directions, n_energies):
     """Write particle_input.dat with metadata headers then data rows.
 
-    Header block (matches FlavoredNeutrinoContainer::ReadParticleFileHeaders):
+    Header block (read by read_particle_data in Source/FlavoredNeutrinoContainerInit.cpp,
+    which checks number_of_flavors and skips the other two lines):
       number_of_flavors = <int>
       number_of_directions = <int>
       number_of_energies = <int>
