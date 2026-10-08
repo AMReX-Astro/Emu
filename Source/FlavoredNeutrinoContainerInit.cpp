@@ -1,8 +1,6 @@
 #include <assert.h>
 #include <cmath>
-#include <fstream>
 #include <random>
-#include <sstream>
 #include <string>
 #include "Constants.H"
 #include "FlavoredNeutrinoContainer.H"
@@ -10,110 +8,91 @@
 
 using namespace amrex;
 
-namespace {
-
-// True if line has any non-whitespace character.
-bool line_nonempty(const std::string& line) {
-    return line.find_first_not_of(" \t\r\n") != std::string::npos;
-}
-
-// Read the next non-empty line; return false on EOF.
-bool getline_nonempty(std::ifstream& file, std::string& line) {
-    while (std::getline(file, line)) {
-        if (line_nonempty(line)) return true;
-    }
-    return false;
-}
-
-// Look for the first integer in the line, eg. in "number_of_flavors = 2".
-int parse_first_int_from_line(const std::string& line) {
-    std::stringstream ss(line);
-    std::string token;
-    while (ss >> token) {
-        try {
-            return std::stoi(token);
-        } catch (...) {
-            // Not an int, keep scanning
-        }
-    }
-    return -1;
-}
-
-}  // namespace
-
 //=========================================//
 // Particle distribution in momentum space //
 //=========================================//
 /**
  * @brief Reads the input file containing the initial conditions of the particles.
  *
- * This function reads the particle data from a file generated using the input Python scripts
- * in the directory "Scripts/initial_conditions/---.py" and stores the momentum, energy, and flavor
- * occupation matrices for neutrinos and antineutrinos. The file is expected to follow a specific
- * format, with three metadata header lines (number_of_flavors first; the remaining two are
- * skipped), an optional column-name row, then particle data in each subsequent line in the
- * following order (2-flavor case): E*phatx, E*phaty, E*phatz, E,
- * N00_Re, N01_Re, N01_Im, N11_Re, N00_Rebar, N01_Rebar, N01_Imbar, N11_Rebar, TrHN, Vphase.
+ * This function reads the particle data from a file generated using the input Python scripts 
+ * in the directory "Scripts/initial_conditions/---.py" and stores the momentum, energy, and flavor 
+ * occupation matrices for neutrinos and antineutrinos. The file is expected to follow a specific 
+ * format, with the number of flavors in the first line, followed by particle data in each 
+ * subsequent line in the following order (2-flavor case): E*phatx, E*phaty, E*phatz, E, 
+ * N00_Re, N01_Re, N01_Im, N11_Re, N00_Rebar, N01_Rebar, N01_Imbar, N11_Rebar, TrHN, Vphase. 
  * This can be generalized to the 3-flavor case.
  *
  * @param filename The name of the input file containing the particle data.
- *
+ * 
  * @return A managed vector of GpuArray containing the particle information.
- * Each GpuArray stores particle attributes: E*phatx, E*phaty, E*phatz, E,
- * N00_Re, N01_Re, N01_Im, N11_Re, N00_Rebar, N01_Rebar, N01_Imbar, N11_Rebar,
+ * Each GpuArray stores particle attributes: E*phatx, E*phaty, E*phatz, E, 
+ * N00_Re, N01_Re, N01_Im, N11_Re, N00_Rebar, N01_Rebar, N01_Imbar, N11_Rebar, 
  * TrHN, Vphase.
  *
- * @note The file should contain the number of neutrino flavors in the first header,
- * which must match the value that Emu was compiled with.
+ * @note The file should contain the number of neutrino flavors in the first line,
+ * which must match the value that Emu was compiled with. If the number of flavors
+ * does not match, the function will print an error message and terminate execution.
  */
 Gpu::ManagedVector<GpuArray<Real, PIdx::nattribs>> read_particle_data(
     std::string filename) {
+    // This array will save the particles information
     Gpu::ManagedVector<GpuArray<Real, PIdx::nattribs>> particle_data;
 
+    // open the file as a stream
     std::ifstream file(filename);
-    if (!file.is_open())
-        amrex::Abort("Could not open particle data file: " + filename);
 
+    // temporary string/stream
     std::string line;
     std::stringstream ss;
 
+    // create zero particle
     GpuArray<Real, PIdx::nattribs> temp_particle;
     for (int i = 0; i < PIdx::nattribs; i++) temp_particle[i] = 0;
 
-    // First header line: number_of_flavors, which must match NUM_FLAVORS.
-    if (!getline_nonempty(file, line))
-        amrex::Abort("particle data file is empty: " + filename);
-    const int NF_in = parse_first_int_from_line(line);
-    if (NF_in != NUM_FLAVORS) {
+    // read the number of flavors from the first line
+    std::getline(file, line);
+    ss = std::stringstream(line);
+    std::string token;
+    int NF_in = -1;
+    // Look for the first integer in the line, eg. in "number_of_flavors = 2"
+    while (ss >> token) {
+        try {
+            NF_in = std::stoi(token);
+            break;
+        } catch (...) {
+            // Not an int, keep scanning
+        }
+    }
+    if (NF_in != NUM_FLAVORS)
         amrex::Print()
             << "Error: number of flavors in particle data file does not match "
                "the number of flavors Emu was compiled for."
             << std::endl;
-        amrex::Abort(
-            "number_of_flavors in particle data file does not match "
-            "NUM_FLAVORS");
-    }
+    AMREX_ASSERT(NF_in == NUM_FLAVORS);
 
-    // Skip the remaining two metadata header lines (blank lines ignored).
-    for (int i = 0; i < 2; ++i) {
-        if (!getline_nonempty(file, line))
-            amrex::Abort(
-                "particle data file ended while reading metadata headers: " +
-                filename);
-    }
+    // Skip the second and third header lines
+    // (number_of_directions and number_of_energies)
+    std::getline(file, line);
+    std::getline(file, line);
 
-    // Loop over remaining lines: skip blank / non-numeric (column-name) rows;
-    // each numeric row is one particle.
-    while (std::getline(file, line)) {
-        if (!line_nonempty(line)) continue;
-
+    // Skip the second row if it contains the header (assume it's only present if the first line after flavors is not numeric)
+    // Peek at the next line without advancing the stream position
+    std::streampos pos = file.tellg();
+    if (std::getline(file, line)) {
         ss = std::stringstream(line);
         Real test_value;
         if (!(ss >> test_value)) {
-            // Column-name header (or other non-numeric) row — skip.
-            continue;
+            // This line is not numeric, assume it's the header row, do nothing since we're not reading it as a particle.
+        } else {
+            // Otherwise, process this line as the first particle (rewind to read this line again in the main loop)
+            file.seekg(pos);
         }
+    }
 
+    // Loop over every line in the initial condition file.
+    // This is equivalent to looping over every particle.
+    // Save every particle's information in the array particle_data.
+    while (std::getline(file, line)) {
         ss = std::stringstream(line);
         // File columns: pupx, pupy, pupz, pupt, then N/flavor attributes.
         // Skip time/x/y/z (indices 0-3) and hydro (rho, T, Ye), which are
@@ -198,9 +177,6 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
     auto* particle_data_p = particle_data.dataPtr();
 
     // determine the number of directions per location
-    // Note: each particle_input.dat row is one momentum-space particle
-    // (flavors are columns; cells/spatial nppc points are replicated below,
-    // not in the file).
     int ndirs_per_loc = particle_data.size();
     amrex::Print() << "Using " << ndirs_per_loc << " directions." << std::endl;
 
