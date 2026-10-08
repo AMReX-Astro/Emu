@@ -145,6 +145,8 @@ deltaCP_degrees = 0
 # opacity stuff #
 #################
 IMFP_method = 1
+energy_grid_bottom_MeV = 49.583049921462404 # MeV, matches st12_monocromatic_isotropic_scattering_test.py
+energy_grid_top_MeV = 50.416950078537596 # MeV
 attenuation_absorption_opacity = 0
 attenuation_scattering_opacity = 1
 

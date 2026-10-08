@@ -88,6 +88,8 @@ struct TestParams : public amrex::Gpu::Managed {
     Real munu
         [2]
         [NUM_FLAVORS];  // equilibrium electron neutrino chemical potential in erg (CGS unist)
+    Real energy_grid_bottom_erg;  // Bottom edge of the energy bin in erg (CGS units), IMFP_method == 1 only
+    Real energy_grid_top_erg;     // Top edge of the energy bin in erg (CGS units), IMFP_method == 1 only
 
     // Attenuation to Hamiltonians
     Real attenuation_hamiltonians;  // Multiplication factor to [N,H]
@@ -255,6 +257,8 @@ struct TestParams : public amrex::Gpu::Managed {
             munu[0][i] = 0.0;
             munu[1][i] = 0.0;
         }
+        energy_grid_bottom_erg = 0.0;
+        energy_grid_top_erg = 0.0;
 
         Do_Pauli_blocking = 0;
         set_equilibrium_distribution = 0;
@@ -277,6 +281,19 @@ struct TestParams : public amrex::Gpu::Managed {
         if (IMFP_method == 0) {
             // Do nothing
         } else if (IMFP_method == 1) {
+            // Energy bin edges of the particle data file, in MeV
+            pp.get("energy_grid_bottom_MeV", energy_grid_bottom_erg);
+            pp.get("energy_grid_top_MeV", energy_grid_top_erg);
+            if (energy_grid_bottom_erg >= energy_grid_top_erg)
+                amrex::Abort(
+                    "IMFP_method = 1 requires energy_grid_bottom_MeV < "
+                    "energy_grid_top_MeV, but got energy_grid_bottom_MeV = " +
+                    std::to_string(energy_grid_bottom_erg) +
+                    " and energy_grid_top_MeV = " +
+                    std::to_string(energy_grid_top_erg));
+            energy_grid_bottom_erg *= 1e6 * CGSUnitsConst::eV;
+            energy_grid_top_erg *= 1e6 * CGSUnitsConst::eV;
+
             std::string name;
             if (attenuation_absorption_opacity > 0.0) {
                 for (int i = 0; i < NUM_FLAVORS; i++) {

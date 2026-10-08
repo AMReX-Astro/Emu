@@ -97,6 +97,8 @@ deltaCP_degrees = 0
 # opacity stuff #
 #################
 IMFP_method = 1
+energy_grid_bottom_MeV = 18.863729578973544 # MeV, matches st8_coll_inst_test.py
+energy_grid_top_MeV = 21.136270421026456 # MeV
 
 Do_Pauli_blocking = 0 # If 1, it will multiply the inverse mean free path by 1 / (1 - f_eq); if 0, do nothing.
 

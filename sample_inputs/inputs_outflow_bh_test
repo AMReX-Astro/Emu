@@ -95,6 +95,8 @@ deltaCP_degrees = 0
 # opacity stuff #
 #################
 IMFP_method = 1
+energy_grid_bottom_MeV = 18.863729578973544 # MeV, matches st11_periodic_empty_bc.py
+energy_grid_top_MeV = 21.136270421026456 # MeV
 attenuation_absorption_opacity = 1
 attenuation_scattering_opacity = 0
 set_equilibrium_distribution= 0
