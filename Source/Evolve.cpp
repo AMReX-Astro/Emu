@@ -173,7 +173,8 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
         alltables_nulib, logrho_nulib, logtemp_nulib, yes_nulib,
         helperVarsReal_nulib, helperVarsInt_nulib);
 
-    NuLib_energies NuLib_energies_obj(energy_bottom, energy_top);
+    NuLib_energies NuLib_energies_obj(energy_bottom, energy_top,
+                                      NULIBVAR_INT(ngroup));
 
     amrex::ParticleToMesh(
         neutrinos, deposit_state, 0,
@@ -191,13 +192,8 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
 
             int energy_bin = 0;
             if (parms->IMFP_method == 2) {
-                int* helperVarsInt_nulib =
-                    NuLib_tabulated_obj.get_helperVarsInt_nulib();
-                energy_bin = find_nulib_energy_bin(
-                    p.rdata(PIdx::pupt),
-                    NuLib_energies_obj.get_energy_bottom_nulib(),
-                    NuLib_energies_obj.get_energy_top_nulib(),
-                    NULIBVAR_INT(ngroup));
+                energy_bin =
+                    NuLib_energies_obj.find_energy_bin(p.rdata(PIdx::pupt));
             }
 
             // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t )
@@ -889,7 +885,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
         alltables_nulib, logrho_nulib, logtemp_nulib, yes_nulib,
         helperVarsReal_nulib, helperVarsInt_nulib);
 
-    NuLib_energies NuLib_energies_obj(energy_bottom, energy_top);
+    NuLib_energies NuLib_energies_obj(energy_bottom, energy_top,
+                                      NULIBVAR_INT(ngroup));
 
     amrex::MeshToParticle(
         neutrinos_rhs, state, 0,
@@ -996,13 +993,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 
             int energy_bin = 0;
             if (parms->IMFP_method == 2) {
-                int* helperVarsInt_nulib =
-                    NuLib_tabulated_obj.get_helperVarsInt_nulib();
-                energy_bin = find_nulib_energy_bin(
-                    p.rdata(PIdx::pupt),
-                    NuLib_energies_obj.get_energy_bottom_nulib(),
-                    NuLib_energies_obj.get_energy_top_nulib(),
-                    NULIBVAR_INT(ngroup));
+                energy_bin =
+                    NuLib_energies_obj.find_energy_bin(p.rdata(PIdx::pupt));
             }
 
             for (int k = sz.first(); k <= sz.last(); ++k) {
