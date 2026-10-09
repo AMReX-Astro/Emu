@@ -978,9 +978,17 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             const Real Ye_pp = p.rdata(PIdx::Ye);
             const Real rho_pp = p.rdata(PIdx::rho_g_inv_ccm);  // g/ccm
 
-        // Isotropic in-scattering interpolated to the particle.
-        // Always declared/zeroed so the generated dfdt_fill can reference them.
-#include "generated_files/Evolve.cpp_C_in_scat_pp_declare"
+            // Isotropic in-scattering interpolated to the particle, indexed
+            // [nu/nubar][PIdx::Re or PIdx::Im][i][j] (upper triangle i <= j
+            // is used). Always declared and zeroed so the generated dfdt_fill
+            // can reference it.
+            Real C_in_scat_pp[2][2][NUM_FLAVORS][NUM_FLAVORS];
+            for (int nunubar = 0; nunubar < 2; ++nunubar)
+                for (int reim = 0; reim < 2; ++reim)
+                    for (int a = 0; a < NUM_FLAVORS; ++a)
+                        for (int b = 0; b < NUM_FLAVORS; ++b)
+                            C_in_scat_pp[nunubar][reim][a][b] = 0.0;
+
             // phat = momentum direction (p/E), used for the flux contraction in the SI potential
             amrex::Real phat[3] = {p.rdata(PIdx::pupx) / p.rdata(PIdx::pupt),
                                    p.rdata(PIdx::pupy) / p.rdata(PIdx::pupt),
@@ -1059,9 +1067,33 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 
                         // Interpolate C_in_scat for this particle's energy_bin
                         // (0 for IMFP_method 0/1, NuLib group for method 2).
-                        {
-                            const int nubar = GIdx::n_c_in_scat_flavor;
-#include "generated_files/Evolve.cpp_interpolate_from_mesh_fill_scattering"
+                        // Mesh layout per energy bin: the neutrino Hermitian
+                        // block (PIdx::offset order) followed by the
+                        // antineutrino block.
+                        for (int nunubar = 0; nunubar < 2; ++nunubar) {
+                            const int block =
+                                nunubar * GIdx::n_c_in_scat_flavor;
+                            for (int a = 0; a < NUM_FLAVORS; ++a) {
+                                for (int b = a; b < NUM_FLAVORS; ++b) {
+                                    C_in_scat_pp[nunubar][PIdx::Re][a][b] +=
+                                        vol *
+                                        sarr(i, j, k,
+                                             GIdx::C_in_scat_iso_index(
+                                                 energy_bin,
+                                                 block + PIdx::offset(
+                                                             a, b, PIdx::Re)));
+                                    if (a != b) {
+                                        C_in_scat_pp[nunubar][PIdx::Im][a][b] +=
+                                            vol *
+                                            sarr(i, j, k,
+                                                 GIdx::C_in_scat_iso_index(
+                                                     energy_bin,
+                                                     block +
+                                                         PIdx::offset(
+                                                             a, b, PIdx::Im)));
+                                    }
+                                }
+                            }
                         }
                     }
                 }
