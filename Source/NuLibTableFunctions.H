@@ -75,8 +75,10 @@ struct NuLib_tabulated {
 };  //struct NuLib_tabulated
 
 struct NuLib_energies {
-    double *energy_bottom, *energy_top;
-    int ngroup;
+    // Null / zero unless the NuLib table was loaded (IMFP_method == 2).
+    double *energy_bottom = nullptr;
+    double *energy_top = nullptr;
+    int ngroup = 0;
 
     //constructor for NuLib_energies
     AMREX_GPU_DEVICE AMREX_GPU_HOST NuLib_energies() =

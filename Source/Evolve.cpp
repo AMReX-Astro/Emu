@@ -173,8 +173,15 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
         alltables_nulib, logrho_nulib, logtemp_nulib, yes_nulib,
         helperVarsReal_nulib, helperVarsInt_nulib);
 
-    NuLib_energies NuLib_energies_obj(energy_bottom, energy_top,
-                                      NULIBVAR_INT(ngroup));
+    // The NuLib table (and helperVarsInt_nulib) is only read when
+    // IMFP_method == 2; for other methods the pointers are null, so read
+    // ngroup only in that case. find_energy_bin is likewise only called for
+    // IMFP_method == 2.
+    const int nulib_ngroup =
+        (parms->IMFP_method == 2) ? NULIBVAR_INT(ngroup) : 0;
+    NuLib_energies NuLib_energies_obj(
+        (parms->IMFP_method == 2) ? energy_bottom : nullptr,
+        (parms->IMFP_method == 2) ? energy_top : nullptr, nulib_ngroup);
 
     amrex::ParticleToMesh(
         neutrinos, deposit_state, 0,
@@ -885,8 +892,15 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
         alltables_nulib, logrho_nulib, logtemp_nulib, yes_nulib,
         helperVarsReal_nulib, helperVarsInt_nulib);
 
-    NuLib_energies NuLib_energies_obj(energy_bottom, energy_top,
-                                      NULIBVAR_INT(ngroup));
+    // The NuLib table (and helperVarsInt_nulib) is only read when
+    // IMFP_method == 2; for other methods the pointers are null, so read
+    // ngroup only in that case. find_energy_bin is likewise only called for
+    // IMFP_method == 2.
+    const int nulib_ngroup =
+        (parms->IMFP_method == 2) ? NULIBVAR_INT(ngroup) : 0;
+    NuLib_energies NuLib_energies_obj(
+        (parms->IMFP_method == 2) ? energy_bottom : nullptr,
+        (parms->IMFP_method == 2) ? energy_top : nullptr, nulib_ngroup);
 
     amrex::MeshToParticle(
         neutrinos_rhs, state, 0,
