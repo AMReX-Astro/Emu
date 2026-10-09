@@ -31,6 +31,8 @@ void Initialize() {
 #include "generated_files/Evolve.cpp_grid_names_fill"
     // One Hermitian pair (nu, then nubar) per mesh energy bin, PIdx::offset
     // order. Example: C_in_scat_iso_energy_0_flavor_00_Re, ..._01_Re, ...
+    // For IMFP_method == 2, the number of energies is the number of energy bins in the NuLib table.
+    // For IMFP_method == 0 and 1, the number of energies is 1 since this is a single energy grid.
     const int n_energies = number_of_c_in_scat_energies;
     AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
         n_energies > 0,
