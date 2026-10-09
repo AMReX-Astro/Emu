@@ -183,12 +183,6 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                              amrex::Array4<amrex::Real> const& sarr) {
             FlavoredNeutrinoContainer::FNParticleConstView p{ptd, p_index};
 
-            //==============================================================//
-            // INTERPOLATION OF SCATTERING AND ABSORPTION OPACITIES         //
-            //==============================================================//
-
-            // Step 0: Background hydro interpolated onto this particle by
-            // interpolate_hydro_to_particles (copied here with copyParticles).
             const Real T_pp = p.rdata(PIdx::T_erg);  // erg
             const Real Ye_pp = p.rdata(PIdx::Ye);
             const Real rho_pp = p.rdata(PIdx::rho_g_inv_ccm);  // g/ccm
@@ -204,14 +198,10 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                     NULIBVAR_INT(ngroup));
             }
 
-            // Scattering IMFPs for the isotropic C_in deposit. Other opacity
-            // outputs are unused in this kernel and are passed as nullptr.
-            Real IMFP_scat
-                [NUM_FLAVORS]
-                [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t )
-            Real IMFP_scatbar
-                [NUM_FLAVORS]
-                [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for scatteting: diag( kbar_e , kbar_u , kbar_t )
+            // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t )
+            Real IMFP_scat[NUM_FLAVORS][NUM_FLAVORS];
+            // Antineutrino inverse mean free path matrix for scattering: diag( kbar_e , kbar_u , kbar_t )
+            Real IMFP_scatbar[NUM_FLAVORS][NUM_FLAVORS];
 
             for (int i = 0; i < NUM_FLAVORS; ++i) {
                 for (int j = 0; j < NUM_FLAVORS; ++j) {
@@ -253,8 +243,6 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
             Real V_phase_space_cell_without_volume =
                 4.0 * MathConst::pi *
                 ((pow(E_top_erg, 3) - pow(E_bottom_erg, 3)) / 3.0);
-
-            //==============================================================//
 
             const amrex::Real delta_x = (p.pos(0) - p_lo[0]) * dxi[0];
             const amrex::Real delta_y = (p.pos(1) - p_lo[1]) * dxi[1];
