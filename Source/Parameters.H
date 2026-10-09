@@ -88,8 +88,10 @@ struct TestParams : public amrex::Gpu::Managed {
     Real munu
         [2]
         [NUM_FLAVORS];  // equilibrium electron neutrino chemical potential in erg (CGS unist)
-    Real energy_grid_bottom_erg;  // Bottom edge of the energy bin in erg (CGS units), IMFP_method == 1 only
-    Real energy_grid_top_erg;     // Top edge of the energy bin in erg (CGS units), IMFP_method == 1 only
+    Real
+        energy_grid_bottom_erg;  // Bottom edge of the energy bin in erg (CGS units), IMFP_method == 1 only
+    Real
+        energy_grid_top_erg;  // Top edge of the energy bin in erg (CGS units), IMFP_method == 1 only
 
     // Attenuation to Hamiltonians
     Real attenuation_hamiltonians;  // Multiplication factor to [N,H]
