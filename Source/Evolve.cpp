@@ -1104,10 +1104,10 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             Real IMFP_scatbar
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for scatteting: diag( kbar_e , kbar_u , kbar_t )
-            Real IMFP_scat_brakets
+            Real IMFP_scat_brackets
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Neutrino inverse mean free path matrix for scatteting: diag( k_e , k_u , k_t )
-            Real IMFP_scatbar_brakets
+            Real IMFP_scatbar_brackets
                 [NUM_FLAVORS]
                 [NUM_FLAVORS];  // Antineutrino inverse mean free path matrix for scatteting: diag( kbar_e , kbar_u , kbar_t )
             Real f_eq
@@ -1129,8 +1129,8 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
                     IMFP_absbar[i][j] = 0.0;
                     IMFP_scat[i][j] = 0.0;
                     IMFP_scatbar[i][j] = 0.0;
-                    IMFP_scat_brakets[i][j] = 0.0;
-                    IMFP_scatbar_brakets[i][j] = 0.0;
+                    IMFP_scat_brackets[i][j] = 0.0;
+                    IMFP_scatbar_brackets[i][j] = 0.0;
                     f_eq[i][j] = 0.0;
                     f_eqbar[i][j] = 0.0;
                     munu[i][j] = 0.0;
@@ -1152,17 +1152,17 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 
                 // Compute scattering brackets opacity
                 fill_scattering_brackets_opacity(IMFP_scat, IMFP_scatbar,
-                                                 IMFP_scat_brakets,
-                                                 IMFP_scatbar_brakets);
+                                                 IMFP_scat_brackets,
+                                                 IMFP_scatbar_brackets);
 
                 for (int i = 0; i < NUM_FLAVORS; ++i) {
                     for (int j = 0; j < NUM_FLAVORS; ++j) {
                         IMFP_abs[i][j] *= parms->attenuation_absorption_opacity;
                         IMFP_absbar[i][j] *=
                             parms->attenuation_absorption_opacity;
-                        IMFP_scat_brakets[i][j] *=
+                        IMFP_scat_brackets[i][j] *=
                             parms->attenuation_scattering_opacity;
-                        IMFP_scatbar_brakets[i][j] *=
+                        IMFP_scatbar_brackets[i][j] *=
                             parms->attenuation_scattering_opacity;
                     }
                 }
