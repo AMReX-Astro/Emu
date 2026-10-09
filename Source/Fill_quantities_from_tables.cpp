@@ -225,3 +225,24 @@ void fill_scattering_opacity(const TestParams* parms, amrex::Real rho_pp,
         AMREX_ASSERT_WITH_MESSAGE(false,
                                   "only available opacity_method is 0, 1 or 2");
 }
+
+AMREX_GPU_HOST_DEVICE
+void fill_scattering_brackets_opacity(
+    const amrex::Real (*IMFP_scat)[NUM_FLAVORS],
+    const amrex::Real (*IMFP_scatbar)[NUM_FLAVORS],
+    amrex::Real (*IMFP_scat_brakets)[NUM_FLAVORS],
+    amrex::Real (*IMFP_scatbar_brakets)[NUM_FLAVORS]) {
+    Real scat_diag[NUM_FLAVORS];
+    Real scatbar_diag[NUM_FLAVORS];
+    for (int i = 0; i < NUM_FLAVORS; ++i) {
+        scat_diag[i] = IMFP_scat[i][i];
+        scatbar_diag[i] = IMFP_scatbar[i][i];
+    }
+    for (int i = 0; i < NUM_FLAVORS; ++i) {
+        for (int j = 0; j < NUM_FLAVORS; ++j) {
+            IMFP_scat_brakets[i][j] = 0.5 * (scat_diag[i] + scat_diag[j]);
+            IMFP_scatbar_brakets[i][j] =
+                0.5 * (scatbar_diag[i] + scatbar_diag[j]);
+        }
+    }
+}

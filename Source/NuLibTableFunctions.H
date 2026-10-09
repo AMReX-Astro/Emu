@@ -1,6 +1,10 @@
 #ifndef NULIBTABLEFUCNTIONS_HXX
 #define NULIBTABLEFUCNTIONS_HXX
 
+#include <AMReX.H>
+#include <AMReX_REAL.H>
+
+#include "Constants.H"
 #include "NuLibTableHelpers.H"
 
 struct NuLib_tabulated {
@@ -71,14 +75,36 @@ struct NuLib_tabulated {
 };  //struct NuLib_tabulated
 
 struct NuLib_energies {
-    double *energy_bottom, *energy_top;
+    // Null / zero unless the NuLib table was loaded (IMFP_method == 2).
+    double *energy_bottom = nullptr;
+    double *energy_top = nullptr;
+    int ngroup = 0;
 
     //constructor for NuLib_energies
     AMREX_GPU_DEVICE AMREX_GPU_HOST NuLib_energies() =
         default;  //Need to keep it
     AMREX_GPU_DEVICE AMREX_GPU_HOST NuLib_energies(double *energy_bottom_in,
-                                                   double *energy_top_in)
-        : energy_bottom(energy_bottom_in), energy_top(energy_top_in) {}
+                                                   double *energy_top_in,
+                                                   int ngroup_in)
+        : energy_bottom(energy_bottom_in),
+          energy_top(energy_top_in),
+          ngroup(ngroup_in) {}
+
+    //--------------- find energy bin ---------------------------------------------
+    // NuLib group index for a particle energy (erg). Aborts if no bin matches.
+    AMREX_GPU_DEVICE AMREX_GPU_HOST int find_energy_bin(
+        amrex::Real neutrino_energy_erg) const {
+        const double neutrino_energy_MeV =
+            neutrino_energy_erg / (1e6 * CGSUnitsConst::eV);
+        for (int i = 0; i < ngroup; ++i) {
+            if (neutrino_energy_MeV >= energy_bottom[i] &&
+                neutrino_energy_MeV <= energy_top[i]) {
+                return i;
+            }
+        }
+        AMREX_ASSERT(0);
+        return -1;
+    };  //find_energy_bin
 
     //--------------- get energy_bottom pointer ---------------------------------------------
     AMREX_GPU_DEVICE AMREX_GPU_HOST double *get_energy_bottom_nulib() const {
