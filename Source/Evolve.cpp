@@ -237,16 +237,22 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
             Real E_top_erg;
 
             if (parms->IMFP_method == 2) {
-                const double* energy_top_all = NuLib_energies_obj.get_energy_top_nulib();
-                const double* energy_bottom_all = NuLib_energies_obj.get_energy_bottom_nulib();
-                E_bottom_erg = energy_bottom_all[energy_bin] * (1e6 * CGSUnitsConst::eV);
-                E_top_erg = energy_top_all[energy_bin] * (1e6 * CGSUnitsConst::eV);
+                const double* energy_top_all =
+                    NuLib_energies_obj.get_energy_top_nulib();
+                const double* energy_bottom_all =
+                    NuLib_energies_obj.get_energy_bottom_nulib();
+                E_bottom_erg =
+                    energy_bottom_all[energy_bin] * (1e6 * CGSUnitsConst::eV);
+                E_top_erg =
+                    energy_top_all[energy_bin] * (1e6 * CGSUnitsConst::eV);
             } else if (parms->IMFP_method == 1) {
                 E_bottom_erg = parms->energy_grid_bottom_erg;
                 E_top_erg = parms->energy_grid_top_erg;
             }
 
-            Real V_phase_space_cell_without_volume = 4.0 * MathConst::pi * ( ( pow(E_top_erg, 3) - pow(E_bottom_erg, 3) ) / 3.0 );
+            Real V_phase_space_cell_without_volume =
+                4.0 * MathConst::pi *
+                ((pow(E_top_erg, 3) - pow(E_bottom_erg, 3)) / 3.0);
 
             //==============================================================//
 
@@ -319,7 +325,8 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                         const amrex::Real V_cell =
                             m.vol(lo[0], hi[0], lo[1], hi[1], lo[2], hi[2]);
 
-                        const amrex::Real V_phase_space_cell_with_volume = V_phase_space_cell_without_volume * V_cell;
+                        const amrex::Real V_phase_space_cell_with_volume =
+                            V_phase_space_cell_without_volume * V_cell;
 
                         const amrex::Real inv_cell_volume = 1.0 / V_cell;
 
@@ -327,7 +334,8 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                             sx(i) * sy(j) * sz(k) * inv_cell_volume;
 
                         const amrex::Real dOmega =
-                            4 * MathConst::pi * p.rdata(PIdx::Vphase) / V_phase_space_cell_with_volume;
+                            4 * MathConst::pi * p.rdata(PIdx::Vphase) /
+                            V_phase_space_cell_with_volume;
 
                         // Fold stencil cells that land outside a reflecting face back into
                         // the mirror-image interior cell, recording which directions were
