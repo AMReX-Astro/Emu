@@ -59,4 +59,19 @@ void fill_scattering_opacity(const TestParams* parms, amrex::Real rho_pp,
                              amrex::Real (*IMFP_scat)[NUM_FLAVORS],
                              amrex::Real (*IMFP_scatbar)[NUM_FLAVORS]);
 
+/**
+ * @brief Fill scattering-bracket inverse mean free paths from the non-bracket
+ *        scattering diagonals.
+ *
+ * IMFP_scat_brakets[i][j] = 0.5 * (IMFP_scat[i][i] + IMFP_scat[j][j]),
+ * and likewise for the antineutrino matrices.
+ * Callable from the MeshToParticle device kernel.
+ */
+AMREX_GPU_HOST_DEVICE
+void fill_scattering_brackets_opacity(
+    const amrex::Real (*IMFP_scat)[NUM_FLAVORS],
+    const amrex::Real (*IMFP_scatbar)[NUM_FLAVORS],
+    amrex::Real (*IMFP_scat_brakets)[NUM_FLAVORS],
+    amrex::Real (*IMFP_scatbar_brakets)[NUM_FLAVORS]);
+
 #endif  // FILL_QUANTITIES_FROM_TABLES_H_

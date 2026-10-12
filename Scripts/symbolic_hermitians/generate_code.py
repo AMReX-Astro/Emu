@@ -358,12 +358,21 @@ if __name__ == "__main__":
         N_eq.H = HermitianMatrix(args.N, "f_eq_{}{}_{}"+t).H * V_phase / (2*pi*hbar*c)**3
         code += declare(N_eq)
 
-        # Collision term C = {Gamma, N_eq - N}.
+        # Collision term C = {Gamma, N_eq - N} + C_in_scat - kappa_brackets ○ N.
+        # kappa_brackets is a real flavor matrix (IMFP array); multiply Re/Im of N
+        # by the same real kappa_ij (Hadamard product).
         Gamma = HermitianMatrix(args.N, "Gamma_{}{}_{}"+t)
         N     = HermitianMatrix(args.N, "p.rdata(PIdx::N{}{}_{}"+t+")")
         N_eq  = HermitianMatrix(args.N, "N_eq_{}{}_{}"+t)
+        # C_in_scat_pp is a plain C++ array declared and filled by hand in
+        # Evolve.cpp, indexed [nu/nubar][PIdx::Re or PIdx::Im][i][j].
+        # HermitianMatrix fills the template with .format(i, j, "Re"/"Im"),
+        # hence the positional fields {0}, {1}, {2}.
+        C_scat = HermitianMatrix(args.N, "C_in_scat_pp[{}][PIdx::{{2}}][{{0}}][{{1}}]".format(1 if t == "bar" else 0))
+        kappa = sympy.Matrix(args.N, args.N, lambda i, j: sympy.symbols("IMFP_scat"+t+"_brackets[{}][{}]".format(i, j), real=True))
         C = HermitianMatrix(args.N, "C_{}{}_{}"+t)
-        C.H = Gamma.H * (N_eq.H - N.H) + (N_eq.H - N.H) * Gamma.H
+        C.H = (Gamma.H * (N_eq.H - N.H) + (N_eq.H - N.H) * Gamma.H
+               + C_scat.H - kappa.multiply_elementwise(N.H))
         code += declare(C)
 
         # QKE right-hand side: dN/dt = c*C - (i/hbar)*attenuation*[H, N].
