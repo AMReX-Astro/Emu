@@ -23,3 +23,7 @@ include $(AMREX_HOME)/Src/Base/Make.package
 include $(AMREX_HOME)/Src/Particle/Make.package
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules
+
+# Clean build/test artifacts
+clean::
+	$(RM) *.csv *.png Backtrace.*
