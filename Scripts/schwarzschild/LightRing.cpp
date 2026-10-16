@@ -49,7 +49,7 @@ EParticle firstParticle(FlavoredNeutrinoContainer& pc) {
 // Integrates with amrex's RK4 TimeIntegrator, as in main.cpp, and returns the
 // total (unwrapped) phi swept. The final state is left in neutrinos_new.
 double evolve_neutrino(FlavoredNeutrinoContainer& neutrinos_old,
-                       FlavoredNeutrinoContainer& neutrinos_new, Metric& metric,
+                       FlavoredNeutrinoContainer& neutrinos_new, SchwSphericalMetric& metric,
                        double dt, double t_total, int steps) {
     if (!outfile.is_open()) {
         std::cerr << "Error opening file: " << filename << std::endl;
