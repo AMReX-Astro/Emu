@@ -31,7 +31,7 @@ class HermitianMatrix(object):
         # we are going to use entry_template to build sympy symbols
         # so we need to escape ':' to avoid sympy interpreting them
         # as defining a range of characters.
-        self.entry_template = entry_template.replace(":", "\:")
+        self.entry_template = entry_template.replace(":", r"\:")
         self.H = sympy.zeros(self.size, self.size)
 
         self.construct()
