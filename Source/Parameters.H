@@ -80,6 +80,19 @@ struct TestParams : public amrex::Gpu::Managed {
     Real perturbation_wavelength_cm;
     Real perturbation_amplitude;
 
+    // Analytic initial conditions for the N and Nbar diagonals.
+    // 0 = occupations come from particle_data_filename (default)
+    // 1 = occupations are set at runtime from the Gaussian
+    //     n(x) = n_bg + A0 * exp(-(x - x0)^2 / (2 s0^2)), periodic in x,
+    //     by FlavoredNeutrinoContainer::ApplyAnalyticInitialConditions.
+    //     Requires IMFP_method = 1 (uses its energy bin edges). No
+    //     perturbations are applied in this mode.
+    int analytic_initial_conditions;
+    Real gaussian_n_bg_ccm;  // background number density, 1/ccm
+    Real gaussian_A0_ccm;    // Gaussian amplitude, 1/ccm
+    Real gaussian_x0_cm;     // Gaussian center, cm
+    Real gaussian_s0_cm;     // Gaussian width (standard deviation), cm
+
     // Absorption opacities and equilibrium neutrino chemical potentials
     int IMFP_method;  // Flag to choose the method to calculate the opacities
     int Do_Pauli_blocking;  // If 1, it will multiply the opacities by 1 / (1 - f_eq); if 0, do nothing.
@@ -160,6 +173,30 @@ struct TestParams : public amrex::Gpu::Managed {
         pp.get("perturbation_type", perturbation_type);
         if (perturbation_type == 1)
             pp.get("perturbation_wavelength_cm", perturbation_wavelength_cm);
+
+        // analytic initial conditions (optional, defaults to the particle file)
+        analytic_initial_conditions = 0;
+        pp.query("analytic_initial_conditions", analytic_initial_conditions);
+        gaussian_n_bg_ccm = 0.0;
+        gaussian_A0_ccm = 0.0;
+        gaussian_x0_cm = 0.0;
+        gaussian_s0_cm = 0.0;
+        if (analytic_initial_conditions == 1) {
+            pp.get("gaussian_n_bg_ccm", gaussian_n_bg_ccm);
+            pp.get("gaussian_A0_ccm", gaussian_A0_ccm);
+            pp.get("gaussian_x0_cm", gaussian_x0_cm);
+            pp.get("gaussian_s0_cm", gaussian_s0_cm);
+            if (gaussian_s0_cm <= 0.0)
+                amrex::Abort(
+                    "analytic_initial_conditions = 1 requires gaussian_s0_cm "
+                    "> 0, but got gaussian_s0_cm = " +
+                    std::to_string(gaussian_s0_cm));
+        } else if (analytic_initial_conditions != 0)
+            amrex::Abort(
+                "Unknown analytic_initial_conditions = " +
+                std::to_string(analytic_initial_conditions) +
+                ". Use 0 (occupations from the particle file) or 1 (Gaussian "
+                "n(x) set at runtime).");
 
         // neutrino physics parameters for 2-flavor
         pp.get("mass1_eV", mass1);
@@ -250,6 +287,15 @@ struct TestParams : public amrex::Gpu::Managed {
 
         // Flag for collision term treatment
         pp.get("IMFP_method", IMFP_method);
+
+        // The Gaussian initial condition needs the single energy bin edges
+        // (energy_grid_bottom_MeV / energy_grid_top_MeV) that only
+        // IMFP_method = 1 reads.
+        if (analytic_initial_conditions == 1 && IMFP_method != 1)
+            amrex::Abort(
+                "analytic_initial_conditions = 1 requires IMFP_method = 1, "
+                "but got IMFP_method = " +
+                std::to_string(IMFP_method));
 
         for (int i = 0; i < NUM_FLAVORS; ++i) {
             IMFP_abs[0][i] = 0.0;

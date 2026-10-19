@@ -13,12 +13,16 @@ grid cell, so this file holds angle and energy only.
 
 Flavor occupation numbers (every N* column, neutrinos and antineutrinos)
 are written as NaN. Momenta, energy, TrHN, and the phase-space volume
-Vphase are finite. NaN marks the occupations as unset until a later step
-replaces them with the spatial Gaussian n(x).
-
-InitParticles asserts that the diagonal occupations are >= 0. NaN fails
-that check, and NaN times the cell volume trips a floating-point trap.
-Replace the NaNs before using the file.
+Vphase are finite. NaN marks the occupations as unset: run Emu with
+analytic_initial_conditions = 1 (see
+sample_inputs/inputs_gaussian_diffusion_test) and
+FlavoredNeutrinoContainer::ApplyAnalyticInitialConditions replaces them
+at startup with the spatial Gaussian
+    n(x, 0) = n_bg + A0 * exp(-(x - x0)^2 / (2 s0^2)).
+In that mode InitParticles skips its N >= 0 checks and N scaling; Vphase
+is still scaled by the cell volume and is what the Gaussian routine
+multiplies by. With analytic_initial_conditions = 0 this file is rejected
+(NaN fails the N >= 0 assertion).
 
 Run from Exec/:
   python ../Scripts/initial_conditions/st14_monocromatic_gaussian_diffusion_test.py

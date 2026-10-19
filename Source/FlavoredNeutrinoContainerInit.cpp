@@ -76,29 +76,57 @@ Gpu::ManagedVector<GpuArray<Real, PIdx::nattribs>> read_particle_data(
 
     // Skip the second row if it contains the header (assume it's only present if the first line after flavors is not numeric)
     // Peek at the next line without advancing the stream position
+    long line_number = 3;  // header lines consumed so far (1-based count)
     std::streampos pos = file.tellg();
     if (std::getline(file, line)) {
         ss = std::stringstream(line);
         Real test_value;
         if (!(ss >> test_value)) {
             // This line is not numeric, assume it's the header row, do nothing since we're not reading it as a particle.
+            ++line_number;
         } else {
             // Otherwise, process this line as the first particle (rewind to read this line again in the main loop)
             file.seekg(pos);
         }
     }
 
+    // Read one whitespace-separated token as a Real. Goes through std::stod
+    // (strtod semantics) rather than operator>> because the stream extractor
+    // does not accept "nan"/"inf": it would set failbit on the first such
+    // token and silently skip every remaining column of the line. The
+    // Gaussian-diffusion initial condition (st14) writes NaN in the N columns
+    // as a placeholder for analytic_initial_conditions = 1, and Vphase comes
+    // after them.
+    auto read_real = [&](std::stringstream& s, const char* name, Real& out) {
+        std::string token;
+        if (!(s >> token))
+            amrex::Abort("read_particle_data: line " +
+                         std::to_string(line_number) + " of " + filename +
+                         " is missing column " + name);
+        try {
+            out = static_cast<Real>(std::stod(token));
+        } catch (const std::exception&) {
+            amrex::Abort("read_particle_data: line " +
+                         std::to_string(line_number) + " of " + filename +
+                         ": cannot parse '" + token + "' for column " + name);
+        }
+    };
+
     // Loop over every line in the initial condition file.
     // This is equivalent to looping over every particle.
     // Save every particle's information in the array particle_data.
     while (std::getline(file, line)) {
+        ++line_number;
+        // Ignore blank lines (e.g. a trailing newline).
+        if (line.find_first_not_of(" \t\r\n") == std::string::npos) continue;
         ss = std::stringstream(line);
         // File columns: pupx, pupy, pupz, pupt, then N/flavor attributes.
         // Skip time/x/y/z (indices 0-3) and hydro (rho, T, Ye), which are
         // interpolated from the mesh rather than read from particle_input.dat.
-        for (int i = PIdx::pupx; i <= PIdx::pupt; ++i) ss >> temp_particle[i];
+        for (int i = PIdx::pupx; i <= PIdx::pupt; ++i)
+            read_real(ss, "pup", temp_particle[i]);
         for (int i = PIdx::N00_Re; i < PIdx::nattribs; ++i)
-            ss >> temp_particle[i];
+            read_real(ss, "N/TrHN/Vphase", temp_particle[i]);
         particle_data.push_back(temp_particle);
     }
 
@@ -302,15 +330,24 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
                         p.rdata(i_attrib) =
                             particle_data_p[i_direction][i_attrib];
 
+                    // With analytic_initial_conditions = 1 the N columns of the
+                    // file are placeholders (st14 writes NaN) that
+                    // ApplyAnalyticInitialConditions overwrites right after this
+                    // routine, so they are neither checked nor scaled here.
+                    const bool use_file_occupations =
+                        (parms->analytic_initial_conditions == 0);
+
                     // basic checks
-                    AMREX_ASSERT(p.rdata(PIdx::N00_Re) >= 0);
-                    AMREX_ASSERT(p.rdata(PIdx::N11_Re) >= 0);
-                    AMREX_ASSERT(p.rdata(PIdx::N00_Rebar) >= 0);
-                    AMREX_ASSERT(p.rdata(PIdx::N11_Rebar) >= 0);
+                    if (use_file_occupations) {
+                        AMREX_ASSERT(p.rdata(PIdx::N00_Re) >= 0);
+                        AMREX_ASSERT(p.rdata(PIdx::N11_Re) >= 0);
+                        AMREX_ASSERT(p.rdata(PIdx::N00_Rebar) >= 0);
+                        AMREX_ASSERT(p.rdata(PIdx::N11_Rebar) >= 0);
 #if NUM_FLAVORS == 3
-                    AMREX_ASSERT(p.rdata(PIdx::N22_Re) >= 0);
-                    AMREX_ASSERT(p.rdata(PIdx::N22_Rebar) >= 0);
+                        AMREX_ASSERT(p.rdata(PIdx::N22_Re) >= 0);
+                        AMREX_ASSERT(p.rdata(PIdx::N22_Rebar) >= 0);
 #endif
+                    }
 
                     // Set particle position
                     p.pos(0) = x;
@@ -324,29 +361,32 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
                     p.rdata(PIdx::time) = 0;
 
                     // scale particle numbers based on number of points per cell and the cell volume
-                    p.rdata(PIdx::N00_Re) *= scale_fac;
-                    p.rdata(PIdx::N11_Re) *= scale_fac;
-                    p.rdata(PIdx::N00_Rebar) *= scale_fac;
-                    p.rdata(PIdx::N11_Rebar) *= scale_fac;
+                    if (use_file_occupations) {
+                        p.rdata(PIdx::N00_Re) *= scale_fac;
+                        p.rdata(PIdx::N11_Re) *= scale_fac;
+                        p.rdata(PIdx::N00_Rebar) *= scale_fac;
+                        p.rdata(PIdx::N11_Rebar) *= scale_fac;
 #if SET_EQUILIBRIUM == 1
-                    p.rdata(PIdx::N00_Re_eq) *= scale_fac;
-                    p.rdata(PIdx::N11_Re_eq) *= scale_fac;
-                    p.rdata(PIdx::N00_Rebar_eq) *= scale_fac;
-                    p.rdata(PIdx::N11_Rebar_eq) *= scale_fac;
+                        p.rdata(PIdx::N00_Re_eq) *= scale_fac;
+                        p.rdata(PIdx::N11_Re_eq) *= scale_fac;
+                        p.rdata(PIdx::N00_Rebar_eq) *= scale_fac;
+                        p.rdata(PIdx::N11_Rebar_eq) *= scale_fac;
 #endif
 #if NUM_FLAVORS == 3
-                    p.rdata(PIdx::N22_Re) *= scale_fac;
-                    p.rdata(PIdx::N22_Rebar) *= scale_fac;
+                        p.rdata(PIdx::N22_Re) *= scale_fac;
+                        p.rdata(PIdx::N22_Rebar) *= scale_fac;
 #if SET_EQUILIBRIUM == 1
-                    p.rdata(PIdx::N22_Re_eq) *= scale_fac;
-                    p.rdata(PIdx::N22_Rebar_eq) *= scale_fac;
+                        p.rdata(PIdx::N22_Re_eq) *= scale_fac;
+                        p.rdata(PIdx::N22_Rebar_eq) *= scale_fac;
 #endif
 #endif
+                    }
 
                     // Set phase space volume Vphase = dx^3 * dOmega * dE^3 / 3
                     // From initial conditions, Vphase gets dOmega * dE^3 / 3
                     // Here we multiply this value by the cell volume dx[0] * dx[1] * dx[2]
                     // Divide by the number of particle emission points inside the cell
+                    // Always scaled: ApplyAnalyticInitialConditions relies on it.
                     p.rdata(PIdx::Vphase) *= scale_fac;
 
                 }  // loop over direction

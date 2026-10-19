@@ -3,6 +3,7 @@ CEXE_sources += DataReducer.cpp
 CEXE_sources += IO.cpp
 CEXE_sources += FlavoredNeutrinoContainerInit.cpp
 CEXE_sources += FlavoredNeutrinoContainerPerturb.cpp
+CEXE_sources += FlavoredNeutrinoContainerAnalyticIC.cpp
 CEXE_sources += Evolve.cpp
 CEXE_sources += Fill_quantities_from_tables.cpp
 CEXE_sources += FlavoredNeutrinoContainer.cpp

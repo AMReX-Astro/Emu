@@ -15,8 +15,14 @@
 # - One cell in y and one cell in z, each of width dx, periodic on every face
 # - Momenta from
 #   Scripts/initial_conditions/st14_monocromatic_gaussian_diffusion_test.py
-#   That script writes NaN occupations. Replace them with the spatial
-#   Gaussian n(x) before running; InitParticles rejects NaN.
+#   That script writes NaN occupations as placeholders. With
+#   analytic_initial_conditions = 1 (below) they are replaced at runtime by
+#   FlavoredNeutrinoContainer::ApplyAnalyticInitialConditions with
+#     n(x, 0) = n_bg + A0 * exp(-(x - x0)^2 / (2 s0^2)),
+#   periodic in x, applied to every flavor and antiflavor diagonal. Each
+#   particle gets N = f * Vphase with f = n(x) / [4 pi (E_top^3 - E_bot^3)/3],
+#   so the deposited grid density equals n(x). Off-diagonals are zero and
+#   no perturbation is applied in this mode.
 #
 # Opacity convention
 # ------------------
@@ -45,8 +51,24 @@
 # which includes 5.0e-9, 1.0e-8, 2.0e-8, and 3.75e-8 s.
 # =============================================================================
 
+# Required keys, but not used: with analytic_initial_conditions = 1 the
+# perturbation routine is skipped entirely.
 perturbation_type = 0
 perturbation_amplitude = 0.0
+
+#################################
+# Analytic initial conditions   #
+#################################
+# 0 = occupations from particle_input.dat, 1 = Gaussian n(x) set at runtime
+# (requires IMFP_method = 1 for the energy bin edges).
+analytic_initial_conditions = 1
+# n(x, 0) = n_bg + A0 * exp(-(x - x0)^2 / (2 s0^2)); densities in 1/ccm,
+# lengths in cm. x0 is the domain center. The other three are PLACEHOLDER
+# values: set n_bg, A0 and s0 for your test.
+gaussian_n_bg_ccm = 1.0e28
+gaussian_A0_ccm = 1.0e29
+gaussian_x0_cm = 100.0
+gaussian_s0_cm = 5.0
 
 # Flavor commutator off. Masses and mixing angles below are zero as well.
 attenuation_hamiltonians = 0.0
