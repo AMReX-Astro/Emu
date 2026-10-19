@@ -601,6 +601,22 @@ struct ParticleGeometry {
 static_assert(sizeof(ParticleGeometry) == 12 * sizeof(amrex::Real),
               "ParticleGeometry must stay padding-free and sector-aligned");
 
+// Per-particle isotropic in-scattering fields, stored in the same bin order as
+// ParticleGeometry. Raw shape weights do not include Cartesian inv_cell_volume;
+// V_cell of the destination stencil cell is applied in the scattering gather.
+struct ParticleScattering {
+    amrex::Real shape_raw[3][stencil_width];  // [x/y/z][stencil offset]
+    amrex::Real kappa[2][NUM_FLAVORS];        // attenuated nu / nubar diagonals
+    amrex::Real vphase_over_vphase;           // Vphase / V_phase_without_volume
+    int energy_bin;
+    int pad;
+};
+
+static_assert(sizeof(ParticleScattering) ==
+                  (3 * stencil_width + 2 * NUM_FLAVORS + 2) *
+                      sizeof(amrex::Real),
+              "ParticleScattering must stay padding-free and sector-aligned");
+
 // Cell-parallel deposition: one thread per source cell, walking the grid
 // components one at a time and keeping a single accumulator per stencil
 // destination. Atomics then land once per (cell, destination, component)
@@ -627,6 +643,25 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
     MultiFab deposit_state(state, amrex::make_alias, start_comp,
                            num_grid_comps);
     deposit_state.setVal(0.0);
+
+    // Disjoint alias for isotropic in-scattering. Zero even when the
+    // scattering ParallelFor is skipped (attenuation == 0), so leftover
+    // C_in_scat from a prior deposit_method==2 atomic pass cannot survive.
+    const int n_scat_comps =
+        GIdx::number_of_c_in_scat_energies * GIdx::n_c_in_scat_per_energy;
+    MultiFab scat_state(state, amrex::make_alias, GIdx::C_in_scat_iso,
+                        n_scat_comps);
+    scat_state.setVal(0.0);
+
+    using namespace nulib_private;
+    NuLib_tabulated NuLib_tabulated_obj(
+        alltables_nulib, logrho_nulib, logtemp_nulib, yes_nulib,
+        helperVarsReal_nulib, helperVarsInt_nulib);
+    const int nulib_ngroup =
+        (parms->IMFP_method == 2) ? NULIBVAR_INT(ngroup) : 0;
+    NuLib_energies NuLib_energies_obj(
+        (parms->IMFP_method == 2) ? energy_bottom : nullptr,
+        (parms->IMFP_method == 2) ? energy_top : nullptr, nulib_ngroup);
 
     // Set actual shape factor order to 0 in any unit-length direction
     const int shape_order_i =
@@ -709,6 +744,9 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
         amrex::Gpu::DeviceVector<ParticleGeometry> geometry_storage(
             num_particles);
         ParticleGeometry* geometry = geometry_storage.dataPtr();
+        amrex::Gpu::DeviceVector<ParticleScattering> scattering_storage(
+            num_particles);
+        ParticleScattering* scattering = scattering_storage.dataPtr();
         {
             BL_PROFILE("deposit_to_mesh_cell::precompute");
             amrex::ParallelFor(num_particles, [=] AMREX_GPU_DEVICE(
@@ -753,6 +791,91 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                 particle_geometry.phat[0] = p.rdata(PIdx::pupx) * inv_pupt;
                 particle_geometry.phat[1] = p.rdata(PIdx::pupy) * inv_pupt;
                 particle_geometry.phat[2] = p.rdata(PIdx::pupz) * inv_pupt;
+
+                ParticleScattering& particle_scattering =
+                    scattering[sorted_index];
+                particle_scattering.pad = 0;
+                for (int s = 0; s < stencil_width; ++s) {
+                    const int cell_i = home_cell[0] + s - 1;
+                    const int cell_j = home_cell[1] + s - 1;
+                    const int cell_k = home_cell[2] + s - 1;
+                    const int index_i = cell_i - shape_i.first();
+                    const int index_j = cell_j - shape_j.first();
+                    const int index_k = cell_k - shape_k.first();
+                    particle_scattering.shape_raw[0][s] =
+                        (index_i >= 0 && index_i <= shape_order_i)
+                            ? shape_i(cell_i)
+                            : 0.0;
+                    particle_scattering.shape_raw[1][s] =
+                        (index_j >= 0 && index_j <= shape_order_j)
+                            ? shape_j(cell_j)
+                            : 0.0;
+                    particle_scattering.shape_raw[2][s] =
+                        (index_k >= 0 && index_k <= shape_order_k)
+                            ? shape_k(cell_k)
+                            : 0.0;
+                }
+
+                const Real T_pp = p.rdata(PIdx::T_erg);
+                const Real Ye_pp = p.rdata(PIdx::Ye);
+                const Real rho_pp = p.rdata(PIdx::rho_g_inv_ccm);
+
+                int energy_bin = 0;
+                if (parms->IMFP_method == 2) {
+                    energy_bin =
+                        NuLib_energies_obj.find_energy_bin(p.rdata(PIdx::pupt));
+                }
+                particle_scattering.energy_bin = energy_bin;
+
+                Real IMFP_scat[NUM_FLAVORS][NUM_FLAVORS];
+                Real IMFP_scatbar[NUM_FLAVORS][NUM_FLAVORS];
+                for (int i = 0; i < NUM_FLAVORS; ++i) {
+                    for (int j = 0; j < NUM_FLAVORS; ++j) {
+                        IMFP_scat[i][j] = 0.0;
+                        IMFP_scatbar[i][j] = 0.0;
+                    }
+                }
+                fill_scattering_opacity(parms, rho_pp, T_pp, Ye_pp,
+                                        NuLib_tabulated_obj, energy_bin,
+                                        IMFP_scat, IMFP_scatbar);
+                for (int i = 0; i < NUM_FLAVORS; ++i) {
+                    for (int j = 0; j < NUM_FLAVORS; ++j) {
+                        IMFP_scat[i][j] *=
+                            parms->attenuation_scattering_opacity;
+                        IMFP_scatbar[i][j] *=
+                            parms->attenuation_scattering_opacity;
+                    }
+                }
+                for (int a = 0; a < NUM_FLAVORS; ++a) {
+                    particle_scattering.kappa[0][a] = IMFP_scat[a][a];
+                    particle_scattering.kappa[1][a] = IMFP_scatbar[a][a];
+                }
+
+                // IMFP_method 0 has no energy edges; skip rather than using
+                // uninitialized E_bottom_erg / E_top_erg (atomic kernel bug).
+                particle_scattering.vphase_over_vphase = 0.0;
+                if (parms->IMFP_method == 2 || parms->IMFP_method == 1) {
+                    Real E_bottom_erg;
+                    Real E_top_erg;
+                    if (parms->IMFP_method == 2) {
+                        const double* energy_top_all =
+                            NuLib_energies_obj.get_energy_top_nulib();
+                        const double* energy_bottom_all =
+                            NuLib_energies_obj.get_energy_bottom_nulib();
+                        E_bottom_erg = energy_bottom_all[energy_bin] *
+                                       (1e6 * CGSUnitsConst::eV);
+                        E_top_erg = energy_top_all[energy_bin] *
+                                    (1e6 * CGSUnitsConst::eV);
+                    } else {
+                        E_bottom_erg = parms->energy_grid_bottom_erg;
+                        E_top_erg = parms->energy_grid_top_erg;
+                    }
+                    const Real V_phase_without_volume =
+                        4.0 * MathConst::pi *
+                        ((pow(E_top_erg, 3) - pow(E_bottom_erg, 3)) / 3.0);
+                    particle_scattering.vphase_over_vphase =
+                        p.rdata(PIdx::Vphase) / V_phase_without_volume;
+                }
             });
         }
 
@@ -820,12 +943,108 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
         });
         BL_PROFILE_VAR_STOP(blp_gather);
 
+        if (parms->attenuation_scattering_opacity > 0.0) {
+            auto scatarr = scat_state[pti].array();
+            constexpr int n_scat_per_energy = GIdx::n_c_in_scat_per_energy;
+            constexpr int n_scat_flavor = GIdx::n_c_in_scat_flavor;
+            const int num_cell_scat_comps = num_cells * n_scat_comps;
+            BL_PROFILE_VAR("deposit_to_mesh_cell::gather_scat",
+                           blp_gather_scat);
+            amrex::ParallelFor(num_cell_scat_comps, [=] AMREX_GPU_DEVICE(
+                                                        int task) {
+                const int cell_index = task / n_scat_comps;
+                const int scat_comp = task - cell_index * n_scat_comps;
+
+                const int energy_target = scat_comp / n_scat_per_energy;
+                const int flavor_offset =
+                    scat_comp - energy_target * n_scat_per_energy;
+                const int nunubar = flavor_offset / n_scat_flavor;
+                const int herm_comp = flavor_offset - nunubar * n_scat_flavor;
+
+                int flavor_a = -1;
+                for (int a = 0; a < NUM_FLAVORS; ++a) {
+                    if (herm_comp == PIdx::offset(a, a, PIdx::Re)) {
+                        flavor_a = a;
+                        break;
+                    }
+                }
+                if (flavor_a < 0) return;
+
+                const int particle_begin = bin_offsets[cell_index];
+                const int particle_end = bin_offsets[cell_index + 1];
+                if (particle_begin == particle_end) return;
+
+                const int home_i = box_lo.x + (cell_index % box_len.x);
+                const int home_j =
+                    box_lo.y + ((cell_index / box_len.x) % box_len.y);
+                const int home_k =
+                    box_lo.z + (cell_index / (box_len.x * box_len.y));
+
+                amrex::Real inv_vol[stencil_width][stencil_width]
+                                   [stencil_width];
+                ActiveMetric metric;
+                for (int sk = 0; sk < stencil_width; ++sk) {
+                    for (int sj = 0; sj < stencil_width; ++sj) {
+                        for (int si = 0; si < stencil_width; ++si) {
+                            amrex::GpuArray<amrex::Real, 3> lo{}, hi{};
+                            cell_bounds(home_i + si - 1, home_j + sj - 1,
+                                        home_k + sk - 1, p_lo, dxi, lo, hi);
+                            const amrex::Real V_cell = metric.vol(
+                                lo[0], hi[0], lo[1], hi[1], lo[2], hi[2]);
+                            inv_vol[sk][sj][si] = 1.0 / V_cell;
+                        }
+                    }
+                }
+
+                const int particle_component_index =
+                    PIdx::N00_Re + nunubar * comps_per_block + herm_comp;
+
+                StencilSums<stencil_width> sums;
+                for (int sorted_index = particle_begin;
+                     sorted_index < particle_end; ++sorted_index) {
+                    const ParticleScattering& particle_scattering =
+                        scattering[sorted_index];
+                    if (particle_scattering.energy_bin != energy_target ||
+                        particle_scattering.vphase_over_vphase == 0.0) {
+                        continue;
+                    }
+
+                    const amrex::Real value =
+                        ptd.rdata(
+                            particle_component_index)[bin_order[sorted_index]] *
+                        particle_scattering.kappa[nunubar][flavor_a] *
+                        particle_scattering.vphase_over_vphase;
+
+                    for (int sk = 0; sk < stencil_width; ++sk) {
+                        const amrex::Real weight_k =
+                            particle_scattering.shape_raw[2][sk];
+                        for (int sj = 0; sj < stencil_width; ++sj) {
+                            const amrex::Real weight_jk =
+                                weight_k * particle_scattering.shape_raw[1][sj];
+                            for (int si = 0; si < stencil_width; ++si) {
+                                sums.value[sk][sj][si] +=
+                                    weight_jk *
+                                    particle_scattering.shape_raw[0][si] *
+                                    value * inv_vol[sk][sj][si];
+                            }
+                        }
+                    }
+                }
+
+                flush_stencil(sums, scatarr, scat_comp, 0, home_i, home_j,
+                              home_k, domain_lo, domain_hi, reflect_lo,
+                              reflect_hi);
+            });
+            BL_PROFILE_VAR_STOP(blp_gather_scat);
+        }
+
         // Sync to prevent work on another box from overwriting the
         // DenesBins and geometry storage before the kernels finish using them.
         amrex::Gpu::streamSynchronize();
     }
 
     deposit_state.SumBoundary(geom.periodicity());
+    scat_state.SumBoundary(geom.periodicity());
 }
 
 void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
@@ -856,7 +1075,8 @@ void deposit_to_mesh(const FlavoredNeutrinoContainer& neutrinos,
             if (dn > 1.0e-11 * std::max(rn, 1.0e-100)) {
                 if (nbad < 6)
                     amrex::Print()
-                        << "  DEPOSIT MISMATCH comp " << c
+                        << "  DEPOSIT MISMATCH comp " << c << " ("
+                        << GIdx::names[c + GIdx::N00_Re] << ")"
                         << "  norm0(diff)=" << dn << "  norm0(ref)=" << rn
                         << "  rel=" << dn / std::max(rn, 1.0e-100) << "\n";
                 ++nbad;
