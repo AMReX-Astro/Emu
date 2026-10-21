@@ -100,10 +100,10 @@ max_grid_size_y = 1
 max_grid_size_z = 1
 
 # 3.75e-8 / 1.0e-13 = 375000
-nsteps = 375000
+nsteps = 1000
 
 # Fixed timestep (s). Must stay at or below dx/c = 6.515324155e-12 s.
-minimum_time_step = 1.0e-13
+minimum_time_step = 1.0e-12
 
 end_time = 3.75e-8
 
@@ -120,8 +120,8 @@ vupy = 0.0
 vupz = 0.0
 
 # Every 25000 steps = 2.5e-9 s. Hits 0, 5.0e-9, 1.0e-8, 2.0e-8, 3.75e-8 s.
-write_plot_every = 25000
-write_plot_particles_every = 25000
+write_plot_every = 1000
+write_plot_particles_every = 1000
 
 do_restart = 0
 restart_dir = ""

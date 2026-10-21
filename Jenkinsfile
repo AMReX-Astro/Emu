@@ -184,6 +184,18 @@ pipeline {
 			}
 		}
 
+		stage('Monochromatic Gaussian Diffusion'){ steps{
+				dir('Exec'){
+					sh 'python ../Scripts/initial_conditions/st14_monocromatic_gaussian_diffusion_test.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_gaussian_diffusion_test'
+					sh 'python ../Scripts/data_reduction/convertToHDF5.py'
+					sh 'python ../Scripts/tests/gaussian_diffusion_test.py'
+					archiveArtifacts artifacts: '*.pdf'
+					sh 'rm -rf plt* *pdf allData.h5'
+				}
+			}
+		}
+
 		stage('Multi-Energy Isotropic-Kernel Scattering'){ steps{
 
 				dir('Exec'){
