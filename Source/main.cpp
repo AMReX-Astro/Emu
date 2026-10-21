@@ -241,7 +241,13 @@ void evolve_flavor(const TestParams* parms) {
     } else {
         // Initialize old particles
         neutrinos_old.InitParticles(parms);
-        neutrinos_old.ApplyPerturbations(parms);
+        if (parms->analytic_initial_conditions > 0) {
+            // Occupations come from the analytic n(x) profile, not from the
+            // particle file
+            neutrinos_old.ApplyAnalyticInitialConditions(parms);
+        } else {
+            neutrinos_old.ApplyPerturbations(parms);
+        }
     }
 
     // Sort before the copy and the initial deposit, so the pre-loop deposit and

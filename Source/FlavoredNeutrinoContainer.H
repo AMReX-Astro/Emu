@@ -147,6 +147,11 @@ class FlavoredNeutrinoContainer
 
     void ApplyPerturbations(const TestParams* parms);
 
+    // Set the N and Nbar occupations from the analytic profile selected by
+    // analytic_initial_conditions (0 = nothing, 1 = Gaussian n(x)).
+    // Defined in FlavoredNeutrinoContainerAnalyticIC.cpp.
+    void ApplyAnalyticInitialConditions(const TestParams* parms);
+
     void ApplyBoundaryConditions(const TestParams* parms);
 
     void SyncLocation(int type);

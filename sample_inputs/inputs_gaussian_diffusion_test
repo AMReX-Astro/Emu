@@ -1,0 +1,186 @@
+# =============================================================================
+# Monochromatic Gaussian diffusion test (EMU inputs)
+# =============================================================================
+#
+# Purpose
+# -------
+# A monoenergetic Gaussian in x spreads by isotropic, elastic scattering in a
+# stationary medium. Flavor evolution, absorption, emission, pair processes,
+# and energy-changing collisions are off. Only the isotropic elastic
+# scattering kernel is active, with one constant inverse mean free path.
+#
+# Geometry
+# --------
+# - x from 0 to 200 cm, Nx = 1024, dx = Lx/Nx = 0.1953125 cm
+# - One cell in y and one cell in z, each of width dx, periodic on every face
+# - Momenta from
+#   Scripts/initial_conditions/st14_monocromatic_gaussian_diffusion_test.py
+#   That script writes NaN occupations as placeholders. With
+#   analytic_initial_conditions = 1 (below) they are replaced at runtime by
+#   FlavoredNeutrinoContainer::ApplyAnalyticInitialConditions with
+#     n(x, 0) = n_bg + A0 * exp(-(x - x0)^2 / (2 s0^2)),
+#   periodic in x, applied to every flavor and antiflavor diagonal. Each
+#   particle gets N = f * Vphase with f = n(x) / [4 pi (E_top^3 - E_bot^3)/3],
+#   so the deposited grid density equals n(x). Off-diagonals are zero and
+#   no perturbation is applied in this mode.
+#
+# Opacity convention
+# ------------------
+# IMFP_scat*_cm is the scattering inverse mean free path in 1/cm. The
+# collision operator multiplies that length by PhysConst::c, so the
+# scattering rate is Gamma_s = c * IMFP_scat.
+#   chi_s   = 5.91e-01 cm^-1   -> IMFP_scat{0,1,2}[_bar]_cm
+#   lambda_s = 1 / chi_s ≈ 1.69 cm
+#   c       = 2.99792458e10 cm/s   (PhysConst::c)
+#   Gamma_s = c * chi_s ≈ 1.77e10 s^-1
+# Chosen so physical diffusion D = c/(3 chi_s) dominates numerical diffusion
+# on this grid. Absorption IMFPs are not read when
+# attenuation_absorption_opacity = 0, so there is no absorption or emission.
+# IMFP_method = 1 is a single energy group, so scattering stays elastic.
+# Pair processes are not in the collision operator.
+#
+# Time integration
+# ----------------
+# compute_dt takes dx/c * cfl_factor and raises it to minimum_time_step.
+# The step is dt = minimum_time_step = 1.0e-12 s.
+#   c*dt = 0.0299792458 cm  <  dx = 0.1953125 cm   (one-cell drift limit)
+#   dt*Gamma_s ≈ 0.0177     << RK4 real-axis limit (~2.8)
+# RK4 (integration.rk.type = 4) has no embedded error estimate, so the
+# adaptive hook in main.cpp does not change this step.
+# nsteps = 1000 caps the run at t = 1.0e-9 s (end_time = 3.75e-8 is unused).
+# Plotfiles at t = 0 and every write_plot_every = 1000 steps (t = 1.0e-9 s).
+# =============================================================================
+
+# Required keys, but not used: with analytic_initial_conditions = 1 the
+# perturbation routine is skipped entirely.
+perturbation_type = 0
+perturbation_amplitude = 0.0
+
+#################################
+# Analytic initial conditions   #
+#################################
+# 0 = occupations from particle_input.dat, 1 = Gaussian n(x) set at runtime
+# (requires IMFP_method = 1 for the energy bin edges).
+analytic_initial_conditions = 1
+# n(x, 0) = n_bg + A0 * exp(-(x - x0)^2 / (2 s0^2)); densities in 1/ccm,
+# lengths in cm. x0 is the domain center.
+gaussian_n_bg_ccm = 1.0e28
+gaussian_A0_ccm = 1.0e29
+gaussian_x0_cm = 100.0
+gaussian_s0_cm = 5.0
+
+# Flavor commutator off. Masses and mixing angles below are zero as well.
+attenuation_hamiltonians = 0.0
+attenuation_vacuum = 0.0
+attenuation_matter = 0.0
+attenuation_self_interaction = 0.0
+
+# dt = minimum_time_step. cfl_factor = dt * c / dx, so the CFL estimate
+# equals that floor and the one-cell drift check uses the real cell size.
+cfl_factor = 0.015349373849600001
+
+integration.type = 1
+integration.rk.type = 4          # RK4 (0=User, 1=ForwardEuler, 2=Trapezoid, 3=SSPRK3, 4=RK4, 5=DormandPrince)
+integration.use_adaptive_time_step = 0
+
+# Domain. dx = dy = dz = 0.1953125 cm.
+ncell = (1024, 1, 1)
+Lx = 200.0
+Ly = 0.1953125
+Lz = 0.1953125
+
+# One copy of the direction list per cell.
+nppc  = (1, 1, 1)
+particle_data_filename = "particle_input.dat"
+
+# 1024/1024 = 1 boxes along x. y and z are a single cell.
+max_grid_size_x = 1024
+max_grid_size_y = 1
+max_grid_size_z = 1
+
+# Cap at 1000 steps -> t = 1.0e-9 s with the timestep below.
+nsteps = 1000
+
+# Fixed timestep (s). Must stay at or below dx/c = 6.515324155e-12 s.
+minimum_time_step = 1.0e-12
+
+# Unused while nsteps * minimum_time_step < end_time.
+end_time = 3.75e-8
+
+# Make FPE signal errors so we get a Backtrace
+amrex.fpe_trap_invalid=1
+
+# Stationary medium. Constant opacity does not use these; T_MeV is kept
+# positive because the equilibrium-distribution evaluation divides by T.
+rho_g_ccm = 0
+T_MeV = 7.0
+Ye = 0
+vupx = 0.0
+vupy = 0.0
+vupz = 0.0
+
+# Every 1000 steps = 1.0e-9 s. Hits t = 0 and t = 1.0e-9 s.
+write_plot_every = 1000
+write_plot_particles_every = 1000
+
+do_restart = 0
+restart_dir = ""
+
+# Isotropic in-scattering is deposited only by the atomic kernel.
+deposit_method = 0
+
+###############################
+# NEUTRINO PHYSICS PARAMETERS #
+###############################
+# All zero: no vacuum mixing. Flavor evolution is also multiplied by
+# attenuation_hamiltonians = 0.
+
+mass1_eV = 0
+mass2_eV = 0
+mass3_eV = 0
+
+theta12_degrees = 0
+theta23_degrees = 0
+theta13_degrees = 0
+
+alpha1_degrees = 0
+alpha2_degrees = 0
+deltaCP_degrees = 0
+
+#################
+# opacity stuff #
+#################
+# Constant fluid opacities. Absorption off, scattering on.
+IMFP_method = 1
+energy_grid_bottom_MeV = 49.583049921462404
+energy_grid_top_MeV = 50.416950078537596
+attenuation_absorption_opacity = 0
+attenuation_scattering_opacity = 1
+
+# chi_s = 5.91e-01 cm^-1 for every flavor and antiflavor.
+IMFP_scat0_cm = 5.91e-01
+IMFP_scat1_cm = 5.91e-01
+IMFP_scat2_cm = 5.91e-01
+IMFP_scat0bar_cm = 5.91e-01
+IMFP_scat1bar_cm = 5.91e-01
+IMFP_scat2bar_cm = 5.91e-01
+
+#################
+# Background Ye, T and rho
+#################
+read_rho_T_Ye_from_table = 0
+
+#################
+# Blackhole
+#################
+do_blackhole = 0
+
+#################
+# Boundary conditions
+#################
+bc_xlo = periodic
+bc_xhi = periodic
+bc_ylo = periodic
+bc_yhi = periodic
+bc_zlo = periodic
+bc_zhi = periodic
