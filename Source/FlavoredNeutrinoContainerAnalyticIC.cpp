@@ -61,10 +61,10 @@ void FlavoredNeutrinoContainer::ApplyAnalyticInitialConditions(
     if (parms->analytic_initial_conditions == 1) {
         amrex::Print()
             << "Setting analytic (Gaussian) initial conditions: n_bg = "
-            << parms->gaussian_n_bg_ccm << " 1/ccm, A0 = "
-            << parms->gaussian_A0_ccm << " 1/ccm, x0 = "
-            << parms->gaussian_x0_cm << " cm, s0 = " << parms->gaussian_s0_cm
-            << " cm" << std::endl;
+            << parms->gaussian_n_bg_ccm
+            << " 1/ccm, A0 = " << parms->gaussian_A0_ccm
+            << " 1/ccm, x0 = " << parms->gaussian_x0_cm
+            << " cm, s0 = " << parms->gaussian_s0_cm << " cm" << std::endl;
     }
 
 #ifdef _OPENMP
@@ -101,20 +101,19 @@ void FlavoredNeutrinoContainer::ApplyAnalyticInitialConditions(
                 // Cell containing the particle and its volume, computed the
                 // same way InitParticles does it (cell_bounds +
                 // ActiveMetric::vol).
-                const int ii = static_cast<int>(
-                    std::floor((p.pos(0) - p_lo[0]) * dxi[0]));
-                const int jj = static_cast<int>(
-                    std::floor((p.pos(1) - p_lo[1]) * dxi[1]));
-                const int kk = static_cast<int>(
-                    std::floor((p.pos(2) - p_lo[2]) * dxi[2]));
+                const int ii =
+                    static_cast<int>(std::floor((p.pos(0) - p_lo[0]) * dxi[0]));
+                const int jj =
+                    static_cast<int>(std::floor((p.pos(1) - p_lo[1]) * dxi[1]));
+                const int kk =
+                    static_cast<int>(std::floor((p.pos(2) - p_lo[2]) * dxi[2]));
 
                 amrex::GpuArray<amrex::Real, 3> cell_lo{}, cell_hi{};
                 cell_bounds(ii, jj, kk, p_lo, dxi, cell_lo, cell_hi);
 
                 ActiveMetric m;
-                const Real V_cell =
-                    m.vol(cell_lo[0], cell_hi[0], cell_lo[1], cell_hi[1],
-                          cell_lo[2], cell_hi[2]);
+                const Real V_cell = m.vol(cell_lo[0], cell_hi[0], cell_lo[1],
+                                          cell_hi[1], cell_lo[2], cell_hi[2]);
 
                 const Real V_phase_space_cell =
                     V_cell * V_phase_space_cell_without_volume;
@@ -123,8 +122,7 @@ void FlavoredNeutrinoContainer::ApplyAnalyticInitialConditions(
                 // so the profile wraps around the periodic domain.
                 Real d = p.pos(0) - x0;
                 d -= Lx * std::round(d / Lx);
-                const Real n =
-                    n_bg + A0 * std::exp(-(d * d) / (2.0 * s0 * s0));
+                const Real n = n_bg + A0 * std::exp(-(d * d) / (2.0 * s0 * s0));
 
                 // Occupation f = (neutrinos in the cell) / (cell phase-space
                 // volume), then the number carried by this particle.
