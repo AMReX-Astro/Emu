@@ -13,7 +13,7 @@ USE_CUDA      = TRUE
 AMREX_CUDA_ARCH=80
 
 USE_HDF5=TRUE
-HDF5_HOME=/opt/cray/pe/hdf5-parallel/1.12.2.9/
+HDF5_HOME=/opt/cray/pe/hdf5-parallel/1.14.3.9/
 
 EMU_HOME = ..
 AMREX_HOME = ../submodules/amrex
