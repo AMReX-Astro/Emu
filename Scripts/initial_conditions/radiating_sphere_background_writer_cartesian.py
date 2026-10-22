@@ -52,9 +52,9 @@ def create_grid(cell_numbers, dimensions):
 # EMU grid parameters
 
 R       = 1.17e6    # sphere radius, cm
-ncellsx = 128 # scalar, number of cells in x-direction
-ncellsy = 128 # scalar, number of cells in y-direction
-ncellsz = 128 # scalar, number of cells in z-direction
+ncellsx = 127 # scalar, number of cells in x-direction
+ncellsy = 127 # scalar, number of cells in y-direction
+ncellsz = 127 # scalar, number of cells in z-direction
 xmin    = 0.0 #cm
 xmax    = 4.4e6 #cm
 ymin    = 0.0 #cm
