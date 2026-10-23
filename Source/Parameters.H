@@ -103,6 +103,7 @@ struct TestParams : public amrex::Gpu::Managed {
     double bh_center_x;  // Black hole x coordinate (cm)
     double bh_center_y;  // Black hole y coordinate (cm)
     double bh_center_z;  // Black hole z coordinate (cm)
+    double bh_mass_cm;   // Schwarzschild mass GM/c^2 (cm). 0 = flat-space transport
 
     // Background matter rho, Ye, T flag
     int read_rho_T_Ye_from_table;  // Flag to read rho, Ye, T from a table
@@ -238,11 +239,19 @@ struct TestParams : public amrex::Gpu::Managed {
         // Do black hole
         pp.get("do_blackhole", do_blackhole);
         // Black hole properties
+        bh_mass_cm = 0.0;
         if (do_blackhole == 1) {
             pp.get("bh_radius", bh_radius);
             pp.get("bh_center_x", bh_center_x);
             pp.get("bh_center_y", bh_center_y);
             pp.get("bh_center_z", bh_center_z);
+            // Nonzero: particles follow Schwarzschild geodesics about bh_center
+            pp.query("bh_mass_cm", bh_mass_cm);
+            // The geodesic rhs is singular at the horizon r = 2M, so the
+            // absorbing sphere must cover it
+            AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+                bh_mass_cm >= 0.0 && bh_radius >= 2.0 * bh_mass_cm,
+                "bh_mass_cm must be >= 0 and bh_radius >= 2 * bh_mass_cm");
         }
 
         // Flag for collision term treatment

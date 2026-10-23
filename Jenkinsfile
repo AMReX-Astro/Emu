@@ -124,6 +124,17 @@ pipeline {
 				}
 			}
 		}
+		stage('Schwarzschild Light Ring'){ steps{
+				dir('Exec'){
+					sh 'python ../Scripts/initial_conditions/st12_schwarzschild_light_ring.py'
+					sh 'mpirun -np 4 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_schwarzschild_light_ring'
+					sh 'python ../Scripts/data_reduction/write_particles_all_domain.py'
+					sh 'python ../Scripts/tests/schwarzschild_light_ring_test.py'
+					archiveArtifacts artifacts: '*.pdf'
+					sh 'rm -rf plt* *pdf'
+				}
+			}
+		}
 		stage('Fiducial 3F CPU HDF5'){ steps{
 				dir('Exec'){
 					sh 'cp ../makefiles/GNUmakefile_jenkins_HDF5 GNUmakefile'
