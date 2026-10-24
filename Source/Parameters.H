@@ -103,7 +103,8 @@ struct TestParams : public amrex::Gpu::Managed {
     double bh_center_x;  // Black hole x coordinate (cm)
     double bh_center_y;  // Black hole y coordinate (cm)
     double bh_center_z;  // Black hole z coordinate (cm)
-    double bh_mass_cm;   // Schwarzschild mass GM/c^2 (cm). 0 = flat-space transport
+    double
+        bh_mass_cm;  // Schwarzschild mass GM/c^2 (cm). 0 = flat-space transport
 
     // Background matter rho, Ye, T flag
     int read_rho_T_Ye_from_table;  // Flag to read rho, Ye, T from a table
