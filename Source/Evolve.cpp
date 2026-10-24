@@ -12,6 +12,7 @@
 #include "NuLibTable.H"
 
 #include "Metric.H"
+#include "Schwarzschild.H"
 
 #include "NuLibTableFunctions.H"
 
@@ -1254,20 +1255,32 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
 
             //getting the rhs of the geodesic equations in cartesian coordinate system
 
-            CartesianMetric metric;
+            GeodesicArray geodesic_rhs;
+            if (parms->bh_mass_cm > 0) {
+                // x/y/z were overwritten with dx/dt above; the metric needs
+                // the stage position relative to the black hole
+                p.rdata(PIdx::x) = x - parms->bh_center_x;
+                p.rdata(PIdx::y) = y - parms->bh_center_y;
+                p.rdata(PIdx::z) = z - parms->bh_center_z;
+                const SchwCartesianMetric metric(parms->bh_mass_cm);
+                geodesic_rhs = metric.geodesic_rhs(p);
+            } else {
+                const CartesianMetric metric;
+                geodesic_rhs = metric.geodesic_rhs(p);
+            }
 
-            GeodesicArray geodesic_rhs = metric.geodesic_rhs(p);
-
+            // geodesic_rhs is d/d(ct) (geometric units, lengths in cm);
+            // Emu integrates in seconds, so scale by c
             // set the dx/dt values
             p.rdata(PIdx::time) = geodesic_rhs[0];
             p.rdata(PIdx::x) = geodesic_rhs[1] * PhysConst::c;
             p.rdata(PIdx::y) = geodesic_rhs[2] * PhysConst::c;
             p.rdata(PIdx::z) = geodesic_rhs[3] * PhysConst::c;
             // set the d(p)/dt values
-            p.rdata(PIdx::pupt) = geodesic_rhs[4];
-            p.rdata(PIdx::pupx) = geodesic_rhs[5];
-            p.rdata(PIdx::pupy) = geodesic_rhs[6];
-            p.rdata(PIdx::pupz) = geodesic_rhs[7];
+            p.rdata(PIdx::pupt) = geodesic_rhs[4] * PhysConst::c;
+            p.rdata(PIdx::pupx) = geodesic_rhs[5] * PhysConst::c;
+            p.rdata(PIdx::pupy) = geodesic_rhs[6] * PhysConst::c;
+            p.rdata(PIdx::pupz) = geodesic_rhs[7] * PhysConst::c;
 
             p.rdata(PIdx::Vphase) = 0;
             // Hydro is a lookup, not a time-evolved field.

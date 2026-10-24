@@ -148,6 +148,8 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
     const auto p_lo = Geom(lev).ProbLoArray();
     const auto& a_bounds = Geom(lev).ProbDomain();
 
+    const int coord_sys = parms->coord_sys;
+
     const int nlocs_per_cell =
         AMREX_D_TERM(parms->nppc[0], *parms->nppc[1], *parms->nppc[2]);
 
@@ -243,115 +245,115 @@ void FlavoredNeutrinoContainer::InitParticles(const TestParams* parms) {
         //===============================================//
         // Initialize particle data in the particle tile //
         //===============================================//
-        amrex::ParallelFor(tile_box, [=] AMREX_GPU_DEVICE(int i, int j,
-                                                          int k) noexcept {
-            int ix = i - lo.x;
-            int iy = j - lo.y;
-            int iz = k - lo.z;
-            int nx = hi.x - lo.x + 1;
-            int ny = hi.y - lo.y + 1;
-            int nz = hi.z - lo.z + 1;
-            unsigned int uix = amrex::min(nx - 1, amrex::max(0, ix));
-            unsigned int uiy = amrex::min(ny - 1, amrex::max(0, iy));
-            unsigned int uiz = amrex::min(nz - 1, amrex::max(0, iz));
-            unsigned int cellid = (uix * ny + uiy) * nz + uiz;
+        amrex::ParallelFor(
+            tile_box, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+                int ix = i - lo.x;
+                int iy = j - lo.y;
+                int iz = k - lo.z;
+                int nx = hi.x - lo.x + 1;
+                int ny = hi.y - lo.y + 1;
+                int nz = hi.z - lo.z + 1;
+                unsigned int uix = amrex::min(nx - 1, amrex::max(0, ix));
+                unsigned int uiy = amrex::min(ny - 1, amrex::max(0, iy));
+                unsigned int uiz = amrex::min(nz - 1, amrex::max(0, iz));
+                unsigned int cellid = (uix * ny + uiy) * nz + uiz;
 
-            for (int i_loc = 0; i_loc < nlocs_per_cell; i_loc++) {
-                Real r[3];
+                for (int i_loc = 0; i_loc < nlocs_per_cell; i_loc++) {
+                    Real r[3];
 
-                // getting the upper and lower bounds of the cell
-                amrex::GpuArray<amrex::Real, 3> cell_lo{}, cell_hi{};
-                cell_bounds(i, j, k, p_lo, dxi, cell_lo, cell_hi);
+                    // getting the upper and lower bounds of the cell
+                    amrex::GpuArray<amrex::Real, 3> cell_lo{}, cell_hi{};
+                    cell_bounds(i, j, k, p_lo, dxi, cell_lo, cell_hi);
 
-                //calculating cell volume
-                ActiveMetric m;
-                const amrex::Real V_cell =
-                    m.vol(cell_lo[0], cell_hi[0], cell_lo[1], cell_hi[1],
-                          cell_lo[2], cell_hi[2]);
+                    //calculating cell volume
+                    ActiveMetric m;
+                    const amrex::Real V_cell =
+                        m.vol(cell_lo[0], cell_hi[0], cell_lo[1], cell_hi[1],
+                              cell_lo[2], cell_hi[2]);
 
-                const Real scale_fac = V_cell / nlocs_per_cell;
+                    const Real scale_fac = V_cell / nlocs_per_cell;
 
-                get_position_unit_cell(r, parms->nppc, i_loc);
+                    get_position_unit_cell(r, parms->nppc, i_loc);
 
-                Real x = p_lo[0] + (i + r[0]) * dx[0];
-                Real y = p_lo[1] + (j + r[1]) * dx[1];
-                Real z = p_lo[2] + (k + r[2]) * dx[2];
+                    Real x = p_lo[0] + (i + r[0]) * dx[0];
+                    Real y = p_lo[1] + (j + r[1]) * dx[1];
+                    Real z = p_lo[2] + (k + r[2]) * dx[2];
 
-                if (x >= a_bounds.hi(0) || x < a_bounds.lo(0) ||
-                    y >= a_bounds.hi(1) || y < a_bounds.lo(1) ||
-                    z >= a_bounds.hi(2) || z < a_bounds.lo(2))
-                    continue;
+                    if (x >= a_bounds.hi(0) || x < a_bounds.lo(0) ||
+                        y >= a_bounds.hi(1) || y < a_bounds.lo(1) ||
+                        z >= a_bounds.hi(2) || z < a_bounds.lo(2))
+                        continue;
 
-                for (int i_direction = 0; i_direction < ndirs_per_loc;
-                     i_direction++) {
-                    // Get the Particle data corresponding to our particle index in pidx
-                    const int pidx = poffset[cellid] - poffset[0] +
-                                     i_loc * ndirs_per_loc + i_direction;
-                    FlavoredNeutrinoContainer::FNParticleView p{ptd, pidx};
+                    for (int i_direction = 0; i_direction < ndirs_per_loc;
+                         i_direction++) {
+                        // Get the Particle data corresponding to our particle index in pidx
+                        const int pidx = poffset[cellid] - poffset[0] +
+                                         i_loc * ndirs_per_loc + i_direction;
+                        FlavoredNeutrinoContainer::FNParticleView p{ptd, pidx};
 
-                    // Set particle ID using the ID for the first of the new particles in this tile
-                    // plus our zero-based particle index
-                    p.id() = new_pid + pidx;
+                        // Set particle ID using the ID for the first of the new particles in this tile
+                        // plus our zero-based particle index
+                        p.id() = new_pid + pidx;
 
-                    // Set CPU ID
-                    p.cpu() = procID;
+                        // Set CPU ID
+                        p.cpu() = procID;
 
-                    // copy over all particle data from the angular distribution
-                    for (int i_attrib = 0; i_attrib < PIdx::nattribs;
-                         i_attrib++)
-                        p.rdata(i_attrib) =
-                            particle_data_p[i_direction][i_attrib];
+                        // copy over all particle data from the angular distribution
+                        for (int i_attrib = 0; i_attrib < PIdx::nattribs;
+                             i_attrib++)
+                            p.rdata(i_attrib) =
+                                particle_data_p[i_direction][i_attrib];
 
-                    // basic checks
-                    AMREX_ASSERT(p.rdata(PIdx::N00_Re) >= 0);
-                    AMREX_ASSERT(p.rdata(PIdx::N11_Re) >= 0);
-                    AMREX_ASSERT(p.rdata(PIdx::N00_Rebar) >= 0);
-                    AMREX_ASSERT(p.rdata(PIdx::N11_Rebar) >= 0);
+                        // basic checks
+                        AMREX_ASSERT(p.rdata(PIdx::N00_Re) >= 0);
+                        AMREX_ASSERT(p.rdata(PIdx::N11_Re) >= 0);
+                        AMREX_ASSERT(p.rdata(PIdx::N00_Rebar) >= 0);
+                        AMREX_ASSERT(p.rdata(PIdx::N11_Rebar) >= 0);
 #if NUM_FLAVORS == 3
-                    AMREX_ASSERT(p.rdata(PIdx::N22_Re) >= 0);
-                    AMREX_ASSERT(p.rdata(PIdx::N22_Rebar) >= 0);
+                        AMREX_ASSERT(p.rdata(PIdx::N22_Re) >= 0);
+                        AMREX_ASSERT(p.rdata(PIdx::N22_Rebar) >= 0);
 #endif
 
-                    // Set particle position
-                    p.pos(0) = x;
-                    p.pos(1) = y;
-                    p.pos(2) = z;
+                        // Set particle position
+                        p.pos(0) = x;
+                        p.pos(1) = y;
+                        p.pos(2) = z;
 
-                    // Set particle integrated position
-                    p.rdata(PIdx::x) = x;
-                    p.rdata(PIdx::y) = y;
-                    p.rdata(PIdx::z) = z;
-                    p.rdata(PIdx::time) = 0;
+                        // Set particle integrated position
+                        p.rdata(PIdx::x) = x;
+                        p.rdata(PIdx::y) = y;
+                        p.rdata(PIdx::z) = z;
+                        p.rdata(PIdx::time) = 0;
 
-                    // scale particle numbers based on number of points per cell and the cell volume
-                    p.rdata(PIdx::N00_Re) *= scale_fac;
-                    p.rdata(PIdx::N11_Re) *= scale_fac;
-                    p.rdata(PIdx::N00_Rebar) *= scale_fac;
-                    p.rdata(PIdx::N11_Rebar) *= scale_fac;
+                        // scale particle numbers based on number of points per cell and the cell volume
+                        p.rdata(PIdx::N00_Re) *= scale_fac;
+                        p.rdata(PIdx::N11_Re) *= scale_fac;
+                        p.rdata(PIdx::N00_Rebar) *= scale_fac;
+                        p.rdata(PIdx::N11_Rebar) *= scale_fac;
 #if SET_EQUILIBRIUM == 1
-                    p.rdata(PIdx::N00_Re_eq) *= scale_fac;
-                    p.rdata(PIdx::N11_Re_eq) *= scale_fac;
-                    p.rdata(PIdx::N00_Rebar_eq) *= scale_fac;
-                    p.rdata(PIdx::N11_Rebar_eq) *= scale_fac;
+                        p.rdata(PIdx::N00_Re_eq) *= scale_fac;
+                        p.rdata(PIdx::N11_Re_eq) *= scale_fac;
+                        p.rdata(PIdx::N00_Rebar_eq) *= scale_fac;
+                        p.rdata(PIdx::N11_Rebar_eq) *= scale_fac;
 #endif
 #if NUM_FLAVORS == 3
-                    p.rdata(PIdx::N22_Re) *= scale_fac;
-                    p.rdata(PIdx::N22_Rebar) *= scale_fac;
+                        p.rdata(PIdx::N22_Re) *= scale_fac;
+                        p.rdata(PIdx::N22_Rebar) *= scale_fac;
 #if SET_EQUILIBRIUM == 1
-                    p.rdata(PIdx::N22_Re_eq) *= scale_fac;
-                    p.rdata(PIdx::N22_Rebar_eq) *= scale_fac;
+                        p.rdata(PIdx::N22_Re_eq) *= scale_fac;
+                        p.rdata(PIdx::N22_Rebar_eq) *= scale_fac;
 #endif
 #endif
 
-                    // Set phase space volume Vphase = dx^3 * dOmega * dE^3 / 3
-                    // From initial conditions, Vphase gets dOmega * dE^3 / 3
-                    // Here we multiply this value by the cell volume dx[0] * dx[1] * dx[2]
-                    // Divide by the number of particle emission points inside the cell
-                    p.rdata(PIdx::Vphase) *= scale_fac;
+                        // Set phase space volume Vphase = dx^3 * dOmega * dE^3 / 3
+                        // From initial conditions, Vphase gets dOmega * dE^3 / 3
+                        // Here we multiply this value by the cell volume dx[0] * dx[1] * dx[2]
+                        // Divide by the number of particle emission points inside the cell
+                        p.rdata(PIdx::Vphase) *= scale_fac;
 
-                }  // loop over direction
-            }  // loop over location
-        });  // loop over grid cells
+                    }  // loop over direction
+                }  // loop over location
+            });  // loop over grid cells
     }  // loop over multifabs
 
     // get the minimum neutrino energy for calculating the timestep
