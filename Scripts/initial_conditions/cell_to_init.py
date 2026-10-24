@@ -100,5 +100,16 @@ if set_vacuum_initial_conditions == 1:
 header = np.array(list(rkey.keys()), dtype=object)
 particles_with_header = np.vstack([header, particles])
 
+# Infer angular/energy counts from the particle list (rows = n_dir * n_E).
+unique_energies = np.unique(np.round(particles[:, rkey["pupt"]], decimals=12))
+n_energies = max(len(unique_energies), 1)
+if n_particles % n_energies != 0:
+    raise ValueError(
+        "particle count ({}) is not divisible by number of unique energies ({})".format(
+            n_particles, n_energies
+        )
+    )
+n_directions = n_particles // n_energies
+
 # Write particles initial condition file
-write_particles(particles_with_header, "number_of_flavors = "+str(NF), "particle_input.dat")
+write_particles(particles_with_header, NF, "particle_input.dat", n_directions, n_energies)

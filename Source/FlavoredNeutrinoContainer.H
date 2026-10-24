@@ -145,6 +145,8 @@ class FlavoredNeutrinoContainer
 
     void InitParticles(const TestParams* parms);
 
+    void ApplyPerturbations(const TestParams* parms);
+
     void ApplyBoundaryConditions(const TestParams* parms);
 
     void SyncLocation(int type);

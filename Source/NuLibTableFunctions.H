@@ -1,6 +1,10 @@
 #ifndef NULIBTABLEFUCNTIONS_HXX
 #define NULIBTABLEFUCNTIONS_HXX
 
+#include <AMReX.H>
+#include <AMReX_REAL.H>
+
+#include "Constants.H"
 #include "NuLibTableHelpers.H"
 
 struct NuLib_tabulated {
@@ -32,36 +36,75 @@ struct NuLib_tabulated {
         return helperVarsInt_nulib;
     };  //get_helperVarsInt_nulib
 
-    //--------------- get opacaties ---------------------------------------------
-    AMREX_GPU_DEVICE AMREX_GPU_HOST void get_opacities(
+    //--------------- get absorption opacity ---------------------------------------------
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void get_absorption_opacity(
         double rho, double temperature, double Ye, double &absorption_opacity,
-        double &scattering_opacity, int &keyerr, int &anyerr,
-        const int idx_species, const int idx_group) const {
-        nulib_opacities(rho, temperature, Ye, absorption_opacity,
-                        scattering_opacity, keyerr, anyerr, alltables_nulib,
-                        logrho_nulib, logtemp_nulib, yes_nulib,
-                        helperVarsReal_nulib, helperVarsInt_nulib, idx_species,
-                        idx_group);
+        int &keyerr, int &anyerr, const int idx_species,
+        const int idx_group) const {
+        nulib_absorption_opacity(rho, temperature, Ye, absorption_opacity,
+                                 keyerr, anyerr, alltables_nulib, logrho_nulib,
+                                 logtemp_nulib, yes_nulib, helperVarsReal_nulib,
+                                 helperVarsInt_nulib, idx_species, idx_group);
         return;
 
         /*Actual steps:
         (1) check bounds
         (2) get interp spots
-        (3) do interpolation to get absorption and scattering opacity
+        (3) do interpolation to get absorption opacity
         */
-    };  //get_opacities
+    };  //get_absorption_opacity
+
+    //--------------- get scattering opacity ---------------------------------------------
+    AMREX_GPU_DEVICE AMREX_GPU_HOST void get_scattering_opacity(
+        double rho, double temperature, double Ye, double &scattering_opacity,
+        int &keyerr, int &anyerr, const int idx_species,
+        const int idx_group) const {
+        nulib_scattering_opacity(rho, temperature, Ye, scattering_opacity,
+                                 keyerr, anyerr, alltables_nulib, logrho_nulib,
+                                 logtemp_nulib, yes_nulib, helperVarsReal_nulib,
+                                 helperVarsInt_nulib, idx_species, idx_group);
+        return;
+
+        /*Actual steps:
+        (1) check bounds
+        (2) get interp spots
+        (3) do interpolation to get scattering opacity
+        */
+    };  //get_scattering_opacity
 
 };  //struct NuLib_tabulated
 
 struct NuLib_energies {
-    double *energy_bottom, *energy_top;
+    // Null / zero unless the NuLib table was loaded (IMFP_method == 2).
+    double *energy_bottom = nullptr;
+    double *energy_top = nullptr;
+    int ngroup = 0;
 
     //constructor for NuLib_energies
     AMREX_GPU_DEVICE AMREX_GPU_HOST NuLib_energies() =
         default;  //Need to keep it
     AMREX_GPU_DEVICE AMREX_GPU_HOST NuLib_energies(double *energy_bottom_in,
-                                                   double *energy_top_in)
-        : energy_bottom(energy_bottom_in), energy_top(energy_top_in) {}
+                                                   double *energy_top_in,
+                                                   int ngroup_in)
+        : energy_bottom(energy_bottom_in),
+          energy_top(energy_top_in),
+          ngroup(ngroup_in) {}
+
+    //--------------- find energy bin ---------------------------------------------
+    // NuLib group index for a particle energy (erg). Aborts if no bin matches.
+    AMREX_GPU_DEVICE AMREX_GPU_HOST int find_energy_bin(
+        amrex::Real neutrino_energy_erg) const {
+        const double neutrino_energy_MeV =
+            neutrino_energy_erg / (1e6 * CGSUnitsConst::eV);
+        for (int i = 0; i < ngroup; ++i) {
+            if (neutrino_energy_MeV >= energy_bottom[i] &&
+                neutrino_energy_MeV <= energy_top[i]) {
+                return i;
+            }
+        }
+        AMREX_ASSERT(0);
+        return -1;
+    };  //find_energy_bin
 
     //--------------- get energy_bottom pointer ---------------------------------------------
     AMREX_GPU_DEVICE AMREX_GPU_HOST double *get_energy_bottom_nulib() const {
