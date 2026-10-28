@@ -215,16 +215,20 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                 }
             }
 
-            // Interpolate scattering opacity from NuLib table
-            fill_scattering_opacity(parms, rho_pp, T_pp, Ye_pp,
-                                    NuLib_tabulated_obj, energy_bin, IMFP_scat,
-                                    IMFP_scatbar);
+            // Skip the NuLib lookup when scattering is turned off; the matrices
+            // stay zero and the attenuation multiply below would zero them anyway.
+            if (parms->attenuation_scattering_opacity > 0.0) {
+                fill_scattering_opacity(parms, rho_pp, T_pp, Ye_pp,
+                                        NuLib_tabulated_obj, energy_bin,
+                                        IMFP_scat, IMFP_scatbar);
 
-            // Scale interpolated IMFPs by the input attenuation factors.
-            for (int i = 0; i < NUM_FLAVORS; ++i) {
-                for (int j = 0; j < NUM_FLAVORS; ++j) {
-                    IMFP_scat[i][j] *= parms->attenuation_scattering_opacity;
-                    IMFP_scatbar[i][j] *= parms->attenuation_scattering_opacity;
+                for (int i = 0; i < NUM_FLAVORS; ++i) {
+                    for (int j = 0; j < NUM_FLAVORS; ++j) {
+                        IMFP_scat[i][j] *=
+                            parms->attenuation_scattering_opacity;
+                        IMFP_scatbar[i][j] *=
+                            parms->attenuation_scattering_opacity;
+                    }
                 }
             }
 
