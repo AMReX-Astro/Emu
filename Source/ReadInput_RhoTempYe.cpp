@@ -17,15 +17,15 @@ void set_rho_T_Ye(MultiFab& state, const Geometry& geom,
     ReadInputRhoYeT(parms->background_rho_Ye_T_table_name);
 
     using namespace background_input_rho_T_Ye;
-    int ncell_x = *n_cell_x;
-    int ncell_y = *n_cell_y;
-    int ncell_z = *n_cell_z;
-    double xmin_ = *x_min;
-    double xmax_ = *x_max;
-    double ymin_ = *y_min;
-    double ymax_ = *y_max;
-    double zmin_ = *z_min;
-    double zmax_ = *z_max;
+    int ncell_x = n_cell_x;
+    int ncell_y = n_cell_y;
+    int ncell_z = n_cell_z;
+    double xmin_ = x_min;
+    double xmax_ = x_max;
+    double ymin_ = y_min;
+    double ymax_ = y_max;
+    double zmin_ = z_min;
+    double zmax_ = z_max;
     double lx = xmax_ - xmin_;
     double ly = ymax_ - ymin_;
     double lz = zmax_ - zmin_;

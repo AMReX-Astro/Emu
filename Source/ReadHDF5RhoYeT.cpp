@@ -43,15 +43,15 @@ static int file_is_readable(std::string filename) {
 
 namespace background_input_rho_T_Ye {
 
-int *n_cell_x;
-int *n_cell_y;
-int *n_cell_z;
-double *x_min;
-double *x_max;
-double *y_min;
-double *y_max;
-double *z_min;
-double *z_max;
+int n_cell_x;
+int n_cell_y;
+int n_cell_z;
+double x_min;
+double x_max;
+double y_min;
+double y_max;
+double z_min;
+double z_max;
 double *rho_array_input;
 double *T_array_input;
 double *Ye_array_input;
@@ -129,15 +129,15 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T) {
     printf("(ReadHDF5RhoYeT.cpp) xmax_ = %f, ymax_ = %f, zmax_ = %f\n", xmax_,
            ymax_, zmax_);
 
-    n_cell_x = &ncellx_;
-    n_cell_y = &ncelly_;
-    n_cell_z = &ncellz_;
-    x_min = &xmin_;
-    x_max = &xmax_;
-    y_min = &ymin_;
-    y_max = &ymax_;
-    z_min = &zmin_;
-    z_max = &zmax_;
+    n_cell_x = ncellx_;
+    n_cell_y = ncelly_;
+    n_cell_z = ncellz_;
+    x_min = xmin_;
+    x_max = xmax_;
+    y_min = ymin_;
+    y_max = ymax_;
+    z_min = zmin_;
+    z_max = zmax_;
 
     //Allocate managed memory arena on unified memory
     ManagedArenaAllocator<double> myManagedArena;
@@ -216,6 +216,9 @@ void ReadInputRhoYeT(const std::string hdf5_background_rho_Ye_T) {
         vupz_array_input[i] =
             allbackgroundYeTrhos_temp[i + 5 * ncellx_ * ncelly_ * ncellz_];
     }
+
+    printf("(ReadHDF5RhoYeT.cpp) rho[0] = %.5e, T[0] = %.5e MeV, Ye[0] = %.6f\n",
+           rho_array_input[0], T_array_input[0], Ye_array_input[0]);
 
     // free memory of temporary array
     myManagedArena.deallocate(allbackgroundYeTrhos_temp,
