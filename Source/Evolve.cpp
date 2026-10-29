@@ -1258,11 +1258,14 @@ void interpolate_rhs_from_mesh(FlavoredNeutrinoContainer& neutrinos_rhs,
             GeodesicArray geodesic_rhs;
             if (parms->bh_mass_cm > 0) {
                 // x/y/z were overwritten with dx/dt above; the metric needs
-                // the stage position relative to the black hole
-                p.rdata(PIdx::x) = x - parms->bh_center_x;
-                p.rdata(PIdx::y) = y - parms->bh_center_y;
-                p.rdata(PIdx::z) = z - parms->bh_center_z;
-                const SchwCartesianMetric metric(parms->bh_mass_cm);
+                // the stage position (it shifts to the black hole center itself)
+                p.rdata(PIdx::x) = x;
+                p.rdata(PIdx::y) = y;
+                p.rdata(PIdx::z) = z;
+                const SchwCartesianMetric metric(
+                    parms->bh_mass_cm,
+                    amrex::RealVect(parms->bh_center_x, parms->bh_center_y,
+                                    parms->bh_center_z));
                 geodesic_rhs = metric.geodesic_rhs(p);
             } else {
                 const CartesianMetric metric;

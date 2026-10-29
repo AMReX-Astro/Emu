@@ -235,6 +235,16 @@ struct SphericalToCartesian {
     }
 };
 
+// Translates a Cartesian particle position by shift (momentum untouched).
+// Used by the Schw*Metric classes to move p into and out of the
+// black-hole-centered frame around the spherical-polar conversion.
+AMREX_GPU_DEVICE AMREX_GPU_HOST inline void shift_cartesian_position(
+    EParticle& p, const amrex::RealVect& shift) {
+    p.rdata(PIdx::x) += shift[0];
+    p.rdata(PIdx::y) += shift[1];
+    p.rdata(PIdx::z) += shift[2];
+}
+
 // The three Schw*Metric classes below differ only in their native mesh
 // frame (the base class). coord_conv/coord_conv_inv/jacobian/jacobian_inv/
 // pos_conv/pos_conv_inv/vol are inherited unchanged from that base, so any
@@ -244,17 +254,22 @@ struct SphericalToCartesian {
 // vol is inherited: the base's exact integral of sqrt(-g) between the cell
 // edges is already the Schwarzschild cell volume, since g_tt g_rr = -1 makes
 // sqrt(-g) equal to its flat-space value in every chart.
-// geodesic_rhs always takes Cartesian p: it converts p to spherical polar
+// geodesic_rhs always takes Cartesian p in absolute mesh coordinates: it
+// shifts p by -center (black hole center, set in the constructor) so the
+// black hole sits at the origin, converts p to spherical polar
 // (SphericalMetric's conversion), evaluates Metric::geodesic_rhs_from with
 // Schwarzschild::christoffel, converts the rhs to Cartesian components with
 // SphericalToCartesian::rhs_to_cartesian (depends on lambda in two ways),
-// then converts p back so it is Cartesian on return.
+// then converts p back and undoes the shift so it is unchanged on return.
+// The rhs is translation invariant, so it needs no shift.
 
 // Schwarzschild spacetime metric in spherical-polar coordinates.
 class SchwSphericalMetric : public SphericalMetric {
    public:
-    AMREX_GPU_DEVICE AMREX_GPU_HOST SchwSphericalMetric(amrex::Real M = 1.0)
-        : m_schw_(M) {}
+    AMREX_GPU_DEVICE AMREX_GPU_HOST SchwSphericalMetric(
+        amrex::Real M = 1.0,
+        const amrex::RealVect& center = amrex::RealVect(0.0, 0.0, 0.0))
+        : m_schw_(M), m_center_(center) {}
 
     // NOTE: gmunu assumes p is already in spherical polar.
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
@@ -282,6 +297,8 @@ class SchwSphericalMetric : public SphericalMetric {
     // The conversions and jacobian_inv are inherited from SphericalMetric.
     AMREX_GPU_DEVICE AMREX_GPU_HOST GeodesicArray
     geodesic_rhs(EParticle& p) const {
+        // black hole to origin
+        shift_cartesian_position(p, -m_center_);
         coord_conv(p);
         // in spherical
         const GeodesicArray rhs_sph =
@@ -290,18 +307,22 @@ class SchwSphericalMetric : public SphericalMetric {
         const GeodesicArray rhs =
             SphericalToCartesian::rhs_to_cartesian(p, jacobian_inv(p), rhs_sph);
         coord_conv_inv(p);
+        shift_cartesian_position(p, m_center_);
         return rhs;
     }
 
    private:
     Schwarzschild m_schw_;
+    amrex::RealVect m_center_;  // black hole center, Cartesian (cm)
 };
 
 // Schwarzschild metric in Cartesian coordinates (AMReX's native mesh)
 class SchwCartesianMetric : public CartesianMetric {
    public:
-    AMREX_GPU_DEVICE AMREX_GPU_HOST SchwCartesianMetric(amrex::Real M = 1.0)
-        : m_schw_(M) {}
+    AMREX_GPU_DEVICE AMREX_GPU_HOST SchwCartesianMetric(
+        amrex::Real M = 1.0,
+        const amrex::RealVect& center = amrex::RealVect(0.0, 0.0, 0.0))
+        : m_schw_(M), m_center_(center) {}
 
     // NOTE: gmunu assumes p is already in spherical polar.
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
@@ -331,6 +352,8 @@ class SchwCartesianMetric : public CartesianMetric {
     AMREX_GPU_DEVICE AMREX_GPU_HOST GeodesicArray
     geodesic_rhs(EParticle& p) const {
         const SphericalMetric sph;
+        // black hole to origin
+        shift_cartesian_position(p, -m_center_);
         sph.coord_conv(p);
         // in spherical
         const GeodesicArray rhs_sph =
@@ -339,11 +362,13 @@ class SchwCartesianMetric : public CartesianMetric {
         const GeodesicArray rhs = SphericalToCartesian::rhs_to_cartesian(
             p, sph.jacobian_inv(p), rhs_sph);
         sph.coord_conv_inv(p);
+        shift_cartesian_position(p, m_center_);
         return rhs;
     }
 
    private:
     Schwarzschild m_schw_;
+    amrex::RealVect m_center_;  // black hole center, Cartesian (cm)
 };
 
 // Schwarzschild metric in cylindrical coordinates. geodesic_rhs
@@ -352,8 +377,10 @@ class SchwCartesianMetric : public CartesianMetric {
 // when calling metric.geodesic_rhs(p).
 class SchwCylindricalMetric : public CylindricalMetric {
    public:
-    AMREX_GPU_DEVICE AMREX_GPU_HOST SchwCylindricalMetric(amrex::Real M = 1.0)
-        : m_schw_(M) {}
+    AMREX_GPU_DEVICE AMREX_GPU_HOST SchwCylindricalMetric(
+        amrex::Real M = 1.0,
+        const amrex::RealVect& center = amrex::RealVect(0.0, 0.0, 0.0))
+        : m_schw_(M), m_center_(center) {}
 
     // NOTE: gmunu assumes p is already in spherical polar.
     AMREX_GPU_DEVICE AMREX_GPU_HOST Mat4
@@ -384,6 +411,8 @@ class SchwCylindricalMetric : public CylindricalMetric {
     AMREX_GPU_DEVICE AMREX_GPU_HOST GeodesicArray
     geodesic_rhs(EParticle& p) const {
         const SphericalMetric sph;
+        // black hole to origin
+        shift_cartesian_position(p, -m_center_);
         sph.coord_conv(p);
         // in sperical
         const GeodesicArray rhs_sph =
@@ -392,11 +421,13 @@ class SchwCylindricalMetric : public CylindricalMetric {
         const GeodesicArray rhs = SphericalToCartesian::rhs_to_cartesian(
             p, sph.jacobian_inv(p), rhs_sph);
         sph.coord_conv_inv(p);
+        shift_cartesian_position(p, m_center_);
         return rhs;
     }
 
    private:
     Schwarzschild m_schw_;
+    amrex::RealVect m_center_;  // black hole center, Cartesian (cm)
 };
 
 #endif
