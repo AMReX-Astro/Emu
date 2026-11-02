@@ -52,24 +52,26 @@ def create_grid(cell_numbers, dimensions):
 # EMU grid parameters
 
 R       = 1.17e6    # sphere radius, cm
-ncellsx = 96 # scalar, number of cells in x-direction
-ncellsy = 96 # scalar, number of cells in y-direction
-ncellsz = 64 # scalar, number of cells in z-direction
+ncellsx = 128 # scalar, number of cells in x-direction
+ncellsy = 128 # scalar, number of cells in y-direction
+ncellsz = 128 # scalar, number of cells in z-direction
 xmin    = 0.0 #cm
-xmax    = 4.4e6 #cm
+xmax    = R*3.1 #cm
 ymin    = 0.0 #cm
-ymax    = 4.4e6 #cm
+ymax    = R*2.1 #cm
 zmin    = 0.0 #cm
-zmax    = 4.4e6 #cm
+zmax    = R*2.1 #cm
 
 dxcell = (xmax - xmin) / ncellsx
 dycell = (ymax - ymin) / ncellsy
 dzcell = (zmax - zmin) / ncellsz
 
 # Sphere center. Distance from the center to a cube face is 2.2e6 cm.
-cx = 0.5 * (xmin + xmax) + 0.5 * dxcell
+cx = np.ceil(R/dxcell)*dxcell + 3.5 * dxcell
 cy = 0.5 * (ymin + ymax) + 0.5 * dycell
 cz = 0.5 * (zmin + zmax) + 0.5 * dzcell
+print(f"r_sphere_center_cm = ( {cx}, {cy}, {cz} )")
+print(f"r_sphere_radius_index = ( {np.floor(cx/dxcell)}, {np.floor(cy/dycell)}, {np.floor(cz/dzcell)} )")
 
 # Create EMU mesh
 centers, mesh = create_grid([ncellsx, ncellsy, ncellsz], [[xmin, xmax], [ymin, ymax], [zmin, zmax]]) # cm
