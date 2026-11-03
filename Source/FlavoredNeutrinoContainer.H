@@ -147,7 +147,8 @@ class FlavoredNeutrinoContainer
 
     void ApplyPerturbations(const TestParams* parms);
 
-    void ApplyBoundaryConditions(const TestParams* parms);
+    void ApplyBoundaryConditions(const TestParams* parms,
+                                 const amrex::Geometry& geom);
 
     void SyncLocation(int type);
 

@@ -51,10 +51,23 @@ void FlavoredNeutrinoContainer::SyncLocation(int type) {
 }
 
 void FlavoredNeutrinoContainer::ApplyBoundaryConditions(
-    const TestParams* parms) {
+    const TestParams* parms, const amrex::Geometry& geom) {
     BL_PROFILE("FlavoredNeutrinoContainer::ApplyBoundaryConditions");
 
     const int lev = 0;
+
+    // Roundoff domain used by AMReX enforcePeriodic. rhi is the largest
+    // coordinate that still maps into a valid cell, so a particle in (rhi, L]
+    // is wrapped even though it may still be <= L. Match that test for
+    // periodic_empty so every physical exit Redistribute wraps is emptied.
+    const auto rlo = geom.ProbLoArrayInParticleReal();
+    const auto rhi = geom.ProbHiArrayInParticleReal();
+
+    // One Hermitian block (N or Nbar); length depends on NUM_FLAVORS.
+    // periodic_empty clears only these two blocks so N_eq / Nbar_eq (when
+    // generated) are preserved. Outflow keeps the broader TrHN range.
+    constexpr int n_block = PIdx::N00_Rebar - PIdx::N00_Re;
+    constexpr int n_end = PIdx::N00_Rebar + n_block;
 
 #ifdef _OPENMP
 #pragma omp parallel
@@ -71,8 +84,9 @@ void FlavoredNeutrinoContainer::ApplyBoundaryConditions(
             const amrex::Real L[AMREX_SPACEDIM] = {parms->Lx, parms->Ly,
                                                    parms->Lz};
 
-            // Clear N and Nbar once after the dimension loop (corner exits).
-            bool empty_neutrinos = false;
+            // Clear flags set once after the dimension loop (corner exits).
+            bool empty_outflow = false;
+            bool empty_periodic = false;
 
             for (int d = 0; d < AMREX_SPACEDIM; ++d) {
                 int mode = BoundaryCondition::periodic;  // no-op
@@ -103,18 +117,27 @@ void FlavoredNeutrinoContainer::ApplyBoundaryConditions(
 
                     // Outflow: zero the density matrix so the particle carries
                     // nothing back into the domain (no incoming flux).
-                    if (mode == BoundaryCondition::outflow) {
-                        empty_neutrinos = true;
-                    }
+                    if (mode == BoundaryCondition::outflow)
+                        empty_outflow = true;
                 }
 
-                if (mode == BoundaryCondition::periodic_empty)
-                    empty_neutrinos = true;
+                // periodic_empty: same roundoff bounds AMReX uses for wrapping.
+                // Do not change pos or momentum; RedistributeLocal wraps.
+                const int lo_mode = parms->boundary_condition[2 * d + 0];
+                const int hi_mode = parms->boundary_condition[2 * d + 1];
+                if ((lo_mode == BoundaryCondition::periodic_empty &&
+                     p.pos(d) < rlo[d]) ||
+                    (hi_mode == BoundaryCondition::periodic_empty &&
+                     p.pos(d) > rhi[d])) {
+                    empty_periodic = true;
+                }
             }
 
-            // Zero N and Nbar (diagonal and off-diagonal, all flavors).
-            if (empty_neutrinos) {
+            if (empty_outflow) {
                 for (int comp = PIdx::N00_Re; comp < PIdx::TrHN; ++comp)
+                    p.rdata(comp) = 0.0;
+            } else if (empty_periodic) {
+                for (int comp = PIdx::N00_Re; comp < n_end; ++comp)
                     p.rdata(comp) = 0.0;
             }
         });

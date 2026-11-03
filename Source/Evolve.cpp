@@ -17,6 +17,32 @@
 
 using namespace amrex;
 
+namespace {
+// True if the particle has left through a periodic_empty face under the same
+// roundoff bounds AMReX uses for wrapping. Used to skip mesh deposition so a
+// periodic SumBoundary does not re-inject the outgoing content on the opposite
+// side. Does not modify particle state.
+template <typename Particle>
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE bool
+outside_periodic_empty_face(const Particle& p, const TestParams* parms,
+                            const amrex::GpuArray<amrex::ParticleReal,
+                                                  AMREX_SPACEDIM>& rlo,
+                            const amrex::GpuArray<amrex::ParticleReal,
+                                                  AMREX_SPACEDIM>& rhi) {
+    for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+        if ((parms->boundary_condition[2 * d + 0] ==
+                 BoundaryCondition::periodic_empty &&
+             p.pos(d) < rlo[d]) ||
+            (parms->boundary_condition[2 * d + 1] ==
+                 BoundaryCondition::periodic_empty &&
+             p.pos(d) > rhi[d])) {
+            return true;
+        }
+    }
+    return false;
+}
+}  // namespace
+
 namespace GIdx {
 amrex::Vector<std::string> names;
 
@@ -161,6 +187,8 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
         parms->boundary_condition[1] == BoundaryCondition::reflecting,
         parms->boundary_condition[3] == BoundaryCondition::reflecting,
         parms->boundary_condition[5] == BoundaryCondition::reflecting};
+    const auto rlo = geom.ProbLoArrayInParticleReal();
+    const auto rhi = geom.ProbHiArrayInParticleReal();
 
     // Create EoS table object
     using namespace nuc_eos_private;
@@ -192,6 +220,10 @@ static void deposit_to_mesh_atomic(const FlavoredNeutrinoContainer& neutrinos,
                              const int p_index,
                              amrex::Array4<amrex::Real> const& sarr) {
             FlavoredNeutrinoContainer::FNParticleConstView p{ptd, p_index};
+
+            // Skip particles that have left through a periodic_empty face so
+            // their content is not SumBoundary'd back onto the opposite side.
+            if (outside_periodic_empty_face(p, parms, rlo, rhi)) return;
 
             const Real T_pp = p.rdata(PIdx::T_erg);  // erg
             const Real Ye_pp = p.rdata(PIdx::Ye);
@@ -653,6 +685,8 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
         parms->boundary_condition[1] == BoundaryCondition::reflecting,
         parms->boundary_condition[3] == BoundaryCondition::reflecting,
         parms->boundary_condition[5] == BoundaryCondition::reflecting};
+    const auto rlo = geom.ProbLoArrayInParticleReal();
+    const auto rhi = geom.ProbHiArrayInParticleReal();
 
     // precompute compile-time scalars
     constexpr int num_moments = NUM_MOMENTS == 3 ? 10 : 4;
@@ -720,6 +754,22 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                 const int p_index = bin_order[sorted_index];
                 FlavoredNeutrinoContainer::FNParticleConstView p{ptd, p_index};
 
+                ParticleGeometry& particle_geometry = geometry[sorted_index];
+
+                // Zero the stencil for particles that left through a
+                // periodic_empty face so they contribute nothing to the mesh.
+                if (outside_periodic_empty_face(p, parms, rlo, rhi)) {
+                    for (int s = 0; s < stencil_width; ++s) {
+                        particle_geometry.shape[0][s] = 0.0;
+                        particle_geometry.shape[1][s] = 0.0;
+                        particle_geometry.shape[2][s] = 0.0;
+                    }
+                    particle_geometry.phat[0] = 0.0;
+                    particle_geometry.phat[1] = 0.0;
+                    particle_geometry.phat[2] = 0.0;
+                    return;
+                }
+
                 const amrex::IntVect home_cell =
                     amrex::getParticleCell(ptd, p_index, p_lo, dxi, domain);
 
@@ -729,8 +779,6 @@ static void deposit_to_mesh_cell(const FlavoredNeutrinoContainer& neutrinos,
                     (p.pos(1) - p_lo[1]) * dxi[1], shape_order_j);
                 const ParticleInterpolator<SHAPE_FACTOR_ORDER> shape_k(
                     (p.pos(2) - p_lo[2]) * dxi[2], shape_order_k);
-
-                ParticleGeometry& particle_geometry = geometry[sorted_index];
 
                 for (int s = 0; s < stencil_width; ++s) {
                     const int cell_i = home_cell[0] + s - 1;

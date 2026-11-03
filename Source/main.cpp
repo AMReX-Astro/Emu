@@ -342,12 +342,13 @@ void evolve_flavor(const TestParams* parms) {
         // integrated coordinates.
         neutrinos.SyncLocation(Sync::CoordinateToPosition);
 
-        // Apply reflecting/outflow boundary conditions to particles that crossed
-        // a non-periodic face: fold the position back into the domain and flip the
-        // normal momentum component. Outflow additionally zeroes the density matrix.
-        // periodic_empty zeroes the density matrix and leaves wrapping to RedistributeLocal.
-        // This must run before RedistributeLocal so the particles stay in the domain.
-        neutrinos.ApplyBoundaryConditions(parms);
+        // Apply reflecting/outflow/periodic_empty boundary conditions before
+        // RedistributeLocal. Reflecting and outflow fold the position into the
+        // domain and flip the normal momentum so the particle is inside for
+        // redistribution. Outflow also zeroes the density matrix.
+        // periodic_empty zeroes N and Nbar but leaves the particle outside so
+        // RedistributeLocal can wrap it; the physical exit must still be visible.
+        neutrinos.ApplyBoundaryConditions(parms, geom);
 
         // Now Redistribute the new time particles to their new grids.
         {
