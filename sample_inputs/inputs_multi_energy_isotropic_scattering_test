@@ -56,8 +56,7 @@ do_restart = 0
 restart_dir = ""
 
 # deposition method --> 0: old slow method, 1: new fast method
-# scattering works only with method zero (for now)
-deposit_method = 0
+deposit_method = 1
 
 ###############################
 # NEUTRINO PHYSICS PARAMETERS #
