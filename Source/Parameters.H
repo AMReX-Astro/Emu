@@ -207,11 +207,10 @@ struct TestParams : public amrex::Gpu::Managed {
                 else if (bc_string == "periodic_empty")
                     boundary_condition[f] = BoundaryCondition::periodic_empty;
                 else
-                    amrex::Abort(
-                        "Unknown boundary condition '" + bc_string + "' for " +
-                        face_names[f] +
-                        ". Use periodic, reflecting, outflow, or "
-                        "periodic_empty.");
+                    amrex::Abort("Unknown boundary condition '" + bc_string +
+                                 "' for " + face_names[f] +
+                                 ". Use periodic, reflecting, outflow, or "
+                                 "periodic_empty.");
             }
         }
         pp.get("attenuation_vacuum", attenuation_vacuum);
