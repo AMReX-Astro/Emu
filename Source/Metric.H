@@ -38,7 +38,7 @@ AMREX_GPU_DEVICE AMREX_GPU_HOST inline void cell_bounds(
 
 class Metric {
    public:
-    virtual ~Metric() = default;
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual ~Metric() = default;
 
     //static amrex::Real detg(const amrex::RealVect& x);
 

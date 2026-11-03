@@ -240,14 +240,14 @@ if __name__ == "__main__":
     #============================#
     code = []
     length = sympy.symbols("length",real=True)
-    rho = sympy.symbols("fab(i\,j\,k\,GIdx\:\:rho)",real=True)
-    Ye = sympy.symbols("fab(i\,j\,k\,GIdx\:\:Ye)",real=True)
-    mp = sympy.symbols("PhysConst\:\:Mp",real=True)
-    sqrt2GF = sympy.symbols("M_SQRT2*PhysConst\:\:GF",real=True)
+    rho = sympy.symbols(r"fab(i\,j\,k\,GIdx\:\:rho)",real=True)
+    Ye = sympy.symbols(r"fab(i\,j\,k\,GIdx\:\:Ye)",real=True)
+    mp = sympy.symbols(r"PhysConst\:\:Mp",real=True)
+    sqrt2GF = sympy.symbols(r"M_SQRT2*PhysConst\:\:GF",real=True)
 
     # spherically symmetric part
-    N    = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::N{}{}_{})")
-    Nbar = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::N{}{}_{}bar)")
+    N    = HermitianMatrix(args.N, r"fab(i\,j\,k\,GIdx::N{}{}_{})")
+    Nbar = HermitianMatrix(args.N, r"fab(i\,j\,k\,GIdx::N{}{}_{}bar)")
     HSI  = (N-Nbar.conjugate())
     HSI.H[0,0] += rho*Ye/mp
     V_adaptive2 = HSI.SU_vector_magnitude2()
@@ -255,8 +255,8 @@ if __name__ == "__main__":
 
     # flux part
     for component in ["x","y","z"]:
-        F    = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::F"+component+"{}{}_{})")
-        Fbar = HermitianMatrix(args.N, "fab(i\,j\,k\,GIdx::F"+component+"{}{}_{}bar)")
+        F    = HermitianMatrix(args.N, r"fab(i\,j\,k\,GIdx::F"+component+"{}{}_{})")
+        Fbar = HermitianMatrix(args.N, r"fab(i\,j\,k\,GIdx::F"+component+"{}{}_{}bar)")
         HSI  = (F-Fbar)
         V_adaptive2 = HSI.SU_vector_magnitude2()
         code.append("V_adaptive2 += "+sympy.cxxcode(sympy.simplify(V_adaptive2))+";")
@@ -330,10 +330,10 @@ if __name__ == "__main__":
     # rather than re-inlining the full expression (keeping the generated code small).
 
     # Physical constants and per-particle scalars, referenced by their C++ names.
-    hbar    = sympy.symbols("PhysConst\:\:hbar", real=True)
-    c       = sympy.symbols("PhysConst\:\:c", real=True)
-    pi      = sympy.symbols("MathConst\:\:pi", real=True)
-    V_phase = sympy.symbols("p.rdata(PIdx\:\:Vphase)", real=True)
+    hbar    = sympy.symbols(r"PhysConst\:\:hbar", real=True)
+    c       = sympy.symbols(r"PhysConst\:\:c", real=True)
+    pi      = sympy.symbols(r"MathConst\:\:pi", real=True)
+    V_phase = sympy.symbols(r"p.rdata(PIdx\:\:Vphase)", real=True)
     attenuation_to_hamiltonian = sympy.symbols("parms->attenuation_hamiltonians", real=True)
 
     # Emit an "amrex::Real lhs = rhs;" declaration for each independent component.
