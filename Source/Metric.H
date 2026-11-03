@@ -76,9 +76,9 @@ class Metric {
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual Mat4 gmunu(
         const EParticle& p) const = 0;
 
-    //det of the metric
-    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual amrex::Real detg(
-        const EParticle& p) const = 0;
+    //sqrt(-g) where g is det(gmunu)
+    AMREX_GPU_DEVICE AMREX_GPU_HOST virtual amrex::Real sqrt_g(
+        const amrex::RealVect& pos_mesh) const = 0;
 
     //dot product of two 4-vectors
     AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real dot(const FourVec& a,
@@ -103,18 +103,29 @@ class Metric {
     geodesic_rhs(EParticle& p) const {
         coord_conv(p);
 
-        const Christoffel Gamma = christoffel(p);
+        const GeodesicArray rhs = geodesic_rhs_from(p, christoffel(p));
 
+        coord_conv_inv(p);
+
+        return rhs;
+    }
+
+    // rhs calculated from christoffel symbols, particle positions
+    // using the geodesic equations in whatever coordinates p and Gamma are
+    // already expressed in (no coordinate conversion is done here). Static so
+    // that derived metrics which evaluate Gamma in a frame other than their
+    // native one (e.g. Schwarzschild.H) can reuse the same equations.
+    AMREX_GPU_DEVICE AMREX_GPU_HOST static GeodesicArray geodesic_rhs_from(
+        const EParticle& p, const Christoffel& Gamma) {
         GeodesicArray Y{
             p.rdata(PIdx::time), p.rdata(PIdx::x),    p.rdata(PIdx::y),
             p.rdata(PIdx::z),    p.rdata(PIdx::pupt), p.rdata(PIdx::pupx),
             p.rdata(PIdx::pupy), p.rdata(PIdx::pupz)
 
         };
-
-        const amrex::Real lapse = 1.0;
-
-        const amrex::Real denom = lapse * Y[4];  // -p.u= lapse*p^t
+        // dx/lambda * (dt/dlambda)^-1 = p^t. dt/dlambda = p^t
+        // we integrate in Emu over coordinate time, not proper time at specific locations
+        const amrex::Real denom = Y[4];
 
         GeodesicArray
             rhs{};  //first 4 components will store the postion equations rhs and the last 4 componenets will store momentum geoodesic equation rhs
@@ -135,12 +146,10 @@ class Metric {
             }
         }
 
-        coord_conv_inv(p);
-
         return rhs;
     }
 
-    // Find the vokume of a cell
+    // Find the volume of a cell
     AMREX_GPU_DEVICE AMREX_GPU_HOST virtual amrex::Real vol(
         amrex::Real x1_min, amrex::Real x1_max, amrex::Real x2_min,
         amrex::Real x2_max, amrex::Real x3_min, amrex::Real x3_max) const = 0;
@@ -234,8 +243,8 @@ class CartesianMetric : public Metric {
         return g;
     }
 
-    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
-        const EParticle& p) const override {
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real sqrt_g(
+        const amrex::RealVect& pos_mesh) const override {
         return -1.0;
     }
 
@@ -464,10 +473,10 @@ class CylindricalMetric : public Metric {
         return g;
     }
 
-    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
-        const EParticle& p) const override {
-        const amrex::Real x = p.rdata(PIdx::x);
-        const amrex::Real y = p.rdata(PIdx::y);
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real sqrt_g(
+        const amrex::RealVect& pos_mesh) const override {
+        const amrex::Real x = pos_mesh[0];
+        const amrex::Real y = pos_mesh[1];
         const amrex::Real r = std::sqrt(x * x + y * y);
 
         return -(r * r);
@@ -737,16 +746,17 @@ class SphericalMetric : public Metric {
         g[3][3] = r * r * std::sin(theta) * std::sin(theta);
         return g;
     }
-
-    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real detg(
-        const EParticle& p) const override {
-        const amrex::Real x = p.rdata(PIdx::x);
-        const amrex::Real y = p.rdata(PIdx::y);
-        const amrex::Real z = p.rdata(PIdx::z);
+    // sqrt(-g) = r^2 sin(theta)
+    AMREX_GPU_DEVICE AMREX_GPU_HOST amrex::Real sqrt_g(
+        const amrex::RealVect& pos_mesh) const override {
+        const amrex::Real x = pos_mesh[0];
+        const amrex::Real y = pos_mesh[1];
+        const amrex::Real z = pos_mesh[2];
         const amrex::Real r = std::sqrt(x * x + y * y + z * z);
         const amrex::Real theta = std::acos(z / r);
+        const amrex::Real sintheta = std::sin(theta);
 
-        return -std::pow(r, 4) * std::sin(theta) * std::sin(theta);
+        return r * r * sintheta;
     }
 
     AMREX_GPU_DEVICE AMREX_GPU_HOST Christoffel

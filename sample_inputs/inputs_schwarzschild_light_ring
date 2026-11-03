@@ -1,0 +1,134 @@
+# Schwarzschild light ring test: one photon-like neutrino on the circular null
+# orbit r = 3M about a black hole of mass M = bh_mass_cm = 1 cm (GM/c^2).
+# Initial conditions: Scripts/initial_conditions/st12_schwarzschild_light_ring.py
+# Check: Scripts/tests/schwarzschild_light_ring_test.py
+#
+# Time step: dt = cfl_factor * Lx / c = 3.125e-4 * 16 cm / c = 5e-3 M/c.
+# r = 3M is an unstable orbit, so errors grow ~ e per 3 sqrt(3) M; at this dt
+# RK4 holds r, E, L and the orbital phase to < 1e-12 over 3 orbits.
+# One orbit is 2 pi 3 sqrt(3) M/c, so nsteps = 19600 is just over 3 orbits.
+
+perturbation_type = 0
+perturbation_amplitude = 0.0
+
+# No flavor evolution: only the geodesic transport is tested
+attenuation_hamiltonians = 0
+attenuation_vacuum = 1.0
+attenuation_matter = 1.0
+attenuation_self_interaction = 1.0
+
+cfl_factor = 3.125e-4
+
+integration.type = 1
+integration.rk.type = 4          # RK4 (0=User, 1=ForwardEuler, 2=Trapezoid, 3=SSPRK3, 4=RK4, 5=DormandPrince)
+integration.use_adaptive_time_step = 0
+
+# Domain size in 3D index space
+# The single cell center (8, 8, 8) is the particle's starting point.
+# The orbit spans x in [2, 8], y in [5, 11], so it never reaches a boundary.
+ncell = (1, 1, 1)
+Lx = 16 # cm
+Ly = 16 # cm
+Lz = 16 # cm
+
+# Number of particles per cell
+nppc  = (1, 1, 1)
+particle_data_filename = "particle_input.dat"
+
+# Maximum size of each grid in the domain
+max_grid_size_x = 1
+max_grid_size_y = 1
+max_grid_size_z = 1
+
+# Number of steps to run (sets the run length; end_time is not reached)
+nsteps = 19600
+
+# Minimum timestep (s), well below dt = 5e-3 M/c = 1.67e-13 s
+minimum_time_step = 1e-20
+
+# Simulation end time
+end_time = 1.0
+
+# Make FPE signal errors so we get a Backtrace
+amrex.fpe_trap_invalid=1
+
+# give background fluid conditions
+rho_g_ccm = 0
+T_MeV = 7.0
+Ye = 0
+# Adding constant background v for now
+vupx = 0.0
+vupy = 0.0
+vupz = 0.0
+
+# Write plotfiles (11 snapshots over the 3 orbits for the conservation plot)
+write_plot_every = 1960
+
+# Write particle data in plotfiles
+write_plot_particles_every = 1960
+
+# checkpointing
+do_restart = 0
+restart_dir = ""
+
+###############################
+# NEUTRINO PHYSICS PARAMETERS #
+###############################
+# see first column of table 14.7 in http://pdg.lbl.gov/2019/reviews/rpp2019-rev-neutrino-mixing.pdf
+
+# mass state 1 mass in eV [NO/IO:-sqrt(7.39e-5)]
+mass1_eV = -0.008596511
+
+# mass state 2 mass in eV (define at 0 arbitrarily because oscillations only sensitive to deltaM^2)
+mass2_eV = 0
+
+# mass state 3 mass in eV [NO:sqrt(2.449e-3) IO:-sqrt(2.509e-3)]
+mass3_eV = 0
+
+# 1-2 mixing angle in degrees [NO/IO:33.82]
+theta12_degrees = 33.82
+
+# 2-3 mixing angle in degrees [NO:8.61 IO:8.65]
+theta23_degrees = 8.61
+
+# 1-3 mixing angle in degrees [NO:48.3 IO:48.6]
+theta13_degrees = 48.3
+
+# Majorana angle 1 in degrees
+alpha1_degrees = 0
+
+# Majorana angle 2 in degrees
+alpha2_degrees = 0
+
+# CP-violating phase in degrees [NO:222 IO:285]
+deltaCP_degrees = 222
+
+#################
+# opacity stuff #
+#################
+IMFP_method = 0
+
+#################
+# Background Ye, T and rho
+#################
+read_rho_T_Ye_from_table = 0
+
+#################
+# Blackhole
+#################
+do_blackhole = 1
+bh_mass_cm = 1.0  # GM/c^2 (cm); nonzero turns on Schwarzschild geodesics
+bh_radius = 2.0   # cm, absorbing sphere at the horizon 2M
+bh_center_x = 5.0 # cm, 3M from the particle's starting point
+bh_center_y = 8.0 # cm
+bh_center_z = 8.0 # cm
+
+#################
+# Boundary conditions
+#################
+bc_xlo = periodic
+bc_xhi = periodic
+bc_ylo = periodic
+bc_yhi = periodic
+bc_zlo = periodic
+bc_zhi = periodic
