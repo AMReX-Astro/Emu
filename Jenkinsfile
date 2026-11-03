@@ -124,6 +124,19 @@ pipeline {
 				}
 			}
 		}
+		stage('Periodic Empty BC'){ steps{
+				dir('Exec'){
+					sh 'cp ../sample_inputs/particle_input_periodic_empty_bc.dat particle_input.dat'
+					sh 'mpirun -np 2 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_periodic_empty_bc_test'
+					sh 'python ../Scripts/tests/periodic_empty_bc_test.py --case mixed'
+					sh 'rm -rf plt* reduced0D.dat'
+					sh 'cp ../sample_inputs/particle_input_periodic_empty_corner.dat particle_input.dat'
+					sh 'mpirun -np 2 ./main3d.gnu.TPROF.MPI.CUDA.ex ../sample_inputs/inputs_periodic_empty_corner_test'
+					sh 'python ../Scripts/tests/periodic_empty_bc_test.py --case corner'
+					sh 'rm -rf plt* reduced0D.dat'
+				}
+			}
+		}
 		stage('Fiducial 3F CPU HDF5'){ steps{
 				dir('Exec'){
 					sh 'cp ../makefiles/GNUmakefile_jenkins_HDF5 GNUmakefile'

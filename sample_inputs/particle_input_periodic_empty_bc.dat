@@ -1,0 +1,6 @@
+number_of_flavors = 2
+number_of_directions_at_init = 2
+number_of_energies_at_init = 1
+pupx pupy pupz pupt N00_Re N01_Re N01_Im N11_Re N00_Rebar N01_Rebar N01_Imbar N11_Rebar TrHN Vphase
+3.204353182e-05 0.0 0.0 3.204353182e-05 1.0 0.1 0.05 0.5 0.8 0.04 0.02 0.4 0.0 1.0
+0.0 3.204353182e-05 0.0 3.204353182e-05 2.0 0.2 0.06 0.6 0.9 0.05 0.03 0.45 0.0 1.0

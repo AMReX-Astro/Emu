@@ -1,0 +1,67 @@
+# One-step regression for periodic_empty on x, plain periodic on y/z.
+# Particles at the high-x face wrap and empty; interior grid crossings keep N;
+# a +y wrap through periodic keeps N.
+
+perturbation_type = 99
+perturbation_amplitude = 0.0
+
+attenuation_hamiltonians = 0
+attenuation_vacuum = 0.0
+attenuation_matter = 0.0
+attenuation_self_interaction = 0.0
+
+cfl_factor = 1.0
+integration.type = 1
+integration.rk.type = 1
+integration.use_adaptive_time_step = 0
+
+ncell = (4, 4, 1)
+Lx = 4.0
+Ly = 4.0
+Lz = 1.0
+nppc = (1, 1, 1)
+particle_data_filename = "particle_input.dat"
+
+max_grid_size_x = 1
+max_grid_size_y = 1
+max_grid_size_z = 1
+
+nsteps = 1
+minimum_time_step = 1e-30
+end_time = 1.0
+
+amrex.fpe_trap_invalid = 1
+
+rho_g_ccm = 0
+T_MeV = 10
+Ye = 0.5
+vupx = 0.0
+vupy = 0.0
+vupz = 0.0
+
+write_plot_every = 1
+write_plot_particles_every = 1
+
+do_restart = 0
+restart_dir = ""
+
+mass1_eV = 0
+mass2_eV = 0
+mass3_eV = 0
+theta12_degrees = 0
+theta13_degrees = 0
+theta23_degrees = 0
+alpha1_degrees = 0
+alpha2_degrees = 0
+deltaCP_degrees = 0
+
+IMFP_method = 0
+read_rho_T_Ye_from_table = 0
+do_blackhole = 0
+
+bc_xlo = periodic_empty
+bc_xhi = periodic_empty
+bc_ylo = periodic
+bc_yhi = periodic
+bc_zlo = periodic
+bc_zhi = periodic
