@@ -10,7 +10,7 @@ using namespace amrex;
 
 // Boundary condition applied to a single domain face.
 namespace BoundaryCondition {
-enum { periodic = 0, reflecting = 1, outflow = 2 };
+enum { periodic = 0, reflecting = 1, outflow = 2, periodic_empty = 3 };
 }
 
 //=========================================//
@@ -190,8 +190,8 @@ struct TestParams : public amrex::Gpu::Managed {
         // attenuation to hamiltonians
         pp.get("attenuation_hamiltonians", attenuation_hamiltonians);
 
-        // Per-face boundary conditions: periodic / reflecting / outflow.
-        // Each face defaults to periodic if unspecified.
+        // Per-face boundary conditions: periodic / reflecting / outflow /
+        // periodic_empty. Each face defaults to periodic if unspecified.
         {
             const char* face_names[2 * AMREX_SPACEDIM] = {
                 "bc_xlo", "bc_xhi", "bc_ylo", "bc_yhi", "bc_zlo", "bc_zhi"};
@@ -204,10 +204,14 @@ struct TestParams : public amrex::Gpu::Managed {
                     boundary_condition[f] = BoundaryCondition::reflecting;
                 else if (bc_string == "outflow")
                     boundary_condition[f] = BoundaryCondition::outflow;
+                else if (bc_string == "periodic_empty")
+                    boundary_condition[f] = BoundaryCondition::periodic_empty;
                 else
-                    amrex::Abort("Unknown boundary condition '" + bc_string +
-                                 "' for " + face_names[f] +
-                                 ". Use periodic, reflecting, or outflow.");
+                    amrex::Abort(
+                        "Unknown boundary condition '" + bc_string + "' for " +
+                        face_names[f] +
+                        ". Use periodic, reflecting, outflow, or "
+                        "periodic_empty.");
             }
         }
         pp.get("attenuation_vacuum", attenuation_vacuum);

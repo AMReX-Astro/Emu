@@ -58,19 +58,25 @@ void evolve_flavor(const TestParams* parms) {
     // Per-face boundary conditions are read into parms->boundary_condition,
     // indexed as 2*dim+side (side 0=lo, 1=hi).
     // AMReX periodicity is a per-axis property, so an axis is periodic only when
-    // BOTH of its faces are periodic; mixing a periodic face with a non-periodic
-    // face on the same axis is not allowed.
+    // BOTH of its faces wrap (periodic or periodic_empty). Mixing a wrapping
+    // face with reflecting/outflow on the same axis is not allowed. Mixing
+    // periodic with periodic_empty on one axis is allowed: both wrap, and only
+    // the periodic_empty face zeroes the number matrices.
+    auto wraps = [](int mode) {
+        return mode == BoundaryCondition::periodic ||
+               mode == BoundaryCondition::periodic_empty;
+    };
     Vector<int> is_periodic(AMREX_SPACEDIM, 0);
     for (int d = 0; d < AMREX_SPACEDIM; ++d) {
-        const bool lo_periodic = (parms->boundary_condition[2 * d + 0] ==
-                                  BoundaryCondition::periodic);
-        const bool hi_periodic = (parms->boundary_condition[2 * d + 1] ==
-                                  BoundaryCondition::periodic);
-        if (lo_periodic != hi_periodic)
+        const int lo_mode = parms->boundary_condition[2 * d + 0];
+        const int hi_mode = parms->boundary_condition[2 * d + 1];
+        const bool lo_wraps = wraps(lo_mode);
+        const bool hi_wraps = wraps(hi_mode);
+        if (lo_wraps != hi_wraps)
             amrex::Abort(
-                "Periodic boundary conditions must be applied to both faces of "
-                "an axis.");
-        is_periodic[d] = lo_periodic ? 1 : 0;
+                "Wrapping boundary conditions (periodic or periodic_empty) "
+                "must be applied to both faces of an axis.");
+        is_periodic[d] = lo_wraps ? 1 : 0;
     }
 
     // Require the translation step to cross at most one cell so a particle moves at
@@ -192,6 +198,7 @@ void evolve_flavor(const TestParams* parms) {
                     int bc_type;
                     switch (parms->boundary_condition[2 * d + side]) {
                         case BoundaryCondition::periodic:
+                        case BoundaryCondition::periodic_empty:
                             bc_type = BCType::int_dir;
                             break;
                         case BoundaryCondition::reflecting:
@@ -338,6 +345,7 @@ void evolve_flavor(const TestParams* parms) {
         // Apply reflecting/outflow boundary conditions to particles that crossed
         // a non-periodic face: fold the position back into the domain and flip the
         // normal momentum component. Outflow additionally zeroes the density matrix.
+        // periodic_empty zeroes the density matrix and leaves wrapping to RedistributeLocal.
         // This must run before RedistributeLocal so the particles stay in the domain.
         neutrinos.ApplyBoundaryConditions(parms);
 

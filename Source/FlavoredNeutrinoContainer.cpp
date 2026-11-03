@@ -71,6 +71,9 @@ void FlavoredNeutrinoContainer::ApplyBoundaryConditions(
             const amrex::Real L[AMREX_SPACEDIM] = {parms->Lx, parms->Ly,
                                                    parms->Lz};
 
+            // Clear N and Nbar once after the dimension loop (corner exits).
+            bool empty_neutrinos = false;
+
             for (int d = 0; d < AMREX_SPACEDIM; ++d) {
                 int mode = BoundaryCondition::periodic;  // no-op
                 amrex::Real reflected_pos = 0.0;
@@ -85,8 +88,8 @@ void FlavoredNeutrinoContainer::ApplyBoundaryConditions(
                 }
 
                 // Reflecting and outflow: fold the position back into the domain and
-                // flip the momentum component normal to the face. Periodic is handled
-                // later by RedistributeLocal.
+                // flip the momentum component normal to the face. Periodic and
+                // periodic_empty wrapping are handled later by RedistributeLocal.
                 if (mode == BoundaryCondition::reflecting ||
                     mode == BoundaryCondition::outflow) {
                     p.pos(d) = reflected_pos;
@@ -101,10 +104,18 @@ void FlavoredNeutrinoContainer::ApplyBoundaryConditions(
                     // Outflow: zero the density matrix so the particle carries
                     // nothing back into the domain (no incoming flux).
                     if (mode == BoundaryCondition::outflow) {
-                        for (int comp = PIdx::N00_Re; comp < PIdx::TrHN; ++comp)
-                            p.rdata(comp) = 0.0;
+                        empty_neutrinos = true;
                     }
                 }
+
+                if (mode == BoundaryCondition::periodic_empty)
+                    empty_neutrinos = true;
+            }
+
+            // Zero N and Nbar (diagonal and off-diagonal, all flavors).
+            if (empty_neutrinos) {
+                for (int comp = PIdx::N00_Re; comp < PIdx::TrHN; ++comp)
+                    p.rdata(comp) = 0.0;
             }
         });
     }
